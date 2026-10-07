@@ -2,8 +2,8 @@
 #define _MUI_CLASSES_WINDOW_H
 
 /*
-    Copyright © 1999, David Le Corfec.
-    Copyright © 2002-2025, The AROS Development Team.
+    Copyright Â© 1999, David Le Corfec.
+    Copyright Â© 2002-2025, The AROS Development Team.
     All rights reserved.
 
     $Id$
@@ -339,7 +339,7 @@ struct MUIP_Window_SetMenuState
 #define MUIV_Window_Button_Popup            8
 
 
-#ifdef MUI_OBSOLETE
+#if defined(MUI_OBSOLETE) || defined(MUIMASTER_LIBRARY_BUILD)
 #define MUIA_Window_Menu \
     (MUIB_MUI | 0x0042db94)       /* MUI: V4  i.. struct NewMenu * */
 

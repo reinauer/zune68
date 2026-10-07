@@ -32,6 +32,11 @@
 #include <proto/rexxsyslib.h>
 #include <proto/workbench.h>
 #include <proto/icon.h>
+#include <proto/amigaguide.h>
+#include <libraries/amigaguide.h>
+#ifndef MUI_OBSOLETE
+#define MUI_OBSOLETE
+#endif //
 
 //#define MYDEBUG 1
 #include "debug.h"
@@ -103,6 +108,8 @@ struct MUI_ApplicationData
     struct AppIcon          *app_AppIcon;
     struct DiskObject       *app_DiskObject; /* This is only pointer to
                                               * client-managed object */
+    struct NewMenu          *app_LegacyMenu; /* borrowed source table */
+    Object                  *app_DropObject; /* borrowed notification target */
     struct DiskObject       *app_DefaultDiskObject; /* This is complete
                                                      * object managed by
                                                      * the class */
@@ -181,7 +188,7 @@ MUIM_Application_Save
 MUIM_Application_SetConfigItem
 MUIM_Application_SetMenuCheck
 MUIM_Application_SetMenuState
-MUIM_Application_ShowHelp
+MUIM_Application_ShowHelp                 done
 
 Notify.mui/MUIM_FindUData                 done
 Notify.mui/MUIM_GetUData                  done
@@ -189,8 +196,7 @@ Notify.mui/MUIM_SetUData                  done
 Notify.mui/MUIM_SetUDataOnce              done
  */
 
-static const int __version = 1;
-static const int __revision = 1;
+#include "native_version.h"
 
 
 /*
@@ -575,6 +581,10 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
                 bad_childs = TRUE;
             break;
 
+        case MUIA_Application_Menu:
+            data->app_LegacyMenu = (struct NewMenu *)tag->ti_Data;
+            break;
+
         case MUIA_Application_Menustrip:
             data->app_Menustrip = (Object *) tag->ti_Data;
             break;
@@ -621,12 +631,22 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
             data->app_RexxHook = (struct Hook *)tag->ti_Data;
             break;
 
+        case MUIA_Application_DropObject:
+            data->app_DropObject = (Object *)tag->ti_Data;
+            break;
+
         case MUIA_Application_DiskObject:
             data->app_DiskObject = (struct DiskObject *)tag->ti_Data;
             break;
 
         }
     }
+
+    if (GetTagData(MUIA_Application_UseRexx,
+            data->app_Commands || data->app_RexxHook, msg->ops_AttrList))
+        data->app_UseRexx = TRUE;
+    else
+        data->app_UseRexx = FALSE;
 
     /* create MUIA_Application_Version if NULL */
     if (data->app_Version == NULL
@@ -727,7 +747,7 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
         }
     }
 
-    if (data->app_UseRexx)
+    if (data->app_UseRexx && RexxSysBase)
     {
         data->app_RexxPort = CreateMsgPort();
         if (data->app_RexxPort)
@@ -752,6 +772,18 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
         }
     }
 
+    if (data->app_LegacyMenu && !data->app_Menustrip)
+    {
+        IPTR params[2];
+        params[0] = (IPTR)data->app_LegacyMenu;
+        params[1] = 0;
+        data->app_Menustrip = MUI_MakeObjectA(MUIO_MenustripNM, params);
+        if (!data->app_Menustrip)
+        {
+            CoerceMethod(cl, obj, OM_DISPOSE);
+            return 0;
+        }
+    }
     if (data->app_Menustrip)
         DoMethod(data->app_Menustrip, MUIM_ConnectParent, (IPTR) obj);
 
@@ -886,6 +918,11 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
         FreeVec(data->app_Version);
     }
 
+    if (data->app_GlobalInfo.mgi_Configdata)
+        MUI_DisposeObject(data->app_GlobalInfo.mgi_Configdata);
+    data->app_GlobalInfo.mgi_Configdata = NULL;
+    data->app_GlobalInfo.mgi_Prefs = NULL;
+
     /* free commodities stuff */
 
     if (data->app_Broker)
@@ -963,8 +1000,6 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
     if (data->app_CfgNotifyName)
         FreeVec(data->app_CfgNotifyName);
 
-    if (data->app_GlobalInfo.mgi_Configdata)
-        MUI_DisposeObject(data->app_GlobalInfo.mgi_Configdata);
 
     DeleteMsgPort(data->app_GlobalInfo.mgi_WindowsPort);
 
@@ -1240,12 +1275,22 @@ static IPTR Application__OM_SET(struct IClass *cl, Object *obj,
             break;
 
         case MUIA_Application_RexxString:
-            FreeVec(data->app_RexxString); /* MUI documentation say that "string in termporarily copied" */
-            data->app_RexxString = StrDup((CONST_STRPTR)tag->ti_Data);
+            {
+                STRPTR replacement = StrDup((CONST_STRPTR)tag->ti_Data);
+                if (replacement || !tag->ti_Data)
+                {
+                    FreeVec(data->app_RexxString);
+                    data->app_RexxString = replacement;
+                }
+            }
             break;
 
         case MUIA_Application_RexxHook:
             data->app_RexxHook = (struct Hook *)tag->ti_Data;
+            break;
+
+        case MUIA_Application_DropObject:
+            data->app_DropObject = (Object *)tag->ti_Data;
             break;
 
         case MUIA_Application_DiskObject:
@@ -1316,11 +1361,11 @@ static IPTR Application__OM_GET(struct IClass *cl, Object *obj,
         return TRUE;
 
     case MUIA_Version:
-        STORE = __version;
+        STORE = ZUNE68_BUILTIN_VERSION;
         return TRUE;
 
     case MUIA_Revision:
-        STORE = __revision;
+        STORE = ZUNE68_BUILTIN_REVISION;
         return TRUE;
 
     case MUIA_Application_Author:
@@ -1377,6 +1422,10 @@ static IPTR Application__OM_GET(struct IClass *cl, Object *obj,
     case MUIA_Application_WindowList:
         return GetAttr(MUIA_Family_List, data->app_WindowFamily,
             msg->opg_Storage);
+
+    case MUIA_Application_Menu:
+        STORE = (IPTR)data->app_LegacyMenu;
+        return TRUE;
 
     case MUIA_Application_Menustrip:
         STORE = (IPTR) data->app_Menustrip;
@@ -1531,31 +1580,105 @@ void _zune_window_message(struct IntuiMessage *imsg);   /* from window.c */
 /*
  * MUIM_Application_InputBuffered : process all pending events
  */
+static void application_rexx(struct MUI_ApplicationData *data, Object *obj,
+    struct RexxMsg *rmsg)
+{
+    struct MUI_Command *cmd = data->app_Commands;
+    struct RexxMsg *previous_msg = data->app_RexxMsg;
+    STRPTR previous_string = data->app_RexxString;
+    STRPTR command = (STRPTR)rmsg->rm_Args[0];
+    ULONG length = 0;
+    LONG result = RETURN_ERROR;
+    IPTR *args = NULL;
+    STRPTR arguments = NULL;
+    struct RDArgs *rdargs = NULL, *parsed = NULL;
+
+    data->app_RexxMsg = rmsg;
+    data->app_RexxString = NULL;
+    rmsg->rm_Result2 = 0;
+    if (!command)
+        goto done;
+    while (*command == ' ' || *command == '\t') command++;
+    while (command[length] && command[length] != ' '
+        && command[length] != '\t') length++;
+    while (cmd && cmd->mc_Name)
+    {
+        if (length == strlen(cmd->mc_Name)
+            && Strnicmp(command, cmd->mc_Name, length) == 0)
+            break;
+        cmd++;
+    }
+    if (cmd && cmd->mc_Name)
+    {
+        if (!cmd->mc_Hook)
+            goto done;
+        if (cmd->mc_Template)
+        {
+            STRPTR tail = command + length;
+            if (cmd->mc_Parameters > (ULONG)-1 / sizeof(IPTR))
+                goto done;
+            args = AllocVec((cmd->mc_Parameters ? cmd->mc_Parameters : 1)
+                * sizeof(IPTR), MEMF_ANY | MEMF_CLEAR);
+            while (*tail == ' ' || *tail == '\t') tail++;
+            length = strlen(tail);
+            arguments = AllocVec(length + 2, MEMF_ANY);
+            rdargs = AllocDosObject(DOS_RDARGS, NULL);
+            if (!args || !arguments || !rdargs)
+                goto done;
+            CopyMem(tail, arguments, length);
+            arguments[length] = '\n';
+            arguments[length + 1] = 0;
+            rdargs->RDA_Source.CS_Buffer = arguments;
+            rdargs->RDA_Source.CS_Length = length + 1;
+            rdargs->RDA_Source.CS_CurChr = 0;
+            rdargs->RDA_Flags |= RDAF_NOPROMPT;
+            parsed = ReadArgs(cmd->mc_Template, (LONG *)args, rdargs);
+            if (!parsed)
+                goto done;
+        }
+        result = CallHookPkt(cmd->mc_Hook, obj, args);
+    }
+    else if (data->app_RexxHook)
+        result = CallHookPkt(data->app_RexxHook, obj, rmsg);
+
+done:
+    if (parsed) FreeArgs(parsed);
+    if (rdargs) FreeDosObject(DOS_RDARGS, rdargs);
+    FreeVec(arguments);
+    FreeVec(args);
+    rmsg->rm_Result1 = result;
+    if (result == 0 && (rmsg->rm_Action & RXFF_RESULT)
+        && data->app_RexxString)
+    {
+        rmsg->rm_Result2 = (IPTR)CreateArgstring(data->app_RexxString,
+            strlen(data->app_RexxString));
+        if (!rmsg->rm_Result2)
+            rmsg->rm_Result1 = RETURN_FAIL;
+    }
+    FreeVec(data->app_RexxString);
+    data->app_RexxString = previous_string;
+    data->app_RexxMsg = previous_msg;
+}
+
+static IPTR application_input(struct IClass *, Object *, ULONG *, BOOL);
 static IPTR Application__MUIM_InputBuffered(struct IClass *cl, Object *obj,
     struct MUIP_Application_InputBuffered *msg)
 {
-    struct MUI_ApplicationData *data = INST_DATA(cl, obj);
-    struct IntuiMessage *imsg;
+    ULONG signals = SetSignal(0, 0);
+    return application_input(cl, obj, &signals, TRUE);
+}
 
-    /* process all pushed methods */
-    while (application_do_pushed_method(data))
-        ;
-
-    imsg =
-        (struct IntuiMessage *)GetMsg(data->app_GlobalInfo.mgi_WindowsPort);
-    if (imsg != NULL)
-    {
-        /* Let window object process message */
-        _zune_window_message(imsg);     /* will reply the message */
-    }
-    return TRUE;
+static IPTR Application__MUIM_NewInput(struct IClass *cl, Object *obj,
+    struct MUIP_Application_NewInput *msg)
+{
+    return msg ? application_input(cl, obj, msg->signal, FALSE) : 0;
 }
 
 /**************************************************************************
  MUIM_Application_NewInput : application main loop
 **************************************************************************/
-static IPTR Application__MUIM_NewInput(struct IClass *cl, Object *obj,
-    struct MUIP_Application_NewInput *msg)
+static IPTR application_input(struct IClass *cl, Object *obj,
+    ULONG *signals, BOOL buffered)
 {
     struct MUI_ApplicationData *data = INST_DATA(cl, obj);
     struct RIDNode *rid;
@@ -1566,7 +1689,8 @@ static IPTR Application__MUIM_NewInput(struct IClass *cl, Object *obj,
 
     //struct MinNode ihn_Node;
 
-    signal = *msg->signal;
+    if (!signals) return 0;
+    signal = *signals;
 
     /* process all pushed methods */
     while (application_do_pushed_method(data))
@@ -1595,7 +1719,8 @@ static IPTR Application__MUIM_NewInput(struct IClass *cl, Object *obj,
     if (data->app_CfgNotifyPort)
         signalmask |= (1L << data->app_CfgNotifyPort->mp_SigBit);
 
-    if (signal == 0)
+    if (buffered) signal |= signalmask;
+    if (signal == 0 && !buffered)
     {
         /* Stupid app which (always) passes 0 in signals. It's impossible to
            know which signals were really set as the app will already have
@@ -1706,70 +1831,7 @@ static IPTR Application__MUIM_NewInput(struct IClass *cl, Object *obj,
             while ((rmsg = (struct RexxMsg *)GetMsg(data->app_RexxPort)))
             {
                 if (IsRexxMsg(rmsg))
-                {
-                    STRPTR commandstr = (STRPTR)rmsg->rm_Args[0];
-                    struct MUI_Command *cmd = data->app_Commands;
-                    while (cmd->mc_Name)
-                    {
-                        LONG len = 0;
-                        while ((commandstr[len] != ' ') && (commandstr[len] != '\0')) len++;
-
-                        if (Strnicmp(commandstr, cmd->mc_Name, len) == 0)
-                        {
-                            IPTR args[cmd->mc_Parameters];
-                            struct RDArgs *rdargs = NULL, *rdargsret = NULL;
-                            if (cmd->mc_Template)
-                            {
-                                STRPTR tmp = commandstr + len;
-                                STRPTR arguments;
-
-                                while (*tmp == ' ') tmp++;
-                                len = strlen(tmp);
-                                arguments = AllocVec(len + 2, MEMF_ANY);
-                                CopyMem(tmp, arguments, len);
-                                arguments[len]      = '\n';
-                                arguments[len + 1]  = '\0';
-
-                                if ((rdargs = AllocDosObject(DOS_RDARGS, NULL)))
-                                {
-                                    rdargs->RDA_Source.CS_Buffer = arguments;
-                                    rdargs->RDA_Source.CS_Length = strlen(arguments);
-                                    rdargs->RDA_Source.CS_CurChr = 0;
-                                    rdargs->RDA_DAList = 0;
-                                    rdargs->RDA_Buffer = NULL;
-                                    rdargs->RDA_BufSiz = 0;
-                                    rdargs->RDA_ExtHelp = NULL;
-                                    rdargs->RDA_Flags = 0;
-
-                                    memset(args, 0, cmd->mc_Parameters * sizeof(IPTR));
-
-                                    rdargsret = ReadArgs(cmd->mc_Template, args, rdargs);
-                                }
-
-                                FreeVec(arguments);
-                            }
-
-                            data->app_RexxMsg = rmsg;
-                            IPTR res = CallHookPkt(cmd->mc_Hook, obj, cmd->mc_Template ? args : NULL);
-                            data->app_RexxMsg = NULL;
-
-                            if (rdargsret)
-                                FreeArgs(rdargsret);
-
-                            if (rdargs)
-                                FreeDosObject(DOS_RDARGS, rdargs);
-
-                            rmsg->rm_Result1 = (LONG)res;
-                            if ((rmsg->rm_Action & RXFF_RESULT) && data->app_RexxString)
-                            {
-                                rmsg->rm_Result2 = (IPTR)CreateArgstring(data->app_RexxString, strlen(data->app_RexxString));
-                            }
-
-                            break;
-                        }
-                        cmd++;
-                    }
-                }
+                    application_rexx(data, obj, rmsg);
 
                 ReplyMsg((struct Message *)rmsg);
             }
@@ -1813,6 +1875,13 @@ static IPTR Application__MUIM_NewInput(struct IClass *cl, Object *obj,
                     set(obj, MUIA_Application_Iconified, FALSE);
                     continue;
                 }
+                else if (appmsg->am_Type == AMTYPE_APPICON
+                    && appmsg->am_NumArgs > 0 && data->app_DropObject)
+                {
+                    /* Workbench owns the message until ReplyMsg. Deliver
+                     * synchronously, just like AppWindow notifications. */
+                    set(data->app_DropObject, MUIA_AppMessage, (IPTR)appmsg);
+                }
                 else if (appmsg->am_Type == AMTYPE_APPWINDOW)
                 {
                     set((Object *) appmsg->am_UserData, MUIA_AppMessage,
@@ -1840,7 +1909,9 @@ static IPTR Application__MUIM_NewInput(struct IClass *cl, Object *obj,
     while (application_do_pushed_method(data))
         /* nothing */ ;
 
-    *msg->signal = signalmask;
+    *signals = signalmask;
+    if (buffered)
+        return TRUE;
 
     /* set return code */
     if ((rid =
@@ -1849,6 +1920,7 @@ static IPTR Application__MUIM_NewInput(struct IClass *cl, Object *obj,
     {
         retval = rid->rid_Value;
         DeleteRIDNode(data, rid);
+        if (!IsListEmpty(&data->app_ReturnIDQueue)) *signals = 0;
         return retval;
     }
     return 0;
@@ -2090,9 +2162,9 @@ static IPTR Application__MUIM_AboutMUI(struct IClass *cl, Object *obj,
     {
         data->app_AboutWin = AboutmuiObject,
             msg->refwindow ? MUIA_Window_RefWindow : TAG_IGNORE,
-            msg->refwindow, MUIA_Window_LeftEdge,
+            (IPTR)msg->refwindow, MUIA_Window_LeftEdge,
             MUIV_Window_LeftEdge_Centered, MUIA_Window_TopEdge,
-            MUIV_Window_TopEdge_Centered, MUIA_Aboutmui_Application, obj,
+            MUIV_Window_TopEdge_Centered, MUIA_Aboutmui_Application, (IPTR)obj,
             End;
     }
 
@@ -2153,8 +2225,6 @@ static IPTR Application__MUIM_SetConfigdata(struct IClass *cl, Object *obj,
      * re-opened with the new settings afterwards */
     windows = Application__CloseWindows(cl, obj);
 
-    if (data->app_GlobalInfo.mgi_Configdata)
-        MUI_DisposeObject(data->app_GlobalInfo.mgi_Configdata);
     data->app_GlobalInfo.mgi_Configdata = msg->configdata;
     get(data->app_GlobalInfo.mgi_Configdata, MUIA_Configdata_ZunePrefs,
         &data->app_GlobalInfo.mgi_Prefs);
@@ -2503,7 +2573,7 @@ static IPTR Application__MUIM_Save(struct IClass *cl, Object *obj,
                     {
                         struct FilePrefHeader head;
 
-                        head.ph_Version = PHV_CURRENT;
+                        head.ph_Version = 0;
                         head.ph_Type = 0;
                         head.ph_Flags[0] =
                             head.ph_Flags[1] =
@@ -2602,6 +2672,76 @@ static IPTR Application__MUIM_CheckRefresh(struct IClass *cl, Object *obj,
     return 0;
 }
 
+/* Older menu entry points share the modern menu objects and their state. */
+static IPTR Application__Menu(struct IClass *cl, Object *obj, ULONG *msg,
+    BOOL setting, ULONG attr)
+{
+    struct MUI_ApplicationData *data = INST_DATA(cl, obj);
+    struct MinList *children = NULL;
+    Object *state, *child, *strip, *item;
+    IPTR value = 0;
+
+    get(data->app_WindowFamily, MUIA_Family_List, &children);
+    if (!children) return 0;
+    state = (Object *)children->mlh_Head;
+    while ((child = NextObject(&state)))
+    {
+        strip = NULL;
+        get(child, MUIA_Window_Menustrip, &strip);
+        if (!strip) strip = data->app_Menustrip;
+        item = strip ? (Object *)DoMethod(strip, MUIM_FindUData, msg[1]) : NULL;
+        if (!item) continue;
+        if (setting)
+            set(item, attr, msg[2]);
+        else
+        {
+            get(item, attr, &value);
+            return value;
+        }
+    }
+    return 0;
+}
+
+static IPTR Application__MUIM_ShowHelp(struct IClass *cl, Object *obj,
+    struct MUIP_Application_ShowHelp *msg)
+{
+    struct MUI_ApplicationData *data = INST_DATA(cl, obj);
+    struct Library *AmigaGuideBase;
+    struct NewAmigaGuide nag;
+    APTR context;
+    Object *window = msg->window;
+    STRPTR name = msg->name ? (STRPTR)msg->name : data->app_HelpFile;
+
+    if (!name || !*name) return FALSE;
+    AmigaGuideBase = OpenLibrary("amigaguide.library", 39);
+    if (!AmigaGuideBase) return FALSE;
+    memset(&nag, 0, sizeof(nag));
+    if (window == (Object *)-1)
+    {
+        struct MinList *children = NULL;
+        Object *state;
+        get(data->app_WindowFamily, MUIA_Family_List, &children);
+        window = NULL;
+        if (children)
+        {
+            state = (Object *)children->mlh_Head;
+            while ((window = NextObject(&state)))
+                if (XGET(window, MUIA_Window_Open)) break;
+        }
+    }
+    if (window)
+        get(window, MUIA_Window_Screen, &nag.nag_Screen);
+    nag.nag_Name = name;
+    nag.nag_Node = msg->node;
+    nag.nag_Line = msg->line;
+    set(obj, MUIA_Application_Sleep, TRUE);
+    context = OpenAmigaGuideA(&nag, NULL);
+    if (context) CloseAmigaGuide(context);
+    set(obj, MUIA_Application_Sleep, FALSE);
+    CloseLibrary(AmigaGuideBase);
+    return context != NULL;
+}
+
 /*
  * The class dispatcher
  */
@@ -2625,6 +2765,16 @@ BOOPSI_DISPATCHER(IPTR, Application_Dispatcher, cl, obj, msg)
         return Application__MUIM_AddInputHandler(cl, obj, (APTR) msg);
     case MUIM_Application_RemInputHandler:
         return Application__MUIM_RemInputHandler(cl, obj, (APTR) msg);
+    case MUIM_Application_GetMenuCheck:
+        return Application__Menu(cl, obj, (ULONG *)msg, FALSE, MUIA_Menuitem_Checked);
+    case MUIM_Application_GetMenuState:
+        return Application__Menu(cl, obj, (ULONG *)msg, FALSE, MUIA_Menuitem_Enabled);
+    case MUIM_Application_SetMenuCheck:
+        return Application__Menu(cl, obj, (ULONG *)msg, TRUE, MUIA_Menuitem_Checked);
+    case MUIM_Application_SetMenuState:
+        return Application__Menu(cl, obj, (ULONG *)msg, TRUE, MUIA_Menuitem_Enabled);
+    case MUIM_Application_ShowHelp:
+        return Application__MUIM_ShowHelp(cl, obj, (APTR)msg);
     case MUIM_Application_Input:
         return Application__MUIM_Input(cl, obj, (APTR) msg);
     case MUIM_Application_InputBuffered:

@@ -29,7 +29,9 @@
 #include <proto/muimaster.h>
 #include <proto/workbench.h>
 
-#define MUI_OBSOLETE            /* for the obsolete menu stuff */
+#ifndef MUI_OBSOLETE
+#define MUI_OBSOLETE
+#endif //            /* for the obsolete menu stuff */
 
 #include "mui.h"
 #include "support.h"
@@ -53,8 +55,7 @@
 
 extern struct Library *MUIMasterBase;
 
-static const int __version = 1;
-static const int __revision = 1;
+#include "native_version.h"
 
 #define IM(x) ((struct Image*)(x))
 #define G(x) ((struct Gadget*)(x))
@@ -150,6 +151,7 @@ struct MUI_WindowData
     struct IClass *wd_Class;
     struct MUI_PenSpec *hshinespec;
     struct MUI_PenSpec *hshadowpec;
+    Object **wd_CycleOrder; /* allocated only for the legacy explicit chain */
 };
 
 #ifndef WFLG_SIZEGADGET
@@ -749,7 +751,10 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
     struct Window *win;
     ULONG flags = data->wd_CrtFlags;
     struct IBox altdims;
-    ULONG backfill, buttons;
+    ULONG backfill;
+#ifdef __AROS__
+    ULONG buttons;
+#endif
 
     struct Menu *menu = NULL;
     struct NewMenu *newmenu = NULL;
@@ -844,7 +849,9 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
     gadgets =
         (data->wd_VertProp !=
         NULL) ? data->wd_VertProp : data->wd_HorizProp;
+#ifdef __AROS__
     buttons = muiGlobalInfo(obj)->mgi_Prefs->window_buttons;
+#endif
 
     win = OpenWindowTags
         (NULL,
@@ -1414,7 +1421,7 @@ static Object *ObjectUnderPointer(struct MUI_WindowData *data, Object *obj,
     if ((get(obj, MUIA_Group_ChildList, &(ChildList)))
         && (ChildList != NULL))
     {
-        cstate = (Object *) ChildList->mlh_Head;
+        cstate = ChildList ? (Object *)ChildList->mlh_Head : NULL;
         while ((child = NextObject(&cstate)))
         {
             Object *ret;
@@ -1452,7 +1459,7 @@ static BOOL ContextMenuUnderPointer(struct MUI_WindowData *data,
         && (ChildList != NULL))
     {
 
-        cstate = (Object *) ChildList->mlh_Head;
+        cstate = ChildList ? (Object *)ChildList->mlh_Head : NULL;
         while ((child = NextObject(&cstate)))
         {
             if ((x >= _left(child) && x <= _right(child)
@@ -1553,7 +1560,7 @@ static BOOL HandleDragging(Object *oWin, struct MUI_WindowData *data,
                 struct MinList *ChildList = 0;
 
                 get(_app(oWin), MUIA_Application_WindowList, &(ChildList));
-                cstate = (Object *) ChildList->mlh_Head;
+                cstate = ChildList ? (Object *)ChildList->mlh_Head : NULL;
                 while ((child = NextObject(&cstate)))
                 {
                     struct Window *wnd = NULL;
@@ -1804,12 +1811,12 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
 
                         set(item_obj, MUIA_Menuitem_Trigger, (IPTR) item);
 
-                        get(oWin, MUIA_ApplicationObject, &app);
-                        get(item_obj, MUIA_UserData, &udata);
-
-                        set(app, MUIA_Application_MenuAction, udata);
-                        set(oWin, MUIA_Window_MenuAction, udata);
-                        DoMethod(app, MUIM_Application_ReturnID, udata);
+                        if (get(oWin, MUIA_ApplicationObject, &app) && app
+                            && get(item_obj, MUIA_UserData, &udata)) {
+                            set(app, MUIA_Application_MenuAction, udata);
+                            set(oWin, MUIA_Window_MenuAction, udata);
+                            DoMethod(app, MUIM_Application_ReturnID, udata);
+                        }
                     }
                 }
             }
@@ -2045,7 +2052,7 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
     ie.ie_SubClass = 0;
     ie.ie_Code = event->Code;
     ie.ie_Qualifier = event->Qualifier;
-    ie.ie_EventAddress = (APTR) * (IPTR *) event->IAddress;
+    ie.ie_EventAddress = event->IAddress ? *(APTR *)event->IAddress : NULL;
 #ifdef __AMIGAOS4__
     ie.ie_TimeStamp.Seconds = event->Seconds;
     ie.ie_TimeStamp.Microseconds = event->Micros;
@@ -2276,6 +2283,7 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
     D(bug("HandleRawkey: try default object handlers\n"));
 
     /* try DefaultObject */
+    disabled = FALSE;
     if (data->wd_DefaultObject != NULL)
         get(data->wd_DefaultObject, MUIA_Disabled, &disabled);
 
@@ -2448,12 +2456,16 @@ void _zune_window_message(struct IntuiMessage *imsg)
     BOOL handled;
 
     iWin = imsg->IDCMPWindow;
+    if (!iWin || !iWin->UserData) {
+        ReplyMsg((struct Message *)imsg);
+        return;
+    }
     oWin = (Object *) iWin->UserData;
     data = muiWindowData(oWin);
 
     if (data->wd_SleepCount > 0)
     {
-        BOOL refresh=FALSE;
+        BOOL refresh = FALSE;
         /* Window is sleeping, so we just ignore (and reply) all messages.
          * MUI 3.8/AmigaOS3 also receives all messages (IDCMP Flags
          * are not modified during sleeping). MUI refreshes the window
@@ -2490,11 +2502,11 @@ void _zune_window_message(struct IntuiMessage *imsg)
             {
                 DoMethod(_app(oWin), MUIM_Application_OpenConfigWindow);
             }
-#endif
             if (ETI_Iconify == ((struct Gadget *)imsg->IAddress)->GadgetID)
             {
                 set(_app(oWin), MUIA_Application_Iconified, TRUE);
             }
+#endif
         }
         else
         {
@@ -2505,6 +2517,8 @@ void _zune_window_message(struct IntuiMessage *imsg)
 
 /**************************************************************************/
 /**************************************************************************/
+
+static ULONG WindowClose(struct IClass *cl, Object *obj);
 
 /* code for setting MUIA_Window_RootObject */
 static void ChangeRootObject(struct MUI_WindowData *data, Object *obj,
@@ -3073,36 +3087,26 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 IPTR Window__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
+    Object *root = data->wd_RootObject;
 
-/*      D(bug("Window_Dispose(%p)\n", obj)); */
-
-#if 0
-    /* We no longer clear muiGlobalInfo() during disconnections, so
-       this can cause problems (remove object which is already removed).
-       Furthermore AFAIK it is not legal to dispose a window object
-       which is still ocnnected to the application object, anyway. */
-
-    if (muiGlobalInfo(obj) && _app(obj))
-    {
-/*      D(bug(" Window_Dispose(%p) : calling app->OM_REMMEMBER\n", obj)); */
-        DoMethod(_app(obj), OM_REMMEMBER, (IPTR) obj);
+    /* Close directly: OM_DISPOSE must finish even if a subclass filters
+       MUIA_Window_Open. Closing detaches IDCMP before objects are freed. */
+    if (data->wd_Flags & MUIWF_OPENED)
+        WindowClose(cl, obj);
+    if (root) {
+        if (_flags(root) & MADF_CANDRAW) DoHideMethod(root);
+        if (_flags(root) & MADF_SETUP) DoMethod(root, MUIM_Cleanup);
+        MUI_DisposeObject(root);
+        data->wd_RootObject = NULL;
     }
-#endif
-
-    if (data->wd_RootObject)
-        MUI_DisposeObject(data->wd_RootObject);
-
     if (data->wd_ChildMenustrip)
         MUI_DisposeObject(data->wd_ChildMenustrip);
-
-    DeletePool(data->wd_MemoryPool);
-
-/*      D(bug(" Window_Dispose(%p) : calling supermethod\n", obj)); */
+    if (data->wd_MemoryPool) DeletePool(data->wd_MemoryPool);
+    FreeVec(data->wd_CycleOrder);
     return DoSuperMethodA(cl, obj, msg);
 }
 
 static ULONG WindowOpen(struct IClass *cl, Object *obj);
-static ULONG WindowClose(struct IClass *cl, Object *obj);
 
 /**************************************************************************
  OM_SET
@@ -3358,6 +3362,12 @@ IPTR Window__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     switch (msg->opg_AttrID)
     {
+    case MUIA_WindowObject:
+        STORE = (IPTR)obj;
+        return TRUE;
+    case MUIA_Window_Menustrip:
+        STORE = (IPTR)(data->wd_ChildMenustrip ? data->wd_ChildMenustrip : data->wd_Menustrip);
+        return TRUE;
     case MUIA_Window_Activate:
         STORE =
             (data->wd_Flags & (MUIWF_ACTIVE | MUIWF_OPENED)) ==
@@ -3449,20 +3459,18 @@ IPTR Window__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
             STORE = 0;
         return TRUE;
 
-    case MUIA_Window_Menustrip:
-        STORE = (IPTR) data->wd_ChildMenustrip;
-        return TRUE;
+
 
     case MUIA_Window_Sleep:
         STORE = data->wd_SleepCount ? TRUE : FALSE;
         return TRUE;
 
     case MUIA_Version:
-        STORE = __version;
+        STORE = ZUNE68_BUILTIN_VERSION;
         return TRUE;
 
     case MUIA_Revision:
-        STORE = __revision;
+        STORE = ZUNE68_BUILTIN_REVISION;
         return TRUE;
 
     case MUIA_Window_AltLeftEdge:
@@ -3851,7 +3859,7 @@ static ULONG WindowClose(struct IClass *cl, Object *obj)
     KillHelpBubble(data, obj, BUBBLEHELP_TICKER_FIRST);
 
     /* remove from window */
-    DoHideMethod(data->wd_RootObject);
+    if (data->wd_RootObject) DoHideMethod(data->wd_RootObject);
     zune_imspec_hide(data->wd_Background);
 
     DeinstallBackbuffer(cl, obj);
@@ -3865,7 +3873,7 @@ static ULONG WindowClose(struct IClass *cl, Object *obj)
     data->wd_Menustrip = NULL;
 
     /* free display dependant data */
-    DoMethod(data->wd_RootObject, MUIM_Cleanup);
+    if (data->wd_RootObject) DoMethod(data->wd_RootObject, MUIM_Cleanup);
     DoMethod(obj, MUIM_Window_Cleanup);
     return TRUE;
 }
@@ -4058,6 +4066,60 @@ IPTR Window__MUIM_Cleanup(struct IClass *cl, Object *obj, Msg msg)
  This adds the the control char handler and also does the MUIA_CycleChain
  stuff. Orginal MUI does this another way.
 **************************************************************************/
+static LONG CycleOrder(struct MUI_WindowData *data, Object *obj)
+{
+    LONG i;
+    if (!data->wd_CycleOrder) return -1;
+    for (i = 0; data->wd_CycleOrder[i]; i++)
+        if (data->wd_CycleOrder[i] == obj) return i;
+    return -1;
+}
+
+IPTR Window__MUIM_SetCycleChain(struct IClass *cl, Object *obj,
+    struct MUIP_Window_SetCycleChain *msg)
+{
+    struct MUI_WindowData *data = INST_DATA(cl, obj);
+    Object **order;
+    ULONG count = 0, i;
+    struct MinList replacement;
+    struct ObjNode *node;
+
+    while (msg->obj[count]) count++;
+    order = AllocVec((count + 1) * sizeof(Object *), MEMF_ANY);
+    if (!order) return FALSE;
+    CopyMem(msg->obj, order, (count + 1) * sizeof(Object *));
+    NewList((struct List *)&replacement);
+    for (i = 0; i < count; i++)
+    {
+        Object *child = order[i];
+        if (!FindObjNode(&replacement, child)
+            && (_flags(child) & MADF_SETUP) && muiRenderInfo(child)
+            && _win(child) == obj)
+        {
+            node = AllocPooled(data->wd_MemoryPool, sizeof(*node));
+            if (!node)
+            {
+                while ((node = (struct ObjNode *)RemHead((struct List *)&replacement)))
+                    FreePooled(data->wd_MemoryPool, node, sizeof(*node));
+                FreeVec(order);
+                return FALSE;
+            }
+            node->obj = child;
+            AddTail((struct List *)&replacement, (struct Node *)node);
+        }
+    }
+    while ((node = (struct ObjNode *)RemHead((struct List *)&data->wd_CycleChain)))
+        FreePooled(data->wd_MemoryPool, node, sizeof(*node));
+    while ((node = (struct ObjNode *)RemHead((struct List *)&replacement)))
+        AddTail((struct List *)&data->wd_CycleChain, (struct Node *)node);
+    FreeVec(data->wd_CycleOrder);
+    data->wd_CycleOrder = order;
+    /* Arrange control-handler setup/cleanup for legacy gadgets as well. */
+    for (i = 0; i < count; i++)
+        set(order[i], MUIA_CycleChain, TRUE);
+    return TRUE;
+}
+
 IPTR Window__MUIM_AddControlCharHandler(struct IClass *cl, Object *obj,
     struct MUIP_Window_AddControlCharHandler *msg)
 {
@@ -4066,19 +4128,43 @@ IPTR Window__MUIM_AddControlCharHandler(struct IClass *cl, Object *obj,
 
     if (msg->ccnode->ehn_Events)
     {
-        ((struct Node *)msg->ccnode)->ln_Pri = msg->ccnode->ehn_Priority;
-        Enqueue((struct List *)&data->wd_CCList,
-            (struct Node *)msg->ccnode);
+#ifdef __AROS__
+    #if !(AROS_FLAVOUR & AROS_FLAVOUR_BINCOMPAT)
+        msg->ccnode->ehn_Node.ln_Pri = msg->ccnode->ehn_Priority;
+    #else
+        msg->ccnode->ehn_Priority = msg->ccnode->ehn_Priority;
+    #endif
+#endif
+	Enqueue((struct List *)&data->wd_CCList, (struct Node *)msg->ccnode);
     }
     /* Due to the lack of a better idea ... */
-    if (muiAreaData(msg->ccnode->ehn_Object)->mad_Flags & MADF_CYCLECHAIN)
+    if ((data->wd_CycleOrder ? CycleOrder(data, msg->ccnode->ehn_Object) >= 0 :
+            !!(muiAreaData(msg->ccnode->ehn_Object)->mad_Flags & MADF_CYCLECHAIN))
+        && (!data->wd_CycleOrder ||
+            !FindObjNode(&data->wd_CycleChain, msg->ccnode->ehn_Object)))
     {
         node = AllocPooled(data->wd_MemoryPool, sizeof(struct ObjNode));
         if (node)
         {
+            struct ObjNode *next;
+            struct MinNode *pred = (struct MinNode *)&data->wd_CycleChain;
+            LONG rank;
             node->obj = msg->ccnode->ehn_Object;
-            AddTail((struct List *)&data->wd_CycleChain,
-                (struct Node *)node);
+            if (!data->wd_CycleOrder)
+            {
+                AddTail((struct List *)&data->wd_CycleChain, (struct Node *)node);
+                return TRUE;
+            }
+            rank = CycleOrder(data, node->obj);
+            for (next = (struct ObjNode *)data->wd_CycleChain.mlh_Head;
+                next->node.mln_Succ; next = (struct ObjNode *)next->node.mln_Succ)
+            {
+                if (data->wd_CycleOrder && CycleOrder(data, next->obj) > rank)
+                    break;
+                pred = &next->node;
+            }
+            Insert((struct List *)&data->wd_CycleChain,
+                (struct Node *)node, (struct Node *)pred);
         }
     }
     return TRUE;
@@ -4550,6 +4636,8 @@ BOOPSI_DISPATCHER(IPTR, Window_Dispatcher, cl, obj, msg)
 {
     switch (msg->MethodID)
     {
+    case MUIM_Window_SetCycleChain:
+        return Window__MUIM_SetCycleChain(cl, obj, (APTR)msg);
     case OM_NEW:
         return Window__OM_NEW(cl, obj, (struct opSet *)msg);
     case OM_DISPOSE:

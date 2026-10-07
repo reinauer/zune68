@@ -304,7 +304,7 @@ struct windowpos
 
 
 /* MUI Obsolette tags */
-#ifdef MUI_OBSOLETE
+#if defined(MUI_OBSOLETE) || defined(MUIMASTER_LIBRARY_BUILD)
 #define MUIA_Application_Menu \
     (MUIB_MUI | 0x00420e1f) /* MUI: V4  i.g struct NewMenu *  */
 #endif /* MUI_OBSOLETE */
