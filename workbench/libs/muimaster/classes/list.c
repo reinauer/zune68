@@ -1387,7 +1387,7 @@ IPTR List__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 
     FreeListFormat(data);
 
-    return DoSuperMethodA(cl, obj, msg);
+    return DoSuperMethodA(cl, obj, (Msg)msg);
 }
 
 
@@ -2830,8 +2830,9 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     struct MUIP_List_Insert *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
-    LONG pos, count, sort, active;
-    BOOL adjusted = FALSE;
+    LONG pos, count, sort, active, until;
+    BOOL adjusted = FALSE, failed = FALSE;
+    APTR *toinsert;
 
     count = msg->count;
     sort = 0;
@@ -2882,8 +2883,8 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     if (!(SetListSize(data, data->entries_num + count)))
         return ~0;
 
-    LONG until = pos + count;
-    APTR *toinsert = msg->entries;
+    until = pos + count;
+    toinsert = msg->entries;
 
     if (!(PrepareInsertListEntries(data, pos, count)))
         return ~0;
@@ -2892,29 +2893,22 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     {
         struct ListEntry *lentry;
 
-        if (!(lentry = AllocListEntry(data)))
+        lentry = AllocListEntry(data);
+        if (lentry)
+            lentry->data = (APTR)DoMethod(obj, MUIM_List_Construct,
+                (IPTR)*toinsert, (IPTR)data->pool);
+        if (!lentry || !lentry->data)
         {
-            /* Panic, but we must be in a consistent state, so remove
-             * the space where the following list entries should have gone
-             */
-            RemoveListEntries(data, pos, until - pos);
-            return ~0;
-        }
-
-        /* now call the construct method which returns us a pointer which
-           we need to store */
-        lentry->data = (APTR) DoMethod(obj, MUIM_List_Construct,
-            (IPTR) * toinsert, (IPTR) data->pool);
-        if (!lentry->data)
-        {
-            FreeListEntry(data, lentry);
-            RemoveListEntries(data, pos, until - pos);
-
-            /* TODO: Update visible-entry state before returning on
-             * MUIM_List_Construct failure. */
-            if (data->entries_num != data->confirm_entries_num)
-                set(obj, MUIA_List_Entries, data->confirm_entries_num);
-            return ~0;
+            if (lentry) FreeListEntry(data, lentry);
+            /* The reserved gap extends past entries_num. Move only the
+             * original tail, never a negative (entries_num - until) size. */
+            memmove(&data->entries[pos], &data->entries[until],
+                (data->entries_num - data->insert_position)
+                * sizeof(struct ListEntry *));
+            count = pos - data->insert_position;
+            if (!count) return ~0;
+            failed = TRUE;
+            break;
         }
 
         lentry->flags |= ENTRY_RENDER;
@@ -2948,18 +2942,17 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
             MUIA_List_Visible, data->entries_visible, TAG_DONE);
     }
 
-    /* If the array is already sorted, we could do a simple insert
-     * sort and would be much faster than with qsort.
-     * If an array is not yet sorted, does a MUIV_List_Insert_Sorted
-     * sort the whole array?
-     *
-     * I think, we better sort the whole array:
-     */
     if (sort)
     {
-        /* TODO: define which position to return after
-           MUIV_List_Insert_Sorted reorders the list. */
+        struct ListEntry *inserted = data->entries[data->insert_position];
+        LONG i;
         DoMethod(obj, MUIM_List_Sort);
+        for (i = 0; i < data->entries_num; i++)
+            if (data->entries[i] == inserted)
+            {
+                data->insert_position = i;
+                break;
+            }
 
         if ((adjusted) && (data->flags & LIST_QUIET))
             data->update = UPDATEMODE_ALL;
@@ -2973,13 +2966,13 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     superset(cl, obj, MUIA_List_InsertPosition, data->insert_position);
 
     /* Update index of active entry */
-    if (data->entries_active >= data->insert_position)
+    if (!sort && data->entries_active >= data->insert_position)
     {
         active = data->entries_active + count;
         SET(obj, MUIA_List_Active, active);
     }
 
-    return (ULONG) pos;
+    return failed ? ~0UL : (ULONG)pos;
 }
 
 /****** List.mui/MUIM_List_InsertSingle **************************************
@@ -3381,7 +3374,7 @@ IPTR List__MUIM_Jump(struct IClass *cl, Object *obj,
 *       (MUIA_List_CompareHook).
 *
 *   NOTES
-*       The active index does not change, so the active entry may do so.
+*       Preserve the active entry while updating its index after sorting.
 *
 *   SEE ALSO
 *       MUIA_List_CompareHook, MUIM_List_Compare.
@@ -3390,60 +3383,100 @@ IPTR List__MUIM_Jump(struct IClass *cl, Object *obj,
 *
 */
 
+/* A fixed-stack heap handles arbitrary input without a scratch array. */
+static LONG CompareEntries(Object *obj, struct ListEntry *a,
+    struct ListEntry *b)
+{
+    struct MUIP_List_Compare msg = { MUIM_List_Compare, NULL, NULL, 0, 0 };
+    msg.entry1 = a->data;
+    msg.entry2 = b->data;
+    return (LONG)DoMethodA(obj, (Msg)&msg);
+}
+
+static void SiftEntries(Object *obj, struct ListEntry **entries,
+    LONG root, LONG count)
+{
+    struct ListEntry *entry = entries[root];
+    LONG child;
+
+    while (root < count / 2)
+    {
+        child = root * 2 + 1;
+        if (child + 1 < count
+            && CompareEntries(obj, entries[child], entries[child + 1]) < 0)
+            child++;
+        if (CompareEntries(obj, entry, entries[child]) >= 0) break;
+        entries[root] = entries[child];
+        entries[root]->flags |= ENTRY_RENDER;
+        root = child;
+    }
+    entries[root] = entry;
+    entry->flags |= ENTRY_RENDER;
+}
+
 IPTR List__MUIM_Sort(struct IClass *cl, Object *obj,
     struct MUIP_List_Sort *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    struct ListEntry **entries = data->entries;
+    struct ListEntry *active = NULL, *entry;
+    LONG count = data->entries_num, i, lo, hi, mid;
 
-    int i, j, max;
-    struct MUIP_List_Compare cmpmsg =
-        { MUIM_List_Compare, NULL, NULL, 0, 0 };
-    BOOL changed = FALSE;
+    if (count < 2) return 0;
+    /* Verify order each time: callers may change comparison keys in place. */
+    for (i = 1; i < count; i++)
+        if (CompareEntries(obj, entries[i - 1], entries[i]) > 0) break;
+    if (i == count) return 0;
+    if (data->entries_active >= 0 && data->entries_active < count)
+        active = entries[data->entries_active];
 
-    D(bug("[Zune:List] %s()\n", __func__);)
-
-    if (data->entries_num > 1)
+    if (i == count - 1)
     {
-        /*
-           Simple sort algorithm. Feel free to improve it.
-         */
-        for (i = 0; i < data->entries_num - 1; i++)
+        /* Sorted prefix plus one appended entry. Insert after equal keys. */
+        entry = entries[i];
+        lo = 0;
+        hi = i;
+        while (lo < hi)
         {
-            max = i;
-            for (j = i + 1; j < data->entries_num; j++)
-            {
-                cmpmsg.entry1 = data->entries[max]->data;
-                cmpmsg.entry2 = data->entries[j]->data;
-                if ((LONG) DoMethodA(obj, (Msg) & cmpmsg) > 0)
-                {
-                    max = j;
-                }
-            }
-            if (i != max)
-            {
-                APTR tmp = data->entries[i];
-                data->entries[i] = data->entries[max];
-                data->entries[i]->flags |= ENTRY_RENDER;
-                data->entries[max] = tmp;
-                data->entries[max]->flags |= ENTRY_RENDER;
-                if (data->entries_active == i)
-                    data->entries_active = max;
-                else if (data->entries_active == max)
-                    data->entries_active = i;
-                changed = TRUE;
-            }
+            mid = lo + (hi - lo) / 2;
+            if (CompareEntries(obj, entries[mid], entry) <= 0)
+                lo = mid + 1;
+            else
+                hi = mid;
+        }
+        for (; i > lo; i--)
+        {
+            entries[i] = entries[i - 1];
+            entries[i]->flags |= ENTRY_RENDER;
+        }
+        entries[lo] = entry;
+        entry->flags |= ENTRY_RENDER;
+    }
+    else
+    {
+        for (i = count / 2; i > 0; i--)
+            SiftEntries(obj, entries, i - 1, count);
+        for (i = count - 1; i > 0; i--)
+        {
+            entry = entries[0];
+            entries[0] = entries[i];
+            entries[i] = entry;
+            entry->flags |= ENTRY_RENDER;
+            SiftEntries(obj, entries, 0, i);
         }
     }
-
-    if (changed)
-    {
-        data->flags |= LIST_CHANGED;
-        if (!(data->update & UPDATEMODE_ALL))
-            data->update = UPDATEMODE_NEEDED;
-        if (!(data->flags & LIST_QUIET))
-            MUI_Redraw(obj, MADF_DRAWUPDATE);
-    }
-
+    if (active)
+        for (i = 0; i < count; i++)
+            if (entries[i] == active)
+            {
+                data->entries_active = i;
+                break;
+            }
+    data->flags |= LIST_CHANGED;
+    if (!(data->update & UPDATEMODE_ALL))
+        data->update = UPDATEMODE_NEEDED;
+    if (!(data->flags & LIST_QUIET))
+        MUI_Redraw(obj, MADF_DRAWUPDATE);
     return 0;
 }
 
@@ -3908,7 +3941,7 @@ static IPTR List__MUIM_CreateDragImage(struct IClass *cl, Object *obj,
 
     /* If entries aren't draggable, allow the list as a whole to be */
     if (data->drag_type == MUIV_Listview_DragType_None)
-        return DoSuperMethodA(cl, obj, msg);
+        return DoSuperMethodA(cl, obj, (Msg)msg);
 
     /* Get info on dragged entry */
     DoMethod(obj, MUIM_List_TestPos, _left(data->area) + msg->touchx,
@@ -4394,7 +4427,7 @@ BOOPSI_DISPATCHER(IPTR, List_Dispatcher, cl, obj, msg)
         return List__MUIM_CreateDragImage(cl, obj, (APTR) msg);
     }
 
-    return DoSuperMethodA(cl, obj, msg);
+    return DoSuperMethodA(cl, obj, (Msg)msg);
 }
 BOOPSI_DISPATCHER_END
 

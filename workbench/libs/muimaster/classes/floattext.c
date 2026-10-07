@@ -4,9 +4,6 @@
 
 #define MUIMASTER_YES_INLINE_STDARG
 
-#define DEBUG 0
-#include <aros/debug.h>
-
 #include <exec/memory.h>
 #include <clib/alib_protos.h>
 #include <proto/exec.h>
@@ -21,6 +18,7 @@
 #include "mui.h"
 #include "muimaster_intern.h"
 #include "support.h"
+#include "area_macros.h"
 #include "support_classes.h"
 #include "floattext_private.h"
 
@@ -48,8 +46,15 @@ static UWORD FitParagraphLine(STRPTR text, ULONG length, WORD width,
     ULONG char_count;
     UBYTE *p, *q = text + offset;
 
+    if (offset >= length || width <= 0)
+        return 0;
+
     char_count = TextFit(window->RPort, text + offset,
-        length - offset, &temp_extent, NULL, 1, width, 32767);
+        MIN(length - offset, 65535), &temp_extent, NULL, 1, width, 32767);
+
+    /* A glyph wider than the available space must still make progress. */
+    if (char_count == 0)
+        char_count = 1;
 
     /* Find the last space in the fitted substring */
 
@@ -68,7 +73,7 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
 {
     WORD width;
     struct Window *window;
-    UWORD i, count, pos, line_size = 0, space_count = 0, extra_space_count,
+    ULONG i, count, pos, line_size = 0, space_count = 0, extra_space_count,
         space_width, space_multiple = 0, bonus_space_count = 0, line_len,
         bonus_space_mod = 1, space_no_in = 0, space_no_out, stripped_pos,
         stripped_count, stripped_size = 0, control_count, old_control_count,
@@ -90,7 +95,7 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
 
     /* Only do layout if we have some text and a window in which to put it */
 
-    if (data->text && window != NULL)
+    if (data->text && window != NULL && width > 0)
     {
         /* Get width of a space character */
 
@@ -118,6 +123,7 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
                 if (stripped_text == NULL)
                 {
                     FreeVec(line);
+                    data->typesetting = FALSE;
                     return;
                 }
 
@@ -127,7 +133,10 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
                 for (p = text, q = stripped_text; *p != '\0' && *p != '\n'; )
                 {
                     if (*p == '\33')
-                        p += 2;
+                    {
+                        p++;
+                        if (*p && *p != '\n') p++;
+                    }
                     else if (*p == '\t')
                     {
                         for (i = 0; i < data->tabsize; i++)
@@ -156,22 +165,26 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
 
                 /* Divide this paragraph into lines */
 
-                while ((stripped_count = FitParagraphLine(stripped_text,
-                    stripped_len, width, stripped_pos, window)) != 0)
+                while (pos < len && (stripped_count = FitParagraphLine(
+                    stripped_text, stripped_len, width, stripped_pos, window)) != 0)
                 {
                     /* Count number of characters for this line in original
                      * text */
 
                     old_control_count += control_count;
                     control_count = tab_count = 0;
-                    for (i = 0, p = text + pos; i < stripped_count
-                        || (i == stripped_count && *p != ' ' && *p != '\t');
+                    for (i = 0, p = text + pos; p < text + len &&
+                        (i < stripped_count || *p == '\33');
                         p++)
                     {
                         if (*p == '\33')
                         {
-                            control_count += 2;
-                            p++;
+                            control_count++;
+                            if (p + 1 < text + len)
+                            {
+                                control_count++;
+                                p++;
+                            }
                         }
                         else if (*p == '\t')
                         {
@@ -191,8 +204,10 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
                         else
                             i++;
                     }
-                    count = stripped_count + control_count
-                        - tab_count * data->tabsize;
+                    /* Consume whole tabs even when TextFit splits their
+                     * expanded spaces; never underflow the source offset. */
+                    stripped_count = i;
+                    count = p - (text + pos);
 
                     /* Default to justified text if it's enabled and this
                      * isn't the last line of the paragraph */
@@ -208,20 +223,26 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
                             if (p[i] == ' ')
                                 space_count++;
                         }
-                        space_count -= tab_count * data->tabsize;
+                        if (space_count >= tab_count * data->tabsize)
+                            space_count -= tab_count * data->tabsize;
+                        else
+                            space_count = 0;
 
-                        if (space_count == 0)
+                        if (space_count == 0 || space_width == 0)
                             justify = FALSE;
                     }
 
+                    extra_space_count = 0;
                     if (justify)
                     {
+                        LONG spare;
                         /* Find out how many extra spaces to insert for fully
                          * justified text */
 
-                        extra_space_count = (width - TextLength(window->RPort,
-                            stripped_text + stripped_pos, stripped_count))
-                            / space_width;
+                        spare = width - TextLength(window->RPort,
+                            stripped_text + stripped_pos, stripped_count);
+                        if (spare > 0)
+                            extra_space_count = spare / space_width;
 
                         space_multiple = (space_count + extra_space_count)
                             / space_count;
@@ -264,6 +285,7 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
                     {
                         FreeVec(old_line);
                         FreeVec(stripped_text);
+                        data->typesetting = FALSE;
                         return;
                     }
 
@@ -368,14 +390,14 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
                         if (data->skipchars != NULL)
                         {
                             for (found = FALSE, p = text + pos;
-                                !found; pos++, p++)
+                                !found && pos < len; pos++, p++)
                             {
                                 for (r = data->skipchars;
                                     *r != '\0' && *r != *p; r++);
                                 if (*r == '\0' && *p != ' ' && *p != '\t')
                                     found = TRUE;
                             }
-                            pos--, p--;
+                            if (found) { pos--; p--; }
                         }
                         else
                             for (p = text + pos; *p == ' ' || *p == '\t';
@@ -384,6 +406,8 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
                             stripped_pos++);
                     }
                 }
+                /* Empty/filtered paragraphs still advance to the newline. */
+                pos = len;
             }
             else
                 DoMethod(obj, MUIM_List_InsertSingle, "",
@@ -510,9 +534,16 @@ IPTR Floattext__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Floattext_Text:
-            FreeVec(data->text);
-            data->text = StrDup((STRPTR) tag->ti_Data);
-            changed = TRUE;
+            {
+                STRPTR replacement = StrDup((STRPTR) tag->ti_Data);
+                /* Callers may pass the current text (or a substring). */
+                if (replacement || !tag->ti_Data)
+                {
+                    FreeVec(data->text);
+                    data->text = replacement;
+                    changed = TRUE;
+                }
+            }
             break;
 
         }
@@ -562,11 +593,12 @@ IPTR Floattext__MUIM_Floattext_Append(struct IClass *cl, Object *obj,
     if (msg->Text)
     {
         ULONG newlen = strlen(msg->Text) + 1;
+        TEXT *newtext;
         if (data->text)
         {
             newlen += strlen(data->text);
         }
-        TEXT *newtext = AllocVec(newlen, MEMF_ANY);
+        newtext = AllocVec(newlen, MEMF_ANY);
         if (newtext)
         {
             newtext[0] = '\0';
@@ -590,13 +622,13 @@ BOOPSI_DISPATCHER(IPTR, Floattext_Dispatcher, cl, obj, msg)
     switch (msg->MethodID)
     {
     case OM_NEW:
-        return Floattext__OM_NEW(cl, obj, msg);
+        return Floattext__OM_NEW(cl, obj, (struct opSet *)msg);
     case OM_DISPOSE:
-        return Floattext__OM_DISPOSE(cl, obj, msg);
+        return Floattext__OM_DISPOSE(cl, obj, (struct opSet *)msg);
     case OM_GET:
-        return Floattext__OM_GET(cl, obj, msg);
+        return Floattext__OM_GET(cl, obj, (struct opGet *)msg);
     case OM_SET:
-        return Floattext__OM_SET(cl, obj, msg);
+        return Floattext__OM_SET(cl, obj, (struct opSet *)msg);
     case MUIM_Draw:
         return Floattext__MUIM_Draw(cl, obj, (struct MUIP_Draw *)msg);
     case MUIM_Floattext_Append:
