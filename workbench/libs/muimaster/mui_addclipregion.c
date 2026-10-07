@@ -24,24 +24,13 @@ APTR ZuneAddClipRegion(struct MUI_RenderInfo *mri, struct Region *r)
     struct Layer  *l;
     APTR result;
     BOOL refreshmode;
-    BOOL smartlock;
+    BOOL lock_layerinfo;
 
     w = mri->mri_Window;
     if (w != NULL)
         l = w->WLayer;
     else
         l = mri->mri_RastPort->Layer;
-
-    /*
-     * Classic Amiga simple-refresh: InstallClipRegion while the layer
-     * may be in update mode is illegal.  Draw unclipped instead.
-     */
-    if ((w != NULL) && (w->Flags & WFLG_SIMPLE_REFRESH))
-    {
-        if (r)
-            DisposeRegion(r);
-        return (APTR)-1;
-    }
 
     if ((l == NULL) || (r == NULL) || (mri->mri_rCount == MRI_RARRAY_SIZE))
     {
@@ -51,13 +40,13 @@ APTR ZuneAddClipRegion(struct MUI_RenderInfo *mri, struct Region *r)
     }
 
     /*
-     * InstallClipRegion is illegal while LAYERREFRESH is set unless we
+     * InstallClipRegion is illegal while LAYERUPDATING is set unless we
      * already hold MUI_BeginRefresh's LayerInfo lock and wrap the install
      * with EndRefresh(FALSE)/BeginRefresh.  A nested LockLayerInfo here
      * deadlocks classic Amiga (the lock is not recursive).
      */
     if ((w != NULL)
-        && (l->Flags & LAYERREFRESH)
+        && (l->Flags & LAYERUPDATING)
         && !(mri->mri_Flags & MUIMRI_REFRESHMODE))
     {
         DisposeRegion(r);
@@ -72,19 +61,18 @@ APTR ZuneAddClipRegion(struct MUI_RenderInfo *mri, struct Region *r)
     }
 
     refreshmode = (BOOL)((w != NULL) && (mri->mri_Flags & MUIMRI_REFRESHMODE));
-    smartlock = (BOOL)((w != NULL) && !refreshmode
-        && !(w->Flags & WFLG_SIMPLE_REFRESH));
+    lock_layerinfo = (BOOL)((w != NULL) && !refreshmode);
 
     if (refreshmode)
         EndRefresh(w, FALSE);
-    else if (smartlock)
+    else if (lock_layerinfo)
         LockLayerInfo(&w->WScreen->LayerInfo);
 
     result = InstallClipRegion(l, r);
 
     if (refreshmode)
         BeginRefresh(w);
-    else if (smartlock)
+    else if (lock_layerinfo)
         UnlockLayerInfo(&w->WScreen->LayerInfo);
 
     mri->mri_rArray[mri->mri_rCount++] = r;

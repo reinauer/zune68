@@ -8,6 +8,7 @@ from check_class_lifetime import INTUITION
 
 OBJECT, GFX, LAYERS = 0x71000, 0x79000, 0x79800
 MRI, RP, LAYER = 0x7a000, 0x7b000, 0x7c000
+WINDOW, SCREEN = 0x7d000, 0x7e000
 
 
 class ClipHarness(NotifyHarness):
@@ -23,6 +24,11 @@ class ClipHarness(NotifyHarness):
         self.parents = {}
         self.rectangles = []
         self.draws = 0
+        self.protocol = []
+        self.trap(LAYERS - 120, lambda: self.protocol.append('lock'))
+        self.trap(LAYERS - 138, lambda: self.protocol.append('unlock'))
+        self.trap(INTUITION - 354, lambda: self.protocol.append('begin'))
+        self.trap(INTUITION - 366, self.end_refresh)
         self.fail_region = False
         self.fail_rect = False
         self.fail_intersect = False
@@ -42,7 +48,12 @@ class ClipHarness(NotifyHarness):
         self.cpu.w_reg(9, self.cpu.r_reg(8))
         self.free_vec()
 
+    def end_refresh(self):
+        assert self.cpu.r_reg(0) == 0, 'keep pending damage'
+        self.protocol.append('end')
+
     def install(self):
+        self.protocol.append('install')
         old = self.mem.r32(LAYER + 126)
         self.mem.w32(LAYER + 126, self.cpu.r_reg(9))
         self.cpu.w_reg(0, old)
@@ -76,6 +87,25 @@ class ClipHarness(NotifyHarness):
 
 
 def check(path):
+    # A damaged layer is not necessarily inside BeginRefresh/BeginUpdate.
+    for simple in [False, True]:
+        for flags, managed in [(0, False), (0x80, False), (0x90, False), (0x90, True)]:
+            h = ClipHarness(path)
+            h.mem.w32(MRI + 16, WINDOW)
+            h.mem.w32(WINDOW + 24, 0x40 if simple else 0)
+            h.mem.w32(WINDOW + 46, SCREEN)
+            h.mem.w32(WINDOW + 124, LAYER)
+            h.mem.w16(LAYER + 30, flags)
+            h.mem.w32(MRI + 24, 8 if managed else 0)
+            clip = h.call('ZuneAddClipRegion', MRI, h.alloc(12))
+            if flags & 0x10 and not managed:
+                assert clip == 0xffffffff and not h.protocol
+            else:
+                assert clip != 0xffffffff
+                h.call('ZuneRemoveClipRegion', MRI, clip)
+                expected = ['end', 'install', 'begin'] if managed else ['lock', 'install', 'unlock']
+                assert h.protocol == expected * 2, h.protocol
+            h.finish()
     h = ClipHarness(path)
     outer = h.blob(bytes(12))
     h.mem.w32(LAYER + 126, outer)
