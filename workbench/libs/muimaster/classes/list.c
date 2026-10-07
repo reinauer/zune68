@@ -2826,6 +2826,33 @@ IPTR List__MUIM_Select(struct IClass *cl, Object *obj,
 *
 */
 
+static LONG CompareEntries(Object *obj, struct ListEntry *a,
+    struct ListEntry *b);
+
+/* Insert one appended entry into the sorted prefix, after equal keys. */
+static LONG InsertSortedEntry(Object *obj, struct ListEntry **entries, LONG at)
+{
+    struct ListEntry *entry = entries[at];
+    LONG lo = 0, hi = at, mid;
+    while (lo < hi)
+    {
+        mid = lo + (hi - lo) / 2;
+        if (CompareEntries(obj, entries[mid], entry) <= 0)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    while (at > lo)
+    {
+        entries[at] = entries[at - 1];
+        entries[at]->flags |= ENTRY_RENDER;
+        at--;
+    }
+    entries[lo] = entry;
+    entry->flags |= ENTRY_RENDER;
+    return lo;
+}
+
 IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     struct MUIP_List_Insert *msg)
 {
@@ -2946,13 +2973,30 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     {
         struct ListEntry *inserted = data->entries[data->insert_position];
         LONG i;
-        DoMethod(obj, MUIM_List_Sort);
-        for (i = 0; i < data->entries_num; i++)
-            if (data->entries[i] == inserted)
-            {
-                data->insert_position = i;
-                break;
-            }
+        if (count == 1)
+        {
+            /* Insert_Sorted assumes existing entries are in order. An
+             * explicit Sort still rechecks keys changed by the caller. */
+            i = InsertSortedEntry(obj, data->entries, data->insert_position);
+            if (data->entries_active >= i &&
+                data->entries_active < data->insert_position)
+                data->entries_active++;
+            data->insert_position = i;
+            if (!(data->update & UPDATEMODE_ALL))
+                data->update = UPDATEMODE_NEEDED;
+            if (!(data->flags & LIST_QUIET))
+                MUI_Redraw(obj, MADF_DRAWUPDATE);
+        }
+        else
+        {
+            DoMethod(obj, MUIM_List_Sort);
+            for (i = 0; i < data->entries_num; i++)
+                if (data->entries[i] == inserted)
+                {
+                    data->insert_position = i;
+                    break;
+                }
+        }
 
         if ((adjusted) && (data->flags & LIST_QUIET))
             data->update = UPDATEMODE_ALL;
@@ -3420,7 +3464,7 @@ IPTR List__MUIM_Sort(struct IClass *cl, Object *obj,
     struct MUI_ListData *data = INST_DATA(cl, obj);
     struct ListEntry **entries = data->entries;
     struct ListEntry *active = NULL, *entry;
-    LONG count = data->entries_num, i, lo, hi, mid;
+    LONG count = data->entries_num, i;
 
     if (count < 2) return 0;
     /* Verify order each time: callers may change comparison keys in place. */
@@ -3432,25 +3476,7 @@ IPTR List__MUIM_Sort(struct IClass *cl, Object *obj,
 
     if (i == count - 1)
     {
-        /* Sorted prefix plus one appended entry. Insert after equal keys. */
-        entry = entries[i];
-        lo = 0;
-        hi = i;
-        while (lo < hi)
-        {
-            mid = lo + (hi - lo) / 2;
-            if (CompareEntries(obj, entries[mid], entry) <= 0)
-                lo = mid + 1;
-            else
-                hi = mid;
-        }
-        for (; i > lo; i--)
-        {
-            entries[i] = entries[i - 1];
-            entries[i]->flags |= ENTRY_RENDER;
-        }
-        entries[lo] = entry;
-        entry->flags |= ENTRY_RENDER;
+        InsertSortedEntry(obj, entries, i);
     }
     else
     {

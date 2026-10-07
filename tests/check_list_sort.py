@@ -114,6 +114,20 @@ class InsertHarness(SortHarness):
 
 def check(path, baseline=False):
     if not baseline:
+        for values, incoming in [([2, 4], 1), ([2, 4], 3), ([2, 4], 5),
+                                 ([2, 2, 4], 2), ([], 1)]:
+            h = InsertHarness(path, values)
+            result, entries = h.insert([incoming])
+            assert [h.keys[h.mem.r32(e)] for e in entries] == sorted(values + [incoming])
+            assert h.mem.r32(DATA + 84) == sum(v <= incoming for v in values)
+            if values:
+                assert entries[h.mem.r32(DATA + 80)] == h.entries[0]
+            assert h.comparisons <= 3
+            h.finish()
+        h = InsertHarness(path, list(range(28)))
+        result, entries = h.insert([-1])
+        assert h.comparisons <= 5, 'sorted insertion must not recheck the prefix'
+        h.finish()
         h = InsertHarness(path, [2, 4])
         result, entries = h.insert([1, 3])
         assert [h.keys[h.mem.r32(e)] for e in entries] == [1, 2, 3, 4]
