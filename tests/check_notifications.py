@@ -177,7 +177,7 @@ def check(path):
     h.fire(attr=0x80420313, value=5)
     h.fire(attr=0x80420313, value=5)
     h.fire(attr=0x80420313, value=6)
-    assert [e[2] for e in h.events] == [5, 6]
+    assert [e[2] for e in h.events] == [5, 5, 6]
     h.finish()
 
     h = NotifyHarness(path)

@@ -490,8 +490,7 @@ IPTR Notify__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_UserData:
-            if (data->mnd_UserData == tag->ti_Data)
-                tag->ti_Tag = TAG_IGNORE;
+            /* Classic MUI delivers repeated assignments of UserData too. */
             data->mnd_UserData = tag->ti_Data;
             break;
         }

@@ -62,9 +62,10 @@ static int notifications(void)
     SetAttrs(source, MUIA_UserData, 1, TAG_DONE);
     SetAttrs(source, MUIA_NoNotify, TRUE, MUIA_UserData, 2, TAG_DONE);
     SetAttrs(source, MUIA_UserData, 3, TAG_DONE);
-    ok = event_count == 2 && events[0] == 1 && events[1] == 3;
-    printf("contract notify %ld %lu %lu %lu\n", (LONG)ok,
-        event_count, events[0], events[1]);
+    ok = event_count == 3 && events[0] == 1 && events[1] == 1
+        && events[2] == 3;
+    printf("contract notify %ld %lu %lu %lu %lu\n", (LONG)ok,
+        event_count, events[0], events[1], events[2]);
     DoMethod(source, MUIM_KillNotify, MUIA_UserData);
     MUI_DisposeObject(source);
     return ok;
