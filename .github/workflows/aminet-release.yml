@@ -1,0 +1,52 @@
+name: Publish Aminet release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aminet-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ startsWith(github.event.release.tag_name, 'v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Download the published release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release download "$RELEASE_TAG" --dir artifacts \
+            --pattern 'Zune68-*-amigaos3-m68k.lha' \
+            --pattern 'Zune68-*-amigaos3-m68k.readme'
+          python3 tools/prepare_aminet.py --release-dir artifacts \
+            --tag "$RELEASE_TAG"
+
+      - name: Keep the Aminet upload pair
+        uses: actions/upload-artifact@v7
+        with:
+          name: aminet-upload
+          path: build/aminet/*
+          if-no-files-found: error
+
+      - name: Upload to Aminet
+        uses: sidick/aminet-release-action@v1
+        with:
+          filename: build/aminet/Zune68.lha
+          readme: build/aminet/Zune68.readme
+          category: util/libs
+          inject-version: false
