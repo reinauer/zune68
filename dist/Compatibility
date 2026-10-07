@@ -28,6 +28,7 @@ Implemented areas with isolated linked-code checks
 - Notification removal, re-entry, source disposal and symbolic destinations
 - Buffered input, ARexx fallback hooks, AppIcon drops, legacy menus and help
 - Floattext wrapping, dynamic group relayout and explicit cycle ordering
+- Numeric scale intervals, reverse mapping and large-range arithmetic
 - Bitmap remap ownership, image allocation failure paths and nested clips
 
 These checks execute m68k code with modelled OS services. They are not an
@@ -67,8 +68,10 @@ opens and disposes a window, including group relayout. Run on a test
 installation: these workloads exercise code which still needs GUI review.
 
 The output separates deterministic 'contract' rows from 'metric' and
-'memory' rows. It records notification values, sorted-insertion behavior,
-comparison calls, elapsed DOS ticks, free Chip/Fast RAM and largest blocks.
+'memory' rows. It records notification values, numeric scaling, sorted
+insertion, comparison calls, elapsed DOS ticks, free Chip/Fast RAM and
+largest blocks. Numeric cases use observed MUI 3.8/3.9 results for shifted,
+reversed and single-value ranges.
 Two lifecycle iterations warm caches before the repeated-run baseline.
 Library closure does not force expunge; the 'closed' sample may retain
 idle classes or other OS resources. No automatic memory threshold is

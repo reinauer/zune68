@@ -100,6 +100,40 @@ static int lists(void)
     return ok;
 }
 
+static int numeric(void)
+{
+    static const LONG cases[][8] = {
+#include "numeric_cases.h"
+    };
+    Object *object = MUI_NewObject(MUIC_Numeric, TAG_DONE);
+    ULONG i;
+    int ok = object != NULL;
+
+    if (object)
+    {
+        for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+        {
+            const LONG *c = cases[i];
+            LONG result;
+            SetAttrs(object, MUIA_Numeric_Max, c[2],
+                MUIA_Numeric_Min, c[1], MUIA_Numeric_Reverse, c[5],
+                MUIA_Numeric_Value, c[6], TAG_DONE);
+            result = c[0] ? DoMethod(object, MUIM_Numeric_ValueToScale,
+                c[3], c[4]) : DoMethod(object, MUIM_Numeric_ScaleToValue,
+                c[3], c[4], c[6]);
+            if (result != c[7])
+            {
+                printf("numeric mismatch %lu got=%ld expected=%ld\n",
+                    i, result, c[7]);
+                ok = 0;
+            }
+        }
+        MUI_DisposeObject(object);
+    }
+    printf("contract numeric %ld\n", (LONG)ok);
+    return ok;
+}
+
 static int cycle(BOOL gui)
 {
     struct TagItem texttags[] = {
@@ -169,6 +203,7 @@ int main(int argc, char **argv)
     printf("library %s %u.%u\n", library,
         MUIMasterBase->lib_Version, MUIMasterBase->lib_Revision);
     ok = notifications();
+    if (!numeric()) ok = 0;
     DateStamp(&before);
     if (!lists()) ok = 0;
     DateStamp(&after);

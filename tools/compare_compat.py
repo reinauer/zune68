@@ -9,7 +9,7 @@ def contracts(path):
     rows = [line.strip() for line in path.read_text().splitlines()
             if line.startswith('contract ')]
     names = [row.split()[1] for row in rows]
-    if sorted(names) != ['lifecycle', 'notify', 'sorted-list']:
+    if sorted(names) != ['lifecycle', 'notify', 'numeric', 'sorted-list']:
         raise ValueError(f'{path}: expected one complete compatcheck run')
     return rows
 
