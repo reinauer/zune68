@@ -15,7 +15,9 @@ def prepare(release_dir, output_dir, tag):
     text = readme.read_text(encoding='ascii')
     fields = dict(re.findall(r'^([A-Za-z-]+):\s*([^\n]*)$',
                              text.split('\n\n', 1)[0], re.MULTILINE))
-    if fields.get('Version') != version:
+    readme_version = re.fullmatch(r'([0-9]+\.[0-9]+)(?: - .+)?',
+                                  fields.get('Version', ''))
+    if not readme_version or readme_version.group(1) != version:
         raise ValueError('release tag and Aminet readme version differ')
     if fields.get('Type') != 'util/libs':
         raise ValueError('expected Aminet category util/libs')

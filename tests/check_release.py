@@ -116,6 +116,14 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(archive.read_bytes(), b'previous release')
         self.assertEqual(list(self.output.iterdir()), [archive])
 
+    def test_aminet_pair_from_generated_alpha_release(self):
+        archive = release.release(self.build, self.output, 'lha', full=False)
+        destination = self.root / 'aminet'
+        prepare(self.output, destination, 'v35.6')
+        self.assertEqual((destination / 'Zune68.lha').read_bytes(), archive.read_bytes())
+        self.assertEqual((destination / 'Zune68.readme').read_bytes(),
+                         archive.with_suffix('.readme').read_bytes())
+
     def test_aminet_pair_and_version_guard(self):
         archive = self.output / 'Zune68-35.6-amigaos3-m68k.lha'
         archive.write_bytes(b'archive fixture')
@@ -126,10 +134,13 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual((destination / 'Zune68.lha').read_bytes(), archive.read_bytes())
         self.assertEqual((destination / 'Zune68.readme').read_bytes(), readme.read_bytes())
         original = (destination / 'Zune68.readme').read_bytes()
-        readme.write_text('Type: util/libs\nVersion: 35.5\n')
-        with self.assertRaisesRegex(ValueError, 'version differ'):
-            prepare(self.output, destination, 'v35.6')
-        self.assertEqual((destination / 'Zune68.readme').read_bytes(), original)
+        for version in ['35.5', '35.5 - Alpha 1', '35.60 - Alpha 1',
+                        '35.6garbage', '35.6 - ']:
+            with self.subTest(version=version):
+                readme.write_text(f'Type: util/libs\nVersion: {version}\n')
+                with self.assertRaisesRegex(ValueError, 'version differ'):
+                    prepare(self.output, destination, 'v35.6')
+                self.assertEqual((destination / 'Zune68.readme').read_bytes(), original)
         with self.assertRaisesRegex(ValueError, 'version tag'):
             prepare(self.output, destination, '../v35.6')
 
