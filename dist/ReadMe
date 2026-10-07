@@ -1,0 +1,95 @@
+Zune68 19.81 - Alpha 1 for AmigaOS 3.x / m68k
+==========================================
+
+Zune68 is a MUI-compatible user interface library based on AROS Zune.
+The full package contains the core libraries, the Zune preferences editor,
+13 MCC/MCP plugins, translation catalogs, opentest, seven examples,
+SDK headers, plugin documentation/licenses, and corresponding source.
+The separate core-only packaging option omits the additional components.
+
+Requirements
+------------
+AmigaOS 3.1 or newer, a 68000 or better, and Amiga Installer 43 or newer.
+The system IEEE double math libraries must be available; no FPU is needed.
+Installer itself is not included. The Install icon uses the default tool
+"installer". If Workbench cannot find it, set the icon's Default Tool to
+its full path, such as SYS:System/Installer on AmigaOS 3.2.3.
+
+Installation
+------------
+Extract the archive and double-click Install inside the Zune68 drawer.
+Alternatively, change to that drawer in a Shell and run:
+
+  SYS:System/Installer Install MINUSER AVERAGE
+
+Each library, plugin, and Prefs editor has its own Install/Skip question.
+Existing and bundled
+versions are shown before anything is replaced. Versions come from the
+actual files, not from the archive filename. Unknown versions are shown
+as unknown. Equal-version replacements and downgrades require the same
+explicit choice as upgrades. The default is Skip.
+
+  zunemaster.library  -> LIBS:zunemaster.library
+    Installs alongside MUI. opentest uses this name by default.
+
+  muimaster.library   -> LIBS:muimaster.library
+    Replaces MUI for applications using the standard library name.
+    Installing this is optional; it can affect other MUI applications.
+
+  Prefs/Zune         -> SYS:Prefs/Zune (with Workbench icon)
+    The preferences editor used by application settings menus.
+
+  Libs/MUI/*         -> LIBS:MUI/
+    BetterString, HotkeyString, NBitmap, NBalance, NList, NListview,
+    NFloattext, NListtree, TextEditor, and their bundled MCP editors.
+    These plugins open the standard muimaster.library name. For use with
+    Zune68, install its muimaster.library variant too. Side-by-side tests
+    with a different MUI implementation and these plugins are unverified.
+    Plugins are loaded on demand, not added to every application's cost.
+
+  Locale/Catalogs/*  -> LOCALE:Catalogs/<system-language>/
+    Translation installation is optional. The installer maps package
+    language names to Amiga names, for example german to deutsch.
+    Incomplete or unconvertible translations fall back to English.
+
+Before replacing a file, the installer saves the original beside it as
+<component-name>.zune68-old. An existing backup is preserved. Copy or
+rename that backup back to the original name to restore it. A newer
+resident library can remain active until reboot; the installer reports
+the resident version separately and does not expunge libraries in use.
+
+Catalogs and the Prefs icon have short .old backups. Saved preferences
+are not replaced. Tests/opentest, Examples, SDK, Docs, and Source.tar.gz
+remain in the extracted package. No SDK assigns are changed, and nothing
+changes in S:Startup-Sequence or S:User-Startup.
+Pretend mode displays the choices without copying files.
+
+After installation, close applications and reboot before trying Zune68.
+Run Tests/opentest from the extracted drawer. To exercise the replacement
+name explicitly, run Tests/opentest muimaster.library.
+
+The native executables request at least 65536 bytes of stack and free
+any replacement stack on exit.
+
+Normal builds omit Zune drawing/input traces. The test still prints its
+own progress and results. Source builds can enable tracing with TRACE=1;
+that output is deliberately excluded from performance measurements.
+
+Status and source
+-----------------
+This is the first alpha release. Compiler and binary-interface checks do not
+establish application compatibility or performance on real hardware.
+Prefs and the additional plugins still need GUI testing on AmigaOS.
+The imported plugins retain compiler warnings; translations are partial.
+
+The preferences editor includes the upstream PrefsWindow implementation.
+Other AROS-only external classes and muiscreen.library are not built. Optional Prefs page icons needing Rawimage/Pixmap are
+unavailable; the editor has a public-screen enumeration fallback without
+muiscreen.library. BetterString uses ordinary text rendering where the
+classic CyberGraphX SDK lacks alpha-text support; NBitmap uses its
+existing software alpha fallback.
+
+AROS source: https://github.com/aros-development-team/AROS
+Source.tar.gz contains the corresponding sources and native build tools.
+The supplied LICENSE contains the AROS Public License; component licenses
+and copyright notices remain with their sources and under Docs.

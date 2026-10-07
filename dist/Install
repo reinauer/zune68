@@ -1,0 +1,156 @@
+; $VER: Install-Zune68 1.1 (04.10.2026)
+; Run with Amiga Installer 43 or newer.
+
+(set @app-name "Zune68")
+(set @default-dest "")
+(if (< @installer-version (* 43 65536))
+    (abort "Zune68 installation requires Amiga Installer 43 or newer.")
+)
+(welcome "Install Zune68's native AmigaOS libraries.")
+; Novice mode normally skips questions. Replacements must be explicit.
+(if (< @user-level 1) (set @user-level 1))
+(set #package (pathonly @icon))
+(set #selected 0)
+
+(procedure P_Version #number
+    ("%ld.%ld" (/ #number 65536) (bitand #number 65535))
+)
+
+(procedure P_InstallFile #relative #directory #purpose #residentname
+    (set #name (fileonly #relative))
+    (set #source (tackon #package #relative))
+    (set #destination (tackon #directory #name))
+    (set #backup (cat #destination ".zune68-old"))
+    (set #bundled (getversion #source))
+    (set #existing (exists #destination))
+    (set #resident 0)
+    (if #residentname (set #resident (getversion #residentname (resident))))
+    (set #prompt (cat #name " is not installed.\n"))
+    (if (= #existing 2)
+        (abort (cat #destination " is a directory, not a component file."))
+    )
+    (if #existing
+        (
+            (set #installed (getversion #destination))
+            (if #installed
+                (set #prompt (cat #name " v" (P_Version #installed)
+                    " already installed.\n"))
+                (set #prompt (cat #name
+                    " already installed (version unknown).\n"))
+            )
+        )
+    )
+    (set #prompt (cat #prompt "Bundled is v" (P_Version #bundled) ".\n"))
+    (if #existing
+        (
+            (if (= #installed #bundled)
+                (set #prompt (cat #prompt "This replaces the same version.\n"))
+            )
+            (if (> #installed #bundled)
+                (set #prompt (cat #prompt "This is a downgrade.\n"))
+            )
+            (set #prompt (cat #prompt "Original backup: " #backup "\n"))
+            (if (exists #backup)
+                (set #prompt (cat #prompt "The existing backup will be kept.\n"))
+            )
+        )
+    )
+    (if #resident
+        (set #prompt (cat #prompt "Currently in memory: v"
+            (P_Version #resident) ". Reboot to use the installed file.\n"))
+    )
+    (set #prompt (cat #prompt "\n" #purpose "\n\nInstall to "
+        #destination "?"))
+    (if (askbool
+            (prompt #prompt)
+            (help "Install copies this component to the shown location. Skip keeps"
+                  "the current system unchanged. Existing files are backed"
+                  "up once; a previous Zune68 backup is never overwritten.")
+            (choices "Install" "Skip")
+            (default 0)
+        )
+        (
+            (makedir #directory)
+            (if (= (exists #backup) 2)
+                (abort (cat #backup " is a directory. No file was replaced."))
+            )
+            (if (and #existing (= (exists #backup) 0))
+                (copyfiles
+                    (source #destination)
+                    (dest #directory)
+                    (newname (cat #name ".zune68-old"))
+                    (optional "fail")
+                )
+            )
+            (copyfiles
+                (source #source)
+                (dest #directory)
+                (optional "fail")
+            )
+            (if (exists (cat #source ".info"))
+                (
+                    (if (and (exists (cat #destination ".info"))
+                             (= (exists (cat #destination ".info.old")) 0))
+                        (copyfiles (source (cat #destination ".info"))
+                            (dest #directory) (newname (cat #name ".info.old"))
+                            (optional "fail"))
+                    )
+                    (copyfiles (source (cat #source ".info"))
+                        (dest #directory) (optional "fail"))
+                )
+            )
+            (set #selected (+ #selected 1))
+        )
+    )
+)
+
+(procedure P_InstallLibrary #library #description
+    (P_InstallFile (tackon "Libs" #library) "LIBS:" #description #library)
+)
+
+; Support files have no library identity; keep one short .old backup.
+(procedure P_CopySupport #relative #directory
+    (set #filename (fileonly #relative))
+    (set #target (tackon #directory #filename))
+    (makedir #directory)
+    (if (and (exists #target) (= (exists (cat #target ".old")) 0))
+        (copyfiles (source #target) (dest #directory)
+            (newname (cat #filename ".old")) (optional "fail"))
+    )
+    (copyfiles (source (tackon #package #relative)) (dest #directory)
+        (optional "fail"))
+    (set #selected (+ #selected 1))
+)
+
+; Check the entire payload before offering any system changes.
+(if (or
+        (<> (exists (tackon #package "Libs/zunemaster.library")) 1)
+        (<> (exists (tackon #package "Libs/muimaster.library")) 1)
+    )
+    (abort "The package is incomplete. Extract the complete Zune68 archive.")
+)
+(foreach (tackon #package "Libs") "#?.library"
+    (if (and (= (exists (tackon (tackon #package "Libs") @each-name)) 1)
+             (= (getversion (tackon (tackon #package "Libs") @each-name)) 0))
+        (abort (cat "Cannot read the bundled version of " @each-name "."))
+    )
+)
+
+; COMPONENT_PREFLIGHT
+
+(P_InstallLibrary "zunemaster.library"
+    "This library installs alongside MUI. opentest uses it by default.")
+(complete 50)
+(P_InstallLibrary "muimaster.library"
+    "This replaces MUI for applications using the standard library name.")
+; COMPONENT_INSTALL
+(complete 100)
+
+(if @pretend
+    (message "Pretend mode finished. No files were copied.")
+    (if #selected
+        (message ("Installed %ld component file(s).\n" #selected)
+            "Close applications and reboot before using the new libraries.")
+        (message "No component files were selected. The system was not changed.")
+    )
+)

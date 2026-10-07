@@ -1,0 +1,100 @@
+Zune68 native compatibility and measurements
+==========================================
+
+Scope
+-----
+The native build targets AmigaOS 3.1+, a 68000 and no FPU. Classic MUI 3.8
+application behavior is the priority. The bundled classes remain separate
+libraries. AROS-only module ports, muiscreen.library, Rawimage/Pixmap and
+newer MUI features without an identified application need are deferred.
+
+Version policy
+--------------
+The two native library names share release 19.81 (Alpha 1). Built-in classes retain
+their implementation version 1.1, including classes which inherit Notify's
+version queries. These numbers identify this implementation; they do not
+promise every feature of a proprietary MUI release with the same number.
+External MCCs retain their own version reporting. Do not raise class
+versions merely to bypass an application's feature checks.
+
+Native release and built-in version definitions are centralized in
+native_version.h, used by the native GCC build. Version 19.81 follows
+the retained AROS source baseline; Alpha 1 identifies this native port.
+
+Implemented areas with isolated linked-code checks
+-------------------------------------------------
+- Public library gates, register hooks and classic structure prefixes
+- Built-in and external class ownership, failure cleanup and expunge
+- Notification removal, re-entry, source disposal and symbolic destinations
+- Buffered input, ARexx fallback hooks, AppIcon drops, legacy menus and help
+- Floattext wrapping, dynamic group relayout and explicit cycle ordering
+- Bitmap remap ownership, image allocation failure paths and nested clips
+
+These checks execute m68k code with modelled OS services. They are not an
+AmigaOS application compatibility matrix or a physical-hardware result.
+Use separate OS installations when comparing MUI and Zune68, particularly
+with third-party MCCs which open muimaster.library themselves.
+
+Rendering and lifetime limits
+-----------------------------
+Planar Bitmap rendering treats nonzero global alpha as opaque while
+retaining its mask; zero alpha is transparent. Fractional alpha blending
+and the core CyberGraphX path are not provided. The default window path
+still uses smart refresh. Broad redraw/text caches and simple refresh
+changes need measurements and GUI evidence before adoption.
+
+Notification list delivery tolerates callbacks removing notifications or
+disposing a plain Notify source. An arbitrary class method may still need
+its own instance after sending a notification. Defer disposal of such
+objects through the application's pushed-method queue until the callback
+unwinds. Explicit notification destinations remain caller-owned: remove
+notifications before destroying independently owned targets.
+
+Diagnostic TRACE=1 builds use a bounded 64 KiB T:zune.log fallback, with
+messages truncated to 511 bytes and files closed after each write. Shell
+output remains caller-owned. Use TRACE=0 for performance measurements.
+
+Runtime workload
+----------------
+From an Amiga Shell, after installing and rebooting:
+
+    Tests/compatcheck muimaster.library 100 >RAM:zune68-contracts.txt
+    Tests/compatcheck muimaster.library 100 gui >RAM:zune68-gui.txt
+
+The executable requests a 64 KiB stack. The optional gui mode repeatedly
+opens and disposes a window, including group relayout. Run on a test
+installation: these workloads exercise code which still needs GUI review.
+
+The output separates deterministic 'contract' rows from 'metric' and
+'memory' rows. It records notification values, sorted-insertion behavior,
+comparison calls, elapsed DOS ticks, free Chip/Fast RAM and largest blocks.
+Two lifecycle iterations warm caches before the repeated-run baseline.
+Library closure does not force expunge; the 'closed' sample may retain
+idle classes or other OS resources. No automatic memory threshold is
+claimed: other tasks, caches and fragmentation affect the measurements.
+
+Repeat with 10, 100 and 1000 iterations and two simultaneous clients.
+Record CPU/clock, OS, screen depth, RAM, compiler flags and exact binaries.
+Compare trends, not a single free-memory sample. Existing opentest and
+Prefs remain the interactive checks for keyboard focus, layout, clipboard,
+MCP pages, Use/Save/Cancel, ARexx and Workbench integration.
+
+Original SDK comparison
+-----------------------
+On the build host, point make at an extracted original MUI 3.8 SDK:
+
+    make check-sdk MUI38_SDK=/path/to/MUI/Developer
+
+This compiles the same client using the original public definitions and
+regenerates only the obsolete GCC inline assembly from that SDK's FD and
+prototypes. It leaves the original SDK untouched and does not redistribute
+it. The output is build/muimaster/sdk-check/compatcheck-mui38.
+
+Run that binary in separate MUI and Zune68 installations, then compare:
+
+    python3 tools/compare_compat.py mui-contracts.txt zune68-contracts.txt
+
+Matching contract output is one narrow result. Inspect timing/memory
+separately and exercise real application/MCC versions before making broad
+compatibility claims. Hosted GitHub Actions and physical hardware
+still require their own runs.
