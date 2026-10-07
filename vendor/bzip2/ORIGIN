@@ -1,0 +1,8 @@
+bzip2 1.0.8
+https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
+SHA256 ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269
+Local extension: BZ2_bzDecompressInitBounded limits scratch space using
+the decoded image size, with matching allocation and transform bounds.
+The original initializer retains the upstream allocation behavior.
+Modified files: bzlib.c, bzlib.h, bzlib_private.h, decompress.c.
+See LICENSE and README.
