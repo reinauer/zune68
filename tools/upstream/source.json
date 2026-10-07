@@ -1,0 +1,15 @@
+{
+  "source_url": "https://github.com/aros-development-team/AROS.git",
+  "source_revision": "b01e5dbafee017684634e78d15e12668fff96829",
+  "filtered_revision": "579ad7190649436067630337a2e70e0e206f4941",
+  "git_filter_repo_version": "2.47.0",
+  "git_filter_repo_id": "a40bce548d2c",
+  "recipe_sha256": {
+    "paths.txt": "464d7b92ddb1f4ca6cfff318a713d15d431d6671d127d4ae5e4c785d386a9250",
+    "filter_submodules.py": "b955562b5cf691f93505d4c1da5b398ece95bddbd484d7c87194cd4288b891a4",
+    "import-aros.py": "9b914d90cb442752ea33fb7085aaefe84b583c0064596edd92594823a376aaf6"
+  },
+  "retained_commits": 3542,
+  "tree_entries": 1082,
+  "tree_check": "Selected paths match source; .gitmodules is scoped."
+}
