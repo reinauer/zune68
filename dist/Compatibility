@@ -3,7 +3,7 @@ Zune68 native compatibility and measurements
 
 Scope
 -----
-The native build targets AmigaOS 3.1+, a 68000 and no FPU. Classic MUI 3.8
+The native build targets AmigaOS 3.1+, a 68000 and no FPU. Classic MUI 3.8/3.9
 application behavior is the priority. The bundled classes remain separate
 libraries. AROS-only module ports, muiscreen.library, Rawimage/Pixmap and
 newer MUI features without an identified application need are deferred.
@@ -39,9 +39,10 @@ Rendering and lifetime limits
 -----------------------------
 Planar Bitmap rendering treats nonzero global alpha as opaque while
 retaining its mask; zero alpha is transparent. Fractional alpha blending
-and the core CyberGraphX path are not provided. The default window path
-still uses smart refresh. Broad redraw/text caches and simple refresh
-changes need measurements and GUI evidence before adoption.
+and the core CyberGraphX path are not provided. Window refresh follows the configured preferences. Both refresh modes
+use clip regions outside an update, and managed refresh preserves pending
+damage while changing regions. Broad redraw/text caches need measurements
+and GUI evidence before adoption.
 
 Notification list delivery tolerates callbacks removing notifications or
 disposing a plain Notify source. An arbitrary class method may still need
@@ -81,14 +82,16 @@ MCP pages, Use/Save/Cancel, ARexx and Workbench integration.
 
 Original SDK comparison
 -----------------------
-On the build host, point make at an extracted original MUI 3.8 SDK:
+On the build host, point make at an extracted original SDK:
 
     make check-sdk MUI38_SDK=/path/to/MUI/Developer
+    make check-sdk MUI_SDK=/path/to/SDK/MUI MUI_SDK_VERSION=3.9
 
 This compiles the same client using the original public definitions and
 regenerates only the obsolete GCC inline assembly from that SDK's FD and
 prototypes. It leaves the original SDK untouched and does not redistribute
-it. The output is build/muimaster/sdk-check/compatcheck-mui38.
+it. The outputs are build/muimaster/sdk-check/compatcheck-mui38 and
+compatcheck-mui39, respectively.
 
 Run that binary in separate MUI and Zune68 installations, then compare:
 

@@ -74,11 +74,15 @@ release: all
 	$(PYTHON) ../../../tools/release.py --build-dir "$(BUILD)" \
 	  --output-dir "$(RELEASE_DIR)" --lha "$(LHA)" --strip "$(STRIP)"
 
+# Keep the original 3.8 invocation while allowing a separate 3.9 SDK.
+MUI_SDK_VERSION ?= 3.8
+MUI_SDK ?= $(MUI38_SDK)
+MUI_SDK_LABEL = mui$(subst .,,$(MUI_SDK_VERSION))
 check-sdk: $(BUILD)/compatcheck
-	@test -n "$(MUI38_SDK)" || { echo 'Set MUI38_SDK to the original MUI/Developer directory'; exit 1; }
-	$(PYTHON) ../../../tools/check_sdk.py --sdk "$(MUI38_SDK)" \
+	@test -n "$(MUI_SDK)" || { echo 'Set MUI_SDK to the original SDK directory'; exit 1; }
+	$(PYTHON) ../../../tools/check_sdk.py --sdk "$(MUI_SDK)" --release "$(MUI_SDK_VERSION)" \
 	  --output "$(BUILD)/sdk-check" --cc "$(CC)" --sfdc "$(SFDC)" --fd2sfd "$(FD2SFD)"
-	$(PYTHON) ../../../tests/check_opentest_stack.py $(BUILD)/compatcheck $(BUILD)/sdk-check/compatcheck-mui38
+	$(PYTHON) ../../../tests/check_opentest_stack.py $(BUILD)/compatcheck $(BUILD)/sdk-check/compatcheck-$(MUI_SDK_LABEL)
 
 $(BUILD)/compatcheck: ../../../tests/native/compatcheck.c $(GENERATED)
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
