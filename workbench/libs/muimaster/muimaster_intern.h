@@ -92,58 +92,10 @@ struct MUIMasterBase_intern
 #define MUIMB(b)	((struct MUIMasterBase_intern *)b)
 
 #ifndef __AROS__
-
-#undef SysBase
-#define SysBase     	(MUIMB(MUIMasterBase)->sysbase)
-
-#undef DOSBase
-#define DOSBase     	(MUIMB(MUIMasterBase)->dosbase)
-
-#undef UtilityBase
-#define UtilityBase     (MUIMB(MUIMasterBase)->utilitybase)
-
-#undef AslBase
-#define AslBase     	(MUIMB(MUIMasterBase)->aslbase)
-
-#undef GfxBase
-#define GfxBase     	(MUIMB(MUIMasterBase)->gfxbase)
-
-#undef LayersBase
-#define LayersBase     	(MUIMB(MUIMasterBase)->layersbase)
-
-#undef IntuitionBase
-#define IntuitionBase  	(MUIMB(MUIMasterBase)->intuibase)
-
-#undef CxBase
-#define CxBase	    	(MUIMB(MUIMasterBase)->cxbase)
-
-#undef RexxSysBase
-#define RexxSysBase      (MUIMB(MUIMasterBase)->rxsbase)
-
-#undef KeymapBase
-#define KeymapBase  	(MUIMB(MUIMasterBase)->keymapbase)
-
-#undef GadToolsBase
-#define GadToolsBase  	(MUIMB(MUIMasterBase)->gadtoolsbase)
-
-#undef IFFParseBase
-#define IFFParseBase  	(MUIMB(MUIMasterBase)->iffparsebase)
-
-#undef DiskfontBase
-#define DiskfontBase  	(MUIMB(MUIMasterBase)->diskfontbase)
-
-#undef IconBase
-#define IconBase        (MUIMB(MUIMasterBase)->iconbase)
-
-#undef CyberGfxBase
-#define CyberGfxBase  	(MUIMB(MUIMasterBase)->cybergfxbase)
-
-#undef CoolImagesBase
-#define CoolImagesBase	(MUIMB(MUIMasterBase)->coolimagesbase)
-
-#undef WorkbenchBase
-#define WorkbenchBase   (MUIMB(MUIMasterBase)->workbenchbase)
-
-#endif /* __AROS__ */
+extern struct Library *MUIMasterBase;
+extern struct Library *MUIScreenBase;
+extern struct Library *CyberGfxBase;
+BOOL ZUNE_FreeBuiltinClasses(struct Library *base);
+#endif
 
 #endif /* MUIMASTER_INTERN_H */

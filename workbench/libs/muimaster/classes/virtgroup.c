@@ -24,7 +24,7 @@ extern struct Library *MUIMasterBase;
 
 IPTR Virtgroup__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
-    return DoSuperNewTags
+    return (IPTR)DoSuperNewTags
         (cl, obj, NULL,
         MUIA_Group_Virtual, TRUE, TAG_MORE, (IPTR) msg->ops_AttrList);
 }

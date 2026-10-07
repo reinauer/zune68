@@ -45,46 +45,16 @@
 
 *****************************************************************************/
 {
-    AROS_LIBFUNC_INIT
-
+    if (!cl) return;
     ObtainSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
-
-    /* CLF_INLIST tells us that this class is a builtin class */
-    if (cl->cl_Flags & CLF_INLIST)
-    {
-        Class *super = cl->cl_Super;
-        char *count = (char *)cl->cl_Dispatcher.h_Data;
-
-        if (--count == 0)
-        {
-              ZUNE_RemoveBuiltinClass(cl, MUIMasterBase);
-
-            if (FreeClass(cl))
-            {
-                CloseLibrary(MUIMasterBase);
-                if (strcmp(super->cl_ID, ROOTCLASS) != 0)
-                    MUI_FreeClass(super);
-            }
-            else
-            {
-                /* Re-add the class to the list since freeing it failed */
-                ZUNE_AddBuiltinClass(cl, MUIMasterBase);
-
-                /* And also increase the reference counter again */
-                count++;
-            }
-        }
-        cl->cl_Dispatcher.h_Data = count;
-
+    if (cl->cl_Flags & CLF_INLIST) {
+        /* A dispatcher can still be returning through a superclass. Keep
+           cached classes until expunge proves the entire chain idle. */
+        if (cl->cl_UserData) --cl->cl_UserData;
         ReleaseSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
-    }
-    else
-    {
+    } else {
+        struct Library *module = cl->cl_Dispatcher.h_Data;
         ReleaseSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
-
-        CloseLibrary((struct Library *)cl->cl_Dispatcher.h_Data);
+        if (module && module != MUIMasterBase) CloseLibrary(module);
     }
-
-    AROS_LIBFUNC_EXIT
-
-} /* MUIA_FreeClass */
+}

@@ -534,7 +534,8 @@ BOOPSI_DISPATCHER(IPTR, Dirlist_Dispatcher, cl, obj, msg)
     case OM_GET:
         return Dirlist__OM_GET(cl, obj, (struct opGet *)msg);
     case MUIM_Dirlist_ReRead:
-        return Dirlist__MUIM_Dirlist_ReRead(cl, obj, (struct opGet *)msg);
+        return Dirlist__MUIM_Dirlist_ReRead(cl, obj,
+            (struct MUIP_Dirlist_ReRead *)msg);
     default:
         return DoSuperMethodA(cl, obj, msg);
     }

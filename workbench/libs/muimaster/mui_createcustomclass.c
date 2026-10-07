@@ -21,7 +21,7 @@
 
 /*  SYNOPSIS */
         AROS_LHA(struct Library *,         base,       A0),
-        AROS_LHA(ClassID,                  supername,  A1),
+        AROS_LHA(CONST_STRPTR,                  supername,  A1),
         AROS_LHA(struct MUI_CustomClass *, supermcc,   A2),
         AROS_LHA(ULONG,                    datasize,   D0),
         AROS_LHA(APTR,                     dispatcher, A3),
@@ -64,7 +64,11 @@
     else super = supermcc->mcc_Class;
 
     if (!(mcc = mui_alloc_struct(struct MUI_CustomClass)))
+    {
+        if (!supermcc)
+            MUI_FreeClass(super);
         return NULL;
+    }
 
     if (base)
         id = FilePart(((struct Node *)base)->ln_Name);
@@ -72,6 +76,8 @@
     if (!(cl = MakeClass(id, NULL, super, datasize, 0)))
     {
         mui_free(mcc);
+        if (!supermcc)
+            MUI_FreeClass(super);
         return NULL;
     }
 

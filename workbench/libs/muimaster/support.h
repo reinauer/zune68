@@ -74,3 +74,10 @@ WORD SubtractRectFromRect(struct Rectangle *a, struct Rectangle *b,
 ULONG IsObjectVisible(Object * child, struct Library *MUIMasterBase);
 
 #endif /* _MUIMASTER_SUPPORT_H */
+
+APTR ZuneAddClipRegion(struct MUI_RenderInfo *, struct Region *);
+void ZuneRemoveClipRegion(struct MUI_RenderInfo *, APTR);
+
+Object *ZuneNextObject(APTR iterator);
+#undef NextObject
+#define NextObject ZuneNextObject

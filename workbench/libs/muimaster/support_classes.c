@@ -21,6 +21,8 @@
 /*#define MYDEBUG*/
 #include "debug.h"
 
+extern const struct __MUIBuiltinClass _MUI_Settings_desc;
+
 static const struct __MUIBuiltinClass *const builtins[] = {
     &_MUI_Notify_desc,
     &_MUI_Family_desc,
@@ -51,9 +53,11 @@ static const struct __MUIBuiltinClass *const builtins[] = {
     &_MUI_Popstring_desc,
     &_MUI_Listview_desc,
     &_MUI_List_desc,
+    ZUNE_FLOATTEXT_DESC
     ZUNE_POPASL_DESC & _MUI_Popobject_desc,
     ZUNE_GAUGE_DESC
         ZUNE_ABOUTMUI_DESC
+        (&_MUI_Settings_desc),
         ZUNE_SETTINGSGROUP_DESC
         ZUNE_IMAGEADJUST_DESC
         ZUNE_POPIMAGE_DESC
@@ -85,7 +89,7 @@ static const struct __MUIBuiltinClass *const builtins[] = {
         ZUNE_PANELTITLE_DESC
 };
 
-Class *ZUNE_GetExternalClass(ClassID classname,
+Class *ZUNE_GetExternalClass(CONST_STRPTR classname,
     struct Library *MUIMasterBase)
 {
     struct Library *mcclib = NULL;
@@ -135,7 +139,7 @@ Class *ZUNE_GetExternalClass(ClassID classname,
 }
 
 /**************************************************************************/
-static Class *ZUNE_FindBuiltinClass(ClassID classid, struct Library *MUIMasterBase)
+static Class *ZUNE_FindBuiltinClass(CONST_STRPTR classid, struct Library *MUIMasterBase)
 {
     struct MUIMasterBase_intern *intZuneBase = (struct MUIMasterBase_intern *)MUIMasterBase;
     Class *cl = NULL, *cl2;
@@ -152,12 +156,11 @@ static Class *ZUNE_FindBuiltinClass(ClassID classid, struct Library *MUIMasterBa
     return cl;
 }
 
-static Class *ZUNE_MakeBuiltinClass(ClassID classid,
+static Class *ZUNE_MakeBuiltinClass(CONST_STRPTR classid,
     struct Library *MUIMasterBase)
 {
     int i;
     Class *cl = NULL;
-    struct Library *mb = NULL;
 
     D(bug("Makeing Builtinclass %s\n", classid));
 
@@ -168,20 +171,8 @@ static Class *ZUNE_MakeBuiltinClass(ClassID classid,
             Class *supercl;
             ClassID superclid;
 
-            /* This may seem strange, but opening muimaster.library here is
-               done in order to increase muimaster.library's open count, so
-               that it doesn't get expunged while some of its internal
-               classes are still in use. We don't use muimaster.library
-               directly but the name of the library stored inside the base,
-               because the library can be compiled also as zunemaster.library
-             */
-
-            mb = OpenLibrary(MUIMasterBase->lib_Node.ln_Name, 0);
-
-            /* It can't possibly fail, but well... */
-            if (!mb)
-                break;
-
+            /* Cached classes do not own library opens. Expunge checks
+               references, objects and subclasses before reclaiming them. */
             if (strcmp(builtins[i]->supername, ROOTCLASS) == 0)
             {
                 superclid = ROOTCLASS;
@@ -198,6 +189,10 @@ static Class *ZUNE_MakeBuiltinClass(ClassID classid,
 
             cl = MakeClass(builtins[i]->name, superclid, supercl,
                 builtins[i]->datasize, 0);
+            /* MakeClass owns the subclass link on success. The temporary
+               lookup reference is no longer needed, including on failure. */
+            if (supercl)
+                MUI_FreeClass(supercl);
             if (cl)
             {
 #if defined(__MAXON__) || defined(__amigaos4__)
@@ -207,45 +202,67 @@ static Class *ZUNE_MakeBuiltinClass(ClassID classid,
                 cl->cl_Dispatcher.h_SubEntry = builtins[i]->dispatcher;
 #endif
                 /* Use this as a reference counter */
-                cl->cl_Dispatcher.h_Data = 0;
+                cl->cl_Dispatcher.h_Data = MUIMasterBase;
+                cl->cl_UserData = 0;
             }
 
             break;
         }
     }
 
-    if (!cl && mb)
-        CloseLibrary(mb);
-
     return cl;
 }
 
-Class *ZUNE_GetBuiltinClass(ClassID classid, struct Library * mb)
+Class *ZUNE_GetBuiltinClass(CONST_STRPTR id, struct Library *base)
 {
     Class *cl;
-
-    ObtainSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
-
-    cl = ZUNE_FindBuiltinClass(classid, mb);
-
-    if (!cl)
-    {
-        cl = ZUNE_MakeBuiltinClass(classid, mb);
-
-        if (cl)
-        {
-            ZUNE_AddBuiltinClass(cl, mb);
-
-            /* Increase the reference counter */
-            char *count = cl->cl_Dispatcher.h_Data;
-            count++;
-            cl->cl_Dispatcher.h_Data = count;
-        }
+    ObtainSemaphore(&MUIMB(base)->ZuneSemaphore);
+    cl = ZUNE_FindBuiltinClass(id, base);
+    if (!cl) {
+        cl = ZUNE_MakeBuiltinClass(id, base);
+        if (cl) ZUNE_AddBuiltinClass(cl, base);
     }
-
-    ReleaseSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
-
+    if (cl) ++cl->cl_UserData;
+    ReleaseSemaphore(&MUIMB(base)->ZuneSemaphore);
     return cl;
+}
+
+/* Reclaim cached classes only at expunge, never from disposal callbacks.
+ * Classes enter the list after their superclasses, so walk backwards.
+ * Keep the library resident if any reference, object or subclass survives.
+ */
+BOOL ZUNE_FreeBuiltinClasses(struct Library *mb)
+{
+    struct MUIMasterBase_intern *base = (struct MUIMasterBase_intern *)mb;
+    struct MinNode *node, *previous;
+    BOOL empty;
+
+    /* Expunge runs under Exec's Forbid. Do not wait and allow another
+       task to reopen the library after LibExpunge checked its open count. */
+    if (!AttemptSemaphore(&base->ZuneSemaphore))
+        return FALSE;
+    node = base->BuiltinClasses.mlh_TailPred;
+    while (node->mln_Pred)
+    {
+        Class *cl = (Class *)node;
+
+        previous = node->mln_Pred;
+        if (!cl->cl_UserData && !cl->cl_ObjectCount && !cl->cl_SubclassCount)
+        {
+            ZUNE_RemoveBuiltinClass(cl, mb);
+            if (!FreeClass(cl))
+            {
+                /* Keep a refused class reachable in its original position. */
+                Insert((struct List *)&base->BuiltinClasses,
+                    (struct Node *)cl, (struct Node *)previous);
+                cl->cl_Flags |= CLF_INLIST;
+            }
+        }
+        node = previous;
+    }
+    empty = base->BuiltinClasses.mlh_Head->mln_Succ == NULL;
+    ReleaseSemaphore(&base->ZuneSemaphore);
+    return empty;
 }
 
 /*
@@ -270,18 +287,12 @@ AROS_UFH3(IPTR, metaDispatcher,
 }
 
 #else
-#ifdef __SASC
-__asm ULONG metaDispatcher(register __a0 struct IClass * cl,
-    register __a2 Object * obj, register __a1 Msg msg)
+IPTR metaDispatcher(Class *cl __asm("a0"), Object *obj __asm("a2"),
+    Msg msg __asm("a1"))
 {
-    __asm ULONG(*entry) (register __a0 struct IClass * cl,
-        register __a2 Object * obj, register __a1 Msg msg) =
-        (__asm ULONG(*)(register __a0 struct IClass *,
-            register __a2 Object *,
-            register __a1 Msg))cl->cl_Dispatcher.h_SubEntry;
-
-    putreg(REG_A6, (long)cl->cl_Dispatcher.h_Data);
-    return entry(cl, obj, msg);
+    typedef IPTR (*Dispatcher)(Class * __asm("a0"),
+        Object * __asm("a2"), Msg __asm("a1"), APTR __asm("a6"));
+    Dispatcher dispatch = (Dispatcher)cl->cl_Dispatcher.h_SubEntry;
+    return dispatch(cl, obj, msg, cl->cl_Dispatcher.h_Data);
 }
-#endif
 #endif

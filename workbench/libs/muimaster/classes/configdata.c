@@ -1320,7 +1320,7 @@ static IPTR Configdata_LoadPubScreens(struct IClass *cl, Object *obj,
 
     if (MUIScreenBase) {
         struct MUI_ConfigdataData *data = INST_DATA(cl, obj);
-        struct Node *psNode, *tmpName;
+        struct Node *psNode;
         APTR pfh;
 
         Configdata__DisposeDescriptors(data);

@@ -22,9 +22,7 @@
 #include <proto/utility.h>
 #include <proto/iffparse.h>
 
-#ifdef __AROS__
 #include <proto/muimaster.h>
-#endif
 
 Object *MakeLabel(STRPTR str);
 LONG xget(Object * obj, ULONG attr);
@@ -38,29 +36,14 @@ LONG xget(Object * obj, ULONG attr);
 
 struct Library *MUIMasterBase;
 
-/* On AmigaOS we build a fake library base, because it's not compiled as sharedlibrary yet */
-#include "muimaster_intern.h"
+#if defined(__GNUC__) && defined(__mc68000__)
+ULONG __stack = 65536;
+#endif
 
 int open_muimaster(void)
 {
-    static struct MUIMasterBase_intern MUIMasterBase_instance;
-    MUIMasterBase = (struct Library*)&MUIMasterBase_instance;
-
-    MUIMasterBase_instance.sysbase      = *((struct ExecBase **)4);
-    MUIMasterBase_instance.dosbase      = (void *)OpenLibrary("dos.library",        37);
-    MUIMasterBase_instance.utilitybase  = (void *)OpenLibrary("utility.library",    37);
-    MUIMasterBase_instance.aslbase      =         OpenLibrary("asl.library",        37);
-    MUIMasterBase_instance.gfxbase      = (void *)OpenLibrary("graphics.library",   37);
-    MUIMasterBase_instance.layersbase   =         OpenLibrary("layers.library",     37);
-    MUIMasterBase_instance.intuibase    = (void *)OpenLibrary("intuition.library",  37);
-    MUIMasterBase_instance.cxbase       =         OpenLibrary("commodities.library",37);
-    MUIMasterBase_instance.keymapbase   =         OpenLibrary("keymap.library",     37);
-    MUIMasterBase_instance.gadtoolsbase =         OpenLibrary("gadtools.library",   37);
-    MUIMasterBase_instance.iffparsebase =         OpenLibrary("iffparse.library",   37);
-    MUIMasterBase_instance.diskfontbase =         OpenLibrary("diskfont.library",   37);
-    __zune_prefs_init(&__zprefs);
-    InitSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
-    return 1;
+    MUIMasterBase = OpenLibrary(MUIMASTER_NAME, MUIMASTER_VMIN);
+    return MUIMasterBase != NULL;
 }
 
 #else
@@ -74,6 +57,10 @@ int open_muimaster(void)
 
 void close_muimaster(void)
 {
+#ifndef __AROS__
+    if (MUIMasterBase) CloseLibrary(MUIMasterBase);
+    MUIMasterBase = NULL;
+#endif
 }
 
 /****************************************************************
@@ -104,7 +91,7 @@ void close_libs(void)
 *****************************************************************/
 Object *MakeLabel(STRPTR str)
 {
-    return (MUI_MakeObject(MUIO_Label, str, 0));
+    return (MUI_MakeObject(MUIO_Label, (IPTR)str, 0));
 }
 
 

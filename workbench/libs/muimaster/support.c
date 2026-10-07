@@ -37,18 +37,16 @@ int isRegionWithinBounds(struct Region *r, int left, int top, int width,
 /**************************************************************************
  Converts a Rawkey to a vanillakey
 **************************************************************************/
-ULONG ConvertKey(struct IntuiMessage * imsg)
+ULONG ConvertKey(struct IntuiMessage *message)
 {
-    struct InputEvent event;
-    UBYTE code = 0;
-    event.ie_NextEvent = NULL;
+    struct InputEvent event = { 0 };
+    UBYTE character = 0;
     event.ie_Class = IECLASS_RAWKEY;
-    event.ie_SubClass = 0;
-    event.ie_Code = imsg->Code;
-    event.ie_Qualifier = imsg->Qualifier;
-    event.ie_EventAddress = (APTR *) * ((IPTR *) imsg->IAddress);
-    MapRawKey(&event, &code, 1, NULL);
-    return code;
+    event.ie_Code = message->Code;
+    event.ie_Qualifier = message->Qualifier;
+    event.ie_EventAddress = message->IAddress ? *(APTR *)message->IAddress : NULL;
+    if (MapRawKey(&event, (STRPTR)&character, 1, NULL) <= 0) return 0;
+    return character;
 }
 
 /**************************************************************************
@@ -223,4 +221,79 @@ ULONG IsObjectVisible(Object * child, struct Library * MUIMasterBase)
             return FALSE;
     }
     return TRUE;
+}
+
+#if ZUNE68_TRACE
+#define TRACE_FILE_LIMIT 65536L
+struct TraceBuffer
+{
+    STRPTR next;
+    ULONG left;
+};
+
+static ASM void TracePutChar(REG(d0, UBYTE chr),
+    REG(a3, struct TraceBuffer *buffer))
+{
+    if (buffer->left)
+    {
+        *buffer->next++ = chr;
+        buffer->left--;
+    }
+}
+
+void ZuneTraceOutput(CONST_STRPTR fmt, ...)
+{
+    BPTR fh = Output();
+    struct SignalSemaphore *sem;
+    char text[512];
+    struct TraceBuffer buffer;
+    LONG end;
+
+    if (fh)
+    {
+        VFPrintf(fh, fmt, (APTR)(&fmt + 1));
+        Flush(fh);
+        return; /* the caller owns its Shell output */
+    }
+
+    /* Diagnostic-only stack storage; no retained DOS handles or heap.
+     * Drop a contended trace instead of blocking another application's GUI.
+     * The library semaphore also serializes writers to the bounded file. */
+    sem = &((struct MUIMasterBase_intern *)MUIMasterBase)->ZuneSemaphore;
+    if (!AttemptSemaphore(sem)) return;
+    buffer.next = text;
+    buffer.left = sizeof(text) - 1;
+    RawDoFmt(fmt, (APTR)(&fmt + 1), (VOID_FUNC)TracePutChar, &buffer);
+    *buffer.next = 0;
+
+    fh = Open("T:zune.log", MODE_READWRITE);
+    if (fh)
+    {
+        if (Seek(fh, 0, OFFSET_END) < 0)
+            end = -1;
+        else
+            end = Seek(fh, 0, OFFSET_CURRENT);
+        if (end < 0 || end > TRACE_FILE_LIMIT - (LONG)strlen(text))
+        {
+            Close(fh);
+            fh = end < 0 ? 0 : Open("T:zune.log", MODE_NEWFILE);
+        }
+    }
+    if (fh)
+    {
+        Write(fh, text, strlen(text));
+        Close(fh);
+    }
+    ReleaseSemaphore(sem);
+}
+#endif
+
+Object *ZuneNextObject(APTR iterator)
+{
+    struct _Object **cursor = iterator;
+    struct _Object *header;
+    if (!cursor || !(header = *cursor) || !header->o_Node.mln_Succ)
+        return NULL;
+    *cursor = (struct _Object *)header->o_Node.mln_Succ;
+    return (Object *)BASEOBJECT(header);
 }

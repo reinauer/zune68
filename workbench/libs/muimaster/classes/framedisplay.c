@@ -126,7 +126,6 @@ IPTR Framedisplay__MUIM_Draw(struct IClass *cl, Object *obj,
         return 0;
 
     struct dt_frame_image temp_frame;
-    struct MUI_FrameSpec_intern tempframe;
     struct dt_frame_image *frame_img =
         zune_frame_prepare_for_drawing(zframe, &data->fs_intern, &temp_frame);
 

@@ -804,8 +804,10 @@ AROS_UFH3
 IPTR Prop__MUIM_Show(struct IClass *cl, Object *obj, struct MUIP_Show *msg)
 {
     struct Prop_DATA *data = INST_DATA(cl, obj);
+#ifdef __AROS__
     struct MUI_AreaData *adata = muiAreaData(obj);
     struct MUI_ImageSpec_intern *spec = adata->mad_Background;
+#endif
 
     ULONG rc = DoSuperMethodA(cl, obj, (Msg) msg);
 #ifdef __AROS__

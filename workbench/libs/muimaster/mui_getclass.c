@@ -22,7 +22,7 @@
         AROS_LH1(struct IClass *, MUI_GetClass,
 
 /*  SYNOPSIS */
-        AROS_LHA(ClassID, classid, A0),
+        AROS_LHA(CONST_STRPTR, classid, A0),
 
 /*  LOCATION */
         struct Library *, MUIMasterBase, 13, MUIMaster)

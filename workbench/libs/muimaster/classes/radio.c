@@ -94,7 +94,7 @@ IPTR Radio__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 MUIA_InputMode, MUIV_InputMode_Immediate,
                 MUIA_ShowSelState, FALSE,
                 MUIA_Selected, state,
-                MUIA_Text_Contents, entries[i],
+                MUIA_Text_Contents, (IPTR)entries[i],
                 MUIA_Frame, MUIV_Frame_None,
                 MUIA_Text_PreParse, (IPTR)"\33l",
                 End),

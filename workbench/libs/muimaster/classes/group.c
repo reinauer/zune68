@@ -147,8 +147,7 @@ struct MUI_GroupData
 #define w0_defheight(x) (_vweight(x) ? _defheight(x) : _minheight(x))
 #define w0_maxheight(x) (_vweight(x) ? _maxheight(x) : _minheight(x))
 
-static const int __version = 1;
-static const int __revision = 1;
+#include "native_version.h"
 
 IPTR Group__MUIM_Show(struct IClass *cl, Object *obj,
     struct MUIP_Show *msg);
@@ -306,7 +305,6 @@ IPTR Group__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     struct MUI_GroupData *data;
     struct TagItem *tags, *tag;
     BOOL bad_children = FALSE;
-    IPTR disabled = FALSE;
     IPTR frame = MUIV_Frame_None;
 
     D(bug("[group.mui] OM_NEW, object 0x%p\n", obj));
@@ -663,10 +661,10 @@ IPTR Group__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     switch (msg->opg_AttrID)
     {
     case MUIA_Version:
-        STORE = __version;
+        STORE = ZUNE68_BUILTIN_VERSION;
         return 1;
     case MUIA_Revision:
-        STORE = __revision;
+        STORE = ZUNE68_BUILTIN_REVISION;
         return 1;
     case MUIA_Group_ActivePage:
         STORE = data->active_page;

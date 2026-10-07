@@ -398,8 +398,12 @@
 #include "classes/area.h"
 #endif
 
+#ifdef __AROS__
 #ifndef INTUITION_CLASSALIGN_H
 #include <intuition/classalign.h>
+#endif
+#else
+#define CLASS_INSTANCE_ALIGN
 #endif
 
 struct __dummyAreaData__

@@ -83,7 +83,7 @@ IPTR Scrollbar__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             ImageButtonFrame,
             MUIA_InputMode, MUIV_InputMode_RelVerify,
             MUIA_Image_Spec, horiz ? MUII_ArrowLeft : MUII_ArrowUp,
-            MUIA_Image_Prop, prop, End;
+            MUIA_Image_Prop, (IPTR)prop, End;
         if (data->up_arrow)
         {
             DoMethod(data->up_arrow, MUIM_Notify, MUIA_Timer,
@@ -97,7 +97,7 @@ IPTR Scrollbar__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             ImageButtonFrame,
             MUIA_InputMode, MUIV_InputMode_RelVerify,
             MUIA_Image_Spec, horiz ? MUII_ArrowRight : MUII_ArrowDown,
-            MUIA_Image_Prop, prop, End;
+            MUIA_Image_Prop, (IPTR)prop, End;
         if (data->down_arrow)
         {
             DoMethod(data->down_arrow, MUIM_Notify, MUIA_Timer,

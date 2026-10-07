@@ -141,7 +141,7 @@ static void muiDataStreamFromFormat(CONST_STRPTR format, APTR dataStream,  ULONG
         es.es_Title        = title;
         es.es_TextFormat   = format;
         es.es_GadgetFormat = gadgets;
-        return EasyRequestArgs(NULL,&es,NULL,_params);
+        return EasyRequestArgs(NULL,&es,NULL,params);
     }
 
     reqtxt_len = 0;
@@ -172,30 +172,30 @@ static void muiDataStreamFromFormat(CONST_STRPTR format, APTR dataStream,  ULONG
     }
 
     req_wnd = WindowObject,
-        MUIA_Window_Title,        title,
-        MUIA_Window_RefWindow,    win,
+        MUIA_Window_Title,        (IPTR)title,
+        MUIA_Window_RefWindow,    (IPTR)win,
         MUIA_Window_LeftEdge,     MUIV_Window_LeftEdge_Centered,
         MUIA_Window_TopEdge,      MUIV_Window_TopEdge_Centered,
         MUIA_Window_CloseGadget,  FALSE,
         MUIA_Window_SizeGadget,   FALSE,
-        WindowContents, VGroup,
+        WindowContents, (IPTR)VGroup,
             MUIA_Background,       MUII_RequesterBack,
-            Child, HGroup,
+            Child, (IPTR)HGroup,
                 TextFrame,
                 MUIA_Background,    MUII_TextBack,
-                Child, HSpace(0),
-                Child, TextObject,
+                Child, (IPTR)HSpace(0),
+                Child, (IPTR)TextObject,
                     MUIA_InnerBottom,   8,
                     MUIA_InnerLeft,     8,
                     MUIA_InnerRight,    8,
                     MUIA_InnerTop,      8,
                     MUIA_Text_SetMax,   TRUE,
-                    MUIA_Text_Contents, reqtxt,
+                    MUIA_Text_Contents, (IPTR)reqtxt,
                     End,
-                Child, HSpace(0),
+                Child, (IPTR)HSpace(0),
                 End,
-            Child, VSpace(2),
-            Child, req_group = HGroup, End,
+            Child, (IPTR)VSpace(2),
+            Child, (IPTR)(req_group = HGroup, End),
             End,
         End;
 

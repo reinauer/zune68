@@ -305,7 +305,7 @@ BOOPSI_DISPATCHER(IPTR, Palette_Dispatcher, cl, obj, msg)
     case OM_GET:
         return Palette__OM_GET(cl, obj, (struct opGet *)msg);
     case OM_DISPOSE:
-        return Palette__OM_DISPOSE(cl, obj, (struct opGet *)msg);
+        return Palette__OM_DISPOSE(cl, obj, msg);
     default:
         return DoSuperMethodA(cl, obj, msg);
     }

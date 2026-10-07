@@ -7,7 +7,7 @@
 
 #include <exec/types.h>
 
-#define CATCOMP_NUMBERS
+#define muimaster_NUMBERS
 #include "muimaster_strings.h"
 
 /*** Prototypes *************************************************************/

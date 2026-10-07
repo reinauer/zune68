@@ -1,50 +1,13 @@
-/*
-    Copyright (C) 2002, The AROS Development Team.
-    All rights reserved.
-    
-*/
-
-#define AROS_TAGRETURNTYPE Object *
-#include <utility/tagitem.h>
-#include <proto/alib.h>
-
-/*****************************************************************************
-
-    NAME */
-#define NO_INLINE_STDARG /* turn off inline def */
+/* Copyright (C) 2002, The AROS Development Team. */
+#include <stdarg.h>
+#define NO_INLINE_STDARG
 #include <proto/muimaster.h>
-extern struct Library * MUIMasterBase;
-
-        Object * MUI_NewObject (
-
-/*  SYNOPSIS */
-        const char * classname,
-        Tag tag1,
-        ...)
-
-/*  FUNCTION
-
-    INPUTS
-
-    RESULT
-
-    NOTES
-
-    EXAMPLE
-
-    BUGS
-
-    SEE ALSO
-
-    INTERNALS
-
-    HISTORY
-
-*****************************************************************************/
+Object * MUI_NewObject(CONST_STRPTR classid, ...)
 {
-    AROS_SLOWSTACKTAGS_PRE(tag1)
-
-    retval = MUI_NewObjectA(classname, AROS_SLOWSTACKTAGS_ARG(tag1));
-    
-    AROS_SLOWSTACKTAGS_POST
-} /* MUI_NewObject */
+    va_list args;
+    Object * result;
+    va_start(args, classid);
+    result = MUI_NewObjectA(classid, (struct TagItem *)args);
+    va_end(args);
+    return result;
+}

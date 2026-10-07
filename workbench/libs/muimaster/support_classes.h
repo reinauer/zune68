@@ -49,6 +49,12 @@
 #   define ZUNE_COLORFIELD_DESC
 #endif
 
+#if ZUNE_BUILTIN_FLOATTEXT
+#   define ZUNE_FLOATTEXT_DESC (&_MUI_Floattext_desc),
+#else
+#   define ZUNE_FLOATTEXT_DESC
+#endif
+
 #if ZUNE_BUILTIN_FRAMEADJUST
 #   define ZUNE_FRAMEADJUST_DESC (&_MUI_Frameadjust_desc),
 #else
@@ -235,8 +241,8 @@
 #   define ZUNE_PALETTE_DESC
 #endif
 
-Class *ZUNE_GetBuiltinClass(ClassID className, struct Library *mb);
-Class *ZUNE_GetExternalClass(ClassID className, struct Library *mb);
+Class *ZUNE_GetBuiltinClass(CONST_STRPTR className, struct Library *mb);
+Class *ZUNE_GetExternalClass(CONST_STRPTR className, struct Library *mb);
 
 
 #define ZUNE_AddBuiltinClass(cl, mb)                                         \
@@ -288,8 +294,13 @@ AROS_UFP3
 
 #else
 
-struct MUI_CustomClass *MCC_Query(ULONG d0);
-#pragma  libcall mcclib MCC_Query 01e 001
+#define MCC_Query(which) ({ \
+    register struct Library *base __asm("a6") = mcclib; \
+    register ULONG result __asm("d0") = (which); \
+    __asm volatile("jsr a6@(-30:W)" : "+r"(result) : "r"(base) \
+        : "d1", "a0", "a1", "cc", "memory"); \
+    (struct MUI_CustomClass *)result; \
+})
 
 #endif
 

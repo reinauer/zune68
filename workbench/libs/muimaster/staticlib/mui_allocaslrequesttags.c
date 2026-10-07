@@ -1,51 +1,13 @@
-/*
-    Copyright (C) 2002, The AROS Development Team.
-    All rights reserved.
-    
-*/
-
-#define AROS_TAGRETURNTYPE APTR
-#include <utility/tagitem.h>
-#include <proto/alib.h>
-
-/*****************************************************************************
-
-    NAME */
-#define NO_INLINE_STDARG /* turn off inline def */
+/* Copyright (C) 2002, The AROS Development Team. */
+#include <stdarg.h>
+#define NO_INLINE_STDARG
 #include <proto/muimaster.h>
-extern struct Library * MUIMasterBase;
-
-        APTR MUI_AllocAslRequestTags (
-
-/*  SYNOPSIS */
-        ULONG reqType,
-        Tag tag1,
-        ...)
-
-/*  FUNCTION
-
-    INPUTS
-
-    RESULT
-
-    NOTES
-
-    EXAMPLE
-
-    BUGS
-
-    SEE ALSO
-
-    INTERNALS
-
-    HISTORY
-
-*****************************************************************************/
+APTR MUI_AllocAslRequestTags(ULONG type, ...)
 {
-    AROS_SLOWSTACKTAGS_PRE(tag1)
-
-    retval = MUI_AllocAslRequest(reqType, AROS_SLOWSTACKTAGS_ARG(tag1));
-
-    AROS_SLOWSTACKTAGS_POST
-    
-} /* MUI_AllocAslRequestTags */
+    va_list args;
+    APTR result;
+    va_start(args, type);
+    result = MUI_AllocAslRequest(type, (struct TagItem *)args);
+    va_end(args);
+    return result;
+}

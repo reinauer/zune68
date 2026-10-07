@@ -33,7 +33,7 @@ struct Scrollbutton_DATA
 
 IPTR Scrollbutton__OM_NEW(struct IClass *cl, Object *o, struct opSet *msg)
 {
-    return DoSuperNewTags(cl, o, NULL,
+    return (IPTR)DoSuperNewTags(cl, o, NULL,
         ButtonFrame,
         MUIA_InputMode, MUIV_InputMode_RelVerify,
         MUIA_Background, MUII_ButtonBack,

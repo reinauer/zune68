@@ -18,7 +18,7 @@
         AROS_LH2(Object *, MUI_NewObjectA,
 
 /*  SYNOPSIS */
-        AROS_LHA(ClassID, classid,     A0),
+        AROS_LHA(CONST_STRPTR, classid,     A0),
         AROS_LHA(struct TagItem *, tags, A1),
 
 /*  LOCATION */

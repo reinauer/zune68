@@ -15,8 +15,8 @@
  Currently it merges some files but later version might do more
  things
 **************************************************************************/
-
-static char linebuf[2048];
+/* Shared across recursion; an include finishes using it before recursing. */
+static char linebuf[8192];
 
 /* array of already included files */
 char **included;
@@ -24,8 +24,7 @@ int included_num;
 
 static int need_to_be_included(char *filename)
 {
-    int i;
-    for (i = 0; i < included_num; i++)
+    for (int i = 0; i < included_num; i++)
     {
         if (!strcmp(included[i], filename))
             return 0;
@@ -35,8 +34,22 @@ static int need_to_be_included(char *filename)
 
 static void readfile(FILE *in)
 {
-    while (fgets(linebuf, 2048, in))
+    while (fgets(linebuf, sizeof(linebuf), in))
     {
+        size_t len = strlen(linebuf);
+
+        /* A private macro may span several physical lines. Drop all of it
+           so a trailing backslash cannot swallow the next public macro. */
+        while (len >= 2 && linebuf[len - 2] == '\\')
+        {
+            if (len + 1 >= sizeof(linebuf) ||
+                !fgets(linebuf + len, sizeof(linebuf) - len, in))
+            {
+                fprintf(stderr, "buildincludes: incomplete logical line\n");
+                exit(20);
+            }
+            len = strlen(linebuf);
+        }
         if (!strstr(linebuf, "PRIV"))
         {
             if (strchr(linebuf, '#') && strstr(linebuf, "include"))
@@ -78,7 +91,6 @@ static void readfile(FILE *in)
 
 int main(void)
 {
-    int i;
 
     /* Open the mui.h file */
     FILE *in = fopen("mui.h", "r");

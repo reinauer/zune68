@@ -50,8 +50,7 @@ Notify.mui/MUIM_SetUData                  done
 Notify.mui/MUIM_SetUDataOnce              done
 */
 
-static const int __version = 1;
-static const int __revision = 1;
+#include "native_version.h"
 
 /*  static void */
 /*  debuglist(struct List *list) */
@@ -157,11 +156,11 @@ IPTR Family__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_Version:
-        *store = __version;
+        *store = ZUNE68_BUILTIN_VERSION;
         return TRUE;
 
     case MUIA_Revision:
-        *store = __revision;
+        *store = ZUNE68_BUILTIN_REVISION;
         return TRUE;
 
     case MUIA_Family_ChildCount:

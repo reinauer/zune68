@@ -92,13 +92,14 @@ static void RoundedFunc(struct Hook *hook, Object *obj,
                         struct RoundedFuncMsg *msg)
 {
     struct Frameadjust_DATA *data = msg->data;
-    BOOL use_rounded;
+    IPTR use_rounded;
     ULONG radius, width;
     char fs[16];
 
-    get(data->rounded_check, MUIA_Selected, &use_rounded);
-    get(data->radius_slider, MUIA_Numeric_Value, &radius);
-    get(data->width_slider, MUIA_Numeric_Value, &width);
+    if (!get(data->rounded_check, MUIA_Selected, &use_rounded)
+        || !get(data->radius_slider, MUIA_Numeric_Value, &radius)
+        || !get(data->width_slider, MUIA_Numeric_Value, &width))
+        return;
 
     if (use_rounded) {
         /* Set frame type to FST_ROUNDED and update radius/width */

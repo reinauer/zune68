@@ -1,0 +1,16 @@
+##base _MUIScreenBase
+##bias 30
+*
+*
+##public
+MUIS_AllocPubScreenDesc(src)(a0)
+MUIS_FreePubScreenDesc(psd)(a0)
+MUIS_OpenPubScreen(desc)(a0)
+MUIS_ClosePubScreen(name)(a0)
+MUIS_OpenPubFile(name,mode)(a0,d0)
+MUIS_ClosePubFile(pf)(a0)
+MUIS_ReadPubFile(pf)(a0)
+MUIS_WritePubFile(pf,desc)(a0,a1)
+MUIS_AddInfoClient(sic)(a0)
+MUIS_RemInfoClient(sic)(a0)
+##end

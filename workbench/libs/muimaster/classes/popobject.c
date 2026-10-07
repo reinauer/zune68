@@ -178,7 +178,7 @@ AROS_UFH3(ULONG, Popobject_Open_Function,
         };
 
         data->wnd = WindowObject,
-            WindowContents, data->object,
+            WindowContents, (IPTR)data->object,
             data->light ? TAG_MORE : TAG_IGNORE, (IPTR) light_tags, End;
 
         if (!data->wnd)

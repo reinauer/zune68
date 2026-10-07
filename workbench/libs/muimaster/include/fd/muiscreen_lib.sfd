@@ -1,0 +1,21 @@
+==id $VER: muiscreen_lib.sfd 1.1
+* "muiscreen.library"
+==base _MUIScreenBase
+==basetype struct Library *
+==libname muiscreen.library
+==include <exec/types.h>
+==include <libraries/mui.h>
+==include <libraries/muiscreen.h>
+==bias 30
+==public
+struct MUI_PubScreenDesc * MUIS_AllocPubScreenDesc(struct MUI_PubScreenDesc * src) (a0)
+BOOL MUIS_FreePubScreenDesc(struct MUI_PubScreenDesc * psd) (a0)
+STRPTR MUIS_OpenPubScreen(struct MUI_PubScreenDesc * desc) (a0)
+BOOL MUIS_ClosePubScreen(STRPTR name) (a0)
+APTR MUIS_OpenPubFile(STRPTR name, ULONG mode) (a0, d0)
+VOID MUIS_ClosePubFile(APTR pf) (a0)
+struct MUI_PubScreenDesc * MUIS_ReadPubFile(APTR pf) (a0)
+BOOL MUIS_WritePubFile(APTR pf, struct MUI_PubScreenDesc * desc) (a0, a1)
+VOID MUIS_AddInfoClient(struct MUIS_InfoClient * sic) (a0)
+VOID MUIS_RemInfoClient(struct MUIS_InfoClient * sic) (a0)
+==end

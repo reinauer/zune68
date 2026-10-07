@@ -2310,8 +2310,6 @@ static void area_update_msizes(Object *obj, struct MUI_AreaData *data,
     /*        zframe->ileft, zframe->itop)); */
     /*      } */
 
-    struct dt_frame_image *fi = zframe->customframe;
-
     data->mad_addleft = data->mad_InnerLeft + zframe->ileft;
     data->mad_subwidth =
         data->mad_addleft + data->mad_InnerRight + zframe->iright;
@@ -2391,6 +2389,7 @@ static IPTR Area__MUIM_QueryFrameCharacteristics(
     msg->characteristics->border_width = frame->border_width;
     msg->characteristics->border_radius = frame->border_radius;
     msg->characteristics->has_rounded_corners = frame->border_radius > 0;
+    return TRUE;
 }
 
 static IPTR Area__MUIM_CreateFrameClippingRegion(

@@ -36,7 +36,6 @@ static IPTR ListDisplayFunc(struct Hook *hook, char **array, char *entry)
 **************************************************************************/
 IPTR Settings__OM_NEW(struct IClass * cl, Object * obj, struct opSet * msg)
 {
-    struct MUI_Settings *data;
     struct TagItem *tag, *tags;
     Object *listobj;
     static const struct Hook list_display_hook =
@@ -45,35 +44,33 @@ IPTR Settings__OM_NEW(struct IClass * cl, Object * obj, struct opSet * msg)
     };
 
     obj = (Object *)DoSuperNewTags(cl, obj, NULL,
-        Child, HGroup,
-            Child, VGroup,
-                Child, ListviewObject,
-                    MUIA_Listview_List, listobj = ListObject,
+        Child, (IPTR)HGroup,
+            Child, (IPTR)VGroup,
+                Child, (IPTR)ListviewObject,
+                    MUIA_Listview_List, (IPTR)(listobj = ListObject,
                         InputListFrame,
                         MUIA_List_AdjustWidth, TRUE,
-                        MUIA_List_Format, "DELTA=2,DELTA=5,",
-                        MUIA_List_DisplayHook, &list_display_hook,
-                        End, /* ListObject */
+                        MUIA_List_Format, (IPTR)"DELTA=2,DELTA=5,",
+                        MUIA_List_DisplayHook, (IPTR)&list_display_hook,
+                        End), /* ListObject */
                     End, /* ListviewObject */
-                Child, HGroup,
-                    Child, MUI_NewObject(MUIC_Popimage,
+                Child, (IPTR)HGroup,
+                    Child, (IPTR)MUI_NewObject(MUIC_Popimage,
                         MUIA_FixHeight, 20,
                         MUIA_Imageadjust_Type, MUIV_Imageadjust_Type_All,
                         TAG_DONE), /* Popframe really */
-                    Child, MUI_NewObject(MUIC_Popimage,
+                    Child, (IPTR)MUI_NewObject(MUIC_Popimage,
                         MUIA_FixHeight, 20,
                         MUIA_Imageadjust_Type, MUIV_Imageadjust_Type_All,
                         TAG_DONE),
                     End, /* HGroup */
                 End, /* VGroup */
-            Child, MUI_NewObject(MUIC_Settingsgroup,
+            Child, (IPTR)MUI_NewObject(MUIC_Settingsgroup,
                 TAG_DONE),
             End, /* HGroup */
         TAG_MORE, msg->ops_AttrList);
     if (!obj)
         return FALSE;
-
-    data = INST_DATA(cl, obj);
 
     /* parse initial taglist */
 

@@ -5,7 +5,7 @@
 #include <exec/types.h>
 #include <proto/locale.h>
 
-#define CATCOMP_ARRAY
+#define muimaster_ARRAY
 #include "muimaster_strings.h"
 
 #define CATALOG_NAME     "System/Libs/muimaster.catalog"
@@ -21,11 +21,11 @@ CONST_STRPTR _(ULONG id)
 {
     if (LocaleBase != NULL && catalog != NULL)
     {
-        return GetCatalogStr(catalog, id, CatCompArray[id].cca_Str);
+        return GetCatalogStr(catalog, id, muimaster_Array[id].cca_Str);
     }
     else
     {
-        return CatCompArray[id].cca_Str;
+        return muimaster_Array[id].cca_Str;
     }
 }
 
@@ -50,7 +50,3 @@ VOID Locale_Deinitialize(VOID)
 {
     if(LocaleBase != NULL && catalog != NULL) CloseCatalog(catalog);
 }
-
-
-ADD2INIT(Locale_Initialize,   90);
-ADD2EXIT(Locale_Deinitialize, 90);
