@@ -5,7 +5,10 @@
 
 #include <proto/intuition.h>
 #include <proto/utility.h>
-#include <proto/alib.h>
+#include <clib/alib_protos.h>
+#ifndef AROS_BE2LONG
+#define AROS_BE2LONG(value) (value)
+#endif
 
 #include "Rawimage_mcc.h"
 
@@ -80,8 +83,7 @@ static BOOL setRawimage(struct IClass *cl, Object *obj, struct MUI_RawimageData 
 
 IPTR Rawimage__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
-    if((obj = (Object *)DoSuperNewTags(cl, obj, NULL,
-        TAG_MORE, msg->ops_AttrList)) != NULL)
+    if((obj = (Object *)DoSuperMethodA(cl, obj, (Msg)msg)) != NULL)
     {
         struct MUI_RawimageData *rdata;
 

@@ -23,6 +23,8 @@ PLUGINS = {
     'texteditor/mcc': 'TextEditor.mcc',
     'texteditor/mcp': 'TextEditor.mcp',
 }
+IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui')
+CLASS_FILES = (*PLUGINS.values(), *IMAGE_CLASSES)
 EXAMPLES = ['HelloZune', 'HGroup', 'VGroup', 'VHGroup', 'VHGroup2', 'HVGroup', 'Notify']
 
 
@@ -104,6 +106,10 @@ def sdk(build):
     for family in ['betterstring', 'nlist', 'texteditor']:
         for source in (CLASSES / family / 'include/mui').glob('*.h'):
             copy(source, build / 'SDK/include/mui' / source.name)
+    copy(CLASSES / 'rawimage/Rawimage_mcc.h', build / 'SDK/include/mui/Rawimage_mcc.h')
+    copy(CLASSES / 'rawimage/MCC_Rawimage.doc', build / 'Docs/Rawimage/MCC_Rawimage.doc')
+    copy(ROOT / 'vendor/bzip2/LICENSE', build / 'Docs/bzip2/LICENSE')
+    copy(ROOT / 'vendor/bzip2/ORIGIN', build / 'Docs/bzip2/ORIGIN')
     for family in ['betterstring', 'nlist', 'texteditor']:
         for name in ['COPYING', 'AUTHORS', 'ChangeLog']:
             source = CLASSES / family / name

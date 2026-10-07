@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from components import PLUGINS, EXAMPLES, LANGUAGES, catalog_paths
+from components import CLASS_FILES, EXAMPLES, LANGUAGES, catalog_paths
 
 LIBRARIES = ('zunemaster.library', 'muimaster.library')
 
@@ -30,7 +30,7 @@ def library_version(path):
 
 def component_files(build_dir):
     files = ['Prefs/Zune', 'Prefs/Zune.info']
-    files += ['Libs/MUI/' + name for name in PLUGINS.values()]
+    files += ['Libs/MUI/' + name for name in CLASS_FILES]
     files += ['Examples/' + name for name in EXAMPLES]
     files += catalog_paths(build_dir)
     for directory in ['SDK', 'Docs']:
@@ -42,7 +42,7 @@ def component_files(build_dir):
     for name in files:
         if not (build_dir / name).is_file():
             raise ValueError(f'{build_dir}: missing {name}')
-    for name in ['Prefs/Zune', *['Libs/MUI/' + n for n in PLUGINS.values()]]:
+    for name in ['Prefs/Zune', *['Libs/MUI/' + n for n in CLASS_FILES]]:
         library_version(build_dir / name)
     return files
 
@@ -60,7 +60,7 @@ def install_script(files):
                              f'    (abort "Cannot read the bundled version of {name}."))')
     lines = ['(P_InstallFile "Prefs/Zune" "SYS:Prefs"',
              '    "Zune68 preferences editor, opened by application settings menus." "")']
-    for name in PLUGINS.values():
+    for name in CLASS_FILES:
         lines.append(f'(P_InstallFile "Libs/MUI/{name}" "LIBS:MUI" '
                      f'"Optional, demand-loaded MUI custom class." "{name}")')
     lines += ['(if (askbool (prompt "Install the bundled translations to LOCALE:Catalogs?\\nExisting catalogs are backed up once as .old.")',
@@ -156,7 +156,7 @@ def release(build_dir, output_dir, lha, full=True, strip='m68k-amigaos-strip'):
             ignore = shutil.ignore_patterns('*.o', '*.a', '*.map', '*.gst',
                                            '__pycache__', '.git', '*.rej', '.obj*', 'bin_*', '*.library',
                                            '*.lib', '*.lnk', 'opentest', 'buildincludes')
-            for directory in ['workbench', 'compiler', 'developer']:
+            for directory in ['workbench', 'compiler', 'developer', 'vendor']:
                 shutil.copytree(ROOT / directory, source / directory, ignore=ignore)
             shutil.copytree(ROOT / 'tools', source / 'tools', ignore=ignore)
             shutil.copytree(ROOT / 'tests', source / 'tests', ignore=ignore)

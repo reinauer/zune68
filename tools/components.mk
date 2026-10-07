@@ -11,7 +11,12 @@ EXAMPLES := $(addprefix $(BUILD)/Examples/,$(EXAMPLE_NAMES))
 all: prefs plugins catalogs sdk examples
 prefs: $(GENERATED)
 	$(MAKE) -C ../../prefs/Zune -f GNUmakefile BUILD=$(COMPONENT_BUILD)
-plugins: $(PLUGIN_TARGETS)
+plugins: $(PLUGIN_TARGETS) imageclasses
+.PHONY: imageclasses
+imageclasses: $(GENERATED)
+	$(MAKE) -C $(ROOT)/tools/imageclass BUILD=$(COMPONENT_BUILD) \
+	  CFLAGS='$(CFLAGS)'
+
 $(PLUGIN_TARGETS):
 	$(MAKE) -C $(ROOT)/workbench/classes/zune/$(patsubst plugin-%,%,$@) \
 	  -f $(ROOT)/tools/plugin.mk BUILD=$(COMPONENT_BUILD) \
@@ -26,6 +31,9 @@ check: check-components
 .PHONY: check-components
 check-components: prefs plugins catalogs sdk examples
 	$(PYTHON) $(ROOT)/tests/check_components.py $(COMPONENT_BUILD)
+	$(PYTHON) $(ROOT)/tests/check_bzip2.py
+	$(PYTHON) $(ROOT)/tests/check_pixmap.py $(COMPONENT_BUILD)/Libs/MUI/Pixmap.mui
+	$(PYTHON) $(ROOT)/tests/check_pixmap_render.py $(COMPONENT_BUILD)/Libs/MUI/Pixmap.mui
 examples: $(EXAMPLES)
 $(BUILD)/Examples/%: tutorial/examples/%.c tutorial/examples/muizunesupport.h $(GENERATED)
 	@mkdir -p $(@D)

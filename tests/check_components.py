@@ -12,7 +12,7 @@ from amitools.vamos.machine.machine import Machine
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from components import PLUGINS, EXAMPLES, catalog_paths
+from components import CLASS_FILES, EXAMPLES, catalog_paths
 from check_opentest_stack import check as check_stack
 
 BASE, STACK = 0x10000, 0xf0000
@@ -106,7 +106,7 @@ def plugin(path):
 
 
 def check(build):
-    for name in PLUGINS.values():
+    for name in CLASS_FILES:
         plugin(build / 'Libs/MUI' / name)
     check_stack(build / 'Prefs/Zune')
     for name in EXAMPLES:
@@ -115,7 +115,7 @@ def check(build):
         data = (build / name).read_bytes()
         assert data[:4] == b'FORM' and data[8:12] == b'CTLG', name
         assert struct.unpack_from('>I', data, 4)[0] + 8 == len(data), name
-    print(f'Components: {len(PLUGINS)} MCC/MCP headers, CLI/query ABI and runtime helpers; '
+    print(f'Components: {len(CLASS_FILES)} MCC/MCP headers, CLI/query ABI and runtime helpers; '
           f'Prefs and {len(EXAMPLES)} example stacks; {len(catalog_paths(build))} catalogs OK')
 
 

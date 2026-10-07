@@ -21,7 +21,9 @@ struct Pixmap_DATA
     ULONG compressedSize;
     ULONG screenDepth;
     APTR uncompressedData;
-    APTR ditheredData;
+    BOOL ownsData;
+    BOOL setup;
+    struct ColorMap *colorMap;
     APTR ditheredMask;
     LONG ditheredPenMap[256];
     struct BitMap *ditheredBitmap;

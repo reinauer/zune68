@@ -9,11 +9,13 @@
 #include <proto/graphics.h>
 #include <proto/cybergraphics.h>
 #include <proto/utility.h>
-#include <proto/alib.h>
+#include <clib/alib_protos.h>
 
 #include <libraries/mui.h>
 #include <cybergraphx/cybergraphics.h>
 
+#include <exec/memory.h>
+#include <graphics/gfxmacros.h>
 #include <strings.h>
 #include <string.h>
 #include <bzlib.h>
@@ -30,23 +32,6 @@
 #ifndef MIN
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #endif
-
-// workaround for missing Zune functionality
-static BOOL _isfloating(Object *obj)
-{
-    return FALSE;
-}
-
-static BOOL _isdisabled(Object *obj)
-{
-    return FALSE;
-}
-
-static void MUIP_DrawDisablePattern(struct MUI_RenderInfo *mri, LONG left,
-    LONG top, LONG width, LONG height)
-{
-}
-
 
 // libbz2_nostdio needs this
 void free(void *memory)
@@ -144,6 +129,7 @@ IPTR Pixmap__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         struct Pixmap_DATA *data = INST_DATA(cl, obj);
 
+        memset(data->ditheredPenMap, 0xff, sizeof(data->ditheredPenMap));
         data->format = MUIV_Pixmap_Format_ARGB32;
         data->alpha = 0xffffffffUL;
         data->compression = MUIV_Pixmap_Compression_None;
@@ -193,17 +179,16 @@ IPTR Pixmap__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 static void FreeImage(struct IClass *cl, Object *obj)
 {
     struct Pixmap_DATA *data = INST_DATA(cl, obj);
-
-    if (data->uncompressedData != NULL
-        && data->uncompressedData != data->data)
-    {
-        FreeVec(data->uncompressedData);
-        data->uncompressedData = NULL;
-    }
+    if (data->ownsData) FreeVec(data->uncompressedData);
+    data->uncompressedData = NULL;
+    data->ownsData = FALSE;
 }
+
+static void FreeRendered(struct Pixmap_DATA *data);
 
 IPTR Pixmap__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
+    FreeRendered(INST_DATA(cl, obj));
     FreeImage(cl, obj);
     return DoSuperMethodA(cl, obj, msg);
 }
@@ -211,417 +196,225 @@ IPTR Pixmap__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 
 #define RAWIDTH(w) ((((UWORD)(w))+15)>>3 & 0xFFFE)
 
-static void DitherImage(struct IClass *cl, Object *obj)
+static void FreeRendered(struct Pixmap_DATA *data)
 {
-    struct Pixmap_DATA *data = INST_DATA(cl, obj);
-
-    if ((data->ditheredData =
-            AllocVec(data->width * data->height, MEMF_SHARED)) != NULL)
+    ULONG i;
+    if (data->ditheredBitmap) { WaitBlit(); FreeBitMap(data->ditheredBitmap); }
+    if (data->ditheredMask) FreeVec(data->ditheredMask);
+    data->ditheredBitmap = NULL;
+    data->ditheredMask = NULL;
+    for (i = 0; i < 256; i++)
     {
-        UBYTE *mask = NULL;
-        UBYTE *mPtr = NULL;
-        LONG y;
-        UBYTE *dataPtr = (UBYTE *) data->uncompressedData;
-        UBYTE *ditheredPtr = (UBYTE *) data->ditheredData;
-        const ULONG *colorMap =
-            (data->clut != NULL) ? data->clut : defaultColorMap;
-
-        // only ARGB raw data contain transparency data, hence we need to
-        // allocate a mask plane only for these
-        if (data->format == MUIV_Pixmap_Format_ARGB32)
-        {
-            mask =
-                AllocVec(RAWIDTH(data->width) * data->height,
-                MEMF_SHARED | MEMF_CLEAR | MEMF_CHIP);
-            data->ditheredMask = mask;
-            mPtr = mask;
-        }
-        else
-        {
-            data->ditheredMask = NULL;
-        }
-
-        for (y = 0; y < data->height; y++)
-        {
-            LONG x;
-            UBYTE bitMask = 0x80;
-
-            for (x = 0; x < data->width; x++)
-            {
-                UBYTE a, r, g, b;
-                ULONG i;
-                ULONG bestIndex;
-                ULONG bestError;
-
-                // obtain the pixel's A, R, G and B values from the raw data
-                switch (data->format)
-                {
-                case MUIV_Pixmap_Format_CLUT8:
-                    a = (colorMap[dataPtr[0]] >> 24) & 0xff;
-                    r = (colorMap[dataPtr[0]] >> 16) & 0xff;
-                    g = (colorMap[dataPtr[0]] >> 8) & 0xff;
-                    b = (colorMap[dataPtr[0]] >> 0) & 0xff;
-                    dataPtr += 1;
-                    break;
-
-                case MUIV_Pixmap_Format_RGB24:
-                    a = 0xff;
-                    r = dataPtr[0];
-                    g = dataPtr[1];
-                    b = dataPtr[2];
-                    dataPtr += 3;
-                    break;
-
-                case MUIV_Pixmap_Format_ARGB32:
-                    a = dataPtr[0];
-                    r = dataPtr[1];
-                    g = dataPtr[2];
-                    b = dataPtr[3];
-                    dataPtr += 4;
-                    break;
-
-                default:
-                    a = 0x00;
-                    r = 0x00;
-                    g = 0x00;
-                    b = 0x00;
-                    break;
-                }
-
-                // now calculate the best matching color from the given
-                // color map
-                bestIndex = 0;
-                bestError = 0xffffffffUL;
-
-                for (i = 0; i < 256; i++)
-                {
-                    LONG dr, dg, db;
-                    ULONG error;
-
-                    // calculate the geometric difference to the current color
-                    dr = (LONG) ((colorMap[i] >> 16) & 0xff) - (LONG) r;
-                    dg = (LONG) ((colorMap[i] >> 8) & 0xff) - (LONG) g;
-                    db = (LONG) ((colorMap[i] >> 0) & 0xff) - (LONG) b;
-                    error = dr * dr + dg * dg + db * db;
-
-                    if (bestError > error)
-                    {
-                        // remember this as the best matching color so far
-                        bestError = error;
-                        bestIndex = i;
-
-                        // bail out if we found an exact match
-                        if (error == 0x00000000)
-                            break;
-                    }
-                }
-
-                // put the calculated color number into the destination LUT8
-                // image using the additional pen map
-                *ditheredPtr++ = data->ditheredPenMap[bestIndex];
-
-                if (mPtr != NULL)
-                {
-                    // if we have a mask and the alpha value is >= 0x80 the
-                    // pixel is treated as non-transparent
-                    if (a >= 0x80)
-                        mPtr[x / 8] |= bitMask;
-
-                    bitMask >>= 1;
-                    if (bitMask == 0x00)
-                        bitMask = 0x80;
-                }
-            }
-
-            // advance the mask pointer by one line
-            if (mPtr != NULL)
-                mPtr += RAWIDTH(data->width);
-        }
-
-        // CyberGraphics cannot blit raw data through a mask, therefore we
-        // have to take this ugly workaround and take the detour using a
-        // bitmap.
-        if ((data->ditheredBitmap =
-                AllocBitMap(data->width, data->height, 8, BMF_MINPLANES,
-                    NULL)) != NULL)
-        {
-            struct RastPort tempRP;
-
-            InitRastPort(&tempRP);
-            tempRP.BitMap = data->ditheredBitmap;
-
-            WritePixelArray(data->ditheredData, 0, 0, data->width, &tempRP,
-                0, 0, data->width, data->height, RECTFMT_LUT8);
-        }
+        if (data->ditheredPenMap[i] >= 0 && data->colorMap)
+            ReleasePen(data->colorMap, data->ditheredPenMap[i]);
+        data->ditheredPenMap[i] = -1;
     }
+    data->colorMap = NULL;
 }
 
+static BOOL DitherImage(struct IClass *cl, Object *obj)
+{
+    struct Pixmap_DATA *data = INST_DATA(cl, obj);
+    const ULONG *colors = data->clut ? data->clut : defaultColorMap;
+    static const UBYTE coverage[16] = {0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5};
+    const UBYTE *source = data->uncompressedData;
+    struct RastPort rp;
+    LONG x, y;
+    ULONG stride = RAWIDTH(data->width);
+    struct TagItem tags[] = {{OBP_Precision, PRECISION_IMAGE}, {TAG_DONE, 0}};
+
+    data->colorMap = _screen(obj)->ViewPort.ColorMap;
+    data->ditheredBitmap = AllocBitMap(data->width, data->height,
+        data->screenDepth, BMF_CLEAR, NULL);
+    if (!data->ditheredBitmap) goto failed;
+    if (data->format == MUIV_Pixmap_Format_ARGB32 || data->alpha != 0xffffffffUL)
+    {
+        data->ditheredMask = AllocVec(stride * data->height,
+            MEMF_CHIP | MEMF_CLEAR);
+        if (!data->ditheredMask) goto failed;
+    }
+    InitRastPort(&rp);
+    rp.BitMap = data->ditheredBitmap;
+    for (y = 0; y < data->height; y++)
+    {
+        UBYTE *mask = data->ditheredMask ?
+            (UBYTE *)data->ditheredMask + y * stride : NULL;
+        for (x = 0; x < data->width; x++)
+        {
+            ULONG index, rgb, alpha = 255;
+            if (data->format == MUIV_Pixmap_Format_CLUT8)
+            {
+                index = *source++;
+                rgb = colors[index];
+            }
+            else
+            {
+                ULONG red, green, blue;
+                if (data->format == MUIV_Pixmap_Format_ARGB32) alpha = *source++;
+                red = *source++; green = *source++; blue = *source++;
+                if (data->clut)
+                {
+                    ULONG i, best = ~0UL;
+                    index = 0;
+                    for (i = 0; i < 256; i++)
+                    {
+                        LONG dr = (LONG)((colors[i] >> 16) & 255) - red;
+                        LONG dg = (LONG)((colors[i] >> 8) & 255) - green;
+                        LONG db = (LONG)(colors[i] & 255) - blue;
+                        ULONG error = dr * dr + dg * dg + db * db;
+                        if (error < best) { best = error; index = i; }
+                        if (!error) break;
+                    }
+                }
+                else
+                    index = ((red * 7 + 127) / 255 << 5) |
+                            ((green * 7 + 127) / 255 << 2) |
+                            ((blue * 3 + 127) / 255);
+                rgb = colors[index];
+            }
+            alpha = (alpha * (data->alpha >> 24) + 127) / 255;
+            if (mask)
+            {
+                if (alpha <= coverage[(y & 3) * 4 + (x & 3)] * 16 + 7)
+                    continue;
+                mask[x >> 3] |= 0x80 >> (x & 7);
+            }
+            if (data->ditheredPenMap[index] < 0)
+            {
+                data->ditheredPenMap[index] = ObtainBestPenA(data->colorMap,
+                    ((rgb >> 16) & 255) * 0x01010101UL,
+                    ((rgb >> 8) & 255) * 0x01010101UL,
+                    (rgb & 255) * 0x01010101UL, tags);
+                if (data->ditheredPenMap[index] < 0) goto failed;
+            }
+            SetAPen(&rp, data->ditheredPenMap[index]);
+            WritePixel(&rp, x, y);
+        }
+    }
+    return TRUE;
+failed:
+    FreeRendered(data);
+    return FALSE;
+}
 
 static BOOL DecompressRLE(struct IClass *cl, Object *obj,
     ULONG uncompressedSize)
 {
     struct Pixmap_DATA *data = INST_DATA(cl, obj);
-    BOOL success = FALSE;
-
-    if ((data->uncompressedData =
-            AllocVec(uncompressedSize, MEMF_SHARED)) != NULL)
+    const UBYTE *source = data->data;
+    ULONG input = data->compressedSize, output = uncompressedSize;
+    UBYTE *buffer = AllocVec(output, MEMF_SHARED), *dest = buffer;
+    if (!buffer) return FALSE;
+    while (input && output)
     {
-        LONG rleLen = (LONG) data->compressedSize;
-        unsigned char *rleData = (unsigned char *)data->data;
-        unsigned char *dest = (unsigned char *)data->uncompressedData;
-
-        while (rleLen != 0)
+        ULONG count;
+        UBYTE control = *source++;
+        input--;
+        count = (control & 0x80) ? (control & 0x7f) + 2 : control + 1;
+        if (count > output) break;
+        if (control & 0x80)
         {
-            unsigned char c;
-
-            c = *rleData++;
-            rleLen--;
-
-            if (c & 0x80)
-            {
-                LONG n = (c & 0x7f) + 2;
-
-                c = *rleData++;
-                rleLen--;
-
-                memset(dest, c, n);
-                dest += n;
-            }
-            else
-            {
-                c++;
-                memcpy(dest, rleData, c);
-                rleLen -= c;
-                rleData += c;
-                dest += c;
-            }
+            if (!input) break;
+            memset(dest, *source++, count);
+            input--;
         }
-
-        success = TRUE;
+        else
+        {
+            if (count > input) break;
+            memcpy(dest, source, count);
+            source += count;
+            input -= count;
+        }
+        dest += count;
+        output -= count;
     }
-
-    return success;
+    if (input || output) { FreeVec(buffer); return FALSE; }
+    data->uncompressedData = buffer;
+    data->ownsData = TRUE;
+    return TRUE;
 }
-
 
 static BOOL DecompressBZip2(struct IClass *cl, Object *obj,
     ULONG uncompressedSize)
 {
-    BOOL success = FALSE;
-
+    struct Pixmap_DATA *data = INST_DATA(cl, obj);
+    APTR buffer = AllocVec(uncompressedSize, MEMF_SHARED);
+    bz_stream stream;
+    int result;
+    if (!buffer) return FALSE;
+    memset(&stream, 0, sizeof(stream));
+    #ifdef ZUNE68_GCC_NATIVE
+    result = BZ2_bzDecompressInitBounded(&stream, 0, 1, uncompressedSize);
+#else
+    result = BZ2_bzDecompressInit(&stream, 0, 1);
+#endif
+    if (result == BZ_OK)
     {
-        APTR uncompressedData;
-
-        if ((uncompressedData =
-                AllocVec(uncompressedSize, MEMF_SHARED)) != NULL)
-        {
-            bz_stream bzip2_stream;
-
-            memset(&bzip2_stream, 0, sizeof(bzip2_stream));
-            if (BZ2_bzDecompressInit(&bzip2_stream, 0, 1) == BZ_OK)
-            {
-                struct Pixmap_DATA *data = INST_DATA(cl, obj);
-                int err;
-
-                bzip2_stream.next_in = data->data;
-                bzip2_stream.avail_in = data->compressedSize;
-                bzip2_stream.next_out = uncompressedData;
-                bzip2_stream.avail_out = uncompressedSize;
-
-                err = BZ2_bzDecompress(&bzip2_stream);
-                if ((err != BZ_OK && err != BZ_STREAM_END)
-                    || bzip2_stream.total_out_lo32 != uncompressedSize)
-                {
-                    FreeVec(uncompressedData);
-                    uncompressedData = NULL;
-                }
-                else
-                {
-                    data->uncompressedData = uncompressedData;
-                    success = TRUE;
-                }
-
-                BZ2_bzDecompressEnd(&bzip2_stream);
-            }
-        }
+        stream.next_in = data->data;
+        stream.avail_in = data->compressedSize;
+        stream.next_out = buffer;
+        stream.avail_out = uncompressedSize;
+        result = BZ2_bzDecompress(&stream);
+        if (result != BZ_STREAM_END || stream.avail_out || stream.avail_in)
+            result = BZ_DATA_ERROR;
+        BZ2_bzDecompressEnd(&stream);
     }
-
-    return success;
+    if (result != BZ_STREAM_END) { FreeVec(buffer); return FALSE; }
+    data->uncompressedData = buffer;
+    data->ownsData = TRUE;
+    return TRUE;
 }
-
 
 static BOOL DecompressImage(struct IClass *cl, Object *obj)
 {
     struct Pixmap_DATA *data = INST_DATA(cl, obj);
-    BOOL success = FALSE;
-
-    if (data->uncompressedData != NULL)
+    ULONG bytes, size;
+    if (data->uncompressedData) return TRUE;
+    if (!data->data || data->width <= 0 || data->height <= 0 ||
+        data->width > 32767 || data->height > 32767) return FALSE;
+    switch (data->format)
     {
-        // the image has been uncompressed before, return immediate success
-        success = TRUE;
+    case MUIV_Pixmap_Format_CLUT8: bytes = 1; break;
+    case MUIV_Pixmap_Format_RGB24: bytes = 3; break;
+    case MUIV_Pixmap_Format_ARGB32: bytes = 4; break;
+    default: return FALSE;
     }
-    else if (data->compression != MUIV_Pixmap_Compression_None
-        && data->data != NULL && data->compressedSize != 0)
+    size = (ULONG)data->width * data->height;
+    if (size > 0x7fffffffUL / bytes) return FALSE;
+    size *= bytes;
+    if (data->compression == MUIV_Pixmap_Compression_None)
     {
-        ULONG uncompressedSize;
-
-        switch (data->format)
-        {
-        case MUIV_Pixmap_Format_CLUT8:
-            uncompressedSize = data->width * data->height;
-            break;
-
-        case MUIV_Pixmap_Format_RGB24:
-            uncompressedSize = data->width * data->height * 3;
-            break;
-
-        case MUIV_Pixmap_Format_ARGB32:
-            uncompressedSize = data->width * data->height * 4;
-            break;
-
-        default:
-            uncompressedSize = 0;
-            break;
-        }
-
-        // uncompress the image data
-        switch (data->compression)
-        {
-        case MUIV_Pixmap_Compression_RLE:
-            {
-                success = DecompressRLE(cl, obj, uncompressedSize);
-            }
-            break;
-
-        case MUIV_Pixmap_Compression_BZip2:
-            {
-                success = DecompressBZip2(cl, obj, uncompressedSize);
-            }
-            break;
-
-        default:
-            {
-                success = FALSE;
-            }
-            break;
-        }
-    }
-    else if (data->data != NULL)
-    {
-        // nothing to do, return success
         data->uncompressedData = data->data;
-        success = TRUE;
+        return TRUE;
     }
-
-    return success;
+    if (!data->compressedSize) return FALSE;
+    switch (data->compression)
+    {
+    case MUIV_Pixmap_Compression_RLE: return DecompressRLE(cl, obj, size);
+    case MUIV_Pixmap_Compression_BZip2: return DecompressBZip2(cl, obj, size);
+    default: return FALSE;
+    }
 }
 
-
-IPTR Pixmap__MUIM_Setup(struct IClass *cl, Object *obj,
-    struct MUIP_Setup *msg)
+IPTR Pixmap__MUIM_Setup(struct IClass *cl, Object *obj, struct MUIP_Setup *msg)
 {
     struct Pixmap_DATA *data = INST_DATA(cl, obj);
-
-    // just try to decompress the image, but don't fail
-    DecompressImage(cl, obj);
-
-    if (!DoSuperMethodA(cl, obj, (Msg) msg))
-        return FALSE;
-
-    // in case we are to be displayed on a colormapped screen we have to create
-    // dithered copies of the images
-    if (data->uncompressedData != NULL
-        && (data->screenDepth =
-            GetBitMapAttr(_screen(obj)->RastPort.BitMap, BMA_DEPTH)) <= 8)
-    {
-        ULONG i;
-        const ULONG *colorMap;
-        struct TagItem obpTags[] = {
-            {OBP_Precision, PRECISION_IMAGE},
-            {TAG_DONE, 0}
-        };
-
-        // use a user definable colormap or the default color map
-        if (data->clut != NULL)
-            colorMap = data->clut;
-        else
-            colorMap = defaultColorMap;
-
-        // allocate all pens
-        for (i = 0; i < 256; i++)
-            data->ditheredPenMap[i] =
-                ObtainBestPenA(_screen(obj)->ViewPort.ColorMap,
-                ((colorMap[i] >> 16) & 0xff) * 0x01010101UL,
-                ((colorMap[i] >> 8) & 0xff) * 0x01010101UL,
-                ((colorMap[i] >> 0) & 0xff) * 0x01010101UL, obpTags);
-
-        // create a dithered copy of the raw image
+    if (!DoSuperMethodA(cl, obj, (Msg)msg)) return FALSE;
+    data->setup = TRUE;
+    data->screenDepth = GetBitMapAttr(_screen(obj)->RastPort.BitMap, BMA_DEPTH);
+    if (DecompressImage(cl, obj) && data->screenDepth <= 8)
         DitherImage(cl, obj);
-    }
-    else
-    {
-        data->ditheredData = NULL;
-    }
-
-    if (!_isfloating(obj))
-    {
-        // if there is a chance that anything of the parent's imagery may
-        // be visible below ourselves then we must make sure that our
-        // background is drawn accordingly before we draw ourselves.
-        // The background is visible if we either:
-        // - have an own alphachannel
-        // - are drawn with an additional transparency
-        // - have a transparent mask
-        if (data->format == MUIV_Pixmap_Format_ARGB32
-            || data->alpha != 0xffffffffUL || data->ditheredMask != NULL)
-            SetSuperAttrs(cl, obj, MUIA_DoubleBuffer, TRUE, MUIA_FillArea,
-                TRUE, TAG_DONE);
-        else
-            SetSuperAttrs(cl, obj, MUIA_DoubleBuffer, FALSE, MUIA_FillArea,
-                FALSE, TAG_DONE);
-    }
-
+    SetSuperAttrs(cl, obj, MUIA_FillArea, TRUE, TAG_DONE);
     return TRUE;
 }
-
 
 IPTR Pixmap__MUIM_Cleanup(struct IClass *cl, Object *obj, Msg msg)
 {
     struct Pixmap_DATA *data = INST_DATA(cl, obj);
-
-    // free the possibly dithered image copy
-    if (data->ditheredData != NULL)
-    {
-        FreeVec(data->ditheredData);
-        data->ditheredData = NULL;
-    }
-    if (data->ditheredMask != NULL)
-    {
-        FreeVec(data->ditheredMask);
-        data->ditheredMask = NULL;
-    }
-    if (data->ditheredBitmap != NULL)
-    {
-        FreeBitMap(data->ditheredBitmap);
-        data->ditheredBitmap = NULL;
-    }
-
-    // release all allocated pens
-    if (data->screenDepth <= 8)
-    {
-        ULONG i;
-
-        for (i = 0; i < 256; i++)
-        {
-            if (data->ditheredPenMap[i] != -1)
-                ReleasePen(_screen(obj)->ViewPort.ColorMap,
-                    data->ditheredPenMap[i]);
-        }
-    }
-
+    FreeRendered(data);
+    data->setup = FALSE;
     return DoSuperMethodA(cl, obj, msg);
 }
-
 
 IPTR Pixmap__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUIP_AskMinMax *msg)
@@ -641,11 +434,96 @@ IPTR Pixmap__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 }
 
 
+#ifdef ZUNE68_GCC_NATIVE
+/* Classic CyberGraphX has no alpha-blending vector and uses 16-bit
+ * strides. Keep source offsets wide and bound temporary storage even
+ * when drawing a small section of a very wide image.
+ */
+static void DrawTrueColor(struct Pixmap_DATA *data, struct RastPort *rp,
+    LONG sx, LONG sy, LONG width, LONG height, LONG dx, LONG dy)
+{
+    const ULONG *colors = data->clut ? data->clut : defaultColorMap;
+    ULONG bytes = data->format == MUIV_Pixmap_Format_CLUT8 ? 1 :
+        data->format == MUIV_Pixmap_Format_RGB24 ? 3 : 4;
+    ULONG stride = (ULONG)data->width * bytes;
+    ULONG globalAlpha = data->alpha >> 24;
+    ULONG x, y, count, i, channel;
+    UBYTE *row;
+    if (!globalAlpha) return;
+    if (globalAlpha == 255 && data->format == MUIV_Pixmap_Format_CLUT8)
+    {
+        WriteLUTPixelArray(data->uncompressedData, sx, sy, stride, rp,
+            (APTR)colors, dx, dy, width, height, CTABFMT_XRGB8);
+        return;
+    }
+    if (globalAlpha == 255 && data->format == MUIV_Pixmap_Format_RGB24)
+    {
+        if (stride <= 65535)
+            WritePixelArray(data->uncompressedData, sx, sy, stride, rp,
+                dx, dy, width, height, RECTFMT_RGB);
+        else
+            for (y = 0; y < height; y++)
+                for (x = 0; x < width; x += count)
+                {
+                    count = MIN((ULONG)width - x, 16383);
+                    WritePixelArray((UBYTE *)data->uncompressedData +
+                        ((ULONG)sy + y) * stride + ((ULONG)sx + x) * 3,
+                        0, 0, count * 3, rp, dx + x, dy + y,
+                        count, 1, RECTFMT_RGB);
+                }
+        return;
+    }
+    row = AllocVec(MIN((ULONG)width, 256) * 4, MEMF_ANY);
+    if (!row) return;
+    for (y = 0; y < height; y++)
+        for (x = 0; x < width; x += count)
+        {
+            const UBYTE *pixel = (UBYTE *)data->uncompressedData +
+                ((ULONG)sy + y) * stride + ((ULONG)sx + x) * bytes;
+            count = MIN((ULONG)width - x, 256);
+            /* Clipped pixels may not be read; keep their scratch bytes
+             * initialized. The matching write uses the same clipping.
+             */
+            memset(row, 0, count * 4);
+            ReadPixelArray(row, 0, 0, count * 4, rp, dx + x, dy + y,
+                count, 1, RECTFMT_ARGB);
+            for (i = 0; i < count; i++, pixel += bytes)
+            {
+                ULONG alpha = globalAlpha;
+                ULONG rgb;
+                if (bytes == 1) rgb = colors[*pixel];
+                else
+                {
+                    const UBYTE *color = pixel + (bytes == 4);
+                    rgb = ((ULONG)color[0] << 16) |
+                          ((ULONG)color[1] << 8) | color[2];
+                    if (bytes == 4)
+                        alpha = (pixel[0] * alpha + 127) / 255;
+                }
+                for (channel = 1; channel < 4; channel++)
+                    row[i * 4 + channel] =
+                        (((rgb >> ((3 - channel) * 8)) & 255) * alpha +
+                         row[i * 4 + channel] * (255 - alpha) + 127) / 255;
+                row[i * 4] = 255;
+            }
+            WritePixelArray(row, 0, 0, count * 4, rp, dx + x, dy + y,
+                count, 1, RECTFMT_ARGB);
+        }
+    FreeVec(row);
+}
+#endif
+
 static void DrawPixmapSection(struct IClass *cl, Object *obj, LONG sx,
     LONG sy, LONG sw, LONG sh, struct MUI_RenderInfo *mri, LONG dx, LONG dy)
 {
     struct Pixmap_DATA *data = INST_DATA(cl, obj);
-    struct RastPort *rp = mri->mri_RastPort;
+    struct RastPort *rp;
+    if (!mri || !mri->mri_RastPort || sx < 0 || sy < 0 ||
+        sx >= data->width || sy >= data->height || sw <= 0 || sh <= 0)
+        return;
+    sw = MIN(sw, data->width - sx);
+    sh = MIN(sh, data->height - sy);
+    rp = mri->mri_RastPort;
 
     if (data->screenDepth <= 8 && data->ditheredBitmap != NULL)
     {
@@ -663,13 +541,17 @@ static void DrawPixmapSection(struct IClass *cl, Object *obj, LONG sx,
                 sh, (ABC | ABNC));
         }
     }
-    else if (data->uncompressedData != NULL)
+    else if (data->screenDepth > 8 && CyberGfxBase && data->uncompressedData != NULL)
     {
+#ifdef ZUNE68_GCC_NATIVE
+        DrawTrueColor(data, rp, sx, sy, sw, sh, dx, dy);
+#else
         switch (data->format)
         {
         case MUIV_Pixmap_Format_CLUT8:
             WriteLUTPixelArray(data->uncompressedData, sx, sy, data->width,
-                rp, data->clut, dx, dy, sw, sh, CTABFMT_XRGB8);
+                rp, data->clut ? data->clut : (APTR)defaultColorMap,
+                dx, dy, sw, sh, CTABFMT_XRGB8);
             break;
 
         case MUIV_Pixmap_Format_RGB24:
@@ -682,6 +564,7 @@ static void DrawPixmapSection(struct IClass *cl, Object *obj, LONG sx,
                 data->width * 4, rp, dx, dy, sw, sh, data->alpha);
             break;
         }
+#endif
     }
     else
     {
@@ -713,9 +596,7 @@ IPTR Pixmap__MUIM_Draw(struct IClass *cl, Object *obj,
                     _mleft(obj), _mtop(obj));
         }
 
-        if (_isdisabled(obj))
-            MUIP_DrawDisablePattern(muiRenderInfo(obj), _left(obj),
-                _top(obj), _width(obj), _height(obj));
+
     }
 
     return 0;
@@ -725,8 +606,8 @@ IPTR Pixmap__MUIM_Draw(struct IClass *cl, Object *obj,
 IPTR Pixmap__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     struct Pixmap_DATA *data = INST_DATA(cl, obj);
-    BOOL decompress = FALSE;
     BOOL refresh = FALSE;
+    BOOL decompress = FALSE;
     struct TagItem *tag, *tags;
 
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
@@ -735,19 +616,22 @@ IPTR Pixmap__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         {
         case MUIA_Pixmap_Data:
             data->data = (APTR) tag->ti_Data;
-            refresh = TRUE;
             decompress = TRUE;
+            refresh = TRUE;
             break;
         case MUIA_Pixmap_Format:
             data->format = tag->ti_Data;
+            decompress = TRUE;
             refresh = TRUE;
             break;
         case MUIA_Pixmap_Width:
             data->width = tag->ti_Data;
+            decompress = TRUE;
             refresh = TRUE;
             break;
         case MUIA_Pixmap_Height:
             data->height = tag->ti_Data;
+            decompress = TRUE;
             refresh = TRUE;
             break;
         case MUIA_Pixmap_CLUT:
@@ -760,27 +644,28 @@ IPTR Pixmap__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
         case MUIA_Pixmap_Compression:
             data->compression = tag->ti_Data;
-            refresh = TRUE;
             decompress = TRUE;
+            refresh = TRUE;
             break;
         case MUIA_Pixmap_CompressedSize:
             data->compressedSize = tag->ti_Data;
-            refresh = TRUE;
             decompress = TRUE;
+            refresh = TRUE;
             break;
         }
     }
 
-    if (decompress == TRUE)
+    if (refresh == TRUE)
     {
         // obtain the new image data
-        FreeImage(cl, obj);
-        if (DecompressImage(cl, obj) == FALSE)
-            return FALSE;
+        FreeRendered(data);
+        if (decompress) FreeImage(cl, obj);
+        if (!DecompressImage(cl, obj)) return FALSE;
     }
 
     if (refresh == TRUE)
     {
+        if (data->setup && data->screenDepth <= 8) DitherImage(cl, obj);
         MUI_Redraw(obj, MADF_DRAWOBJECT);
     }
 
@@ -882,25 +767,25 @@ BOOPSI_DISPATCHER(IPTR, Pixmap_Dispatcher, cl, obj, msg)
     switch (msg->MethodID)
     {
     case OM_NEW:
-        return Pixmap__OM_NEW(cl, obj, (APTR) msg));
+        return Pixmap__OM_NEW(cl, obj, (APTR) msg);
     case OM_DISPOSE:
-        return Pixmap__OM_DISPOSE(cl, obj, (APTR) msg));
+        return Pixmap__OM_DISPOSE(cl, obj, (APTR) msg);
     case OM_SET:
-        return Pixmap__OM_SET(cl, obj, (APTR) msg));
+        return Pixmap__OM_SET(cl, obj, (APTR) msg);
     case OM_GET:
-        return Pixmap__OM_GET(cl, obj, (APTR) msg));
+        return Pixmap__OM_GET(cl, obj, (APTR) msg);
     case MUIM_Draw:
-        return Pixmap__MUIM_Draw(cl, obj, (APTR) msg));
+        return Pixmap__MUIM_Draw(cl, obj, (APTR) msg);
     case MUIM_Setup:
-        return Pixmap__MUIM_Setup(cl, obj, (APTR) msg));
+        return Pixmap__MUIM_Setup(cl, obj, (APTR) msg);
     case MUIM_Cleanup:
-        return Pixmap__MUIM_Cleanup(cl, obj, (APTR) msg));
+        return Pixmap__MUIM_Cleanup(cl, obj, (APTR) msg);
     case MUIM_AskMinMax:
-        return Pixmap__MUIM_AskMinMax(cl, obj, (APTR) msg));
+        return Pixmap__MUIM_AskMinMax(cl, obj, (APTR) msg);
     case MUIM_Layout:
-        return Pixmap__MUIM_Layout(cl, obj, (APTR) msg));
+        return Pixmap__MUIM_Layout(cl, obj, (APTR) msg);
     case MUIM_Pixmap_DrawSection:
-        return Pixmap__MUIM_Pixmap_DrawSection(cl, obj, (APTR) msg));
+        return Pixmap__MUIM_Pixmap_DrawSection(cl, obj, (APTR) msg);
     }
 
     return DoSuperMethodA(cl, obj, (APTR) msg);
@@ -911,7 +796,7 @@ const struct __MUIBuiltinClass _MUI_Pixmap_desc =
 {
     MUIC_Pixmap,
     MUIC_Area,
-    sizeof(struct MUI_Pixmap_DATA),
+    sizeof(struct Pixmap_DATA),
     (void *)Pixmap_Dispatcher
 };
 #endif

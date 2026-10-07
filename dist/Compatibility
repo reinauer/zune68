@@ -5,8 +5,9 @@ Scope
 -----
 The native build targets AmigaOS 3.1+, a 68000 and no FPU. Classic MUI 3.8/3.9
 application behavior is the priority. The bundled classes remain separate
-libraries. AROS-only module ports, muiscreen.library, Rawimage/Pixmap and
-newer MUI features without an identified application need are deferred.
+libraries. Rawimage.mcc and Pixmap.mui provide the image classes used by
+the built-in preferences pages. AROS-only module ports, muiscreen.library
+and newer MUI features without an identified application need are deferred.
 
 Version policy
 --------------
@@ -30,6 +31,7 @@ Implemented areas with isolated linked-code checks
 - Floattext wrapping, dynamic group relayout and explicit cycle ordering
 - Numeric scale intervals, reverse mapping and large-range arithmetic
 - Bitmap remap ownership, image allocation failure paths and nested clips
+- Pixmap raw/RLE/bzip2 decoding, data replacement and failed-allocation cleanup
 
 These checks execute m68k code with modelled OS services. They are not an
 AmigaOS application compatibility matrix or a physical-hardware result.
@@ -44,6 +46,21 @@ and the core CyberGraphX path are not provided. Window refresh follows the confi
 use clip regions outside an update, and managed refresh preserves pending
 damage while changing regions. Broad redraw/text caches need measurements
 and GUI evidence before adoption.
+
+Rawimage.mcc and Pixmap.mui are separate, demand-loaded libraries. Pixmap
+accepts RGB24, ARGB32 and CLUT8 images with raw, RLE or bzip2 storage.
+Planar screens use graphics.library bitmaps, acquire only the pens actually
+used, and approximate fractional alpha with a 4x4 coverage mask. They do
+not require CyberGraphX. Truecolor rendering requires CyberGraphX v41;
+its classic read/write API supplies software alpha blending.
+
+Bzip2 scratch space is bounded by the declared uncompressed image size,
+using the small-memory decoder. A 24x19 ARGB image needs about 70 KiB at
+peak during decoding, rather than a 900 KiB block's full scratch space.
+Decoded data is retained for reuse; bitmap, mask and pen ownership follows
+the screen setup/cleanup lifetime. Borrowed raw image data remains owned
+by the caller. Truecolor rendering and physical hardware need separate
+guest coverage beyond the planar Prefs checks.
 
 Notification list delivery tolerates callbacks removing notifications or
 disposing a plain Notify source. An arbitrary class method may still need
