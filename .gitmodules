@@ -13,3 +13,6 @@
 [submodule "workbench/prefs/Zune/catalogs"]
 	path = workbench/prefs/Zune/catalogs
 	url = https://github.com/aros-translation-team/zune-prefs.git
+[submodule "workbench/classes/zune/thebar"]
+	path = workbench/classes/zune/thebar
+	url = https://github.com/amiga-mui/thebar.git
