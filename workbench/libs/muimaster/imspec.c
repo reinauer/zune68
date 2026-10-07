@@ -189,7 +189,10 @@ static struct MUI_ImageSpec_intern *get_boopsi_imspec(CONST_STRPTR filename)
     {
         spec->u.boopsi.filename = StrDup(filename);
         if (!spec->u.boopsi.filename)
+        {
+            mui_free(spec);
             return NULL;
+        }
         spec->u.boopsi.obj = NULL;
         spec->type = IST_BOOPSI;
         return spec;
@@ -206,15 +209,19 @@ static struct MUI_ImageSpec_intern *get_brush_imspec(CONST_STRPTR filename)
         size_t last_idx;
         spec->u.brush.filename[0] = StrDup(filename);
         if (!spec->u.brush.filename[0])
+        {
+            mui_free(spec);
             return NULL;
-        last_idx = strlen(spec->u.brush.filename[0]) - 1;
-        if (spec->u.brush.filename[0][last_idx] == '0')
+        }
+        last_idx = strlen(spec->u.brush.filename[0]);
+        if (last_idx && spec->u.brush.filename[0][--last_idx] == '0')
         {
             char *tmpstr;
             tmpstr = StrDup(filename);
             if (!tmpstr)
             {
                 FreeVec((APTR) spec->u.brush.filename[0]);
+                mui_free(spec);
                 return NULL;
             }
             tmpstr[last_idx] = '1';
@@ -236,7 +243,10 @@ static struct MUI_ImageSpec_intern *get_bitmap_imspec(CONST_STRPTR filename)
     {
         spec->u.bitmap.filename = StrDup(filename);
         if (!spec->u.bitmap.filename)
+        {
+            mui_free(spec);
             return NULL;
+        }
         spec->u.bitmap.dt = NULL;
         spec->type = IST_BITMAP;
         return spec;
@@ -337,14 +347,16 @@ static struct MUI_ImageSpec_intern *zune_image_spec_to_structure(IPTR in)
     }
     else
     {
+        if (!in) return NULL;
         s = (CONST_STRPTR) in;
+        if (!s[0] || !s[1]) return NULL;
         D(bug("zune_image_spec_to_structure [string] : in=%s\n", s));
 
         switch (*s)
         {
         case '0':              /* builtin pattern */
             {
-                LONG pat;
+                LONG pat = -1;
                 StrToLong(s + 2, &pat);
                 spec = get_pattern_imspec(pat);
                 break;
@@ -352,7 +364,7 @@ static struct MUI_ImageSpec_intern *zune_image_spec_to_structure(IPTR in)
 
         case '1':              /* builtin standard image, obsoleted by 6: */
             {
-                LONG vect;
+                LONG vect = -1;
                 StrToLong(s + 2, &vect);
                 spec = zune_imspec_create_vector(vect);
                 break;
@@ -384,7 +396,7 @@ static struct MUI_ImageSpec_intern *zune_image_spec_to_structure(IPTR in)
 
         case '6':              /* preconfigured image or background */
             {
-                LONG img;
+                LONG img = -1;
                 StrToLong(s + 2, &img);
 
                 if (img >= MUII_WindowBack && img <= MUII_ReadListBack)

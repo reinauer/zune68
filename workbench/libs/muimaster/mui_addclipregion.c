@@ -5,24 +5,97 @@
 #include <proto/graphics.h>
 #include <proto/layers.h>
 #include <proto/intuition.h>
-#include <proto/muimaster.h>
 
+#define MUIMASTER_DEFINING_CLIPPING
 #include "mui.h"
 #include "muimaster_intern.h"
+#include "support.h"
 
 #include "debug.h"
+
+/*
+ * C-callable body.  Library code must not call the asm LVO entry as a
+ * stack C function (wrong register setup).  External apps still enter via
+ * the __asm MUI_AddClipRegion LVO below.
+ */
+APTR ZuneAddClipRegion(struct MUI_RenderInfo *mri, struct Region *r)
+{
+    struct Window *w;
+    struct Layer  *l;
+    APTR result;
+    BOOL refreshmode;
+    BOOL smartlock;
+
+    w = mri->mri_Window;
+    if (w != NULL)
+        l = w->WLayer;
+    else
+        l = mri->mri_RastPort->Layer;
+
+    /*
+     * Classic Amiga simple-refresh: InstallClipRegion while the layer
+     * may be in update mode is illegal.  Draw unclipped instead.
+     */
+    if ((w != NULL) && (w->Flags & WFLG_SIMPLE_REFRESH))
+    {
+        if (r)
+            DisposeRegion(r);
+        return (APTR)-1;
+    }
+
+    if ((l == NULL) || (r == NULL) || (mri->mri_rCount == MRI_RARRAY_SIZE))
+    {
+        if (r)
+            DisposeRegion(r);
+        return (APTR)-1;
+    }
+
+    /*
+     * InstallClipRegion is illegal while LAYERREFRESH is set unless we
+     * already hold MUI_BeginRefresh's LayerInfo lock and wrap the install
+     * with EndRefresh(FALSE)/BeginRefresh.  A nested LockLayerInfo here
+     * deadlocks classic Amiga (the lock is not recursive).
+     */
+    if ((w != NULL)
+        && (l->Flags & LAYERREFRESH)
+        && !(mri->mri_Flags & MUIMRI_REFRESHMODE))
+    {
+        DisposeRegion(r);
+        return (APTR)-1;
+    }
+
+    if (mri->mri_rCount != 0
+        && !AndRegionRegion(mri->mri_rArray[mri->mri_rCount-1], r))
+    {
+        DisposeRegion(r);
+        return (APTR)-1;
+    }
+
+    refreshmode = (BOOL)((w != NULL) && (mri->mri_Flags & MUIMRI_REFRESHMODE));
+    smartlock = (BOOL)((w != NULL) && !refreshmode
+        && !(w->Flags & WFLG_SIMPLE_REFRESH));
+
+    if (refreshmode)
+        EndRefresh(w, FALSE);
+    else if (smartlock)
+        LockLayerInfo(&w->WScreen->LayerInfo);
+
+    result = InstallClipRegion(l, r);
+
+    if (refreshmode)
+        BeginRefresh(w);
+    else if (smartlock)
+        UnlockLayerInfo(&w->WScreen->LayerInfo);
+
+    mri->mri_rArray[mri->mri_rCount++] = r;
+
+    return result;
+}
 
 /*****************************************************************************
 
     NAME */
-        AROS_LH2(APTR, MUI_AddClipRegion,
-
-/*  SYNOPSIS */
-        AROS_LHA(struct MUI_RenderInfo *, mri, A0),
-        AROS_LHA(struct Region *, r, A1),
-
-/*  LOCATION */
-        struct Library *, MUIMasterBase, 30, MUIMaster)
+        MUI_LIB_ENTRY APTR MUI_AddClipRegion(MUI_LIB_ARG(a0, struct MUI_RenderInfo *mri), MUI_LIB_ARG(a1, struct Region *r))
 
 /*  FUNCTION
 
@@ -42,59 +115,5 @@
 
 *****************************************************************************/
 {
-    AROS_LIBFUNC_INIT
-
-    struct Window *w = mri->mri_Window;
-    struct Layer  *l;
-    APTR result;
-
-    if (w != NULL)
-        l = w->WLayer;
-    else
-        l = mri->mri_RastPort->Layer;
-
-    // if (mri->mri_rCount == MRI_RARRAY_SIZE)
-    //    kprintf(" --------- mui_addclipregion clip overflow ---------------------\n");
-    
-    if ((l == NULL) || (r == NULL) || (mri->mri_rCount == MRI_RARRAY_SIZE))
-    {
-        if (r)
-            DisposeRegion(r);
-        return (APTR)-1;
-    }
-    
-    if (mri->mri_rCount != 0)
-        /* NOTE: ignoring the result here... */
-        AndRegionRegion(mri->mri_rArray[mri->mri_rCount-1], r);
-
-    if ((w != NULL) && (mri->mri_Flags & MUIMRI_REFRESHMODE))
-    {
-            LockLayerInfo(&w->WScreen->LayerInfo);
-        EndRefresh(w, FALSE);
-    }
-
-#if 1 /* stegerg: what's this good for? */
-    if ((w != NULL) && !(w->Flags & WFLG_SIMPLE_REFRESH))
-        LockLayerInfo(&w->WScreen->LayerInfo);
-#endif
-
-    result = InstallClipRegion(l, r);
-
-#if 1 /* stegerg: what's this good for? */
-    if ((w != NULL) && !(w->Flags & WFLG_SIMPLE_REFRESH))
-        UnlockLayerInfo(&w->WScreen->LayerInfo);
-#endif
-
-    if ((w != NULL) && (mri->mri_Flags & MUIMRI_REFRESHMODE))
-    {
-        BeginRefresh(w);
-        UnlockLayerInfo(&w->WScreen->LayerInfo);
-    }
-    
-    mri->mri_rArray[mri->mri_rCount++] = r;
-
-    return result;
-
-    AROS_LIBFUNC_EXIT
-
-} /* MUIA_AddClipRegion */
+    return ZuneAddClipRegion(mri, r);
+} /* MUI_AddClipRegion */

@@ -399,40 +399,6 @@ static inline void draw_vertical_line(struct RastPort *rp, int x, int y1,
     RectFill(rp, x, y1, x, y2);
 }
 
-/**
- * Draw 3D edge effect
- * @param raised TRUE for raised effect, FALSE for recessed
- */
-static void draw_3d_edge(struct MUI_RenderInfo *mri, int left, int top,
-                         int width, int height, ULONG light_pen, ULONG dark_pen,
-                         BOOL raised)
-{
-    struct RastPort *rp = mri->mri_RastPort;
-
-    if (width <= 0 || height <= 0)
-        return; /* Safety check */
-
-    if (raised) {
-        /* Draw light edges (top and left) */
-        draw_horizontal_line(rp, left, left + width - 2, top, light_pen);
-        draw_vertical_line(rp, left, top, top + height - 2, light_pen);
-
-        /* Draw dark edges (bottom and right) */
-        draw_horizontal_line(rp, left + 1, left + width - 1, top + height - 1,
-                             dark_pen);
-        draw_vertical_line(rp, left + width - 1, top, top + height - 1, dark_pen);
-    } else {
-        /* Draw dark edges (top and left) */
-        draw_horizontal_line(rp, left, left + width - 2, top, dark_pen);
-        draw_vertical_line(rp, left, top, top + height - 2, dark_pen);
-
-        /* Draw light edges (bottom and right) */
-        draw_horizontal_line(rp, left + 1, left + width - 1, top + height - 1,
-                             light_pen);
-        draw_vertical_line(rp, left + width - 1, top, top + height - 1, light_pen);
-    }
-}
-
 /**************************************************************************
  0 : FST_NONE
 **************************************************************************/
@@ -1631,7 +1597,6 @@ struct Region *zune_frame_create_clip_region(int left, int top, int width,
 
     /* Add rounded corner pixels using circle algorithm */
     int x, y;
-    int cx, cy;
 
     /* For each corner, calculate which pixels are inside the rounded area */
     for (y = 0; y < radius; y++) {

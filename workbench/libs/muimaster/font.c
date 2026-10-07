@@ -29,6 +29,10 @@ struct TextFont *zune_font_get(Object *obj, IPTR font)
     struct MUI_RenderInfo *mri;
     SIPTR preset = (SIPTR) font;
 
+    /* NegCount is an array-size sentinel, not a usable preset index. */
+    if (preset == (SIPTR)MUIV_Font_NegCount)
+        return NULL;
+
     if ((preset <= (SIPTR) MUIV_Font_Inherit)
         && (preset >= (SIPTR) MUIV_Font_NegCount))
     {
@@ -53,10 +57,12 @@ struct TextFont *zune_font_get(Object *obj, IPTR font)
             if ((ta.ta_Name = (char *)AllocVec(strlen(name) + 10, 0)))
             {
                 char *p;
-                LONG size;
+                LONG size = 8;
 
                 strcpy(ta.ta_Name, name);
-                StrToLong(FilePart(ta.ta_Name), &size);
+                p = FilePart(ta.ta_Name);
+                if (StrToLong(p, &size) <= 0 || size < 1 || size > 65535)
+                    size = 8;
                 ta.ta_YSize = size;
                 ta.ta_Style = 0;
                 ta.ta_Flags = 0;

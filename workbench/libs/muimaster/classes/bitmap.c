@@ -34,6 +34,35 @@ struct MUI_BitmapData
     BOOL use_alpha;
 };
 
+/* Release only resources owned by the remap, before Area drops its screen. */
+static void release_remap(struct MUI_BitmapData *data, Object *obj)
+{
+    WORD i;
+
+    if (data->mask || data->remapped_bm)
+        WaitBlit();
+    if (data->mask)
+    {
+        FreeRaster(data->mask,
+            GetBitMapAttr(data->remapped_bm, BMA_WIDTH),
+            GetBitMapAttr(data->remapped_bm, BMA_HEIGHT));
+        data->mask = NULL;
+    }
+    if (data->remapped_bm)
+    {
+        FreeBitMap(data->remapped_bm);
+        data->remapped_bm = NULL;
+    }
+    if (data->remaptable)
+        for (i = 0; i < 256; i++)
+        {
+            if (data->remaptable[i] & 0x100)
+                ReleasePen(_screen(obj)->ViewPort.ColorMap,
+                    data->remaptable[i] & 0xff);
+            data->remaptable[i] = 0;
+        }
+}
+
 static void remap_bitmap(struct IClass *cl, Object *obj)
 {
     struct MUI_BitmapData *data = INST_DATA(cl, obj);
@@ -42,7 +71,8 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
     UBYTE *linebuffer;
     ULONG *cgfxcoltab = NULL;
     LONG bmflags = 0;
-    WORD bmdepth, bmwidth, bmheight, bmcols, x, y;
+    LONG bmdepth, bmwidth, bmheight, bmcols, x, y;
+    LONG width, height;
 
     if (!data->mappingtable && !data->sourcecolors)
         return;
@@ -52,6 +82,10 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
     /* Don't remap if bitmap is hicolor/truecolor */
     if (GetBitMapAttr(data->bm, BMA_DEPTH) > 8)
         return;
+
+    width = MIN(data->width, GetBitMapAttr(data->bm, BMA_WIDTH));
+    height = MIN(data->height, GetBitMapAttr(data->bm, BMA_HEIGHT));
+    if (width < 1 || height < 1) return;
 
     if (!data->mappingtable && !data->remaptable)
     {
@@ -69,7 +103,7 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
         bmflags |= BMF_MINPLANES;
     }
 
-    linebuffer = AllocVec(data->width + 16, MEMF_PUBLIC);
+    linebuffer = AllocVec(width + 16, MEMF_PUBLIC);
     if (!linebuffer)
         return;
 
@@ -80,7 +114,7 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
     bmcols = 1L << bmdepth;
 
     data->remapped_bm =
-        AllocBitMap(data->width, data->height, bmdepth, bmflags, friendbm);
+        AllocBitMap(width, height, bmdepth, bmflags, friendbm);
 
     if (!data->remapped_bm)
     {
@@ -94,7 +128,8 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
     if (data->transparent != -1)
     {
         data->mask = AllocRaster(bmwidth, bmheight);
-        memset(data->mask, 0xff, RASSIZE(bmwidth, bmheight));
+        if (data->mask)
+            memset(data->mask, 0xff, RASSIZE(bmwidth, bmheight));
     }
 
     if (CyberGfxBase &&
@@ -118,22 +153,22 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
     }
 
     InitRastPort(&temprp);
-    temprp.BitMap = AllocBitMap(data->width, 1, 1, 0, NULL);
+    temprp.BitMap = AllocBitMap(width, 1, 1, 0, NULL);
 
     InitRastPort(&bmrp);
 
-    for (y = 0; y < data->height; y++)
+    for (y = 0; y < height; y++)
     {
         /* Read a line from source bitmap */
 
         bmrp.BitMap = data->bm;
         if (temprp.BitMap)
         {
-            ReadPixelLine8(&bmrp, 0, y, data->width, linebuffer, &temprp);
+            ReadPixelLine8(&bmrp, 0, y, width, linebuffer, &temprp);
         }
         else
         {
-            for (x = 0; x < data->width; x++)
+            for (x = 0; x < width; x++)
             {
                 linebuffer[x] = ReadPixel(&bmrp, x, y);
             }
@@ -145,7 +180,7 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
             UBYTE *mask = data->mask + y * bmwidth / 8;
             UBYTE xmask = 0x80;
 
-            for (x = 0; x < data->width; x++)
+            for (x = 0; x < width; x++)
             {
                 if (linebuffer[x] == data->transparent)
                 {
@@ -164,20 +199,21 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
         /* Remap the line */
         if (data->mappingtable)
         {
-            for (x = 0; x < data->width; x++)
+            for (x = 0; x < width; x++)
             {
                 linebuffer[x] = data->mappingtable[linebuffer[x]];
             }
         }
         else if (!cgfxcoltab)
         {
-            for (x = 0; x < data->width; x++)
+            for (x = 0; x < width; x++)
             {
                 UBYTE pixel = linebuffer[x];
-                UBYTE remappixel = data->remaptable[pixel];
+                WORD remappixel = data->remaptable[pixel];
 
                 if (!remappixel)
                 {
+                    LONG pen;
                     struct TagItem tags[3];
                     tags[0].ti_Tag = OBP_Precision;
                     tags[0].ti_Data = data->precision;
@@ -185,11 +221,21 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
                     tags[1].ti_Data = FALSE;
                     tags[2].ti_Tag = 0;
 
-                    data->remaptable[pixel] = remappixel =
-                        ObtainBestPenA(_screen(obj)->ViewPort.ColorMap,
+                    pen = ObtainBestPenA(_screen(obj)->ViewPort.ColorMap,
                         data->sourcecolors[pixel * 3],
                         data->sourcecolors[pixel * 3 + 1],
-                        data->sourcecolors[pixel * 3 + 2], tags) | 0x100;
+                        data->sourcecolors[pixel * 3 + 2], tags);
+                    if (pen < 0)
+                    {
+                        pen = FindColor(_screen(obj)->ViewPort.ColorMap,
+                            data->sourcecolors[pixel * 3],
+                            data->sourcecolors[pixel * 3 + 1],
+                            data->sourcecolors[pixel * 3 + 2], -1);
+                        remappixel = (pen < 0 ? 0 : pen) | 0x200;
+                    }
+                    else
+                        remappixel = pen | 0x100;
+                    data->remaptable[pixel] = remappixel;
                 }
 
                 linebuffer[x] = (remappixel & 0xFF);
@@ -206,20 +252,20 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
             WriteLUTPixelArray(linebuffer,
                 0,
                 0,
-                data->width,
-                &bmrp, cgfxcoltab, 0, y, data->width, 1, CTABFMT_XRGB8);
+                width,
+                &bmrp, cgfxcoltab, 0, y, width, 1, CTABFMT_XRGB8);
         }
         else
         {
             bmrp.BitMap = data->remapped_bm;
             if (temprp.BitMap)
             {
-                WritePixelLine8(&bmrp, 0, y, data->width, linebuffer,
+                WritePixelLine8(&bmrp, 0, y, width, linebuffer,
                     &temprp);
             }
             else
             {
-                for (x = 0; x < data->width; x++)
+                for (x = 0; x < width; x++)
                 {
                     SetAPen(&bmrp, linebuffer[x]);
                     WritePixel(&bmrp, x, y);
@@ -315,13 +361,9 @@ IPTR Bitmap__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_BitmapData *data = INST_DATA(cl, obj);
 
-    if (data->remapped_bm)
-    {
-        WaitBlit();
-        FreeBitMap(data->remapped_bm);
-    }
-    if (data->remaptable)
-        FreeVec(data->remaptable);
+    release_remap(data, obj);
+    FreeVec(data->remaptable);
+    data->remaptable = NULL;
 
     return DoSuperMethodA(cl, obj, msg);
 }
@@ -455,36 +497,7 @@ IPTR Bitmap__MUIM_Cleanup(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_BitmapData *data = INST_DATA(cl, obj);
 
-    if (data->mask)
-    {
-        LONG bmwidth = GetBitMapAttr(data->remapped_bm, BMA_WIDTH);
-        LONG bmheight = GetBitMapAttr(data->remapped_bm, BMA_HEIGHT);
-        FreeRaster(data->mask, bmwidth, bmheight);
-
-        data->mask = NULL;
-    }
-
-    if (data->remapped_bm)
-    {
-        WaitBlit();
-        FreeBitMap(data->remapped_bm);
-        data->remapped_bm = NULL;
-
-        if (data->remaptable)
-        {
-            WORD i;
-
-            for (i = 0; i < 256; i++)
-            {
-                if (data->remaptable[i])
-                {
-                    ReleasePen(_screen(obj)->ViewPort.ColorMap,
-                        data->remaptable[i] & 0xFF);
-                    data->remaptable[i] = 0;
-                }
-            }
-        }
-    }
+    release_remap(data, obj);
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
 }
@@ -521,12 +534,12 @@ IPTR Bitmap__MUIM_Draw(struct IClass *cl, Object *obj,
     DoSuperMethodA(cl, obj, (Msg) msg);
 
     bm = data->remapped_bm ? data->remapped_bm : data->bm;
-    if (bm)
+    if (bm && (!data->use_alpha || data->alpha))
     {
         LONG width, height;
 
-        width = data->width;
-        height = data->height;
+        width = MIN(data->width, GetBitMapAttr(bm, BMA_WIDTH));
+        height = MIN(data->height, GetBitMapAttr(bm, BMA_HEIGHT));
 
         if (width > _mwidth(obj))
             width = _mwidth(obj);
@@ -535,11 +548,9 @@ IPTR Bitmap__MUIM_Draw(struct IClass *cl, Object *obj,
 
         if ((width > 0) && (height > 0))
         {
-            if (data->use_alpha)
-            {
-                // TODO: implement
-            }
-            else if (data->mask)
+            /* Planar fallback: nonzero alpha is opaque, retaining a mask.
+             * No temporary truecolor buffers or software blending per draw. */
+            if (data->mask)
             {
                 BltMaskBitMapRastPort(bm, 0, 0, _rp(obj), _mleft(obj),
                     _mtop(obj), width, height, 0xE0, data->mask);

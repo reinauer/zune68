@@ -709,12 +709,14 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
             }
             else if (chunk_node->alpha_data)
             {
+#ifndef ZUNE_NO_CYBERGRAPHICS
                 struct MUI_AlphaData *alpha_data = chunk_node->alpha_data;
                 WORD top_im = top;
                 top_im += (line_node->lheight - chunk_node->cheight) / 2;
                 WritePixelArrayAlpha(alpha_data->data, 0, 0,
                     alpha_data->width * 4, rp, x, top_im, alpha_data->width,
                     alpha_data->height, 0xFFFFFFFF);
+#endif
             }
             else if (chunk_node->str)
             {

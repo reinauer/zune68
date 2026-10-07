@@ -4,27 +4,54 @@
 
 #include <proto/graphics.h>
 #include <proto/layers.h>
-#include <proto/muimaster.h>
 
+#define MUIMASTER_DEFINING_CLIPPING
 #include "support.h"
 
 #include "mui.h"
 #include "muimaster_intern.h"
 
+APTR ZuneAddClipping(struct MUI_RenderInfo *mri, LONG left, LONG top,
+    LONG width, LONG height)
+{
+    struct Region *r;
+    struct Rectangle rect;
+    APTR handle;
+
+    if ((width >= MUI_MAXMAX) || (height >= MUI_MAXMAX))
+        return (APTR)-1;
+
+    if (mri->mri_rCount > 0)
+    {
+        if (isRegionWithinBounds(mri->mri_rArray[mri->mri_rCount-1],
+            (WORD)left, (WORD)top, (WORD)width, (WORD)height))
+            return (APTR)-1;
+    }
+
+    if ((r = NewRegion()) == NULL)
+        return (APTR)-1;
+
+    rect.MinX = (WORD)left;
+    rect.MinY = (WORD)top;
+    rect.MaxX = (WORD)(left + width  - 1);
+    rect.MaxY = (WORD)(top  + height - 1);
+    /* Empty clips are valid; do not hand inverted rectangles to Layers. */
+    if (width > 0 && height > 0 && !OrRectRegion(r, &rect))
+    {
+        DisposeRegion(r);
+        return (APTR)-1;
+    }
+
+    /* Always the C body â never the asm LVO via a stack call. */
+    handle = ZuneAddClipRegion(mri, r);
+
+    return handle;
+}
+
 /*****************************************************************************
 
     NAME */
-        AROS_LH5(APTR, MUI_AddClipping,
-
-/*  SYNOPSIS */
-        AROS_LHA(struct MUI_RenderInfo *, mri, A0),
-        AROS_LHA(WORD, left, D0),
-        AROS_LHA(WORD, top, D1),
-        AROS_LHA(WORD, width, D2),
-        AROS_LHA(WORD, height, D3),
-
-/*  LOCATION */
-        struct Library *, MUIMasterBase, 28, MUIMaster)
+        MUI_LIB_ENTRY APTR MUI_AddClipping(MUI_LIB_ARG(a0, struct MUI_RenderInfo *mri), MUI_LIB_ARG(d0, WORD left), MUI_LIB_ARG(d1, WORD top), MUI_LIB_ARG(d2, WORD width), MUI_LIB_ARG(d3, WORD height))
 
 /*  FUNCTION
 
@@ -44,41 +71,6 @@
 
 *****************************************************************************/
 {
-    AROS_LIBFUNC_INIT
-
-    struct Region *r;
-    struct Rectangle rect;
-    APTR handle;
-
-    if ((width >= MUI_MAXMAX) || (height >= MUI_MAXMAX))
-        return (APTR)-1;
-
-    if (mri->mri_rCount > 0)
-    {
-        if (isRegionWithinBounds(mri->mri_rArray[mri->mri_rCount-1],
-            left, top, width, height))
-            return (APTR)-1;
-    }
-
-    if ((r = NewRegion()) == NULL)
-        return (APTR)-1;
-
-    rect.MinX = left;
-    rect.MinY = top;
-    rect.MaxX = left + width  - 1;
-    rect.MaxY = top  + height - 1;
-    OrRectRegion(r, &rect);
-
-    handle = MUI_AddClipRegion(mri, r);
-
-#if 0 /* MUI_AddClipRegion frees region itself upon failure */
-    if (handle == (APTR)-1)
-    {
-        DisposeRegion(r);
-    }
-#endif
-    return handle;
-
-    AROS_LIBFUNC_EXIT
-
-} /* MUIA_AddClipping */
+    return ZuneAddClipping(mri, (LONG)left, (LONG)top, (LONG)width,
+        (LONG)height);
+} /* MUI_AddClipping */

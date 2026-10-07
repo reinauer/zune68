@@ -274,14 +274,14 @@ char *SkipChars(char *v)
     char *c;
 
     c = strstr(v, "=");
-    return ++c;
+    return c ? c + 1 : NULL;
 }
 
 int GetInt(char *v)
 {
     char *c;
     c = SkipChars(v);
-    return atol(c);
+    return c ? atol(c) : 0;
 }
 
 BOOL GetBool(char *v, char *id)
@@ -295,21 +295,30 @@ BOOL GetBool(char *v, char *id)
 void GetIntegers(char *v, int *v1, int *v2)
 {
     char *c;
-    char va1[32], va2[32];
-    int cnt;
+    long first;
     c = SkipChars(v);
     if (c)
     {
-        cnt = sscanf(c, "%s %s", va1, va2);
-        if (cnt == 1)
+        /* Read decimal tokens without stdio startup or fixed-size buffers.
+           Like the old "%s %s" scan, convert each whole token with atol. */
+        while (*c && isspace((unsigned char)*c))
+            c++;
+        if (!*c)
+            return;
+        first = atol(c);
+        while (*c && !isspace((unsigned char)*c))
+            c++;
+        while (*c && isspace((unsigned char)*c))
+            c++;
+        if (!*c)
         {
             *v1 = -1;
-            *v2 = atol(va1);
+            *v2 = first;
         }
-        else if (cnt == 2)
+        else
         {
-            *v1 = atol(va1);
-            *v2 = atol(va2);
+            *v1 = first;
+            *v2 = atol(c);
         }
     }
 }
@@ -328,12 +337,15 @@ struct NewImage *NewImageContainer(UWORD w, UWORD h)
 
     struct NewImage *ni;
 
+    if (!w || !h || (ULONG)w > ((ULONG)-1 / 4) / h)
+        return NULL;
+
     ni = AllocVec(sizeof(struct NewImage), MEMF_ANY | MEMF_CLEAR);
     if (ni)
     {
         ni->w = w;
         ni->h = h;
-        ni->data = AllocVec(w * h * 4, MEMF_ANY | MEMF_CLEAR);
+        ni->data = AllocVec((ULONG)w * h * 4, MEMF_ANY | MEMF_CLEAR);
         if (ni->data == NULL)
         {
             FreeVec(ni);
@@ -695,12 +707,14 @@ struct dt_frame_image *load_custom_frame(CONST_STRPTR filename,
     struct Screen *scr)
 {
     struct dt_frame_image *fi =
-        AllocVec(sizeof(struct dt_frame_image), MEMF_ANY);
+        AllocVec(sizeof(struct dt_frame_image), MEMF_ANY | MEMF_CLEAR);
 
     if (fi)
     {
-        /* special configuration image for prop gadgets */
-        if (Stricmp(FilePart(filename), "frame.config") == 0)
+        /* Keep nested library calls separate: FilePart uses DOSBase,
+         * while the outer inline Stricmp needs UtilityBase in A6. */
+        STRPTR part = FilePart(filename);
+        if (Stricmp(part, "frame.config") == 0)
         {
             if (ReadFrameConfig(filename, fi, scr))
             {
@@ -746,12 +760,13 @@ struct dt_node *dt_load_picture(CONST_STRPTR filename, struct Screen *scr)
 
         if ((node->filename = StrDup(filename)))
         {
+            STRPTR part = FilePart(filename);
             /* create the datatypes object */
             D(bug("[Zune:DTC] %s: loading %s\n", __func__, filename));
 
             /* special configuration image for prop gadgets */
-            if ((Stricmp(FilePart(filename), "prop.config") == 0)
-                || (Stricmp(FilePart(filename), "config") == 0))
+            if ((Stricmp(part, "prop.config") == 0)
+                || (Stricmp(part, "config") == 0))
             {
                 if (ReadPropConfig(node, scr))
                 {
@@ -812,7 +827,10 @@ void dt_dispose_picture(struct dt_node *node)
             if (node->bfi != NULL)
             {
                 if (node->bfi->BitMap != NULL)
+                {
+                    WaitBlit();
                     FreeBitMap(node->bfi->BitMap);
+                }
                 FreeVec(node->bfi);
             }
             if (node->mode == MODE_PROP)
@@ -1116,7 +1134,8 @@ void dt_put_on_rastport_tiled(struct dt_node *node, struct RastPort *rp,
     Object *o;
 
     o = node->o;
-    if (!o)
+    if (!o || dt_width(node) <= 0 || dt_height(node) <= 0
+        || x2 < x1 || y2 < y1)
         return;
 
     GetDTAttrs(o, PDTA_DestBitMap, (IPTR) & bitmap, TAG_DONE);
@@ -1167,6 +1186,11 @@ void dt_put_on_rastport_tiled(struct dt_node *node, struct RastPort *rp,
 
                 CopyTiledBitMap(bitmap, 0, 0, bfi->Width, bfi->Height,
                     bfi->BitMap, &CopyBounds);
+            }
+            else
+            {
+                FreeVec(bfi);
+                bfi = NULL;
             }
         }
         node->bfi = bfi;

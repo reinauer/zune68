@@ -239,6 +239,8 @@ BOOL zune_penspec_cleanup(struct MUI_PenSpec_intern *psi)
     default:
         return FALSE;
     }
+    psi->p_is_allocated = FALSE;
+    psi->p_mri = NULL;
     return TRUE;
 }
 
