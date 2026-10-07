@@ -84,7 +84,8 @@ check-sdk: $(BUILD)/compatcheck
 	  --output "$(BUILD)/sdk-check" --cc "$(CC)" --sfdc "$(SFDC)" --fd2sfd "$(FD2SFD)"
 	$(PYTHON) ../../../tests/check_opentest_stack.py $(BUILD)/compatcheck $(BUILD)/sdk-check/compatcheck-$(MUI_SDK_LABEL)
 
-$(BUILD)/compatcheck: ../../../tests/native/compatcheck.c $(GENERATED)
+$(BUILD)/compatcheck: ../../../tests/native/compatcheck.c \
+  ../../../tests/native/numeric_cases.h $(GENERATED)
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
@@ -109,6 +110,8 @@ check-core: core $(BUILD)/compatcheck
 	$(PYTHON) ../../../tests/check_resources.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_clipping.py \
+	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
+	$(PYTHON) ../../../tests/check_numeric.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_list_sort.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library

@@ -439,6 +439,42 @@ IPTR Numeric__MUIM_Increase(struct IClass *cl, Object *obj,
 }
 
 
+/* Inclusive integer ranges give each numeric value a scale interval.
+ * ValueToScale selects its center; ScaleToValue selects its containing
+ * interval. Keep ordinary gadget ranges on the 32-bit path.
+ */
+static ULONG numeric_scale(ULONG offset, ULONG target, ULONG source,
+    BOOL center)
+{
+    if ((offset | target | source) <= 65535)
+    {
+        ULONG span = target + 1;
+        return (offset * span + (center ? span / 2 : 0)) / (source + 1);
+    }
+    else
+    {
+        unsigned long long span = (unsigned long long)target + 1;
+        return (offset * span + (center ? span / 2 : 0)) /
+            ((unsigned long long)source + 1);
+    }
+}
+
+static LONG numeric_value_to_scale(struct MUI_NumericData *data,
+    LONG value, LONG scalemin, LONG scalemax)
+{
+    ULONG offset;
+
+    if (scalemax < scalemin || data->max < data->min)
+        return scalemin;
+    value = CLAMP(value, data->min, data->max);
+    offset = numeric_scale((ULONG)value - (ULONG)data->min,
+        (ULONG)scalemax - (ULONG)scalemin,
+        (ULONG)data->max - (ULONG)data->min, TRUE);
+    return (data->flags & NUMERIC_REVERSE) ?
+        (LONG)((ULONG)scalemax - offset) :
+        (LONG)((ULONG)scalemin + offset);
+}
+
 /**************************************************************************
  MUIM_Numeric_ScaleToValue
 **************************************************************************/
@@ -446,25 +482,22 @@ IPTR Numeric__MUIM_ScaleToValue(struct IClass *cl, Object *obj,
     struct MUIP_Numeric_ScaleToValue *msg)
 {
     struct MUI_NumericData *data = INST_DATA(cl, obj);
-    LONG min, max;
-    LONG val;
-    LONG d;
+    ULONG offset, range;
 
-    min = (data->flags & NUMERIC_REVERSE) ? data->max : data->min;
-    max = (data->flags & NUMERIC_REVERSE) ? data->min : data->max;
+    if (msg->scalemax < msg->scalemin || data->max < data->min)
+        return data->min;
+    range = (ULONG)data->max - (ULONG)data->min;
+    if (msg->scale < msg->scalemin)
+        offset = 0;
+    else if (msg->scale > msg->scalemax)
+        offset = range;
+    else
+        offset = numeric_scale((ULONG)msg->scale - (ULONG)msg->scalemin,
+            range, (ULONG)msg->scalemax - (ULONG)msg->scalemin, FALSE);
 
-    val = CLAMP(msg->scale - msg->scalemin, msg->scalemin, msg->scalemax);
-    d = msg->scalemax - msg->scalemin;
-
-    // FIXME: watch out for overflow here.
-    val = val * (max - min);
-
-    if (d)
-        val /= d;
-
-    val += min;
-
-    return val;
+    return (data->flags & NUMERIC_REVERSE) ?
+        (LONG)((ULONG)data->max - offset) :
+        (LONG)((ULONG)data->min + offset);
 }
 
 /**************************************************************************
@@ -500,27 +533,10 @@ IPTR Numeric__MUIM_Stringify(struct IClass *cl, Object *obj,
 IPTR Numeric__MUIM_ValueToScale(struct IClass *cl, Object *obj,
     struct MUIP_Numeric_ValueToScale *msg)
 {
-    LONG val;
     struct MUI_NumericData *data = INST_DATA(cl, obj);
-    LONG min, max;
 
-    min = (data->flags & NUMERIC_REVERSE) ? msg->scalemax : msg->scalemin;
-    max = (data->flags & NUMERIC_REVERSE) ? msg->scalemin : msg->scalemax;
-
-    if (data->max != data->min)
-    {
-        val =
-            min + ((data->value - data->min) * (max - min) + (data->max -
-                data->min) / 2) / (data->max - data->min);
-    }
-    else
-    {
-        val = min;
-    }
-
-    val = CLAMP(val, msg->scalemin, msg->scalemax);
-
-    return val;
+    return numeric_value_to_scale(data, data->value,
+        msg->scalemin, msg->scalemax);
 }
 
 /**************************************************************************
@@ -529,29 +545,10 @@ IPTR Numeric__MUIM_ValueToScale(struct IClass *cl, Object *obj,
 IPTR Numeric__MUIM_ValueToScaleExt(struct IClass *cl, Object *obj,
     struct MUIP_Numeric_ValueToScaleExt *msg)
 {
-    LONG scale;
-    LONG value;
     struct MUI_NumericData *data = INST_DATA(cl, obj);
-    LONG min, max;
 
-    value = CLAMP(msg->value, data->min, data->max);
-    min = (data->flags & NUMERIC_REVERSE) ? msg->scalemax : msg->scalemin;
-    max = (data->flags & NUMERIC_REVERSE) ? msg->scalemin : msg->scalemax;
-
-    if (data->max != data->min)
-    {
-        scale =
-            min + ((value - data->min) * (max - min) + (data->max -
-                data->min) / 2) / (data->max - data->min);
-    }
-    else
-    {
-        scale = min;
-    }
-
-    scale = CLAMP(scale, msg->scalemin, msg->scalemax);
-
-    return scale;
+    return numeric_value_to_scale(data, msg->value,
+        msg->scalemin, msg->scalemax);
 }
 
 /**************************************************************************
