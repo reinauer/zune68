@@ -2721,7 +2721,7 @@ struct MUI_NListtree_TreeNode *CreateChildStructure( struct NListtree_Data *data
 
     if(isFlagSet(orignode->ln_Flags, TNF_LIST))
     {
-      if ( !IsListEmpty( &orignode->ln_List ) )
+      if ( !IsListEmpty((struct List *)&orignode->ln_List ) )
       {
         struct MUI_NListtree_ListNode *ln = CLN( &orignode->ln_List );
         LONG i;
@@ -2848,7 +2848,7 @@ static void InsertImage( struct NListtree_Data *data, struct MUI_NListtree_TreeN
 
   InsertTreeImages( data, otn, otn, 0 );
 
-  if((isFlagSet(otn->tn_Flags, TNF_LIST) && isFlagClear(otn->tn_Flags, TNF_NOSIGN)) && ( !IsListEmpty( &ln->ln_List ) || isFlagClear(data->Flags, NLTF_EMPTYNODES)))
+  if((isFlagSet(otn->tn_Flags, TNF_LIST) && isFlagClear(otn->tn_Flags, TNF_NOSIGN)) && ( !IsListEmpty((struct List *)&ln->ln_List ) || isFlagClear(data->Flags, NLTF_EMPTYNODES)))
   {
     if(isFlagSet(otn->tn_Flags, TNF_OPEN))
     {
@@ -9254,7 +9254,7 @@ IPTR _NListtree_GetNr(struct IClass *cl, Object *obj, struct MUIP_NListtree_GetN
   if(isFlagSet(msg->Flags, MUIV_NListtree_GetNr_Flag_ListEmpty))
   {
     if(isFlagSet(tn->tn_Flags, TNF_LIST))
-      ret = IsListEmpty( (&ln->ln_List) );
+      ret = IsListEmpty((struct List *)&ln->ln_List);
   }
 
   else if(isFlagSet(msg->Flags, MUIV_NListtree_GetNr_Flag_CountList))

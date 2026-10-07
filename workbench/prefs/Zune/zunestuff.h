@@ -10,6 +10,9 @@
 #include <libraries/mui.h>
 #include <libraries/asl.h>
 #include "locale.h"
+#ifndef MAXFILENAMELENGTH
+#define MAXFILENAMELENGTH 255
+#endif
 
 /* listview class */
 extern struct MUI_CustomClass *ClassListview_CLASS;

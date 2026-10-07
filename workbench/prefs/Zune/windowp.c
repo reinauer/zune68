@@ -172,6 +172,7 @@ static IPTR WindowP_ConfigToGadgets(struct IClass *cl, Object *obj,
 {
     struct MUI_WindowPData *data = INST_DATA(cl, obj);
     STRPTR spec;
+    ULONG buttons;
 
 /* Fonts */
     setstring(data->font_normal_string, (IPTR)FindFont(MUICFG_Font_Normal));
@@ -209,7 +210,7 @@ static IPTR WindowP_ConfigToGadgets(struct IClass *cl, Object *obj,
              DoMethod(msg->configdata, MUIM_Configdata_GetULong,
                       MUICFG_Window_Positions));
 
-    ULONG   buttons = DoMethod(msg->configdata, MUIM_Configdata_GetULong, MUICFG_Window_Buttons);
+    buttons = DoMethod(msg->configdata, MUIM_Configdata_GetULong, MUICFG_Window_Buttons);
 
     if ((buttons & MUIV_Window_Button_MUI) != 0) set(data->mui, MUIA_Selected, TRUE); else set(data->mui, MUIA_Selected, FALSE);
     if ((buttons & MUIV_Window_Button_Popup) != 0) set(data->popup, MUIA_Selected, TRUE); else set(data->popup, MUIA_Selected, FALSE);
@@ -225,6 +226,7 @@ static IPTR WindowP_GadgetsToConfig(struct IClass *cl, Object *obj,
 {
     struct MUI_WindowPData *data = INST_DATA(cl, obj);
     STRPTR str;
+    ULONG buttons;
 
 /* Fonts */
     str = getstring(data->font_normal_string);
@@ -261,7 +263,7 @@ static IPTR WindowP_GadgetsToConfig(struct IClass *cl, Object *obj,
         DoMethod(msg->configdata, MUIM_Configdata_SetULong, MUICFG_Window_Positions,
              XGET(data->positions_cycle, MUIA_Cycle_Active));
 
-    ULONG   buttons = 0;
+    buttons = 0;
 
     if (XGET(data->mui, MUIA_Selected) != FALSE) buttons |= MUIV_Window_Button_MUI;
     if (XGET(data->popup, MUIA_Selected) != FALSE) buttons |= MUIV_Window_Button_Popup;

@@ -3,9 +3,11 @@
 */
 
 #include <exec/types.h>
+#include <libraries/mui.h>
+#include <proto/exec.h>
 #include <proto/locale.h>
 
-#define CATCOMP_ARRAY
+#define zune_ARRAY
 #include "strings.h"
 
 #define CATALOG_NAME     "System/Prefs/Zune.catalog"
@@ -14,18 +16,17 @@
 /*** Variables **************************************************************/
 struct Catalog *catalog;
 
-
 /*** Functions **************************************************************/
 /* Main *********************************************************************/
 CONST_STRPTR _(ULONG id)
 {
     if (LocaleBase != NULL && catalog != NULL)
     {
-        return GetCatalogStr(catalog, id, CatCompArray[id].cca_Str);
+        return GetCatalogStr(catalog, id, zune_Array[id].cca_Str);
     }
     else
     {
-        return CatCompArray[id].cca_Str;
+        return zune_Array[id].cca_Str;
     }
 }
 

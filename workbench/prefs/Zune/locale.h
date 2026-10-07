@@ -8,7 +8,7 @@
 
 #include <exec/types.h>
 
-#define CATCOMP_NUMBERS
+#define zune_NUMBERS
 #include "strings.h"
 
 /*** Prototypes *************************************************************/

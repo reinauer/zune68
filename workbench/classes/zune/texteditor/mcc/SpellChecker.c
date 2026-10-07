@@ -186,7 +186,11 @@ static BOOL SendRexx(CONST_STRPTR word, CONST_STRPTR command)
 #if !defined(__amigaos4__) && !defined(__MORPHOS__) && !defined(__AROS__)
 #undef WorkbenchControl
 /// WorkbenchControl()
+#if defined(ZUNE68_GCC_NATIVE)
+BOOL WorkbenchControl(CONST_STRPTR name, ...)
+#else
 BOOL WorkbenchControl(STRPTR name, ...)
+#endif
 {
   BOOL ret;
   va_list args;

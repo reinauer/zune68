@@ -46,7 +46,7 @@
 #define XOFF  10
 #define YOFF  0
 
-#if defined(__amigaos3__)
+#if defined(__amigaos3__) && !defined(ZUNE68_GCC_NATIVE)
 static void reconstructAlpha(ULONG *pix, ULONG width, ULONG height, ULONG text, ULONG back)
 {
   LONG tr = (text >> 16) & 0xff;
@@ -307,7 +307,7 @@ VOID PrintString(struct IClass *cl, Object *obj)
           #endif
           TAG_DONE);
 
-        #if defined(__amigaos3__)
+        #if defined(__amigaos3__) && !defined(ZUNE68_GCC_NATIVE)
         if(CyberGfxBase != NULL)
           AlphaText(rport, text, length, color, 0x80000000);
         else

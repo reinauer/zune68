@@ -5,10 +5,15 @@
 #include <proto/dos.h>
 #include <proto/exec.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <libraries/mui.h>
 
+#ifdef __AROS__
 #include <proto/alib.h>
+#else
+#include <clib/alib_protos.h>
+#endif
 #include <proto/asl.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
@@ -18,51 +23,32 @@
 /****************************************************************
  aslfilerequest for load/save - buffer overflow safe
 *****************************************************************/
-long aslfilerequest(char *msg, char *dirpart, char *filepart, char *fullname,
-                    struct TagItem *tags) {
-
-  /* msg=a name to show
-     tags=can be 0 or some additional tags
-     dirpart= a pointer to a buffer of 500 bytes that receive the selected
-     directory filepart= a pointer to a buffer of 500 bytes that receive the
-     selected filename fullname= a pointer to a buffer of 1000 bytes that
-     receive the selected full filename */
-
-  struct FileRequester *fr;
-  struct Library *AslBase;
-  AslBase = OpenLibrary("asl.library", 37L);
-
-  if (AslBase) {
-    struct TagItem frtags[] = {
-
-        {ASLFR_TitleText, (IPTR)msg},
-        {ASLFR_InitialDrawer, (IPTR)dirpart},
-        {ASLFR_InitialFile, (IPTR)filepart},
-        {TAG_MORE, (IPTR)tags}
-
+long aslfilerequest(char *title, char *directory, char *filename,
+    char *path, struct TagItem *tags)
+{
+    struct Library *AslBase = OpenLibrary("asl.library", 37);
+    struct FileRequester *request;
+    LONG accepted = FALSE;
+    struct TagItem options[] = {
+        { ASLFR_TitleText, (IPTR)title },
+        { ASLFR_InitialDrawer, (IPTR)directory },
+        { ASLFR_InitialFile, (IPTR)filename },
+        { TAG_MORE, (IPTR)tags },
+        { TAG_DONE, 0 }
     };
-
-    if ((fr = (struct FileRequester *)AllocAslRequest(ASL_FileRequest,
-                                                      frtags))) {
-      if (AslRequest(fr, NULL)) {
-        strncpy(dirpart, fr->fr_Drawer, 498);
-        strncpy(filepart, fr->fr_File, 498);
-        strncpy(fullname, dirpart, 498);
-        AddPart(fullname, filepart, 998);
-        FreeAslRequest(fr);
-        CloseLibrary(AslBase);
-
-        return 1;
-      }
-
-      if (AslBase)
-        CloseLibrary(AslBase);
-
-      return 0;
+    if (!AslBase) return FALSE;
+    request = AllocAslRequest(ASL_FileRequest, options);
+    if (request) {
+        if (AslRequest(request, NULL)) {
+            snprintf(directory, 500, "%s", request->fr_Drawer);
+            snprintf(filename, 500, "%s", request->fr_File);
+            snprintf(path, 1000, "%s", directory);
+            accepted = AddPart(path, filename, 1000);
+        }
+        FreeAslRequest(request);
     }
-  }
-
-  return 0;
+    CloseLibrary(AslBase);
+    return accepted;
 }
 
 /****************************************************************

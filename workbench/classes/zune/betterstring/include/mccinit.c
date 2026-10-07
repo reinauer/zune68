@@ -218,7 +218,7 @@ struct Interface *INewlib = NULL;
 #else
 struct Library        *MUIMasterBase = NULL;
 struct ExecBase       *SysBase       = NULL;
-#if defined(__AROS__) || defined(__amigaos3__)
+#if defined(__AROS__) || (defined(__amigaos3__) && !defined(ZUNE68_GCC_NATIVE))
 struct UtilityBase    *UtilityBase   = NULL;
 #else
 struct Library        *UtilityBase   = NULL;

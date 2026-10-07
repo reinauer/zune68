@@ -1,11 +1,11 @@
 /*
-    Copyright (C)  2009-2026, The AROS Development Team. All rights reserved.
+    Copyright  2009, The AROS Development Team. All rights reserved.
 */
 
-#include <aros/isoascii.h>
 #include <graphics/gfx.h>
 #include <graphics/view.h>
 #include <dos/dos.h>
+#include <dos/dostags.h>
 #include <clib/alib_protos.h>
 #include <libraries/asl.h>
 #include <libraries/mui.h>
@@ -16,21 +16,34 @@
 #include <proto/utility.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
-#include <proto/muiscreen.h>
 #include <proto/dos.h>
-#include <zune/customclasses.h>
-
-#ifdef __AROS__
-#include <proto/alib.h>
-//#define DEBUG 1
-//#include <aros/debug.h>
-#endif
-
-#include "zunestuff.h"
 #include <string.h>
 #include <stdio.h>
 
+#ifndef SYS_Asynch
+#define SYS_Asynch   (TAG_USER + 4)
+#endif
+#ifndef SYS_Input
+#define SYS_Input    (TAG_USER + 1)
+#endif
+#ifndef SYS_Output
+#define SYS_Output   (TAG_USER + 2)
+#endif
+#ifndef NP_StackSize
+#define NP_StackSize (TAG_USER + 50)
+#endif
+
+#ifdef __AROS__
+#include <proto/alib.h>
+#include <proto/muiscreen.h>
+#else
+#include <proto/muiscreen.h>
+#endif
+
+#include "zunestuff.h"
+
 extern struct Library *MUIMasterBase;
+extern struct Library *MUIScreenBase;
 
 /* Utility class for the bubble help time slider */
 
@@ -39,28 +52,49 @@ struct BubbleSlider_DATA
     char buf[20];
 };
 
+static struct MUI_CustomClass *BubbleSlider_CLASS;
+
 IPTR BubbleSlider__MUIM_Numeric_Stringify(struct IClass *cl, Object * obj, struct MUIP_Numeric_Stringify *msg)
 {
     struct BubbleSlider_DATA *data = INST_DATA(cl, obj);
 
     if(msg->value != 0)
-        snprintf(data->buf, sizeof(data->buf) - 1, "%.1f s", 0.1 * msg->value);
+        sprintf(data->buf, "%ld.%ld s",
+            (long)(msg->value / 10), (long)(msg->value % 10));
     else
-        snprintf(data->buf, sizeof(data->buf) - 1, "off");
+        strcpy(data->buf, "off");
 
     data->buf[sizeof(data->buf) - 1] = 0;
     
     return (IPTR)data->buf;
 }
 
-ZUNE_CUSTOMCLASS_1(
-    BubbleSlider, NULL, MUIC_Slider, NULL,
-    MUIM_Numeric_Stringify, struct MUIP_Numeric_Stringify*
-)
+BOOPSI_DISPATCHER(IPTR, BubbleSlider_Dispatcher, cl, obj, msg)
+{
+    switch (msg->MethodID)
+    {
+        case MUIM_Numeric_Stringify:
+            return BubbleSlider__MUIM_Numeric_Stringify(cl, obj,
+                (struct MUIP_Numeric_Stringify *)msg);
+        default:
+            return DoSuperMethodA(cl, obj, msg);
+    }
+}
+BOOPSI_DISPATCHER_END
+
+static int ensure_BubbleSlider_CLASS(void)
+{
+    if (BubbleSlider_CLASS == NULL)
+    {
+        BubbleSlider_CLASS = MUI_CreateCustomClass(NULL, MUIC_Slider, NULL,
+            sizeof(struct BubbleSlider_DATA), BubbleSlider_Dispatcher);
+    }
+    return BubbleSlider_CLASS != NULL;
+}
 
 /* Utility class for choosing public screen */
 
-#define PSD_NAME_DEFAULT ISOASCII_LGUILLEMET "Default" ISOASCII_RGUILLEMET
+#define PSD_NAME_DEFAULT "Default"
 
 struct PopPublicScreen_DATA
 {
@@ -68,6 +102,8 @@ struct PopPublicScreen_DATA
     struct Hook objstr_hook;
     Object      *list;
 };
+
+static struct MUI_CustomClass *PopPublicScreen_CLASS;
 
 LONG PopPublicScreenStrObjFunc(struct Hook *hook, Object *popup, Object *str)
 {
@@ -85,7 +121,8 @@ LONG PopPublicScreenStrObjFunc(struct Hook *hook, Object *popup, Object *str)
     DoMethod(data->list, MUIM_List_InsertSingle, PSD_NAME_DEFAULT, MUIV_List_Insert_Bottom);
     DoMethod(data->list, MUIM_List_InsertSingle, PSD_NAME_FRONTMOST, MUIV_List_Insert_Bottom);
 
-    if ( (pfh = MUIS_OpenPubFile(PSD_FILENAME_USE, MODE_OLDFILE)) )
+    if (MUIScreenBase != NULL &&
+        (pfh = MUIS_OpenPubFile(PSD_FILENAME_USE, MODE_OLDFILE)))
     {
         while ( (desc = MUIS_ReadPubFile(pfh)) )
         {
@@ -143,6 +180,7 @@ void PopPublicScreenObjStrFunc(struct Hook *hook, Object *popup, Object *str)
 IPTR PopPublicScreen__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     Object *lv, *list;
+    struct PopPublicScreen_DATA *data;
     
     obj = (Object *)DoSuperNewTags
     (
@@ -157,7 +195,7 @@ IPTR PopPublicScreen__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     
     if (obj)
     {
-        struct PopPublicScreen_DATA *data = INST_DATA(cl, obj);
+        data = INST_DATA(cl, obj);
         
         data->list = list;
         
@@ -181,10 +219,27 @@ IPTR PopPublicScreen__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     return (IPTR)obj;
 }
 
-ZUNE_CUSTOMCLASS_1(
-    PopPublicScreen, NULL, MUIC_Popobject, NULL,
-    OM_NEW, struct opSet*
-)
+BOOPSI_DISPATCHER(IPTR, PopPublicScreen_Dispatcher, cl, obj, msg)
+{
+    switch (msg->MethodID)
+    {
+        case OM_NEW:
+            return PopPublicScreen__OM_NEW(cl, obj, (struct opSet *)msg);
+        default:
+            return DoSuperMethodA(cl, obj, msg);
+    }
+}
+BOOPSI_DISPATCHER_END
+
+static int ensure_PopPublicScreen_CLASS(void)
+{
+    if (PopPublicScreen_CLASS == NULL)
+    {
+        PopPublicScreen_CLASS = MUI_CreateCustomClass(NULL, MUIC_Popobject, NULL,
+            sizeof(struct PopPublicScreen_DATA), PopPublicScreen_Dispatcher);
+    }
+    return PopPublicScreen_CLASS != NULL;
+}
 
 /* Preferences System tab class */
 
@@ -205,14 +260,22 @@ struct MUI_SystemPData
 
 static IPTR ExecuteScreenInspectorFunc(struct Hook *hook, Object *caller, void *data)
 {
-    struct TagItem tags[] =
-    {
-        { SYS_Asynch,   TRUE            },
-        { SYS_Input,    0               },
-        { SYS_Output,   0               },
-        { NP_StackSize, AROS_STACKSIZE  },
-        { TAG_DONE                      }
-    };
+    struct TagItem tags[5];
+
+    (void)hook;
+    (void)caller;
+    (void)data;
+
+    tags[0].ti_Tag = SYS_Asynch;
+    tags[0].ti_Data = TRUE;
+    tags[1].ti_Tag = SYS_Input;
+    tags[1].ti_Data = 0;
+    tags[2].ti_Tag = SYS_Output;
+    tags[2].ti_Data = 0;
+    tags[3].ti_Tag = NP_StackSize;
+    tags[3].ti_Data = AROS_STACKSIZE;
+    tags[4].ti_Tag = TAG_DONE;
+    tags[4].ti_Data = 0;
     
     if (SystemTagList("sys:prefs/psi", tags) == -1)
     {
@@ -227,12 +290,14 @@ static IPTR SystemP_New(struct IClass *cl, Object *obj, struct opSet *msg)
     struct MUI_SystemPData *data;
     struct MUI_SystemPData d;
 
+    if (!ensure_BubbleSlider_CLASS() || !ensure_PopPublicScreen_CLASS())
+        return (IPTR)NULL;
+
     obj = (Object *) DoSuperNewTags
     (
         cl, obj, NULL,
         
         MUIA_Group_Columns, 2,
-        MUIA_Group_SameSize, TRUE,
 
         Child, (IPTR) VGroup,
             GroupFrameT(_(MSG_PUBLIC_SCREEN)),
@@ -249,7 +314,7 @@ static IPTR SystemP_New(struct IClass *cl, Object *obj, struct opSet *msg)
                 Child, (IPTR) Label1(_(MSG_POP_TO_FRONT)),
                 Child, HGroup,
                     Child, (IPTR) (d.pop_to_front_checkmark = MakeCheck(NULL)),
-                    Child, RectangleObject, End,
+                    Child, RectangleObject, MUIA_Weight, 1, End,
                     End,
                 End,
             Child, (IPTR) VSpace(0),

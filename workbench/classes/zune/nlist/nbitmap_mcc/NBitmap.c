@@ -96,6 +96,11 @@ const uint32 defaultColorMap[256] =
   else \
     _WPA(src, srcx, srcy, srcmod, rp, destx, desty, width, height, fmt); \
 }
+#if defined(ZUNE68_GCC_NATIVE)
+/* Classic CGX SDK has no alpha vector; retain the existing software path. */
+#define WPAA(src, srcx, srcy, srcmod, rp, destx, desty, width, height, globalalpha) \
+  _WPAA(src, srcx, srcy, srcmod, rp, destx, desty, width, height, globalalpha)
+#else
 #define WPAA(src, srcx, srcy, srcmod, rp, destx, desty, width, height, globalalpha) \
 { \
   if(CyberGfxBase != NULL && CyberGfxBase->lib_Version >= 43) \
@@ -103,6 +108,7 @@ const uint32 defaultColorMap[256] =
   else \
     _WPAA(src, srcx, srcy, srcmod, rp, destx, desty, width, height, globalalpha); \
 }
+#endif
 #endif
 
 // functions

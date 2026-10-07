@@ -10,7 +10,6 @@
 #include <proto/muimaster.h>
 #include <libraries/mui.h>
 #include <devices/rawkeycodes.h>
-#include <zune/customclasses.h>
 
 #ifdef __AROS__
 #include <proto/alib.h>
@@ -97,7 +96,7 @@ IPTR ClassListview__MUIM_Cleanup(struct IClass *CLASS, Object *obj, struct MUIP_
             DoMethod(data->list, MUIM_List_DeleteImage, entry->mcp_listimage, 0);
         }
     }
-    return DoSuperMethodA(CLASS, obj, (Msg)message);
+    return (IPTR)DoSuperMethodA(CLASS, obj, (Msg)message);
 }
 
 IPTR ClassListview__MUIM_HandleEvent(struct IClass *CLASS, Object *obj, struct MUIP_HandleEvent *message)
@@ -155,10 +154,10 @@ BOOPSI_DISPATCHER(IPTR, ClassListview_Dispatcher, CLASS, self, message)
         return ClassListview__MUIM_HandleEvent(CLASS, self, (struct MUIP_HandleEvent *)message);
 
     default:
-        return DoSuperMethodA(CLASS, self, message);
+        return (IPTR)DoSuperMethodA(CLASS, self, message);
     }
 
-    return 0;
+    return (IPTR)0;
 }
 BOOPSI_DISPATCHER_END
 

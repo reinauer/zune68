@@ -11,7 +11,7 @@
 #include <libraries/mui.h>
 #include <dos/dos.h>
 
-#include <proto/alib.h>
+#include <clib/alib_protos.h>
 #include <proto/muimaster.h>
 #include <proto/intuition.h>
 #include <proto/utility.h>
@@ -24,8 +24,8 @@
 #include "prefswindow_private.h"
 #include "catalogs/catalog_version.h"
 
-#define CATCOMP_ARRAY
-#include "strings.h"
+#define prefswindow_ARRAY
+#include "prefswindow_strings.h"
 
 #define DEBUG 1
 #include <aros/debug.h>
@@ -35,11 +35,11 @@ CONST_STRPTR MSG(struct Catalog *catalog, ULONG id)
 {
     if (catalog != NULL)
     {
-        return GetCatalogStr(catalog, id, CatCompArray[id].cca_Str);
+        return GetCatalogStr(catalog, id, prefswindow_Array[id].cca_Str);
     }
     else
     {
-        return CatCompArray[id].cca_Str;
+        return prefswindow_Array[id].cca_Str;
     }
 }
 
@@ -86,8 +86,8 @@ Object *PrefsWindow__OM_NEW
                     MUIA_Group_SameWidth, TRUE,
                     MUIA_Weight,             0,
                     
-                    Child, (IPTR) (testButton   = ImageButton(_(MSG_TEST), "THEME:Images/Gadgets/Test")),
-                    Child, (IPTR) (revertButton = ImageButton(_(MSG_REVERT), "THEME:Images/Gadgets/Revert")),
+                    Child, (IPTR) (testButton   = SimpleButton(_(MSG_TEST))),
+                    Child, (IPTR) (revertButton = SimpleButton(_(MSG_REVERT))),
                 End,
                 Child, (IPTR) RectangleObject,
                     MUIA_Weight, 50,
@@ -102,9 +102,9 @@ Object *PrefsWindow__OM_NEW
                     MUIA_Group_SameWidth, TRUE,
                     MUIA_Weight,             0,
                     
-                    Child, (IPTR) (saveButton   = ImageButton(_(MSG_SAVE), "THEME:Images/Gadgets/Save")),
-                    Child, (IPTR) (useButton    = ImageButton(_(MSG_USE), "THEME:Images/Gadgets/Use")),
-                    Child, (IPTR) (cancelButton = ImageButton(_(MSG_CANCEL), "THEME:Images/Gadgets/Cancel")),
+                    Child, (IPTR) (saveButton   = SimpleButton(_(MSG_SAVE))),
+                    Child, (IPTR) (useButton    = SimpleButton(_(MSG_USE))),
+                    Child, (IPTR) (cancelButton = SimpleButton(_(MSG_CANCEL))),
                 End,
             End,
         End,

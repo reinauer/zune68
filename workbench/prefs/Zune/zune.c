@@ -10,6 +10,7 @@
 #include <exec/memory.h>
 
 #include <libraries/asl.h>
+#include <libraries/gadtools.h>
 #include <libraries/mui.h>
 #include <prefs/prefhdr.h>
 
@@ -48,14 +49,36 @@
 
 /************************************************************************/
 
-#define MCC_Query(x) AROS_LVO_CALL1(struct MUI_CustomClass *,          \
-                                    AROS_LCA(LONG, (x), D0),           \
-                                    struct Library *, mcclib, 5, lib)
+#define MCC_Query(which) ({ \
+    register struct Library *base __asm("a6") = mcclib; \
+    register ULONG result __asm("d0") = (which); \
+    __asm volatile("jsr a6@(-30:W)" : "+r"(result) : "r"(base) \
+        : "d1", "a0", "a1", "cc", "memory"); \
+    (struct MUI_CustomClass *)result; \
+})
 
 
 #define ZUNEVERSION "$VER: Zune 0.2 (22.02.2006) AROS Dev Team"
 
+ULONG __stack = 65536;
+struct Library *MUIMasterBase, *LocaleBase, *MUIScreenBase;
 APTR *appaddr;
+static int open_libs(void)
+{
+    MUIMasterBase = OpenLibrary("zunemaster.library", 19);
+    if (!MUIMasterBase) MUIMasterBase = OpenLibrary("muimaster.library", 19);
+    if (!MUIMasterBase) return 0;
+    LocaleBase = OpenLibrary("locale.library", 38);
+    MUIScreenBase = OpenLibrary("muiscreen.library", 0);
+    return LocaleBase != NULL;
+}
+static void close_libs(void)
+{
+    if (MUIScreenBase) CloseLibrary(MUIScreenBase);
+    if (LocaleBase) CloseLibrary(LocaleBase);
+    if (MUIMasterBase) CloseLibrary(MUIMasterBase);
+}
+
 
 struct TagItem prefstags[] =
         {
@@ -477,10 +500,11 @@ int init_gui(void)
         {
             struct page_entry *p = &main_page_entries[i];
 
-            if (!p->cl) p->cl = create_class(p->desc);
+            if (!p->cl && p->desc) p->cl = create_class(p->desc);
 
             if (!(p->cl && (p->group = NewObject(p->cl->mcc_Class, NULL, TAG_DONE))))
             {
+                if (p->mcp_library) continue;
                 deinit_gui();
                 return 0;
             }
@@ -759,6 +783,7 @@ int main(void)
     IPTR args[] = { 0,0 };
     enum { ARG_APPNAME = 0,ARG_APPADDR=1 };
 
+    if (!open_libs()) { close_libs(); return RETURN_FAIL; }
     Locale_Initialize();
 
     if (Cli())
@@ -807,5 +832,6 @@ int main(void)
     if (rda) FreeArgs(rda);
 
     Locale_Deinitialize();
+    close_libs();
     return retval;
 }
