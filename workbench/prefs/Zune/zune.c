@@ -211,6 +211,22 @@ void main_page_active(void)
 /****************************************************************
  Look for MCPs
 *****************************************************************/
+static BOOL known_mcp(struct MUI_CustomClass *candidate)
+{
+    struct page_entry *entry;
+
+    for (entry = main_page_entries; entry->name; entry++)
+    {
+        if (!entry->mcp_library) continue;
+        if (entry->cl == candidate ||
+            (entry->cl->mcc_Class->cl_ID && candidate->mcc_Class->cl_ID &&
+             Stricmp(entry->cl->mcc_Class->cl_ID,
+                     candidate->mcc_Class->cl_ID) == 0))
+            return TRUE;
+    }
+    return FALSE;
+}
+
 void find_mcps(void)
 {
     static CONST_STRPTR const searchpaths[] =
@@ -259,7 +275,7 @@ void find_mcps(void)
                         {
                             struct MUI_CustomClass *mcp;
 
-                            if ((mcp = MCC_Query(1)))
+                            if ((mcp = MCC_Query(1)) && !known_mcp(mcp))
                             {
                                 char *sp;
                                 
