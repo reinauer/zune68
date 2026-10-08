@@ -6,7 +6,7 @@ from check_notifications import NotifyHarness
 from check_class_lifetime import EXEC, INTUITION
 
 CLASS, OBJECT, DATA = 0x70000, 0x71000, 0x71040
-POOL, CHAIN, ORDER = DATA + 406, DATA + 410, DATA + 656
+POOL, CHAIN, ORDER = DATA + 406, DATA + 410, DATA + 648
 SETUP, CYCLE = 1 << 28, 1 << 5
 
 
@@ -93,7 +93,9 @@ def check(path):
     assert h.chain() == [a], 'removed child must leave the live chain'
     assert h.order()
     assert not h.chain()
-    h.cpu.w_reg(9, h.mem.r32(ORDER))
+    order = h.mem.r32(ORDER)
+    assert order in h.allocations, 'explicit order storage must remain owned'
+    h.cpu.w_reg(9, order)
     h.free_vec()
     h.check_freed()
     assert not h.allocations
