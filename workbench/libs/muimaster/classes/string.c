@@ -81,6 +81,8 @@ struct MUI_StringData
 
     BOOL is_active;
     STRPTR AckBuffer;           /* pointer to buffer of MUIA_String_Acknowledge */
+    Object *KeyUpFocus;
+    Object *KeyDownFocus;
 };
 
 #define MSDF_ADVANCEONCR    (1<<0)
@@ -285,10 +287,10 @@ static BOOL Buffer_AddChar(struct MUI_StringData *data, unsigned char code)
     return TRUE;
 }
 
-static WORD Buffer_GetWordStartIndex(struct MUI_StringData *data,
-    WORD startindex)
+static LONG Buffer_GetWordStartIndex(struct MUI_StringData *data,
+    LONG startindex)
 {
-    WORD index = startindex;
+    LONG index = startindex;
 
     while (index > 0)
     {
@@ -302,10 +304,10 @@ static WORD Buffer_GetWordStartIndex(struct MUI_StringData *data,
     return index;
 }
 
-static WORD Buffer_GetWordEndIndex(struct MUI_StringData *data,
-    WORD startindex)
+static LONG Buffer_GetWordEndIndex(struct MUI_StringData *data,
+    LONG startindex)
 {
-    WORD index = startindex;
+    LONG index = startindex;
 
     while (index < data->NumChars)
     {
@@ -319,10 +321,10 @@ static WORD Buffer_GetWordEndIndex(struct MUI_StringData *data,
     return index;
 }
 
-static WORD Buffer_GetPrevWordIndex(struct MUI_StringData *data,
-    WORD startindex)
+static LONG Buffer_GetPrevWordIndex(struct MUI_StringData *data,
+    LONG startindex)
 {
-    WORD index = startindex;
+    LONG index = startindex;
 
     while (index > 0)
     {
@@ -340,10 +342,10 @@ static WORD Buffer_GetPrevWordIndex(struct MUI_StringData *data,
     return index;
 }
 
-static WORD Buffer_GetSuccWordIndex(struct MUI_StringData *data,
-    WORD startindex)
+static LONG Buffer_GetSuccWordIndex(struct MUI_StringData *data,
+    LONG startindex)
 {
-    WORD index = startindex;
+    LONG index = startindex;
 
     while (index < data->NumChars)
     {
@@ -360,11 +362,11 @@ static WORD Buffer_GetSuccWordIndex(struct MUI_StringData *data,
     return index;
 }
 
-static BOOL Buffer_GetMarkedRange(struct MUI_StringData *data, WORD *start,
-    WORD *stop)
+static BOOL Buffer_GetMarkedRange(struct MUI_StringData *data, LONG *start,
+    LONG *stop)
 {
-    WORD markstart = data->MarkPos;
-    WORD markstop = data->BufferPos;
+    LONG markstart = MIN(data->MarkPos, data->NumChars);
+    LONG markstop = MIN(data->BufferPos, data->NumChars);
 
     markstart = MIN(markstart, data->NumChars);
     markstart = MAX(markstart, 0);
@@ -413,6 +415,32 @@ static BOOL Buffer_GetMarkedRange(struct MUI_StringData *data, WORD *start,
     return TRUE;
 }
 
+/* BetterString's signed length is relative to the cursor, which stays
+ * in place. There is no special select-all value: -1 selects one character
+ * to the left. Clamp before adding so LONG_MIN/LONG_MAX cannot wrap.
+ */
+static void Buffer_Select(struct MUI_StringData *data, LONG length)
+{
+    ULONG cursor = MIN(data->BufferPos, data->NumChars);
+    ULONG extent;
+
+    data->BufferPos = cursor;
+    if (length < 0)
+    {
+        extent = 0UL - (ULONG)length;
+        data->MarkPos = cursor - MIN(extent, cursor);
+    }
+    else
+    {
+        extent = MIN((ULONG)length, data->NumChars - cursor);
+        data->MarkPos = cursor + extent;
+    }
+    data->MultiClick = 0;
+    data->msd_Flags &= ~(MSDF_MARKING | MSDF_KEYMARKING);
+    if (data->MarkPos != cursor) data->msd_Flags |= MSDF_MARKING;
+    data->msd_RedrawReason = MOVE_CURSOR;
+}
+
 static BOOL Buffer_AnythingMarked(struct MUI_StringData *data)
 {
     if (!(data->msd_Flags & MSDF_MARKING))
@@ -423,9 +451,9 @@ static BOOL Buffer_AnythingMarked(struct MUI_StringData *data)
 
 static BOOL Buffer_KillMarked(struct MUI_StringData *data)
 {
-    WORD markstart = data->MarkPos;
-    WORD markstop = data->BufferPos;
-    WORD marklen;
+    LONG markstart = MIN(data->MarkPos, data->NumChars);
+    LONG markstop = MIN(data->BufferPos, data->NumChars);
+    LONG marklen;
 
     //kprintf("\nBuffer_KillMarked 1  markpos %d  bufferpos %d  numchars %d\n",
     //    markstart, markstop, data->NumChars);
@@ -550,6 +578,14 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_String_NoInput:      /* BetterString */
             _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_NOINPUT);
+            break;
+
+        case MUIA_String_KeyUpFocus:   /* BetterString */
+            data->KeyUpFocus = (Object *)tag->ti_Data;
+            break;
+
+        case MUIA_String_KeyDownFocus: /* BetterString */
+            data->KeyDownFocus = (Object *)tag->ti_Data;
             break;
 
         case MUIA_String_StayActive:   /* BetterString */
@@ -678,13 +714,22 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_NOINPUT);
             break;
 
+        case MUIA_String_KeyUpFocus:   /* BetterString */
+            data->KeyUpFocus = (Object *)tag->ti_Data;
+            break;
+
+        case MUIA_String_KeyDownFocus: /* BetterString */
+            data->KeyDownFocus = (Object *)tag->ti_Data;
+            break;
+
         case MUIA_String_StayActive:   /* BetterString */
             _handle_bool_tag(data->msd_Flags, tag->ti_Data,
                 MSDF_STAYACTIVE);
             break;
 
         case MUIA_String_SelectSize:   /* BetterString */
-            // TODO: Implement OM_SET(MUIA_String_SelectSize)!
+            Buffer_Select(data, (LONG)tag->ti_Data);
+            MUI_Redraw(obj, MADF_DRAWUPDATE);
             break;
 
         }
@@ -771,10 +816,18 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         STORE = (data->msd_Flags & MSDF_STAYACTIVE) ? TRUE : FALSE;
         return TRUE;
 
+    case MUIA_String_KeyUpFocus:       /* BetterString */
+        STORE = (IPTR)data->KeyUpFocus;
+        return TRUE;
+
+    case MUIA_String_KeyDownFocus:     /* BetterString */
+        STORE = (IPTR)data->KeyDownFocus;
+        return TRUE;
+
     case MUIA_String_SelectSize:       /* BetterString */
         if (data->msd_Flags & MSDF_MARKING)
         {
-            WORD markstart, markstop;
+            LONG markstart, markstop;
 
             if (Buffer_GetMarkedRange(data, &markstart, &markstop))
             {
@@ -1129,11 +1182,11 @@ static VOID UpdateStringData(struct IClass *cl, Object *obj)
 }
 
 static VOID TextM(Object *obj, struct MUI_StringData *data,
-    STRPTR text, WORD textlen, WORD markstart, WORD markend)
+    STRPTR text, WORD textlen, LONG markstart, LONG markend)
 {
     struct RastPort *rp = _rp(obj);
     ULONG textpen;
-    WORD len;
+    LONG len;
 
     if (data->is_active)
         textpen = data->active_text.p_pen;
@@ -1199,7 +1252,7 @@ IPTR String__MUIM_Draw(struct IClass *cl, Object *obj,
     UWORD dispstrlen;
     ULONG textpen;
     UWORD textleft_save;
-    WORD markstart = 0, markstop = 0;
+    LONG markstart = 0, markstop = 0;
 
     /*  D(bug("\nString_Draw(%p) %ldx%ldx%ldx%ld reason=%ld msgflgs=%ld " */
 /*          "curs=%d " */
@@ -1438,7 +1491,7 @@ static int String_HandleVanillakey(struct IClass *cl, Object *obj,
     if (((ToLower(code) == 'c') || (ToLower(code) == 'x')) &&
         (qual & IEQUALIFIER_RCOMMAND))
     {
-        WORD markstart, markstop;
+        LONG markstart, markstop;
 
         if ((data->msd_Flags & MSDF_MARKING)
             && Buffer_GetMarkedRange(data, &markstart, &markstop))
@@ -1693,12 +1746,16 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
             break;
 
         case MUIKEY_UP:
-            if (data->msd_AttachedList)
+            if (data->KeyUpFocus && muiRenderInfo(obj) && _win(obj))
+                set(_win(obj), MUIA_Window_ActiveObject, data->KeyUpFocus);
+            else if (data->msd_AttachedList)
                 set(data->msd_AttachedList,
                     MUIA_List_Active, MUIV_List_Active_Up);
             break;
         case MUIKEY_DOWN:
-            if (data->msd_AttachedList)
+            if (data->KeyDownFocus && muiRenderInfo(obj) && _win(obj))
+                set(_win(obj), MUIA_Window_ActiveObject, data->KeyDownFocus);
+            else if (data->msd_AttachedList)
                 set(data->msd_AttachedList,
                     MUIA_List_Active, MUIV_List_Active_Down);
             break;
@@ -1954,8 +2011,8 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
 
                     if (data->BufferPos != newpos)
                     {
-                        WORD old_markstart = 0, old_markstop = 0;
-                        WORD markstart = 0, markstop = 0;
+                        LONG old_markstart = 0, old_markstop = 0;
+                        LONG markstart = 0, markstop = 0;
                         BOOL was_marked, is_marked;
 
                         was_marked = Buffer_AnythingMarked(data) &&

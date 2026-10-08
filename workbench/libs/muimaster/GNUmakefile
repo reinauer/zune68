@@ -113,6 +113,8 @@ check-core: core $(BUILD)/compatcheck
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_numeric.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
+	$(PYTHON) ../../../tests/check_string_selection.py \
+	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_list_sort.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_trace.py \

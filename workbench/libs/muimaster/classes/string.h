@@ -54,10 +54,10 @@ enum
 
 #define MUIA_String_Columns                     0xad001005
 #define MUIA_String_NoInput                     0xad001007
-#define MUIA_String_SelectSize                  0xad001001
+#define MUIA_String_SelectSize                  0xad001001 /* .sg LONG */
 #define MUIA_String_StayActive                  0xad001003
-#define MUIA_String_KeyUpFocus                  0xad001008
-#define MUIA_String_KeyDownFocus                0xad001009
+#define MUIA_String_KeyUpFocus                  0xad001008 /* isg Object * */
+#define MUIA_String_KeyDownFocus                0xad001009 /* isg Object * */
 
 #define MUIM_String_ClearSelected               0xad001004
 #define MUIM_String_FileNameStart               0xad001006
