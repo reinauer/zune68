@@ -2,7 +2,7 @@
 
 Zune for classic AmigaOS 3, starting from current AROS source.
 
-The native GCC port builds both library names, Zune Prefs, 13 optional
+The native GCC port builds both library names, Zune Prefs, 18 optional
 MCC/MCP plugins, Rawimage/Pixmap image classes, catalogs, SDK headers,
 examples and an Installer package.
 It uses library version 19.81 from the source baseline and remains an alpha.
@@ -67,8 +67,9 @@ the classic components listed above. Their history here is the history
 recorded in AROS, not a reconstruction of their separate upstream repos.
 
 The five translation repositories remain pinned submodules. TheBar is an
-additional submodule pinned to its 26.22 release; native build integration
-is in progress. After cloning:
+additional submodule pinned to its 26.22 release. Its native build includes
+TheBar, TheBarVirt, TheButton, the preferences module and Toolbar wrapper,
+along with catalogs, SDK headers and a runnable example. After cloning:
 
 ```sh
 git submodule update --init --recursive

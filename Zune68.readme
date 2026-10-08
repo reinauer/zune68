@@ -11,7 +11,7 @@ It aims to improve compatibility with classic MUI applications while
 keeping CPU and memory costs practical on ordinary 68000-based Amigas.
 
 This alpha contains muimaster.library and the side-by-side
-zunemaster.library, the Zune preferences editor, 13 optional MCC/MCP
+zunemaster.library, the Zune preferences editor, 18 optional MCC/MCP
 plugins, translations, SDK headers, examples and corresponding source.
 The native code builds with m68k-amigaos-gcc and requires no FPU.
 

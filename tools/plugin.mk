@@ -11,13 +11,15 @@ PLUGIN_CFLAGS ?= -std=gnu17 -Os -g -Wall -Wno-pointer-sign
 CC := $(CROSS)gcc
 # SDI's saveds is unnecessary for this absolute-data build.
 override CFLAGS := $(CPUFLAGS) -noixemul $(PLUGIN_CFLAGS) \
+  $(PLUGIN_DEFINES) $(if $(PLUGIN_ADAPTER),-include $(PLUGIN_ADAPTER)) \
   -fno-common -fno-builtin -fno-strict-aliasing -D__amigaos3__ \
   -DNO_INLINE_STDARG -U__saveds -D__saveds= -DZUNE68_GCC_NATIVE \
   -include $(dir $(PLUGIN_MAKEFILE))plugin/runtime.h \
   -I$(OBJDIR) -I. -I../include -I../include/mui \
   -I../../include -I../mcp -I../nlistview_mcc -I../nlistviews_mcp
-PLUGIN_OBJECTS := $(addprefix $(OBJDIR)/,$(LOBJS) $(filter-out vastubs.o,$(COBJS)))
-PLUGIN_OUTPUT := $(BUILD)/Libs/MUI/$(notdir $(TARGET))
+PLUGIN_SOURCES := $(if $(LOBJS),$(LOBJS) $(COBJS),$(MCPOBJS) $(MCCOBJS))
+PLUGIN_OBJECTS := $(addprefix $(OBJDIR)/,$(filter-out vastubs.o,$(PLUGIN_SOURCES)))
+PLUGIN_OUTPUT := $(BUILD)/Libs/MUI/$(if $(PLUGIN_NAME),$(PLUGIN_NAME),$(notdir $(TARGET)))
 .PHONY: zune68-plugin
 zune68-plugin: $(PLUGIN_OUTPUT)
 RUNTIME_DIR := $(dir $(PLUGIN_MAKEFILE))plugin
@@ -35,13 +37,13 @@ $(PLUGIN_OUTPUT): $(PLUGIN_OBJECTS) $(OBJDIR)/runtime.a
 	  -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lm -lamiga -ldebug \
 	  -Wl,--end-group -Wl,-Map,$@.map
 
-$(PLUGIN_OBJECTS): $(PLUGIN_MAKEFILE)
+$(PLUGIN_OBJECTS): $(PLUGIN_MAKEFILE) $(PLUGIN_ADAPTER)
 
 $(OBJDIR)/%.o: %.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-ifneq ($(filter locale.o,$(COBJS)),)
+ifneq ($(filter locale.o,$(PLUGIN_SOURCES)),)
 POT := $(firstword $(wildcard locale/*.pot))
 $(OBJDIR)/locale.c: $(POT) C_h.sd C_c.sd
 	@mkdir -p $(@D)
@@ -53,3 +55,16 @@ $(OBJDIR)/locale.o: $(OBJDIR)/locale.c
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 endif
 -include $(PLUGIN_OBJECTS:.o=.d)
+
+# Keep the pinned TheBar checkout untouched while correcting its three
+# malformed preference delimiters in the two affected translation units.
+ifneq ($(PLUGIN_ADAPTER),)
+ifneq ($(filter backgroundadjust.o,$(PLUGIN_SOURCES)),)
+THEBAR_PREPARE := $(dir $(PLUGIN_MAKEFILE))thebar/prepare.py
+THEBAR_FIXED := backgroundadjust penadjust
+$(addprefix $(OBJDIR)/native/,$(addsuffix .c,$(THEBAR_FIXED))): $(OBJDIR)/native/%.c: %.c $(THEBAR_PREPARE)
+	python3 $(THEBAR_PREPARE) $< $@
+$(addprefix $(OBJDIR)/,$(addsuffix .o,$(THEBAR_FIXED))): $(OBJDIR)/%.o: $(OBJDIR)/native/%.c
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+endif
+endif

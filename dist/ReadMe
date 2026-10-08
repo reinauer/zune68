@@ -3,7 +3,8 @@ Zune68 19.81 - Alpha 1 for AmigaOS 3.x / m68k
 
 Zune68 is a MUI-compatible user interface library based on AROS Zune.
 The full package contains the core libraries, the Zune preferences editor,
-13 MCC/MCP plugins, translation catalogs, opentest, seven examples,
+18 MCC/MCP plugins, Rawimage/Pixmap image classes, translation catalogs,
+opentest, eight examples,
 SDK headers, plugin documentation/licenses, and corresponding source.
 The separate core-only packaging option omits the additional components.
 
@@ -41,7 +42,9 @@ explicit choice as upgrades. The default is Skip.
 
   Libs/MUI/*         -> LIBS:MUI/
     BetterString, HotkeyString, NBitmap, NBalance, NList, NListview,
-    NFloattext, NListtree, TextEditor, and their bundled MCP editors.
+    NFloattext, NListtree, TextEditor, TheBar, TheBarVirt, TheButton,
+    the Toolbar wrapper, and their bundled MCP editors. Rawimage and
+    Pixmap supply image rendering for the built-in preferences pages.
     These plugins open the standard muimaster.library name. For use with
     Zune68, install its muimaster.library variant too. Side-by-side tests
     with a different MUI implementation and these plugins are unverified.

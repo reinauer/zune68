@@ -22,10 +22,15 @@ PLUGINS = {
     'nlist/nlistviews_mcp': 'NListviews.mcp',
     'texteditor/mcc': 'TextEditor.mcc',
     'texteditor/mcp': 'TextEditor.mcp',
+    'thebar/mcc': 'TheBar.mcc',
+    'thebar/mcc-virtual': 'TheBarVirt.mcc',
+    'thebar/mcc/button': 'TheButton.mcc',
+    'thebar/mcp': 'TheBar.mcp',
+    'thebar/toolbar_mcc': 'Toolbar.mcc',
 }
 IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui')
 CLASS_FILES = (*PLUGINS.values(), *IMAGE_CLASSES)
-EXAMPLES = ['HelloZune', 'HGroup', 'VGroup', 'VHGroup', 'VHGroup2', 'HVGroup', 'Notify']
+EXAMPLES = ['HelloZune', 'HGroup', 'VGroup', 'VHGroup', 'VHGroup2', 'HVGroup', 'Notify', 'TheBarDemo']
 
 
 # Package paths stay ASCII; Amiga Installer maps these to native OS3 names.
@@ -103,14 +108,21 @@ def sdk(build):
                 copy(source, build / 'SDK/include' / directory / source.name)
     for source in (build / 'include').rglob('*.h'):
         copy(source, build / 'SDK/include' / source.relative_to(build / 'include'))
+    # Other class projects carry older dependency headers. Ship each
+    # class's own public definition instead of whichever copy sorts last.
+    owners = {'BetterString_mcc.h': 'betterstring',
+              'HotkeyString_mcc.h': 'betterstring', 'NBitmap_mcc.h': 'nlist'}
     for family in ['betterstring', 'nlist', 'texteditor']:
         for source in (CLASSES / family / 'include/mui').glob('*.h'):
-            copy(source, build / 'SDK/include/mui' / source.name)
+            if owners.get(source.name, family) == family:
+                copy(source, build / 'SDK/include/mui' / source.name)
+    for name in ['TheBar_mcc.h', 'TheBar_mcp.h', 'Toolbar_mcc.h']:
+        copy(CLASSES / 'thebar/include/mui' / name, build / 'SDK/include/mui' / name)
     copy(CLASSES / 'rawimage/Rawimage_mcc.h', build / 'SDK/include/mui/Rawimage_mcc.h')
     copy(CLASSES / 'rawimage/MCC_Rawimage.doc', build / 'Docs/Rawimage/MCC_Rawimage.doc')
     copy(ROOT / 'vendor/bzip2/LICENSE', build / 'Docs/bzip2/LICENSE')
     copy(ROOT / 'vendor/bzip2/ORIGIN', build / 'Docs/bzip2/ORIGIN')
-    for family in ['betterstring', 'nlist', 'texteditor']:
+    for family in ['betterstring', 'nlist', 'texteditor', 'thebar']:
         for name in ['COPYING', 'AUTHORS', 'ChangeLog']:
             source = CLASSES / family / name
             if source.exists():
@@ -119,6 +131,8 @@ def sdk(build):
             for source in (CLASSES / family / dirname).glob('*'):
                 if source.is_file():
                     copy(source, build / 'Docs' / family / source.name)
+    copy(ROOT / 'tools/thebar/Native', build / 'Docs/thebar/Native')
+    copy(ROOT / 'tests/native/thebar_demo.c', build / 'SDK/examples/TheBarDemo.c')
     for source in (master / 'tutorial/examples').glob('*'):
         if source.suffix in ('.c', '.h'):
             copy(source, build / 'SDK/examples' / source.name)

@@ -1,0 +1,37 @@
+TheBar native AmigaOS 3 integration
+=================================
+
+The source is pinned to the upstream 26.22 release in the TheBar git
+submodule. COPYING contains its LGPL 2.1-or-later license. The release's
+Source.tar.gz includes that checkout and the native build adapters.
+
+Built components:
+  TheBar.mcc       toolbar group
+  TheBarVirt.mcc   toolbar in a virtual group
+  TheButton.mcc    individual toolbar button
+  TheBar.mcp       preferences page
+  Toolbar.mcc      upstream compatibility wrapper for the older Toolbar API
+
+All five are built for the 68000 with software floating point and are
+loaded on demand. AmigaOS 3.0 or newer is required. Installer offers each
+component under LIBS:MUI using its own version number, and separately
+offers the available translations under LOCALE:Catalogs.
+
+Native adaptations leave the pinned source checkout unchanged:
+  - Reuse upstream OS3 source lists with an out-of-tree GCC/libnix build.
+  - Supply bounded formatting, string and superclass varargs helpers.
+  - Use the native NewObject entry point for open-ended BOOPSI macros.
+  - Correct three preference-spec delimiter comparisons in generated
+    copies of backgroundadjust.c and penadjust.c. The preparation step
+    checks the original expressions and stops if upstream changes them.
+
+Examples/TheBarDemo uses all four object classes with text buttons and
+requires no image files. Run it normally for an interactive window, or
+run "TheBarDemo CHECK" from a Shell for three brief open/close cycles.
+It allocates a 64 KiB stack when the Shell stack is smaller. Its source
+and public TheBar/Toolbar headers are included in SDK.
+
+The Toolbar wrapper implements the older Toolbar interface using TheBar;
+it is not a separate copy of the original Toolbar implementation. This
+build does not claim every optional RTG effect or application-specific
+Toolbar usage has been exercised.
