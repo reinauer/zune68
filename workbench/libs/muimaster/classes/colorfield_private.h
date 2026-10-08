@@ -6,7 +6,7 @@ struct Colorfield_DATA
 {
     struct ColorMap *cm;
     ULONG rgb[3];
-    UBYTE pen;
+    LONG pen;
     UBYTE flags;    
 };
 

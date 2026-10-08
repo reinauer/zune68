@@ -127,6 +127,7 @@ IPTR Colorfield__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         return FALSE;
 
     data = INST_DATA(cl, obj);
+    data->pen = -1;
 
     /* parse initial taglist */
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
@@ -153,8 +154,10 @@ IPTR Colorfield__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Colorfield_Pen:
-            if ((data->pen = (UBYTE) tag->ti_Data) != (UBYTE)-1)
+            if ((data->pen = (LONG) tag->ti_Data) != -1)
                 data->flags |= FLAG_FIXED_PEN;
+            else
+                data->flags &= ~FLAG_FIXED_PEN;
             break;
 
         }
@@ -213,16 +216,24 @@ IPTR Colorfield__OM_SET(struct IClass *cl, Object *obj,
             break;
 
         case MUIA_Colorfield_Pen:
-            if ((data->flags & FLAG_PEN_ALLOCATED) && (data->cm))
+            /* An automatic pen belongs to this setup/cleanup cycle.
+             * Live Pen changes cannot replace or release that allocation.
+             */
+            if (data->flags & FLAG_PEN_ALLOCATED)
+                break;
+            if ((data->pen = (LONG) tag->ti_Data) != -1)
             {
-                ULONG disposepen = data->pen;
-                struct ColorMap *cm = data->cm;
-                data->flags &= ~(FLAG_PEN_ALLOCATED | FLAG_NO_PEN);
-                data->cm = NULL;
-                ReleasePen(cm, disposepen);
-            }
-            if ((data->pen = (UBYTE) tag->ti_Data) != (UBYTE)-1)
                 data->flags |= FLAG_FIXED_PEN;
+                data->flags &= ~FLAG_NO_PEN;
+            }
+            else
+            {
+                /* A borrowed pen is never released. Resetting it requests
+                 * automatic allocation at the next setup, not here.
+                 */
+                data->flags &= ~FLAG_FIXED_PEN;
+                data->flags |= FLAG_NO_PEN;
+            }
             newcol = TRUE;
             break;
 
@@ -240,7 +251,7 @@ IPTR Colorfield__OM_SET(struct IClass *cl, Object *obj,
     
     retval = DoSuperMethodA(cl, obj, (Msg) &supMsg);
 
-    if (newcol && (_flags(obj) & MADF_SETUP)
+    if (newcol && data->pen != -1 && (_flags(obj) & MADF_SETUP)
         && !(data->flags & FLAG_NO_PEN))
     {
         if (_screen(obj))
@@ -296,6 +307,7 @@ IPTR Colorfield__OM_GET(struct IClass *cl, Object *obj,
 void Colorfield_SetupPen(Object *obj, struct Colorfield_DATA *data)
 {
     data->cm = _screen(obj)->ViewPort.ColorMap;
+    data->flags &= ~FLAG_NO_PEN;
 
     if (data->flags & FLAG_FIXED_PEN)
     {
@@ -317,7 +329,7 @@ void Colorfield_SetupPen(Object *obj, struct Colorfield_DATA *data)
         }
         else
         {
-            data->pen = (UBYTE) pen;
+            data->pen = pen;
             data->flags |= FLAG_PEN_ALLOCATED;
         }
     }
@@ -353,6 +365,7 @@ IPTR Colorfield__MUIM_Cleanup(struct IClass *cl, Object *obj,
         data->pen = -1;
         ReleasePen(cm, disposepen);
     }
+    data->cm = NULL;
     data->flags &= ~FLAG_NO_PEN;
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
@@ -386,7 +399,7 @@ IPTR Colorfield__MUIM_Draw(struct IClass *cl, Object *obj,
     if (!_rp(obj))
         return TRUE;
 
-    if (data->flags & FLAG_NO_PEN)
+    if ((data->flags & FLAG_NO_PEN) || data->pen == -1)
     {
         static UWORD pat[] = { 0x1111, 0x2222, 0x4444, 0x8888 };
 

@@ -121,7 +121,7 @@ static void SliderFunc(struct Hook *hook, Object *obj, struct MUIP_CASliderNotif
         if (data->grad)
             nnset(data->grad, GRAD_CurVal, 0xFFFF - (hsb.cw_Brightness >> 16));
 
-        if (data->gradpen != -1)
+        if ((_flags(obj) & MADF_SETUP) && data->gradpen != -1)
         {
             hsb.cw_Brightness = 0xFFFFFFFF;
             ConvertHSBToRGB(&hsb, &cw);
@@ -161,7 +161,7 @@ static void WheelFunc(struct Hook *hook, Object *obj, struct MUIP_CANotifyMsg *m
 
     nnset(data->colfield, MUIA_Colorfield_RGB, (IPTR) data->rgb);
 
-    if (data->gradpen != -1)
+    if ((_flags(obj) & MADF_SETUP) && data->gradpen != -1)
     {
         hsb.cw_Brightness = 0xFFFFFFFF;
         ConvertHSBToRGB(&hsb, &cw);
@@ -299,6 +299,7 @@ IPTR Coloradjust__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     data = INST_DATA(cl, obj);
+    data->gradpen = -1;
 
     data->colorwheelbase = colorwheelbase;
     data->gradientsliderbase = gradientsliderbase;
@@ -604,8 +605,10 @@ IPTR Coloradjust__MUIM_Cleanup(struct IClass *cl, Object *obj,
 
     if (data->gradpen != -1)
     {
-        ReleasePen(_screen(obj)->ViewPort.ColorMap, data->gradpen);
+        LONG pen = data->gradpen;
+        /* Clear ownership before releasing a pen that callbacks can use. */
         data->gradpen = -1;
+        ReleasePen(_screen(obj)->ViewPort.ColorMap, pen);
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
