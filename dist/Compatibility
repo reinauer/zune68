@@ -27,9 +27,11 @@ Implemented areas with isolated linked-code checks
 - Public library gates, register hooks and classic structure prefixes
 - Built-in and external class ownership, failure cleanup and expunge
 - Notification removal, re-entry, source disposal and symbolic destinations
+- Typed configuration lookup, numeric defaults and custom data pointers
 - Buffered input, ARexx fallback hooks, AppIcon drops, legacy menus and help
 - Floattext wrapping, dynamic group relayout and explicit cycle ordering
 - Numeric scale intervals, reverse mapping and large-range arithmetic
+- Signed String selection ranges and explicit up/down focus targets
 - Bitmap remap ownership, image allocation failure paths and nested clips
 - Pixmap raw/RLE/bzip2 decoding, data replacement and failed-allocation cleanup
 
@@ -72,6 +74,44 @@ notifications before destroying independently owned targets.
 Diagnostic TRACE=1 builds use a bounded 64 KiB T:zune.log fallback, with
 messages truncated to 511 bytes and files closed after each write. Shell
 output remains caller-owned. Use TRACE=0 for performance measurements.
+
+TheBar
+------
+TheBar 26.22, TheBarVirt, TheButton, TheBar.mcp and the Toolbar wrapper are
+built for the 68000 without an FPU and loaded only when requested. The five
+stripped modules total 184,200 bytes. SDK headers, catalogs, documentation
+and Examples/TheBarDemo are included. See Docs/thebar/Native for details.
+
+On the isolated 68020 / AmigaOS 3.2.3 guest, TheBarDemo CHECK completes three
+construction, attribute, window-open and disposal cycles. The preferences
+page renders and Cancel exits with return code zero. This does not cover
+all optional RTG effects or every legacy Toolbar application's behavior.
+
+IBrowse progress and limits
+---------------------------
+IBrowse 3.0a OS3 starts with the native library. Typed configuration defaults
+restore its layout, and custom background callbacks now paint the About
+page. The callback flag belongs to each object: changing a containing group
+must not disable the document painter. Reference MUI 3.9 probes establish
+this behavior, callback bounds and the attribute getter. Virtual groups
+also bracket content painting with the private MUI begin/end methods.
+IBrowse uses these to prepare its paint rectangle: the About text is now
+visible on the initial draw without selecting it. The default begin/end
+methods install and remove the outer virtual clip, so subclass clipping
+cannot remain installed over the toolbar or location field. Edited URL
+text now repaints, and the SASG quick-link starts loading its target.
+
+The native title bar provides Settings and Iconify buttons, using the
+existing window-button preferences. Explicitly saved settings are retained.
+Iconify/restore and opening application settings have been exercised in the
+isolated AmigaOS 3.2.3 guest. Snapshot and popup buttons remain unsupported.
+
+IBrowse is not yet a completed compatibility result. Exposure redraws can
+leave stale toolbar pixels; colors and navigation redraws still need
+investigation. Timer callback arguments now match the reference, fixing the observed
+IBrowse timer write into class memory. URL replacement and About navigation
+work in the updated guest. Forms, tabs, downloads, HTTPS and shutdown/memory
+measurements remain part of the application test matrix.
 
 Runtime workload
 ----------------
