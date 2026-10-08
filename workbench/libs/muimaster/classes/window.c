@@ -80,10 +80,10 @@ struct IDNode
 struct NativeTitleGadget
 {
     struct Gadget gadget;
-    struct Border frame;
-    struct Border symbol;
-    WORD frame_xy[10];
-    WORD symbol_xy[16];
+    struct Border frame[2];
+    struct Border symbol[4];
+    WORD frame_xy[12];
+    WORD symbol_xy[4][12];
 };
 #endif
 
@@ -777,6 +777,16 @@ static LONG NativeWindowMinWidth(struct MUI_WindowData *data, LONG borders)
     return width < data->wd_TitleMinWidth ? data->wd_TitleMinWidth : width;
 }
 
+static void NativeTitleRectangle(WORD *xy, WORD left, WORD top,
+    WORD right, WORD bottom)
+{
+    xy[0] = left;  xy[1] = top;
+    xy[2] = right; xy[3] = top;
+    xy[4] = right; xy[5] = bottom;
+    xy[6] = left;  xy[7] = bottom;
+    xy[8] = left;  xy[9] = top;
+}
+
 static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
     struct Window *win)
 {
@@ -784,7 +794,7 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
     struct Gadget *g;
     struct NativeTitleGadget *items;
     LONG right = win->BorderRight, left = win->BorderLeft;
-    LONG height = win->BorderTop, width = height + 4;
+    LONG height = win->BorderTop, width = 2 * height + 1;
     LONG count = !!(buttons & MUIV_Window_Button_MUI) +
         !!(buttons & MUIV_Window_Button_Iconify);
     LONG i, needed;
@@ -804,10 +814,15 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
         {
             if (-g->LeftEdge > right)
                 right = -g->LeftEdge;
+            if ((g->GadgetType & GTYP_SYSTYPEMASK) == GTYP_WDEPTH &&
+                g->Width > 1)
+                width = g->Width - 1;
         }
         else if ((g->GadgetType & GTYP_SYSTYPEMASK) == GTYP_CLOSE)
             left = g->LeftEdge + g->Width;
     }
+    if (width < 15)
+        width = 15;
     needed = left + right + count * width + 16;
     if (needed > win->Width ||
         needed > data->wd_MinMax.MaxWidth + win->BorderLeft + win->BorderRight)
@@ -820,9 +835,13 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
     for (i = 0; i < 2; i++)
     {
         struct NativeTitleGadget *item = &items[i];
-        WORD *xy = item->symbol_xy;
+        WORD *xy;
+        WORD center = width / 2, top;
+        WORD symbol_height = height < 10 ? 10 : height;
+        UWORD *pens = data->wd_RenderInfo.mri_DrawInfo->dri_Pens;
         ULONG bit = i ? MUIV_Window_Button_Iconify : MUIV_Window_Button_MUI;
         ULONG id;
+        int part, parts;
         if (!(buttons & bit))
             continue;
         id = DoMethod(obj, MUIM_Window_AllocGadgetID);
@@ -831,46 +850,101 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
         right += width;
         g = &item->gadget;
         g->LeftEdge = -right;
-        g->TopEdge = 1;
+        g->TopEdge = 0;
         g->Width = width;
-        g->Height = height - 2;
-        g->Flags = GFLG_RELRIGHT | GFLG_GADGHCOMP;
+        g->Height = height;
+        g->Flags = GFLG_RELRIGHT | GFLG_GADGHNONE;
         g->Activation = GACT_RELVERIFY | GACT_TOPBORDER;
         g->GadgetType = GTYP_BOOLGADGET;
         g->GadgetID = id;
-        g->GadgetRender = &item->frame;
-        item->frame.FrontPen = data->wd_RenderInfo.mri_DrawInfo->dri_Pens[SHADOWPEN];
-        item->frame.DrawMode = JAM1;
-        item->frame.Count = 5;
-        item->frame.XY = item->frame_xy;
-        item->frame.NextBorder = &item->symbol;
-        item->frame_xy[2] = width - 1;
+        g->GadgetRender = &item->frame[0];
+        /* Title gadgets share the top/bottom frame lines with the system
+         * gadgets. An inset bevel adds an unwanted line inside the title. */
+        item->frame_xy[0] = 0;
+        item->frame_xy[1] = height - 2;
+        item->frame_xy[2] = 0;
+        item->frame_xy[3] = 0;
         item->frame_xy[4] = width - 1;
-        item->frame_xy[5] = height - 3;
-        item->frame_xy[7] = height - 3;
-        item->symbol.FrontPen = data->wd_RenderInfo.mri_DrawInfo->dri_Pens[TEXTPEN];
-        item->symbol.DrawMode = JAM1;
-        item->symbol.XY = xy;
+        item->frame_xy[5] = 0;
+        item->frame_xy[6] = width - 1;
+        item->frame_xy[7] = 1;
+        item->frame_xy[8] = width - 1;
+        item->frame_xy[9] = height - 1;
+        item->frame_xy[10] = 0;
+        item->frame_xy[11] = height - 1;
+        item->frame[0].FrontPen = pens[SHINEPEN];
+        item->frame[1].FrontPen = pens[SHADOWPEN];
+        for (part = 0; part < 2; part++)
+        {
+            item->frame[part].DrawMode = JAM1;
+            item->frame[part].Count = 3;
+            item->frame[part].XY = item->frame_xy + part * 6;
+        }
+        item->frame[0].NextBorder = &item->frame[1];
+        item->frame[1].NextBorder = &item->symbol[0];
+
         if (!i)
         {
-            /* M: application-specific toolkit settings. */
-            item->symbol.Count = 5;
-            xy[0] = 3; xy[1] = height - 5;
-            xy[2] = 3; xy[3] = 2;
-            xy[4] = width / 2; xy[5] = height / 2;
-            xy[6] = width - 4; xy[7] = 2;
-            xy[8] = width - 4; xy[9] = height - 5;
+            /* Settings: a window containing a small raised gadget. */
+            top = (symbol_height - 7) / 2;
+            NativeTitleRectangle(item->symbol_xy[0], center - 6, top,
+                center + 6, top + 6);
+            NativeTitleRectangle(item->symbol_xy[1], center - 4, top + 2,
+                center - 1, top + 4);
+            xy = item->symbol_xy[2];
+            xy[0] = center - 3; xy[1] = top + 3;
+            xy[2] = center - 2; xy[3] = top + 3;
+            item->symbol[0].Count = item->symbol[1].Count = 5;
+            item->symbol[2].Count = 2;
+            item->symbol[2].FrontPen = pens[SHINEPEN];
+            parts = 3;
         }
         else
         {
-            /* Small window outline: put the application on Workbench. */
-            item->symbol.Count = 6;
-            xy[0] = 3; xy[1] = 2;
-            xy[2] = width - 4; xy[3] = 2;
-            xy[4] = width - 4; xy[5] = height - 5;
-            xy[6] = 3; xy[7] = height - 5;
-            xy[8] = 3; xy[9] = 2;
-            xy[10] = width - 4; xy[11] = height - 5;
+            /* Iconify: a downward arrow above the Workbench icon. */
+            top = (symbol_height - 8) / 2;
+            xy = item->symbol_xy[0];
+            xy[0] = center - 4; xy[1] = top;
+            xy[2] = center + 4; xy[3] = top;
+            xy[4] = center;     xy[5] = top + 4;
+            xy[6] = center - 4; xy[7] = top;
+            item->symbol[0].Count = 4;
+            NativeTitleRectangle(item->symbol_xy[1], center - 4, top + 5,
+                center + 4, top + 7);
+            item->symbol[1].Count = 5;
+            xy = item->symbol_xy[2];
+            xy[0] = center - 2; xy[1] = top + 1;
+            xy[2] = center + 2; xy[3] = top + 1;
+            xy[4] = center + 1; xy[5] = top + 2;
+            xy[6] = center - 1; xy[7] = top + 2;
+            xy[8] = center;     xy[9] = top + 3;
+            item->symbol[2].Count = 5;
+            item->symbol[2].FrontPen = pens[BACKGROUNDPEN];
+            xy = item->symbol_xy[3];
+            xy[0] = center - 3; xy[1] = top + 6;
+            xy[2] = center + 3; xy[3] = top + 6;
+            item->symbol[3].Count = 2;
+            item->symbol[3].FrontPen = pens[SHINEPEN];
+            parts = 4;
+        }
+        item->symbol[0].FrontPen = item->symbol[1].FrontPen = pens[TEXTPEN];
+        for (part = 0; part < parts; part++)
+        {
+            /* Fit small screen fonts without painting over the frame. */
+            if (height < symbol_height)
+            {
+                int point;
+                for (point = 0; point < item->symbol[part].Count; point++)
+                {
+                    WORD *y = &item->symbol_xy[part][2 * point + 1];
+                    *y = 1 + (*y - 1) * (height - 3) /
+                        (symbol_height - 3);
+                }
+            }
+            item->symbol[part].DrawMode = JAM1;
+            item->symbol[part].XY = item->symbol_xy[part];
+            item->symbol[part].NextBorder = part + 1 < parts ?
+                &item->symbol[part + 1] : NULL;
         }
         /* Before the system drag gadget, so this region remains clickable. */
         AddGadget(win, g, 0);
