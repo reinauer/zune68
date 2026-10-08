@@ -206,9 +206,12 @@ struct MQNode
 {
     struct MinNode    mq_Node;
     Object           *mq_Dest;
-    LONG              mq_Count;
+    LONG              mq_Count; /* argument count and private MQF_* flags */
     IPTR             *mq_Msg;
 };
+
+/* Public PushMethod counts use only the low four bits. */
+#define MQF_OWNED_WINDOWS (1UL << 31)
 
 /*
  * FilePrefHeader
@@ -242,9 +245,34 @@ static struct MQNode *CreateMQNode(LONG count)
 /*
  * Free an IQ Method got from CreateIQMethod()
  */
+static void FreeWindowList(struct List *windows)
+{
+    struct Node *node;
+
+    if (!windows)
+        return;
+    while ((node = RemHead(windows)))
+        FreeVec(node);
+    FreeVec(windows);
+}
+
 static void DeleteMQNode(struct MQNode *mq)
 {
+    /* Only internal reopen requests transfer ownership of their arguments.
+     * Ordinary PushMethod argument pointers remain the caller's property.
+     */
+    if ((ULONG)mq->mq_Count & MQF_OWNED_WINDOWS)
+        FreeWindowList((struct List *)mq->mq_Msg[1]);
     mui_free(mq);
+}
+
+static void EnqueueMethod(struct MUI_ApplicationData *data, struct MQNode *mq)
+{
+    ObtainSemaphore(&data->app_MethodSemaphore);
+    AddTail((struct List *)&data->app_MethodQueue, (struct Node *)mq);
+    ReleaseSemaphore(&data->app_MethodSemaphore);
+    Signal(data->app_Task,
+        1L << data->app_GlobalInfo.mgi_WindowsPort->mp_SigBit);
 }
 
 
@@ -291,6 +319,10 @@ static BOOL application_do_pushed_method(struct MUI_ApplicationData *data)
     {
         ReleaseSemaphore(&data->app_MethodSemaphore);
 
+        /* OpenWindows consumes its list when called. A discarded node,
+         * instead, retains ownership for DeleteMQNode to release it.
+         */
+        mq->mq_Count &= ~MQF_OWNED_WINDOWS;
         DoMethodA(mq->mq_Dest, (Msg) mq->mq_Msg);
         DeleteMQNode(mq);
         return TRUE;
@@ -815,6 +847,7 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
 {
     struct MUI_ApplicationData *data = INST_DATA(cl, obj);
     struct RIDNode *rid;
+    struct MQNode *mq;
 
     long positionmode;
     if (data->app_Base)
@@ -1004,6 +1037,14 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
     DeleteMsgPort(data->app_GlobalInfo.mgi_WindowsPort);
 
     FreeVec(data->app_Base);
+
+    /* Discard calls to objects being destroyed, including calls queued by
+     * their cleanup methods. The list is initialized before any failing
+     * constructor step; its semaphore need not exist on those paths.
+     */
+    while ((mq = (struct MQNode *)RemHead(
+                (struct List *)&data->app_MethodQueue)))
+        DeleteMQNode(mq);
 
     /* free returnid stuff */
 
@@ -1986,14 +2027,7 @@ static IPTR Application__MUIM_PushMethod(struct IClass *cl, Object *obj,
     for (i = 0; i < count; i++)
         mq->mq_Msg[i] = *(m + 1 + i);
 
-    /* enqueue method */
-    ObtainSemaphore(&data->app_MethodSemaphore);
-    AddTail((struct List *)&data->app_MethodQueue, (struct Node *)mq);
-    ReleaseSemaphore(&data->app_MethodSemaphore);
-
-    /* CHECKME: to wake task up as soon as possible! */
-    Signal(data->app_Task,
-        1L << data->app_GlobalInfo.mgi_WindowsPort->mp_SigBit);
+    EnqueueMethod(data, mq);
 
     return (IPTR)mq;
 }
@@ -2216,6 +2250,23 @@ static struct List *Application__CloseWindows(struct IClass *cl, Object *obj)
     return windows;
 }
 
+static void QueueOpenWindows(Object *obj, struct MUI_ApplicationData *data,
+    struct List *windows)
+{
+    struct MQNode *mq = CreateMQNode(2);
+
+    if (!mq)
+    {
+        FreeWindowList(windows);
+        return;
+    }
+    mq->mq_Dest = obj;
+    mq->mq_Msg[0] = MUIM_Application_OpenWindows;
+    mq->mq_Msg[1] = (IPTR)windows;
+    mq->mq_Count |= MQF_OWNED_WINDOWS;
+    EnqueueMethod(data, mq);
+}
+
 static IPTR Application__MUIM_SetConfigdata(struct IClass *cl, Object *obj,
     struct MUIP_Application_SetConfigdata *msg)
 {
@@ -2230,8 +2281,7 @@ static IPTR Application__MUIM_SetConfigdata(struct IClass *cl, Object *obj,
     get(data->app_GlobalInfo.mgi_Configdata, MUIA_Configdata_ZunePrefs,
         &data->app_GlobalInfo.mgi_Prefs);
 
-    DoMethod(obj, MUIM_Application_PushMethod, (IPTR) obj, 2,
-        MUIM_Application_OpenWindows, (IPTR) windows);
+    QueueOpenWindows(obj, data, windows);
     return 0;
 }
 
@@ -2334,8 +2384,7 @@ static IPTR Application__MUIM_SetConfigItem(struct IClass *cl, Object *obj,
 
                     windows = Application__CloseWindows(cl, obj);
                     DoMethod(data->app_GlobalInfo.mgi_Configdata, MUIM_Configdata_SetString, msg->item, msg->data);
-                    DoMethod(obj, MUIM_Application_PushMethod, (IPTR) obj, 2,
-                        MUIM_Application_OpenWindows, (IPTR) windows);
+                    QueueOpenWindows(obj, data, windows);
                 }
                 break;
         }
@@ -2361,7 +2410,24 @@ static IPTR Application__MUIM_OpenWindows(struct IClass *cl, Object *obj,
 
         while ((n = (struct Node *)RemHead(msg->windows)))
         {
-            set((Object *)n->ln_Name, MUIA_Window_Open, TRUE);
+            struct MinList *children = NULL;
+            Object *cstate, *child;
+
+            /* A window may have been removed and disposed since queuing.
+             * Compare pointers in the live family before using the target.
+             * Re-read after each open, which can itself change membership.
+             */
+            get(data->app_WindowFamily, MUIA_Family_List, &children);
+            if (children)
+            {
+                cstate = (Object *)children->mlh_Head;
+                while ((child = NextObject(&cstate)))
+                    if (child == (Object *)n->ln_Name)
+                    {
+                        set(child, MUIA_Window_Open, TRUE);
+                        break;
+                    }
+            }
             FreeVec(n);
         }
         FreeVec(msg->windows);
