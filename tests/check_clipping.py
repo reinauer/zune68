@@ -113,6 +113,45 @@ def check_virtual_paint(path):
             h.call('ZuneRemoveClipRegion', MRI, outer)
         h.finish()
 
+    # BeginPaint exposes only newly uncovered pixels after a scroll. The
+    # subclass still receives a full-viewport background callback, so its
+    # drawing must be bounded by this clip, including diagonal scrolls.
+    viewport = (13, 24, 104, 93)
+    cases = [
+        (0, 0, 0, [viewport]),
+        (2, 0, 7, [(13, 87, 104, 93)]),
+        (2, 0, -7, [(13, 24, 104, 30)]),
+        (2, 9, 0, [(96, 24, 104, 93)]),
+        (2, -9, 0, [(13, 24, 21, 93)]),
+        (2, 9, -7, [(96, 24, 104, 93), (13, 24, 104, 30)]),
+        (2, 200, 0, [viewport]),
+        (2, 0, -200, [viewport]),
+        (2, 0, 0, []),
+    ]
+    for update, dx, dy, expected in cases:
+        for fail_second in (False, True) if len(expected) == 2 else (False,):
+            h = ClipHarness(path)
+            cl, data = 0x70000, OBJECT + 246
+            h.mem.w16(cl + 32, 246)
+            h.mem.w_block(OBJECT + 52, struct.pack('>4h', 10, 20, 100, 80))
+            h.mem.w_block(OBJECT + 60, bytes([3, 4, 8, 10]))
+            h.mem.w32(data + 64, update)
+            h.mem.w32(data + 92, (100 + dx) & 0xffffffff)
+            h.mem.w32(data + 96, (100 + dy) & 0xffffffff)
+            h.mem.w32(data + 100, 100)
+            h.mem.w32(data + 104, 100)
+            if fail_second:
+                def rect():
+                    h.rect()
+                    if len(h.rectangles) == 2:
+                        h.cpu.w_reg(0, 0)
+                h.trap(GFX - 510, rect)
+            result = h.call('Group__MUIM_Virtgroup_BeginPaint', cl, OBJECT)
+            assert bool(result) != fail_second
+            assert h.rectangles == expected, (h.rectangles, expected)
+            h.call('Group__MUIM_Virtgroup_EndPaint', cl, OBJECT)
+            h.finish()
+
 
 def check(path):
     # A damaged layer is not necessarily inside BeginRefresh/BeginUpdate.

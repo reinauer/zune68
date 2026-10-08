@@ -467,6 +467,34 @@ IPTR Group__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
     return DoSuperMethodA(cl, obj, msg);
 }
 
+/* Scrolling changes screen coordinates without re-running client layouts.
+ * Walk actual Group subclasses so forwarded/custom ChildList attributes
+ * cannot make a non-group look like a container. Hidden children move too. */
+static void Group_ShiftChildren(struct IClass *cl, Object *obj,
+    LONG dx, LONG dy)
+{
+    struct MUI_GroupData *data = INST_DATA(cl, obj);
+    struct MinList *children = NULL;
+    APTR state;
+    Object *child;
+
+    get(data->family, MUIA_Family_List, &children);
+    if (!children)
+        return;
+    state = children->mlh_Head;
+    while ((child = NextObject(&state)))
+    {
+        struct IClass *childclass = OCLASS(child);
+
+        _left(child) -= dx;
+        _top(child) -= dy;
+        while (childclass && childclass != cl)
+            childclass = childclass->cl_Super;
+        if (childclass)
+            Group_ShiftChildren(cl, child, dx, dy);
+    }
+}
+
 /**************************************************************************
  OM_SET
 **************************************************************************/
@@ -633,18 +661,29 @@ IPTR Group__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         msg->ops_AttrList = origTags;
     }
 
+    if (data->flags & GROUP_VIRTUAL)
+    {
+        virt_offx = CLAMP(virt_offx, 0,
+            MAX(0, data->virt_mwidth - _mwidth(obj)));
+        virt_offy = CLAMP(virt_offy, 0,
+            MAX(0, data->virt_mheight - _mheight(obj)));
+    }
     if (virt_offx != data->virt_offx || virt_offy != data->virt_offy)
     {
-        if (_flags(obj) & MADF_CANDRAW)
-            Group__MUIM_Hide(cl, obj, NULL);
+        BOOL shown = (_flags(obj) & MADF_CANDRAW) != 0;
+        LONG dx = virt_offx - data->virt_offx;
+        LONG dy = virt_offy - data->virt_offy;
+
         data->virt_offx = virt_offx;
         data->virt_offy = virt_offy;
-        /* Relayout ourselves. This will also relayout all the children */
-        DoMethod(obj, MUIM_Layout);
-        if (_flags(obj) & MADF_CANDRAW)
+        Group_ShiftChildren(cl, obj, dx, dy);
+        if (shown)
+        {
+            Group__MUIM_Hide(cl, obj, NULL);
             Group__MUIM_Show(cl, obj, NULL);
-        data->update = 2;
-        MUI_Redraw(obj, MADF_DRAWUPDATE);
+            data->update = 2;
+            MUI_Redraw(obj, MADF_DRAWOBJECT);
+        }
     }
 
     return retval;
@@ -1186,7 +1225,37 @@ IPTR Group__MUIM_Virtgroup_BeginPaint(struct IClass *cl, Object *obj)
     rect.MinY = _mtop(obj);
     rect.MaxX = _mright(obj);
     rect.MaxY = _mbottom(obj);
-    if (_mwidth(obj) > 0 && _mheight(obj) > 0 &&
+    if (data->update == 2 && _mwidth(obj) > 0 && _mheight(obj) > 0)
+    {
+        LONG dx = data->virt_offx - data->old_virt_offx;
+        LONG dy = data->virt_offy - data->old_virt_offy;
+        struct Rectangle exposed = rect;
+        BOOL okay = TRUE;
+
+        if (dx)
+        {
+            if (dx > 0)
+                exposed.MinX = MAX(rect.MinX, rect.MaxX - dx + 1);
+            else
+                exposed.MaxX = MIN(rect.MaxX, rect.MinX - dx - 1);
+            okay = OrRectRegion(region, &exposed);
+        }
+        if (okay && dy)
+        {
+            exposed = rect;
+            if (dy > 0)
+                exposed.MinY = MAX(rect.MinY, rect.MaxY - dy + 1);
+            else
+                exposed.MaxY = MIN(rect.MaxY, rect.MinY - dy - 1);
+            okay = OrRectRegion(region, &exposed);
+        }
+        if (!okay)
+        {
+            DisposeRegion(region);
+            return FALSE;
+        }
+    }
+    else if (_mwidth(obj) > 0 && _mheight(obj) > 0 &&
         !OrRectRegion(region, &rect))
     {
         DisposeRegion(region);
@@ -1224,13 +1293,32 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
     struct MinList *ChildList = NULL;
     struct Rectangle group_rect;        /* child_rect; */
     int page;
-    struct Region *region = NULL;
-    APTR clip = (APTR) - 1;
     BOOL virtual = (data->flags & GROUP_VIRTUAL) != 0;
     ULONG fill = _flags(obj) & MADF_FILLAREA;
 
     if (data->flags & GROUP_CHANGING)
         return FALSE;
+
+    /* Move existing pixels before BeginPaint lets a subclass restrict the
+     * drawing region. Layout hooks must retain their previous scroll state
+     * until that callback computes the newly exposed content. */
+    if (virtual && data->update == 2)
+    {
+        LONG dx = data->virt_offx - data->old_virt_offx;
+        LONG dy = data->virt_offy - data->old_virt_offy;
+        struct Rectangle *bounds = &muiRenderInfo(obj)->mri_ClipRect;
+        LONG left = MAX(_mleft(obj), bounds->MinX);
+        LONG top = MAX(_mtop(obj), bounds->MinY);
+        LONG right = MIN(_mright(obj), bounds->MaxX);
+        LONG bottom = MIN(_mbottom(obj), bounds->MaxY);
+
+        if (!dx && !dy)
+            return TRUE;
+        if (right < left || bottom < top)
+            return TRUE;
+
+        ScrollWindowRaster(_window(obj), dx, dy, left, top, right, bottom);
+    }
 
     /* Area draws the frame; virtual contents belong inside the paint pair. */
     if (virtual)
@@ -1258,13 +1346,23 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
     {
         _flags(obj) |= fill;
         if (!DoMethod(obj, MUIM_Virtgroup_BeginPaint))
+        {
+            /* The raster has already moved, even if the client declines
+             * painting. Never apply that same scroll delta twice. */
+            data->old_virt_offx = data->virt_offx;
+            data->old_virt_offy = data->virt_offy;
+            data->update = 0;
             return FALSE;
-        if ((msg->flags & MADF_DRAWOBJECT) &&
-            !(msg->flags & MADF_DRAWUPDATE))
-            DoMethod(obj, MUIM_DrawBackground,
-                _mleft(obj), _mtop(obj), _mwidth(obj), _mheight(obj),
-                _mleft(obj), _mtop(obj), 0);
+        }
     }
+
+    /* Custom backfills receive the full logical viewport. The exposed
+     * region limits actual painting, including on partial scrolls. */
+    if (virtual && (msg->flags & MADF_DRAWOBJECT) &&
+        !(msg->flags & MADF_DRAWUPDATE))
+        DoMethod(obj, MUIM_DrawBackground,
+            _mleft(obj), _mtop(obj), _mwidth(obj), _mheight(obj),
+            _mleft(obj), _mtop(obj), 0);
 
     if ((msg->flags & MADF_DRAWUPDATE) && data->update == 1)
     {
@@ -1289,122 +1387,8 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
         if (r)
             MUI_RemoveClipRegion(muiRenderInfo(obj), c);
     }
-    else
-    {
-        if ((msg->flags & MADF_DRAWUPDATE) && data->update == 2)
-        {
-            LONG left, top, right, bottom;
-            LONG diff_virt_offx = data->virt_offx - data->old_virt_offx;
-            LONG diff_virt_offy = data->virt_offy - data->old_virt_offy;
-            struct Rectangle rect;
-            struct Rectangle *clip_rect = &muiRenderInfo(obj)->mri_ClipRect;
-
-            data->update = 0;
-
-            if (!diff_virt_offx && !diff_virt_offy)
-            {
-                goto finish;
-            }
-
-            /* sba: I don't know how MUI handle this but ScrollRasterBF() made problems when scrolling
-             ** a (partly visible) virtual groups in a virtual group, because e.g. _mtop() is then
-             ** smaller than the region. ScrollRasterBF() on AmigaOS then marks the complete region
-             ** as damaged. Using ScrollWindowRaster() solved that problem but it flickers then.
-             ** To avoid this we prevent that the scroll area is out of the region bounds.
-             ** The region bounds are setted in MUI_Redraw() but should probably should go in the
-             ** MUI's clip functions
-             */
-
-            left = MAX(_mleft(obj), clip_rect->MinX);
-            top = MAX(_mtop(obj), clip_rect->MinY);
-            right = MIN(_mright(obj), clip_rect->MaxX);
-            bottom = MIN(_mbottom(obj), clip_rect->MaxY);
-
-            /* old code was
-             ** ScrollRasterBF(_rp(obj), diff_virt_offx, diff_virt_offy, _mleft(obj), _mtop(obj), _mright(obj),_mbottom(obj));
-             */
-
-            ScrollWindowRaster(_window(obj), diff_virt_offx, diff_virt_offy,
-                left, top, right, bottom);
-
-            if ((region = NewRegion()))
-            {
-                if (diff_virt_offx)
-                {
-                    rect.MinY = top;
-                    rect.MaxY = bottom;
-
-                    if (diff_virt_offx > 0)
-                    {
-                        rect.MinX = right - diff_virt_offx + 1;
-                        if (rect.MinX < left)
-                            rect.MinX = left;
-                        rect.MaxX = right;
-                    }
-                    else
-                    {
-                        rect.MinX = left;
-                        rect.MaxX = left - diff_virt_offx - 1;
-                        if (rect.MaxX > right)
-                            rect.MaxX = right;
-                    }
-
-                    if (rect.MinX <= rect.MaxX)
-                    {
-                        DoMethod(obj, MUIM_DrawBackground,
-                            rect.MinX, rect.MinY,
-                            rect.MaxX - rect.MinX + 1,
-                            rect.MaxY - rect.MinY + 1,
-                            rect.MinX, rect.MinY, 0);
-
-                        OrRectRegion(region, &rect);
-                    }
-                }
-
-                if (diff_virt_offy)
-                {
-                    rect.MinX = left;
-                    rect.MaxX = right;
-
-                    if (diff_virt_offy > 0)
-                    {
-                        rect.MinY = bottom - diff_virt_offy + 1;
-                        if (rect.MinY < top)
-                            rect.MinY = top;
-                        rect.MaxY = bottom;
-                    }
-                    else
-                    {
-                        rect.MinY = top;
-                        rect.MaxY = top - diff_virt_offy - 1;
-                        if (rect.MaxY > bottom)
-                            rect.MaxY = bottom;
-                    }
-                    if (rect.MinY <= rect.MaxY)
-                    {
-                        DoMethod(obj, MUIM_DrawBackground,
-                            rect.MinX, rect.MinY,
-                            rect.MaxX - rect.MinX + 1,
-                            rect.MaxY - rect.MinY + 1,
-                            rect.MinX, rect.MinY, 0);
-
-                        OrRectRegion(region, &rect);
-                    }
-                }
-            }
-
-        }
-        else
-        {
-            if (!(msg->flags & MADF_DRAWOBJECT)
-                && !(msg->flags & MADF_DRAWALL))
-                goto finish;
-        }
-    }
-
-    /* Add clipping region if we have one */
-    if (region)
-        clip = MUI_AddClipRegion(muiRenderInfo(obj), region);
+    else if (!(msg->flags & (MADF_DRAWOBJECT | MADF_DRAWALL)))
+        goto finish;
 
     group_rect = muiRenderInfo(obj)->mri_ClipRect;
     page = -1;
@@ -1436,11 +1420,6 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
 
         MUI_Redraw(child, MADF_DRAWOBJECT);
         muiRenderInfo(obj)->mri_ClipRect = group_rect;
-    }
-
-    if (data->flags & GROUP_VIRTUAL && region && clip != (APTR) - 1)
-    {
-        MUI_RemoveClipRegion(muiRenderInfo(obj), clip);
     }
 
 finish:
@@ -2897,8 +2876,10 @@ IPTR Group__MUIM_Layout(struct IClass *cl, Object *obj,
 
         if (data->flags & GROUP_VIRTUAL)
         {
-            data->virt_mwidth = lm.lm_Layout.Width;
-            data->virt_mheight = lm.lm_Layout.Height;
+            /* A layout hook may need less space than the viewport. Keep
+             * the virtual extent large enough to cover its visible area. */
+            data->virt_mwidth = MAX(lm.lm_Layout.Width, _mwidth(obj));
+            data->virt_mheight = MAX(lm.lm_Layout.Height, _mheight(obj));
         }
     }
     else

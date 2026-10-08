@@ -142,6 +142,31 @@ def check(path):
     h.trap(entry, layout)
     h.call('Group__MUIM_Layout', CLASS, OBJECT, h.words(0))
     assert h.events[-1] == 'layout hook'
+
+    # A custom virtual layout may shrink its requested content extent,
+    # but its public virtual dimensions must still cover the viewport.
+    # This follows the grow/shrink sequence in native/relayout.c.
+    h.mem.w32(OBJECT + 256 + 8, 1 << 6)  # GROUP_VIRTUAL
+    requested = [20, 10]
+    def virtual_layout():
+        msg = h.cpu.r_reg(9)
+        assert (h.mem.r32(msg + 20), h.mem.r32(msg + 24)) == (92, 44)
+        h.mem.w32(msg + 20, requested[0])
+        h.mem.w32(msg + 24, requested[1])
+    h.trap(entry, virtual_layout)
+    result = h.words(0)
+    def virtual_dimension(attr):
+        assert h.call('Group__OM_GET', CLASS, OBJECT,
+                      h.words(0, attr, result))
+        return h.mem.r32(result)
+    for width, height, expected in [(20, 10, (92, 44)),
+                                     (500, 1000, (500, 1000)),
+                                     (20, 10, (92, 44))]:
+        requested[:] = width, height
+        h.call('Group__MUIM_Layout', CLASS, OBJECT, h.words(0))
+        actual = (virtual_dimension(0x80427c49),
+                  virtual_dimension(0x80423038))
+        assert actual == expected, (actual, expected)
     h.machine.cleanup()
     print(f'{path}: explicit cycle order, cleanup and dynamic relayout pass')
 
