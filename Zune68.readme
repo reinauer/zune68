@@ -20,10 +20,16 @@ versions, asks before replacement, and preserves an existing backup.
 Installing muimaster.library changes the toolkit used by MUI applications.
 The plugins are loaded only when requested.
 
-This is an early port. Successful builds and simulated ABI checks do not
-establish GUI compatibility or performance on Amiga hardware. See the
-included ReadMe and Compatibility documents for scope and test commands.
+IBrowse 3.0a basic functionality is working and the browser is pretty
+usable. It was tested on AmigaOS 3.2.3 with a standard A1200 setup.
+XSysInfo works as well.
 
+This is an alpha: there are many ways Zune68 can still improve, and broad
+MUI application coverage needs real-world use. We need testers. Please try
+your MUI applications with Zune68 and report what works and what doesn't.
+See ReadMe and Compatibility for details.
+
+Project: https://github.com/reinauer/zune68
 AROS source: https://github.com/aros-development-team/AROS
 The core is distributed under the AROS Public License. Bundled plugins
 retain their own licenses and copyright notices, included with the source.

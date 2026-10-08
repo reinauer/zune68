@@ -11,8 +11,8 @@ and newer MUI features without an identified application need are deferred.
 
 Version policy
 --------------
-The two native library names share release 19.81 (Alpha 1). Built-in classes retain
-their implementation version 1.1, including classes which inherit Notify's
+The two native library names share release 19.81 (Alpha 1). Built-in
+classes retain implementation version 1.1, including inherited Notify
 version queries. These numbers identify this implementation; they do not
 promise every feature of a proprietary MUI release with the same number.
 External MCCs retain their own version reporting. Do not raise class
@@ -44,10 +44,11 @@ Rendering and lifetime limits
 -----------------------------
 Planar Bitmap rendering treats nonzero global alpha as opaque while
 retaining its mask; zero alpha is transparent. Fractional alpha blending
-and the core CyberGraphX path are not provided. Window refresh follows the configured preferences. Both refresh modes
-use clip regions outside an update, and managed refresh preserves pending
-damage while changing regions. Broad redraw/text caches need measurements
-and GUI evidence before adoption.
+and the core CyberGraphX path are not provided. Window refresh follows
+the configured preferences. Both refresh modes use clip regions outside
+an update, and managed refresh preserves pending damage while changing
+regions. Broad redraw/text caches need measurements and GUI evidence
+before adoption.
 
 Rawimage.mcc and Pixmap.mui are separate, demand-loaded libraries. Pixmap
 accepts RGB24, ARGB32 and CLUT8 images with raw, RLE or bzip2 storage.
@@ -61,8 +62,7 @@ using the small-memory decoder. A 24x19 ARGB image needs about 70 KiB at
 peak during decoding, rather than a 900 KiB block's full scratch space.
 Decoded data is retained for reuse; bitmap, mask and pen ownership follows
 the screen setup/cleanup lifetime. Borrowed raw image data remains owned
-by the caller. Truecolor rendering and physical hardware need separate
-guest coverage beyond the planar Prefs checks.
+by the caller. Truecolor rendering needs more testing.
 
 Notification list delivery tolerates callbacks removing notifications or
 disposing a plain Notify source. An arbitrary class method may still need
@@ -82,36 +82,46 @@ built for the 68000 without an FPU and loaded only when requested. The five
 stripped modules total 184,200 bytes. SDK headers, catalogs, documentation
 and Examples/TheBarDemo are included. See Docs/thebar/Native for details.
 
-On the isolated 68020 / AmigaOS 3.2.3 guest, TheBarDemo CHECK completes three
-construction, attribute, window-open and disposal cycles. The preferences
-page renders and Cancel exits with return code zero. This does not cover
-all optional RTG effects or every legacy Toolbar application's behavior.
+On AmigaOS 3.2.3, TheBarDemo CHECK completes three construction,
+attribute, window-open and disposal cycles. The preferences page renders
+and Cancel exits with return code zero. This does not cover all optional
+RTG effects or every legacy Toolbar application's behavior.
 
-IBrowse progress and limits
----------------------------
-IBrowse 3.0a OS3 starts with the native library. Typed configuration defaults
-restore its layout, and custom background callbacks now paint the About
-page. The callback flag belongs to each object: changing a containing group
-must not disable the document painter. Reference MUI 3.9 probes establish
-this behavior, callback bounds and the attribute getter. Virtual groups
-also bracket content painting with the private MUI begin/end methods.
-IBrowse uses these to prepare its paint rectangle: the About text is now
-visible on the initial draw without selecting it. The default begin/end
-methods install and remove the outer virtual clip, so subclass clipping
-cannot remain installed over the toolbar or location field. Edited URL
-text now repaints, and the SASG quick-link starts loading its target.
+Application results
+-------------------
+IBrowse 3.0a basic functionality is working and the browser is pretty
+usable. It was tested on AmigaOS 3.2.3 with a standard A1200 setup.
+XSysInfo works as well. All 12 built-in Prefs pages display images;
+MCP pages appear once, and Prefs Test/Cancel returns successfully.
 
-The native title bar provides Settings and Iconify buttons, using the
-existing window-button preferences. Explicitly saved settings are retained.
-Iconify/restore and opening application settings have been exercised in the
-isolated AmigaOS 3.2.3 guest. Snapshot and popup buttons remain unsupported.
+In IBrowse, page rendering, URL editing, links, HTTP downloads, tab
+creation/switching/closing, bookmark navigation and menu Quit work.
+Settings pages open and Cancel restores the underlying page. Native
+list-tree glyphs and some settings layouts differ from original MUI.
+Newstring.mcc clipboard behavior matches original MUI 3.9.
 
-IBrowse is not yet a completed compatibility result. Exposure redraws can
-leave stale toolbar pixels; colors and navigation redraws still need
-investigation. Timer callback arguments now match the reference, fixing the observed
-IBrowse timer write into class memory. URL replacement and About navigation
-work in the updated guest. Forms, tabs, downloads, HTTPS and shutdown/memory
-measurements remain part of the application test matrix.
+This is an alpha, and there are many ways to improve it. Settings edits,
+form handling, more applications, AmigaOS 3.1, 68000 machines and
+CyberGraphX truecolor rendering all need more testing. We need testers:
+please report what works and what doesn't.
+
+Settings and Iconify title-bar buttons are implemented. Iconify/restore
+and palette ownership work; Snapshot and popup buttons remain unsupported.
+Repeated overlays preserve all compared local-fixture content pixels after
+refresh damage culling. In a matched 20-trial benchmark, median exposure
+latency fell from 492.2 to 170.6 ms; original MUI 3.9 measured 94.1 ms.
+These times include scheduling and fixed waits.
+
+Application stress tests complete 1000 control and 1000 queued-call
+lifetimes after warmup, with flat measured free memory/largest blocks
+and no discarded-method callbacks. Window stress completes 100 cycles
+with balanced setup/cleanup and stable measured memory and system colors.
+One native window test ended 112 Fast RAM bytes below its initial sample;
+this did not recur in the application-lifetime test. Window-specific
+follow-up remains open. These results are not a general leak-free claim.
+
+Voyager, YAM and the original SDK demos remain future application tests;
+source inspection or prepared archives alone do not establish a pass.
 
 Runtime workload
 ----------------

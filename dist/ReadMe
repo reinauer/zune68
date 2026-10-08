@@ -1,11 +1,12 @@
 Zune68 19.81 - Alpha 1 for AmigaOS 3.x / m68k
 ==========================================
 
-Zune68 is a MUI-compatible user interface library based on AROS Zune.
+Zune68 is a user interface library based on AROS Zune, targeting
+compatibility with classic MUI applications.
 The full package contains the core libraries, the Zune preferences editor,
 18 MCC/MCP plugins, Rawimage/Pixmap image classes, translation catalogs,
-opentest, eight examples,
-SDK headers, plugin documentation/licenses, and corresponding source.
+opentest, eight examples, SDK headers, plugin documentation/licenses,
+and corresponding source.
 The separate core-only packaging option omits the additional components.
 
 Requirements
@@ -24,10 +25,9 @@ Alternatively, change to that drawer in a Shell and run:
   SYS:System/Installer Install MINUSER AVERAGE
 
 Each library, plugin, and Prefs editor has its own Install/Skip question.
-Existing and bundled
-versions are shown before anything is replaced. Versions come from the
-actual files, not from the archive filename. Unknown versions are shown
-as unknown. Equal-version replacements and downgrades require the same
+Existing and bundled versions are shown before anything is replaced.
+Versions come from the actual files, not from the archive filename.
+Unknown versions are shown as unknown. Equal-version replacements and downgrades require the same
 explicit choice as upgrades. The default is Skip.
 
   zunemaster.library  -> LIBS:zunemaster.library
@@ -80,18 +80,29 @@ that output is deliberately excluded from performance measurements.
 
 Status and source
 -----------------
-This is the first alpha release. Compiler and binary-interface checks do not
-establish application compatibility or performance on real hardware.
-Prefs and the additional plugins still need GUI testing on AmigaOS.
-The imported plugins retain compiler warnings; translations are partial.
+This is the first alpha release. IBrowse 3.0a basic functionality is
+working and the browser is pretty usable. It was tested on AmigaOS 3.2.3
+with a standard A1200 setup. XSysInfo works as well.
 
-The preferences editor includes the upstream PrefsWindow implementation.
-Other AROS-only external classes and muiscreen.library are not built. Optional Prefs page icons needing Rawimage/Pixmap are
-unavailable; the editor has a public-screen enumeration fallback without
-muiscreen.library. BetterString uses ordinary text rendering where the
+All 12 built-in Prefs pages display images; MCP pages appear once. Prefs
+Test/Cancel and TheBarDemo work. See Compatibility for application results
+and known limitations.
+
+There are many ways Zune68 can still improve, and broad MUI application
+coverage needs real-world use. We need testers. Please try your MUI
+applications with Zune68 and report what works and what doesn't, with the
+application version, CPU/OS configuration, reproduction steps and any
+crash information.
+
+The preferences editor includes the upstream PrefsWindow implementation
+and uses Rawimage/Pixmap for its built-in page icons. AROS-only external
+classes and muiscreen.library are not built; public-screen enumeration has
+a native fallback. BetterString uses ordinary text rendering where the
 classic CyberGraphX SDK lacks alpha-text support; NBitmap uses its
-existing software alpha fallback.
+existing software alpha fallback. Imported plugins retain compiler
+warnings, and translations are partial.
 
+Project: https://github.com/reinauer/zune68
 AROS source: https://github.com/aros-development-team/AROS
 Source.tar.gz contains the corresponding sources and native build tools.
 The supplied LICENSE contains the AROS Public License; component licenses
