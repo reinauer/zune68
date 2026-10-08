@@ -78,6 +78,8 @@ ULONG IsObjectVisible(Object * child, struct Library *MUIMasterBase);
 APTR ZuneAddClipRegion(struct MUI_RenderInfo *, struct Region *);
 void ZuneRemoveClipRegion(struct MUI_RenderInfo *, APTR);
 
+void ZuneDrawDisabled(Object *obj);
+
 Object *ZuneNextObject(APTR iterator);
 #undef NextObject
 #define NextObject ZuneNextObject

@@ -21,6 +21,51 @@
 /*#define MYDEBUG*/
 #include "debug.h"
 
+#if !defined(__AROS__) && !defined(__amigaos4__) && !defined(__MAXON__)
+#include "classes/area.h"
+
+static IPTR builtinDispatcher(Class *cl __asm("a0"),
+    Object *obj __asm("a2"), Msg msg __asm("a1"));
+
+static IPTR __attribute__((noinline)) builtinDraw(Class *cl __asm("a0"),
+    Object *obj __asm("a2"), Msg msg __asm("a1"))
+{
+    typedef IPTR (*Dispatcher)(Class * __asm("a0"),
+        Object * __asm("a2"), Msg __asm("a1"), APTR __asm("a6"));
+    Dispatcher dispatch = (Dispatcher)cl->cl_Dispatcher.h_SubEntry;
+    IPTR result = dispatch(cl, obj, msg, cl->cl_Dispatcher.h_Data);
+
+    /* Enabled controls take no class walk. Only the outermost built-in
+     * draws the pattern, after its inherited content has been painted. */
+    if (muiAreaData(obj)->mad_DisableCount)
+    {
+        Class *derived = OCLASS(obj);
+
+        while (derived && derived->cl_Dispatcher.h_Entry !=
+                (HOOKFUNC)builtinDispatcher)
+            derived = derived->cl_Super;
+        if (derived == cl)
+            ZuneDrawDisabled(obj);
+    }
+    return result;
+}
+
+static IPTR builtinDispatcher(Class *cl __asm("a0"),
+    Object *obj __asm("a2"), Msg msg __asm("a1"))
+{
+    /* Select before dispatch: methods such as Dispose can invalidate the
+     * message storage. Other methods retain the ordinary trampoline path. */
+    if (msg->MethodID == MUIM_Draw)
+        return builtinDraw(cl, obj, msg);
+    {
+        typedef IPTR (*Dispatcher)(Class * __asm("a0"),
+            Object * __asm("a2"), Msg __asm("a1"), APTR __asm("a6"));
+        Dispatcher dispatch = (Dispatcher)cl->cl_Dispatcher.h_SubEntry;
+        return dispatch(cl, obj, msg, cl->cl_Dispatcher.h_Data);
+    }
+}
+#endif
+
 extern const struct __MUIBuiltinClass _MUI_Settings_desc;
 
 static const struct __MUIBuiltinClass *const builtins[] = {
@@ -198,7 +243,11 @@ static Class *ZUNE_MakeBuiltinClass(CONST_STRPTR classid,
 #if defined(__MAXON__) || defined(__amigaos4__)
                 cl->cl_Dispatcher.h_Entry = builtins[i]->dispatcher;
 #else
+#ifdef __AROS__
                 cl->cl_Dispatcher.h_Entry = (HOOKFUNC) metaDispatcher;
+#else
+                cl->cl_Dispatcher.h_Entry = (HOOKFUNC) builtinDispatcher;
+#endif
                 cl->cl_Dispatcher.h_SubEntry = builtins[i]->dispatcher;
 #endif
                 /* Use this as a reference counter */

@@ -27,6 +27,107 @@
 
 #include "debug.h"
 
+/* Built-in dispatchers finish their disabled appearance before an external
+ * subclass resumes drawing. Custom classes can then supply their own style. */
+void ZuneDrawDisabled(Object *obj)
+{
+    IPTR disabled = 0;
+
+    if (get(obj, MUIA_Disabled, &disabled))
+    {
+#if 0
+        /*
+          Commented out, because group children were drawn wrongly
+          when they have been disabled while window is open.
+        */
+        if (_parent(obj))
+        {
+            IPTR parentDisabled;
+            if (get(_parent(obj), MUIA_Disabled, &parentDisabled))
+            {
+                /* Let the parent draw the pattern... */
+                if (parentDisabled) disabled = FALSE;
+            }
+        }
+#endif
+
+        if ((disabled) && (XGET(obj, MUIA_NestedDisabled) != TRUE))
+        {
+#ifdef __AROS__
+#if 0
+            /*
+              This aproach might be faster *provided* that the buffer is
+              allocated and filled *once* at startup of muimaster.library.
+
+              In reality, the WritePixelArray() call has quite a big
+              overhead, so you should only use this buffer if the gadget
+              completely fits inside, and fall back to allocating a new
+              buffer if the gadget is too big.
+
+              Perhaps a future optimization...
+            */
+            LONG  width  = 200;
+            LONG  height = 100;
+            LONG *buffer = AllocVec(width * height * sizeof(LONG), MEMF_ANY);
+            LONG  x, y;
+
+            memset(buffer, 0xAA, width * height * sizeof(LONG));
+
+            for (y = 0; y < ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height; y += height)
+            {
+                for (x = 0; x < ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width; x += width)
+                {
+                    WritePixelArrayAlpha
+                    (
+                        buffer, 0, 0, width * sizeof(LONG),
+                        ((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left + x, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top + y,
+                        x + width  > ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width  ? ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width  - x : width,
+                        y + height > ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height ? ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height - y : height,
+                        0xffffffff
+                    );
+                }
+            }
+#else
+            LONG  width  = ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width;
+            LONG  height = ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height;
+            LONG *buffer = NULL;
+
+            if (GetBitMapAttr(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort->BitMap, BMA_DEPTH) >= 15)
+            {
+                buffer = AllocVec(width * sizeof(LONG), MEMF_ANY);
+            }
+
+            if (buffer != NULL)
+            {
+                memset(buffer, 0xAA, width * sizeof(LONG));
+
+                WritePixelArrayAlpha
+                (
+                    buffer, 0, 0, 0,
+                    ((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top, width, height,
+                    0xffffffff
+                );
+                FreeVec(buffer);
+            }   else
+#endif
+#endif
+            {
+                /* fallback */
+                const static UWORD pattern[] = { 0x8888, 0x2222, };
+                LONG fg = ((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_Pens[MPEN_SHADOW];
+
+                SetDrMd(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, JAM1);
+                SetAPen(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, fg);
+                SetAfPt(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, pattern, 1);
+                RectFill(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left + ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width - 1,
+                    ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top + ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height - 1);
+                SetAfPt(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, NULL, 0);
+            }
+        }
+    } /* if (object is disabled) */
+
+}
+
 /*****************************************************************************
 
     NAME */
@@ -53,13 +154,11 @@
     Object *obj;
     ULONG flags;
     APTR clip;
-    IPTR disabled;
     struct MUIP_Draw dmsg;
 
     obj = objin;
     flags = flagsin;
     clip = (APTR)-1;
-    disabled = 0;
 
     if (!(((struct __dummyAreaData__ *)(obj))->mad.mad_Flags & MADF_CANDRAW)) return;
 
@@ -172,98 +271,9 @@
     DoMethodA(obj, (Msg)&dmsg);
     ZuneTrace(("zune: MUI_Redraw DoMethodA done\n"));
 
-    if (get(obj, MUIA_Disabled, &disabled))
-    {
-#if 0
-        /*
-          Commented out, because group children were drawn wrongly
-          when they have been disabled while window is open.
-        */
-        if (_parent(obj))
-        {
-            IPTR parentDisabled;
-            if (get(_parent(obj), MUIA_Disabled, &parentDisabled))
-            {
-                /* Let the parent draw the pattern... */
-                if (parentDisabled) disabled = FALSE;
-            }
-        }
+#if defined(__AROS__) || defined(__amigaos4__) || defined(__MAXON__)
+    ZuneDrawDisabled(obj);
 #endif
-
-        if ((disabled) && (XGET(obj, MUIA_NestedDisabled) != TRUE))
-        {
-#ifdef __AROS__
-#if 0
-            /*
-              This aproach might be faster *provided* that the buffer is
-              allocated and filled *once* at startup of muimaster.library.
-                
-              In reality, the WritePixelArray() call has quite a big
-              overhead, so you should only use this buffer if the gadget
-              completely fits inside, and fall back to allocating a new
-              buffer if the gadget is too big.
-                
-              Perhaps a future optimization...
-            */
-            LONG  width  = 200;
-            LONG  height = 100;
-            LONG *buffer = AllocVec(width * height * sizeof(LONG), MEMF_ANY);
-            LONG  x, y;
-            
-            memset(buffer, 0xAA, width * height * sizeof(LONG));
-            
-            for (y = 0; y < ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height; y += height)
-            {
-                for (x = 0; x < ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width; x += width)
-                {
-                    WritePixelArrayAlpha
-                    (
-                        buffer, 0, 0, width * sizeof(LONG),
-                        ((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left + x, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top + y,
-                        x + width  > ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width  ? ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width  - x : width,
-                        y + height > ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height ? ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height - y : height,
-                        0xffffffff
-                    );
-                }
-            }
-#else
-            LONG  width  = ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width;
-            LONG  height = ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height;
-            LONG *buffer = NULL;
-            
-            if (GetBitMapAttr(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort->BitMap, BMA_DEPTH) >= 15)
-            {
-                buffer = AllocVec(width * sizeof(LONG), MEMF_ANY);
-            }
-
-            if (buffer != NULL)
-            {
-                memset(buffer, 0xAA, width * sizeof(LONG));
-
-                WritePixelArrayAlpha
-                (
-                    buffer, 0, 0, 0,
-                    ((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top, width, height,
-                    0xffffffff
-                );
-                FreeVec(buffer);
-            }   else
-#endif
-#endif
-            {
-                /* fallback */
-                const static UWORD pattern[] = { 0x8888, 0x2222, };
-                LONG fg = ((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_Pens[MPEN_SHADOW];
-                
-                SetDrMd(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, JAM1);
-                SetAPen(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, fg);
-                SetAfPt(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, pattern, 1);
-                RectFill(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top, ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left + ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width - 1,
-                    ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top + ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height - 1);
-                SetAfPt(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, NULL, 0);
-            }
-        }
-    } /* if (object is disabled) */
 
     /* copy buffer to window */
     if (((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_BufferBM
