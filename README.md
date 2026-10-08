@@ -27,6 +27,14 @@ or speed on Amiga hardware. `dist/Compatibility` describes guest workloads.
 The release archive is under `build/muimaster/release`; packaged binaries
 are stripped while local build outputs keep their symbols.
 
+## Tested applications
+
+These MUI applications have been run with Zune68 on AmigaOS 3:
+
+- IBrowse 3.0 (build 30.8, AmigaOS/68020 version)
+
+![IBrowse 3.0 running with Zune68, next to Zune Prefs](iBrowse.png)
+
 ## CI and releases
 
 GitHub Actions builds and checks branch pushes and pull requests. A version
