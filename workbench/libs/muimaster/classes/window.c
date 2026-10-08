@@ -89,6 +89,14 @@ struct NativeTitleGadget
 
 struct MUI_ImageSpec_intern;
 
+/* Client-owned handler nodes may be removed and freed during dispatch. */
+struct WindowEventCursor
+{
+    struct WindowEventCursor *previous;
+    /* A node or list tail while alive; NULL if the Window was disposed. */
+    struct MinNode *next;
+};
+
 struct MUI_WindowData
 {
     struct MUI_RenderInfo wd_RenderInfo;
@@ -168,6 +176,7 @@ struct MUI_WindowData
     struct NativeTitleGadget *wd_TitleGadgets;
     WORD wd_TitleMinWidth;
 #endif
+    struct WindowEventCursor *wd_EventCursors;
 };
 
 #ifndef WFLG_SIZEGADGET
@@ -2209,8 +2218,43 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
     return is_handled;
 }
 
+static void BeginEventDispatch(struct MUI_WindowData *data,
+    struct WindowEventCursor *cursor)
+{
+    cursor->previous = data->wd_EventCursors;
+    cursor->next = data->wd_EHList.mlh_Head;
+    data->wd_EventCursors = cursor;
+}
+
+static struct MinNode *NextEventHandler(struct WindowEventCursor *cursor)
+{
+    struct MinNode *node = cursor->next;
+
+    if (!node || !node->mln_Succ)
+        return NULL;
+    /* Never revisit this node after a callback: its owner may free it. */
+    cursor->next = node->mln_Succ;
+    return node;
+}
+
+static void RemoveEventHandler(struct MUI_WindowData *data,
+    struct MUI_EventHandlerNode *handler)
+{
+    struct WindowEventCursor *cursor;
+    struct MinNode *node = (struct MinNode *)handler;
+
+    /* Repair outer dispatches as well as a possible nested dispatch. */
+    for (cursor = data->wd_EventCursors; cursor; cursor = cursor->previous)
+    {
+        if (cursor->next == node)
+            cursor->next = node->mln_Succ;
+    }
+    Remove((struct Node *)node);
+}
+
 static ULONG InvokeEventHandler(struct MUI_EventHandlerNode *ehn,
-    struct IntuiMessage *event, ULONG muikey)
+    struct IntuiMessage *event, ULONG muikey,
+    struct WindowEventCursor *cursor)
 {
     ULONG res;
 
@@ -2237,6 +2281,8 @@ static ULONG InvokeEventHandler(struct MUI_EventHandlerNode *ehn,
 
         while (get(parent, MUIA_Parent, &parent))
         {
+            if (!cursor->next)
+                return 0;
             if (!parent)
                 break;
             if (wnd == parent)
@@ -2252,6 +2298,8 @@ static ULONG InvokeEventHandler(struct MUI_EventHandlerNode *ehn,
                 }
             }
         }
+        if (!cursor->next)
+            return 0;
 
     }
 
@@ -2279,6 +2327,7 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
     struct IntuiMessage *event)
 {
     struct MinNode *mn;
+    struct WindowEventCursor cursor;
     struct MUI_EventHandlerNode *ehn;
     struct IntuiMessage imsg_copy;
     struct InputEvent ie = { 0 };
@@ -2439,6 +2488,8 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
     else
         data->wd_ActiveObject = NULL;
 
+    BeginEventDispatch(data, &cursor);
+
     /* try ActiveObject */
     if ((active_object != NULL) && !disabled)
     {
@@ -2457,14 +2508,15 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
             res =
                 DoMethod(active_object, MUIM_HandleEvent, (IPTR) event,
                 muikey);
-            if (res & MUI_EventHandlerRC_Eat)
-                return;
+            if (!cursor.next || (res & MUI_EventHandlerRC_Eat))
+                goto finished;
         }
 #endif
         D(bug("HandleRawkey: try active object (%08lx) handlers\n",
                 active_object));
 
-        for (mn = data->wd_EHList.mlh_Head; mn->mln_Succ; mn = mn->mln_Succ)
+        for (cursor.next = data->wd_EHList.mlh_Head;
+            (mn = NextEventHandler(&cursor)); )
         {
             ehn = (struct MUI_EventHandlerNode *)mn;
 
@@ -2475,10 +2527,10 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
                 D(bug("HandleRawkey: (active) invoking on %p (ehn=%p) "
                     "event=%p muikey=%p\n",
                     ehn->ehn_Object, ehn, event, muikey));
-                res = InvokeEventHandler(ehn, event, muikey);
+                res = InvokeEventHandler(ehn, event, muikey, &cursor);
                 D(bug("HandleRawkey: (active) got res=%d\n", res));
-                if (res & MUI_EventHandlerRC_Eat)
-                    return;
+                if (!cursor.next || (res & MUI_EventHandlerRC_Eat))
+                    goto finished;
 
                 /* Leave the loop if a different object has been activated */
                 if (active_object != data->wd_ActiveObject)
@@ -2495,8 +2547,8 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
             D(bug("HandleRawkey: try active object parents handlers\n"));
             while (current_obj != NULL)
             {
-                for (mn = data->wd_EHList.mlh_Head; mn->mln_Succ;
-                    mn = mn->mln_Succ)
+                for (cursor.next = data->wd_EHList.mlh_Head;
+                    (mn = NextEventHandler(&cursor)); )
                 {
                     ehn = (struct MUI_EventHandlerNode *)mn;
 
@@ -2507,11 +2559,11 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
                         //D(bug("HandleRawkey: (active parents) invoking on "
                         //    "%p (ehn=%p) event=%p muikey=%p\n",
                         //    ehn->ehn_Object, ehn, event, muikey));
-                        res = InvokeEventHandler(ehn, event, muikey);
+                        res = InvokeEventHandler(ehn, event, muikey, &cursor);
                         //D(bug("HandleRawkey: (active parents) got res=%d\n",
                         //    res));
-                        if (res & MUI_EventHandlerRC_Eat)
-                            return;
+                        if (!cursor.next || (res & MUI_EventHandlerRC_Eat))
+                            goto finished;
 
                         /* Leave the loop if a different object has been
                          * activated */
@@ -2519,7 +2571,12 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
                             break;
                     }
                 }
+                /* A focus-changing callback may also remove its object. */
+                if (active_object != data->wd_ActiveObject)
+                    break;
                 current_obj = (Object *) XGET(current_obj, MUIA_Parent);
+                if (!cursor.next)
+                    goto finished;
             }
         }
     }
@@ -2530,6 +2587,8 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
     disabled = FALSE;
     if (data->wd_DefaultObject != NULL)
         get(data->wd_DefaultObject, MUIA_Disabled, &disabled);
+    if (!cursor.next)
+        goto finished;
 
     if ((data->wd_DefaultObject != NULL) && !disabled
         && (active_object != data->wd_DefaultObject))
@@ -2540,10 +2599,11 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
 //         && (_flags(data->wd_DefaultObject) & MADF_CANDRAW))
 //     {
 //         DoMethod(data->wd_DefaultObject, MUIM_HandleInput, event, muikey);
-//         return;
+//         goto finished;
 //     }
 
-        for (mn = data->wd_EHList.mlh_Head; mn->mln_Succ; mn = mn->mln_Succ)
+        for (cursor.next = data->wd_EHList.mlh_Head;
+            (mn = NextEventHandler(&cursor)); )
         {
             ehn = (struct MUI_EventHandlerNode *)mn;
 
@@ -2554,10 +2614,10 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
                 //D(bug("HandleRawkey: (default) invoking on %p (ehn=%p) "
                 //"event=%p muikey=%p\n",
                 //ehn->ehn_Object, ehn, event, muikey));
-                res = InvokeEventHandler(ehn, event, muikey);
+                res = InvokeEventHandler(ehn, event, muikey, &cursor);
                 //D(bug("HandleRawkey: (default) got res=%d\n", res));
-                if (res & MUI_EventHandlerRC_Eat)
-                    return;
+                if (!cursor.next || (res & MUI_EventHandlerRC_Eat))
+                    goto finished;
             }
         }
 
@@ -2566,7 +2626,8 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
     D(bug("HandleRawkey: try other handlers\n"));
 
     // try other handlers
-    for (mn = data->wd_EHList.mlh_Head; mn->mln_Succ; mn = mn->mln_Succ)
+    for (cursor.next = data->wd_EHList.mlh_Head;
+            (mn = NextEventHandler(&cursor)); )
     {
         ehn = (struct MUI_EventHandlerNode *)mn;
 
@@ -2581,10 +2642,10 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
             //D(bug("HandleRawkey: (others) invoking on %p (ehn=%p) "
             //"event=%p muikey=%p\n",
             //ehn->ehn_Object, ehn, event, muikey));
-            res = InvokeEventHandler(ehn, event, MUIKEY_NONE);
+            res = InvokeEventHandler(ehn, event, MUIKEY_NONE, &cursor);
             //D(bug("HandleRawkey: (others) got res=%d\n", res));
-            if (res & MUI_EventHandlerRC_Eat)
-                return;
+            if (!cursor.next || (res & MUI_EventHandlerRC_Eat))
+                goto finished;
         }
     }
 
@@ -2594,7 +2655,8 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
     //bug("ctrlchar, key='%c' code=0x%08lx\n", key, event->Code);
     if (key)
     {
-        for (mn = data->wd_CCList.mlh_Head; mn->mln_Succ; mn = mn->mln_Succ)
+        for (cursor.next = data->wd_CCList.mlh_Head;
+            (mn = NextEventHandler(&cursor)); )
         {
             ehn = (struct MUI_EventHandlerNode *)mn;
 
@@ -2604,6 +2666,8 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
                 LONG muikey2 = ehn->ehn_Flags;
 
                 get(ehn->ehn_Object, MUIA_Disabled, &disabled);
+                if (!cursor.next)
+                    goto finished;
                 if (disabled)
                     continue;
 
@@ -2614,7 +2678,7 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
                     if (muikey2 == MUIKEY_PRESS)
                         muikey2 = MUIKEY_RELEASE;
                     else
-                        return;
+                        goto finished;
                 }
 
                 if ((muikey2 != MUIKEY_NONE)
@@ -2624,12 +2688,15 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
                     res = CoerceMethod
                         (ehn->ehn_Class, ehn->ehn_Object, MUIM_HandleEvent,
                         (IPTR) NULL, muikey2);
-                    if (res & MUI_EventHandlerRC_Eat)
-                        return;
+                    if (!cursor.next || (res & MUI_EventHandlerRC_Eat))
+                        goto finished;
                 }
             }
         }
     }
+finished:
+    if (cursor.next)
+        data->wd_EventCursors = cursor.previous;
 }
 
 /* forward non-keystroke events to event handlers */
@@ -2637,6 +2704,7 @@ static void HandleInputEvent(Object *win, struct MUI_WindowData *data,
     struct IntuiMessage *event)
 {
     struct MinNode *mn;
+    struct WindowEventCursor cursor;
     struct MUI_EventHandlerNode *ehn;
     struct IntuiMessage imsg_copy;
     ULONG res;
@@ -2666,7 +2734,9 @@ static void HandleInputEvent(Object *win, struct MUI_WindowData *data,
         }
     }
 
-    for (mn = data->wd_EHList.mlh_Head; mn->mln_Succ; mn = mn->mln_Succ)
+    BeginEventDispatch(data, &cursor);
+    for (cursor.next = data->wd_EHList.mlh_Head;
+        (mn = NextEventHandler(&cursor)); )
     {
         ehn = (struct MUI_EventHandlerNode *)mn;
 
@@ -2675,18 +2745,23 @@ static void HandleInputEvent(Object *win, struct MUI_WindowData *data,
             IPTR disabled = 0;
 
             get(ehn->ehn_Object, MUIA_Disabled, &disabled);
+            if (!cursor.next)
+                goto finished;
             if (disabled)
                 continue;
 
-            res = InvokeEventHandler(ehn, event, MUIKEY_NONE);
-            if (res & MUI_EventHandlerRC_Eat)
-                return;
+            res = InvokeEventHandler(ehn, event, MUIKEY_NONE, &cursor);
+            if (!cursor.next || (res & MUI_EventHandlerRC_Eat))
+                goto finished;
 
         }
     }
 
     if (mask == IDCMP_IDCMPUPDATE)
         ReplyMsg((struct Message *)event);
+finished:
+    if (cursor.next)
+        data->wd_EventCursors = cursor.previous;
 }
 
 
@@ -3143,6 +3218,7 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data = INST_DATA(cl, obj);
 
     data->wd_Class = cl;
+    data->wd_EventCursors = NULL;
     data->wd_MemoryPool = CreatePool(0, 4096, 2048);
     if (NULL == data->wd_MemoryPool)
     {
@@ -3352,6 +3428,17 @@ IPTR Window__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
     Object *root = data->wd_RootObject;
+    struct WindowEventCursor *cursor;
+
+    /* A handler may dispose its Window. Invalidate every stack cursor
+     * before teardown so neither nested dispatch nor its caller accesses
+     * this instance or its former handler list after the callback returns.
+     */
+    while ((cursor = data->wd_EventCursors))
+    {
+        data->wd_EventCursors = cursor->previous;
+        cursor->next = NULL;
+    }
 
     /* Close directly: OM_DISPOSE must finish even if a subclass filters
        MUIA_Window_Open. Closing detaches IDCMP before objects are freed. */
@@ -4313,7 +4400,7 @@ IPTR Window__MUIM_RemEventHandler(struct IClass *cl, Object *obj,
 
     //D(bug("muimaster.library/window.c: Rem Eventhandler %p\n", msg->ehnode));
 
-    Remove((struct Node *)msg->ehnode);
+    RemoveEventHandler(data, msg->ehnode);
     ChangeEvents(data, GetDefaultEvents());
     return TRUE;
 }
@@ -4466,7 +4553,7 @@ IPTR Window__MUIM_RemControlCharHandler(struct IClass *cl, Object *obj,
         FindObjNode(&data->wd_CycleChain, msg->ccnode->ehn_Object);
 
     if (msg->ccnode->ehn_Events)
-        Remove((struct Node *)msg->ccnode);
+        RemoveEventHandler(data, msg->ccnode);
 
     if (node)
     {
