@@ -24,6 +24,8 @@ class ClipHarness(NotifyHarness):
         self.parents = {}
         self.rectangles = []
         self.draws = 0
+        self.region_allocations = 0
+        self.gets = 0
         self.protocol = []
         self.trap(LAYERS - 120, lambda: self.protocol.append('lock'))
         self.trap(LAYERS - 138, lambda: self.protocol.append('unlock'))
@@ -32,8 +34,7 @@ class ClipHarness(NotifyHarness):
         self.fail_region = False
         self.fail_rect = False
         self.fail_intersect = False
-        self.trap(GFX - 516, lambda: self.cpu.w_reg(0,
-                  0 if self.fail_region else self.alloc(12)))
+        self.trap(GFX - 516, self.new_region)
         self.trap(GFX - 534, self.dispose_region)
         self.trap(GFX - 510, self.rect)
         self.trap(GFX - 624, lambda: self.cpu.w_reg(0, not self.fail_intersect))
@@ -43,6 +44,10 @@ class ClipHarness(NotifyHarness):
 
     def draw(self):
         self.draws += 1
+
+    def new_region(self):
+        self.region_allocations += 1
+        self.cpu.w_reg(0, 0 if self.fail_region else self.alloc(12))
 
     def dispose_region(self):
         self.cpu.w_reg(9, self.cpu.r_reg(8))
@@ -66,6 +71,7 @@ class ClipHarness(NotifyHarness):
         self.cpu.w_reg(0, not self.fail_rect)
 
     def get_attr(self):
+        self.gets += 1
         obj, attr, storage = self.cpu.r_reg(8), self.cpu.r_reg(0), self.cpu.r_reg(9)
         self.mem.w32(storage, self.parents.get(obj, 0) if attr == 0x8042e35f else 0)
         self.cpu.w_reg(0, 1)
@@ -153,6 +159,129 @@ def check_virtual_paint(path):
             h.finish()
 
 
+def check_refresh_culling(path):
+    # Guest probes establish window-relative damage with a NULL ClipRegion.
+    # A nonzero screen-space Layer.bounds must not shift this damage again.
+    def window(h):
+        h.mem.w32(MRI + 16, WINDOW)
+        h.mem.w32(WINDOW + 50, RP)
+        h.mem.w32(WINDOW + 124, LAYER)
+
+    sentinel = struct.pack('>4h', -90, -80, 190, 180)
+    cases = [
+        ((0, 0, 100, 100), True, True, True, (16, 22, 39, 37)),
+        ((40, 22, 10, 16), True, True, False, None),
+        ((39, 22, 1, 16), True, True, True, (39, 22, 39, 37)),
+        ((16, 38, 24, 10), True, True, False, None),
+        # Explicit redraws outside BeginRefresh ignore retained damage.
+        ((100, 100, 20, 20), False, True, True, (100, 100, 119, 119)),
+        # Empty damage is not evidence that a draw should be suppressed.
+        ((100, 100, 20, 20), True, False, True, (100, 100, 119, 119)),
+    ]
+    for box, refreshing, nonempty, drawn, expected in cases:
+        h = ClipHarness(path)
+        window(h)
+        h.mem.w32(OBJECT + 64, 1 << 14)
+        h.mem.w_block(OBJECT + 52, struct.pack('>4h', *box))
+        h.mem.w32(MRI + 16, WINDOW)
+        h.mem.w32(WINDOW + 124, LAYER)
+        h.mem.w32(MRI + 24, 8 if refreshing else 0)
+        h.mem.w_block(LAYER + 16, struct.pack('>4h', 40, 50, 339, 249))
+        damage = h.blob(struct.pack('>4hI', 16, 22, 39, 37, 1 if nonempty else 0))
+        h.mem.w32(LAYER + 156, damage)
+        h.mem.w_block(MRI + 172, sentinel)
+        h.call('MUI_Redraw', OBJECT, 1)
+        assert h.draws == int(drawn), (box, refreshing, nonempty)
+        actual = bytes(h.mem.r_block(MRI + 172, 8))
+        assert actual == (struct.pack('>4h', *expected) if drawn else sentinel)
+        if not drawn:
+            assert h.mem.r32(OBJECT + 64) == 1 << 14
+        assert not h.region_allocations and not h.protocol
+        assert h.mem.r32(LAYER + 126) == 0
+        h.finish()
+
+    # Reject before walking virtual parents or allocating their clip region.
+    h = ClipHarness(path)
+    window(h)
+    h.parent(OBJECT, 0, 0, 100, 100)
+    h.mem.w32(MRI + 24, 8)
+    damage = h.blob(struct.pack('>4hI', 150, 150, 170, 170, 1))
+    h.mem.w32(LAYER + 156, damage)
+    h.mem.w_block(MRI + 172, sentinel)
+    flags = h.mem.r32(OBJECT + 64)
+    h.call('MUI_Redraw', OBJECT, 1)
+    assert not h.draws and not h.gets and not h.region_allocations
+    assert bytes(h.mem.r_block(MRI + 172, 8)) == sentinel
+    assert h.mem.r32(OBJECT + 64) == flags
+    h.finish()
+
+    # An object can overlap damage but lie outside its ancestor/user clip.
+    # The later rejection must release the installed region and leave the
+    # previous shared clip rectangle and external region untouched.
+    for virtual in (False, True):
+        h = ClipHarness(path)
+        window(h)
+        h.mem.w32(MRI + 24, 8)
+        damage = h.blob(struct.pack('>4hI', 16, 22, 39, 37, 1))
+        h.mem.w32(LAYER + 156, damage)
+        outer = h.blob(struct.pack('>4hI', 50, 50, 90, 90, 1))
+        h.mem.w32(LAYER + 126, outer)
+        if virtual:
+            h.parent(OBJECT, 50, 50, 40, 40)
+        else:
+            h.mem.w32(OBJECT + 64, 1 << 14)
+        h.mem.w_block(MRI + 172, sentinel)
+        flags = h.mem.r32(OBJECT + 64)
+        h.call('MUI_Redraw', OBJECT, 1)
+        assert not h.draws
+        assert h.region_allocations == int(virtual)
+        assert h.mem.r32(LAYER + 126) == outer
+        assert bytes(h.mem.r_block(MRI + 172, 8)) == sentinel
+        assert h.mem.r32(OBJECT + 64) == flags
+        h.finish()
+
+    # Bounds-only culling intentionally retains an object in a region hole.
+    h = ClipHarness(path)
+    window(h)
+    h.mem.w32(OBJECT + 64, 1 << 14)
+    h.mem.w_block(OBJECT + 52, struct.pack('>4h', 40, 40, 10, 10))
+    h.mem.w32(MRI + 24, 8)
+    # RegionRectangle bounds are relative to the Region's bounding box.
+    right = h.blob(struct.pack('>II4h', 0, 0, 90, 0, 99, 99))
+    left = h.blob(struct.pack('>II4h', right, 0, 0, 0, 9, 99))
+    damage = h.blob(struct.pack('>4hI', 0, 0, 99, 99, left))
+    h.mem.w32(LAYER + 156, damage)
+    h.call('MUI_Redraw', OBJECT, 1)
+    assert h.draws == 1 and not h.region_allocations
+    assert struct.unpack('>4h', h.mem.r_block(MRI + 172, 8)) == (40, 40, 49, 49)
+    h.finish()
+    # Only the observed ordinary window coordinate system is optimized.
+    for mode in ('no window', 'scroll x', 'scroll y', 'other rastport', 'buffer'):
+        h = ClipHarness(path)
+        window(h)
+        h.mem.w32(OBJECT + 64, 1 << 14)
+        h.mem.w32(MRI + 24, 8)
+        damage = h.blob(struct.pack('>4hI', 150, 150, 170, 170, 1))
+        h.mem.w32(LAYER + 156, damage)
+        if mode == 'no window':
+            h.mem.w32(MRI + 16, 0)
+        elif mode == 'scroll x':
+            h.mem.w16(LAYER + 44, 1)
+        elif mode == 'scroll y':
+            h.mem.w16(LAYER + 46, 1)
+        elif mode == 'other rastport':
+            h.mem.w32(WINDOW + 50, RP + 256)
+        else:
+            h.mem.w32(MRI + 316, 1)
+            h.trap(GFX - 552, lambda: None)  # Existing buffered ClipBlit.
+        h.call('MUI_Redraw', OBJECT, 1)
+        assert h.draws == 1 and not h.region_allocations, mode
+        assert struct.unpack('>4h', h.mem.r_block(MRI + 172, 8)) == (0, 0, 99, 99)
+        h.finish()
+    print(f'{path.name}: refresh damage culls before allocation, bounds draw clips, '
+          'preserves early-return state and leaves explicit redraws unchanged')
+
+
 def check(path):
     # A damaged layer is not necessarily inside BeginRefresh/BeginUpdate.
     for simple in [False, True]:
@@ -222,3 +351,4 @@ if __name__ == '__main__':
     for name in sys.argv[1:]:
         check(Path(name))
         check_virtual_paint(Path(name))
+        check_refresh_culling(Path(name))

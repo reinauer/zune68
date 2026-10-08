@@ -155,12 +155,48 @@ void ZuneDrawDisabled(Object *obj)
     ULONG flags;
     APTR clip;
     struct MUIP_Draw dmsg;
+    struct Rectangle damage_bounds;
+    BOOL have_damage = FALSE;
 
     obj = objin;
     flags = flagsin;
     clip = (APTR)-1;
 
     if (!(((struct __dummyAreaData__ *)(obj))->mad.mad_Flags & MADF_CANDRAW)) return;
+
+    /* BeginRefresh already clips raster output to the damage region, but
+     * dispatching every object still repeats client drawing and clip setup.
+     * Its bounds use window coordinates, as do the object's box. Copy them
+     * before any clip installation can change the layer's region state.
+     * Bounding boxes deliberately retain work inside sparse-region holes.
+     */
+#ifdef ZUNE68_GCC_NATIVE
+    if ((muiRenderInfo(obj)->mri_Flags & MUIMRI_REFRESHMODE) &&
+        muiRenderInfo(obj)->mri_Window &&
+        !muiRenderInfo(obj)->mri_BufferBM &&
+        _rp(obj) == muiRenderInfo(obj)->mri_Window->RPort)
+    {
+        struct Layer *layer = muiRenderInfo(obj)->mri_Window->WLayer;
+        struct Region *damage = layer ? layer->DamageList : NULL;
+
+        /* Scrolled layers/offscreen buffers have different coordinates;
+         * retain the existing path until their damage contract is known.
+         */
+        if (layer && !layer->Scroll_X && !layer->Scroll_Y &&
+            damage && damage->RegionRectangle &&
+            damage->bounds.MinX <= damage->bounds.MaxX &&
+            damage->bounds.MinY <= damage->bounds.MaxY)
+        {
+            damage_bounds = damage->bounds;
+            have_damage = TRUE;
+            if (_right(obj) < damage_bounds.MinX ||
+                _left(obj) > damage_bounds.MaxX ||
+                _bottom(obj) < damage_bounds.MinY ||
+                _top(obj) > damage_bounds.MaxY)
+                return;
+        }
+    }
+#endif
 
 #if ZUNE68_TRACE
     {
@@ -231,10 +267,9 @@ void ZuneDrawDisabled(Object *obj)
     if (1)
     {
             struct Region *region;
-        struct Rectangle *clip_rect;
+        struct Rectangle bounds;
+        struct Rectangle *clip_rect = &bounds;
         struct Layer *l;
-        
-        clip_rect = &((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_ClipRect;
 
             if (((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_Window)
         {
@@ -260,6 +295,21 @@ void ZuneDrawDisabled(Object *obj)
             clip_rect->MaxX = ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Left + ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Width - 1;
             clip_rect->MaxY = ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top + ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height - 1;
         }
+
+        if (have_damage)
+        {
+            bounds.MinX = MAX(bounds.MinX, damage_bounds.MinX);
+            bounds.MinY = MAX(bounds.MinY, damage_bounds.MinY);
+            bounds.MaxX = MIN(bounds.MaxX, damage_bounds.MaxX);
+            bounds.MaxY = MIN(bounds.MaxY, damage_bounds.MaxY);
+            if (bounds.MaxX < bounds.MinX || bounds.MaxY < bounds.MinY)
+            {
+                if (clip != (APTR)-1)
+                    MUI_RemoveClipRegion(muiRenderInfo(obj), clip);
+                return;
+            }
+        }
+        muiRenderInfo(obj)->mri_ClipRect = bounds;
     }
     
     ((struct __dummyAreaData__ *)(obj))->mad.mad_Flags = (((struct __dummyAreaData__ *)(obj))->mad.mad_Flags & ~MADF_DRAWFLAGS) | (flags & MADF_DRAWFLAGS);
