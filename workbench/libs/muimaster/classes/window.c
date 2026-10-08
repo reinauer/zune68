@@ -75,6 +75,18 @@ struct IDNode
     UWORD id;
 };
 
+#ifdef ZUNE68_GCC_NATIVE
+/* Ordinary border gadgets need no additional BOOPSI class or image bitmap. */
+struct NativeTitleGadget
+{
+    struct Gadget gadget;
+    struct Border frame;
+    struct Border symbol;
+    WORD frame_xy[10];
+    WORD symbol_xy[16];
+};
+#endif
+
 struct MUI_ImageSpec_intern;
 
 struct MUI_WindowData
@@ -152,6 +164,10 @@ struct MUI_WindowData
     struct MUI_PenSpec *hshinespec;
     struct MUI_PenSpec *hshadowpec;
     Object **wd_CycleOrder; /* allocated only for the legacy explicit chain */
+#ifdef ZUNE68_GCC_NATIVE
+    struct NativeTitleGadget *wd_TitleGadgets;
+    WORD wd_TitleMinWidth;
+#endif
 };
 
 #ifndef WFLG_SIZEGADGET
@@ -746,6 +762,131 @@ static void CalcAltDimensions(Object *obj, struct MUI_WindowData *data,
 static void UndisplayWindow(Object *obj, struct MUI_WindowData *data);
 static struct ObjNode *FindObjNode(struct MinList *list, Object *obj);
 
+#ifdef ZUNE68_GCC_NATIVE
+static LONG NativeWindowMinWidth(struct MUI_WindowData *data, LONG borders)
+{
+    LONG width = data->wd_MinMax.MinWidth + borders;
+    return width < data->wd_TitleMinWidth ? data->wd_TitleMinWidth : width;
+}
+
+static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
+    struct Window *win)
+{
+    ULONG buttons = muiGlobalInfo(obj)->mgi_Prefs->window_buttons;
+    struct Gadget *g;
+    struct NativeTitleGadget *items;
+    LONG right = win->BorderRight, left = win->BorderLeft;
+    LONG height = win->BorderTop, width = height + 4;
+    LONG count = !!(buttons & MUIV_Window_Button_MUI) +
+        !!(buttons & MUIV_Window_Button_Iconify);
+    LONG i, needed;
+
+    if (!count || !data->wd_Title || !*data->wd_Title ||
+        (win->Flags & (WFLG_BORDERLESS | WFLG_BACKDROP)) ||
+        (data->wd_Flags & MUIWF_TOOLBOX) || height < 8)
+        return;
+
+    /* The system's actual gadgets account for font size and optional zoom. */
+    for (g = win->FirstGadget; g; g = g->NextGadget)
+    {
+        if (!(g->GadgetType & GTYP_SYSGADGET))
+            continue;
+        if ((g->Flags & GFLG_RELRIGHT) && g->TopEdge < height &&
+            (g->GadgetType & GTYP_SYSTYPEMASK) != GTYP_SIZING)
+        {
+            if (-g->LeftEdge > right)
+                right = -g->LeftEdge;
+        }
+        else if ((g->GadgetType & GTYP_SYSTYPEMASK) == GTYP_CLOSE)
+            left = g->LeftEdge + g->Width;
+    }
+    needed = left + right + count * width + 16;
+    if (needed > win->Width ||
+        needed > data->wd_MinMax.MaxWidth + win->BorderLeft + win->BorderRight)
+        return;
+    items = AllocVec(2 * sizeof(*items), MEMF_PUBLIC | MEMF_CLEAR);
+    if (!items)
+        return;
+    data->wd_TitleGadgets = items;
+    data->wd_TitleMinWidth = needed;
+    for (i = 0; i < 2; i++)
+    {
+        struct NativeTitleGadget *item = &items[i];
+        WORD *xy = item->symbol_xy;
+        ULONG bit = i ? MUIV_Window_Button_Iconify : MUIV_Window_Button_MUI;
+        ULONG id;
+        if (!(buttons & bit))
+            continue;
+        id = DoMethod(obj, MUIM_Window_AllocGadgetID);
+        if (!id)
+            continue;
+        right += width;
+        g = &item->gadget;
+        g->LeftEdge = -right;
+        g->TopEdge = 1;
+        g->Width = width;
+        g->Height = height - 2;
+        g->Flags = GFLG_RELRIGHT | GFLG_GADGHCOMP;
+        g->Activation = GACT_RELVERIFY | GACT_TOPBORDER;
+        g->GadgetType = GTYP_BOOLGADGET;
+        g->GadgetID = id;
+        g->GadgetRender = &item->frame;
+        item->frame.FrontPen = data->wd_RenderInfo.mri_DrawInfo->dri_Pens[SHADOWPEN];
+        item->frame.DrawMode = JAM1;
+        item->frame.Count = 5;
+        item->frame.XY = item->frame_xy;
+        item->frame.NextBorder = &item->symbol;
+        item->frame_xy[2] = width - 1;
+        item->frame_xy[4] = width - 1;
+        item->frame_xy[5] = height - 3;
+        item->frame_xy[7] = height - 3;
+        item->symbol.FrontPen = data->wd_RenderInfo.mri_DrawInfo->dri_Pens[TEXTPEN];
+        item->symbol.DrawMode = JAM1;
+        item->symbol.XY = xy;
+        if (!i)
+        {
+            /* M: application-specific toolkit settings. */
+            item->symbol.Count = 5;
+            xy[0] = 3; xy[1] = height - 5;
+            xy[2] = 3; xy[3] = 2;
+            xy[4] = width / 2; xy[5] = height / 2;
+            xy[6] = width - 4; xy[7] = 2;
+            xy[8] = width - 4; xy[9] = height - 5;
+        }
+        else
+        {
+            /* Small window outline: put the application on Workbench. */
+            item->symbol.Count = 6;
+            xy[0] = 3; xy[1] = 2;
+            xy[2] = width - 4; xy[3] = 2;
+            xy[4] = width - 4; xy[5] = height - 5;
+            xy[6] = 3; xy[7] = height - 5;
+            xy[8] = 3; xy[9] = 2;
+            xy[10] = width - 4; xy[11] = height - 5;
+        }
+        /* Before the system drag gadget, so this region remains clickable. */
+        AddGadget(win, g, 0);
+        RefreshGList(g, win, NULL, 1);
+    }
+    RefreshWindowFrame(win);
+}
+
+static void FreeNativeTitleGadgets(Object *obj, struct MUI_WindowData *data)
+{
+    if (data->wd_TitleGadgets)
+    {
+        int i;
+        for (i = 0; i < 2; i++)
+            if (data->wd_TitleGadgets[i].gadget.GadgetID)
+                DoMethod(obj, MUIM_Window_FreeGadgetID,
+                    data->wd_TitleGadgets[i].gadget.GadgetID);
+        FreeVec(data->wd_TitleGadgets);
+        data->wd_TitleGadgets = NULL;
+    }
+    data->wd_TitleMinWidth = 0;
+}
+#endif
+
 static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
 {
     struct Window *win;
@@ -903,9 +1044,17 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
         data->wd_Width = win->GZZWidth;
         data->wd_Height = win->GZZHeight;
 
+#ifdef ZUNE68_GCC_NATIVE
+        CreateNativeTitleGadgets(obj, data, win);
+#endif
         /* set window limits according to window contents */
         WindowLimits
-            (win, data->wd_MinMax.MinWidth + hborders,
+            (win,
+#ifdef ZUNE68_GCC_NATIVE
+            NativeWindowMinWidth(data, hborders),
+#else
+            data->wd_MinMax.MinWidth + hborders,
+#endif
             data->wd_MinMax.MinHeight + vborders,
             data->wd_MinMax.MaxWidth + hborders,
             data->wd_MinMax.MaxHeight + vborders);
@@ -1006,6 +1155,10 @@ static void UndisplayWindow(Object *obj, struct MUI_WindowData *data)
         CloseWindow(win);
         /*  D(bug("after CloseWindow\n")); */
     }
+
+#ifdef ZUNE68_GCC_NATIVE
+    FreeNativeTitleGadgets(obj, data);
+#endif
 
 #define DISPOSEGADGET(x) \
     if (x)\
@@ -1734,7 +1887,11 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
             /* set window limits according to window contents */
             WindowLimits
                 (iWin,
+#ifdef ZUNE68_GCC_NATIVE
+                NativeWindowMinWidth(data, hborders),
+#else
                 data->wd_MinMax.MinWidth + hborders,
+#endif
                 data->wd_MinMax.MinHeight + vborders,
                 data->wd_MinMax.MaxWidth + hborders,
                 data->wd_MinMax.MaxHeight + vborders);
@@ -2497,16 +2654,36 @@ void _zune_window_message(struct IntuiMessage *imsg)
             HandleRawkey(oWin, data, imsg);
         else if (IDCMP_GADGETUP == imsg->Class)
         {
-#ifdef __AROS__
-            if (ETI_MUI == ((struct Gadget *)imsg->IAddress)->GadgetID)
+            ULONG action = 0;
+#ifdef ZUNE68_GCC_NATIVE
+            if (data->wd_TitleGadgets && imsg->IAddress)
             {
-                DoMethod(_app(oWin), MUIM_Application_OpenConfigWindow);
+                if (imsg->IAddress == &data->wd_TitleGadgets[0].gadget)
+                    action = MUIV_Window_Button_MUI;
+                else if (imsg->IAddress == &data->wd_TitleGadgets[1].gadget)
+                    action = MUIV_Window_Button_Iconify;
             }
-            if (ETI_Iconify == ((struct Gadget *)imsg->IAddress)->GadgetID)
+#elif defined(__AROS__)
+            if (imsg->IAddress)
             {
-                set(_app(oWin), MUIA_Application_Iconified, TRUE);
+                if (ETI_MUI == ((struct Gadget *)imsg->IAddress)->GadgetID)
+                    action = MUIV_Window_Button_MUI;
+                else if (ETI_Iconify == ((struct Gadget *)imsg->IAddress)->GadgetID)
+                    action = MUIV_Window_Button_Iconify;
             }
 #endif
+            if (action)
+            {
+                Object *app = _app(oWin);
+                /* Iconification can close this window and free its gadgets. */
+                ReplyMsg((struct Message *)imsg);
+                if (action == MUIV_Window_Button_MUI)
+                    DoMethod(app, MUIM_Application_OpenConfigWindow);
+                else
+                    set(app, MUIA_Application_Iconified, TRUE);
+            }
+            else
+                HandleInputEvent(oWin, data, imsg);
         }
         else
         {
