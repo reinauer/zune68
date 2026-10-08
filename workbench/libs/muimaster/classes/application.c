@@ -1776,7 +1776,8 @@ static IPTR application_input(struct IClass *cl, Object *obj,
                 time_ext->treq.tr_time.tv_micro =
                     (time_ext->ihn->ihn_Millis % 1000) * 1000;
                 SendIO((struct IORequest *)&time_ext->treq);
-                DoMethod(ihn->ihn_Object, ihn->ihn_Method);
+                /* Timers carry no signal bits, then the originating node. */
+                DoMethod(ihn->ihn_Object, ihn->ihn_Method, 0, ihn);
             }
         }
 
