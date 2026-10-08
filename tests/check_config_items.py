@@ -7,7 +7,7 @@ Dataspace storage service is modeled, including custom binary settings.
 import struct
 import sys
 from pathlib import Path
-from check_class_lifetime import Harness
+from check_class_lifetime import Harness, EXEC
 
 CLASS, OBJECT, CONFIG, GLOBAL = 0x70000, 0x71000, 0x72000, 0x73000
 MESSAGE, STORE, PAYLOAD = 0x74000, 0x75000, 0x76000
@@ -49,12 +49,19 @@ def check(path):
     # file. Zero is also a successful scalar result, not a failed lookup.
     for direct in (False, True):
         for item, expected in ((1, 4), (2, 4), (3, 3), (4, 3),
-                               (5, 4), (6, 1), (7, 6), (8, 3), (9, 0)):
+                               (5, 4), (6, 1), (7, 4), (8, 4), (9, 0)):
             assert h.query(item, direct) == (1, expected), item
         ok, ptr = h.query(36, direct)
         assert ok and ptr and h.mem.r8(ptr) == 0  # Default PublicScreen.
-        ok, ptr = h.query(0x2b, direct)
-        assert ok and bytes(h.mem.r_block(ptr, 7)) == b'202211\0'
+        # Reference defaults: symmetric padding except the slider knob.
+        frames = {0x18: '300000', 0x2b: '202222', 0x2c: '202222',
+                  0x2d: '212222', 0x2e: '302222', 0x2f: '212222',
+                  0x30: '202222', 0x31: '202222', 0x32: '210000',
+                  0x33: '314444', 0x34: '112222', 0x35: '212222',
+                  0x36: '400000', 0x90: '202211'}
+        for item, expected in frames.items():
+            ok, ptr = h.query(item, direct)
+            assert ok and bytes(h.mem.r_block(ptr, 7)) == expected.encode() + b'\0'
         # Presets remain distinct even without saved preferences.
         for item, expected in ((0x20, b'helvetica/9\0'),
                                (0x22, b'helvetica/9\0'),
@@ -87,6 +94,10 @@ def check(path):
     h.items[0x20] = PAYLOAD + 64
     assert h.query(0x20) == (1, PAYLOAD + 64)
 
+    h.mem.w_block(PAYLOAD + 96, b'202211\0')
+    h.items[0x2b] = PAYLOAD + 96
+    assert h.query(0x2b) == (1, PAYLOAD + 96)  # Retain saved frame padding.
+
     # Objects need not have an application yet; invalid routing must not
     # dereference null global info or recurse back into Notify.
     h.mem.w32(OBJECT, 0)
@@ -99,6 +110,8 @@ def check(path):
     assert not h.allocations
     h.machine.cleanup()
     check_font_fallback(path)
+    check_popup_dimensions(path)
+    check_cycle_padding(path)
     print(f'{path}: preference scalar/default/pointer checks passed')
 
 
@@ -157,6 +170,61 @@ def check_font_fallback(path):
     count = len(disk_calls)
     assert h.call('zune_font_get', OBJECT, 0xfffffffd) == opened
     assert len(disk_calls) == count and not h.allocations
+    h.machine.cleanup()
+
+
+def check_popup_dimensions(path):
+    h = Harness(path)
+    # MUII_PopUp defaults to vector 7. Image padding is added by Area;
+    # the symbol itself has a 10x10 minimum on the reference library.
+    spec = h.call('zune_imspec_create_vector', 7)
+    assert spec
+    assert h.call('zune_imspec_vector_get_minmax', spec, STORE)
+    assert struct.unpack('>6h', bytes(h.mem.r_block(STORE, 12))) == (
+        10, 10, 10000, 10000, 10, 10)
+    h.call('zune_imspec_cleanup', spec)
+    assert not h.allocations
+    h.machine.cleanup()
+
+
+def check_cycle_padding(path):
+    h = Harness(path)
+    top, bottom, frame = 0x80421eb6, 0x8042f2c0, 0x8042ac64
+    received = []
+
+    def superclass():
+        # Capture the constructor's real merged tag list at Group's boundary.
+        # Stop here: child creation and Group layout are separate GUI checks.
+        msg = h.mem.r32(h.cpu.r_sp() + 12)
+        assert h.mem.r32(msg) == 0x101  # OM_NEW
+        tags = h.mem.r32(msg + 4)
+        values = []
+        while tags:
+            tag, value = h.mem.r32(tags), h.mem.r32(tags + 4)
+            if tag == 0:
+                break
+            if tag == 2:
+                tags = value
+                continue
+            values.append((tag, value))
+            tags += 8
+        received.append(values)
+        h.cpu.w_reg(0, 0)
+
+    h.trap(EXEC - 624, lambda: h.mem.w_block(h.cpu.r_reg(9),
+        h.mem.r_block(h.cpu.r_reg(8), h.cpu.r_reg(0))))
+    h.trap(h.symbols['_MUI_NewObjectA'], lambda: h.cpu.w_reg(0, 0))
+    h.trap(h.symbols['_DoSuperMethodA'], superclass)
+    for padding in ((), ((top, 5), (bottom, 3))):
+        words = [value for pair in padding for value in pair] + [0, 0]
+        h.mem.w_block(PAYLOAD, struct.pack('>' + 'I' * len(words), *words))
+        h.mem.w_block(MESSAGE, struct.pack('>3I', 0x101, PAYLOAD, 0))
+        assert h.call('Cycle__OM_NEW', CLASS, 0, MESSAGE) == 0
+        tags = received[-1]
+        assert (frame, 1) in tags  # Cycle still uses the configured Button frame.
+        assert [(key, value) for key, value in tags
+                if key in (top, bottom)] == list(padding)
+    assert len(received) == 2 and not h.allocations
     h.machine.cleanup()
 
 

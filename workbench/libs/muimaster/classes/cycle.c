@@ -88,8 +88,6 @@ IPTR Cycle__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         ButtonFrame,
         MUIA_Background, MUII_ButtonBack,
         MUIA_InputMode, MUIV_InputMode_RelVerify,
-        MUIA_InnerTop, 1,
-        MUIA_InnerBottom, 1,
         MUIA_Group_Horiz, TRUE,
         Child, (IPTR) (imgobj = ImageObject,
             MUIA_InnerLeft, 2,

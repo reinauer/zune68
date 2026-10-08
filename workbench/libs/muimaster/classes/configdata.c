@@ -144,17 +144,17 @@ static void init_imspecs(Object *obj, struct MUI_ConfigdataData *data)
 const static struct spec_cfg DefFramespecValues[] =
 {
     { MUIV_Frame_None,        MUICFG_Invalid,           "000000" }, /* invisible frame          */
-    { MUIV_Frame_Button,      MUICFG_Frame_Button,      "202211" }, /* text button              */
-    { MUIV_Frame_ImageButton, MUICFG_Frame_ImageButton, "202211" }, /* image button             */
-    { MUIV_Frame_Text,        MUICFG_Frame_Text,        "212211" }, /* textfield without input  */
-    { MUIV_Frame_String,      MUICFG_Frame_String,      "302211" }, /* string gadget            */
-    { MUIV_Frame_ReadList,    MUICFG_Frame_ReadList,    "212211" }, /* list without input       */
-    { MUIV_Frame_InputList,   MUICFG_Frame_InputList,   "202211" }, /* list with input          */
-    { MUIV_Frame_Prop,        MUICFG_Frame_Prop,        "202211" }, /* scrollbar container      */
+    { MUIV_Frame_Button,      MUICFG_Frame_Button,      "202222" }, /* text button              */
+    { MUIV_Frame_ImageButton, MUICFG_Frame_ImageButton, "202222" }, /* image button             */
+    { MUIV_Frame_Text,        MUICFG_Frame_Text,        "212222" }, /* textfield without input  */
+    { MUIV_Frame_String,      MUICFG_Frame_String,      "302222" }, /* string gadget            */
+    { MUIV_Frame_ReadList,    MUICFG_Frame_ReadList,    "212222" }, /* list without input       */
+    { MUIV_Frame_InputList,   MUICFG_Frame_InputList,   "202222" }, /* list with input          */
+    { MUIV_Frame_Prop,        MUICFG_Frame_Prop,        "202222" }, /* scrollbar container      */
     { MUIV_Frame_Gauge,       MUICFG_Frame_Gauge,       "210000" }, /* gauge                    */
     { MUIV_Frame_Group,       MUICFG_Frame_Group,       "314444" }, /* normal group             */
-    { MUIV_Frame_PopUp,       MUICFG_Frame_PopUp,       "112211" }, /* cycle menu, popup window */
-    { MUIV_Frame_Virtual,     MUICFG_Frame_Virtual,     "212211" }, /* virt group               */
+    { MUIV_Frame_PopUp,       MUICFG_Frame_PopUp,       "112222" }, /* cycle menu, popup window */
+    { MUIV_Frame_Virtual,     MUICFG_Frame_Virtual,     "212222" }, /* virt group               */
     { MUIV_Frame_Slider,      MUICFG_Frame_Slider,      "400000" }, /* slider container         */
     { MUIV_Frame_Knob,        MUICFG_Frame_Knob,        "202211" }, /* slider knob              */
     { MUIV_Frame_Drag,        MUICFG_Frame_Drag,        "300000" }, /* dnd frame                */
@@ -202,8 +202,8 @@ const static struct def_ulval DefULValues[] = {
     {MUICFG_Window_Refresh, WINDOW_REFRESH_SIMPLE},
     {MUICFG_Radio_HSpacing, 4},
     {MUICFG_Radio_VSpacing, 1},
-    {MUICFG_Group_HSpacing, 6},
-    {MUICFG_Group_VSpacing, 3},
+    {MUICFG_Group_HSpacing, 4},
+    {MUICFG_Group_VSpacing, 4},
     {MUICFG_Cycle_MenuCtrl_Position, CYCLE_MENU_POSITION_BELOW},
     {MUICFG_Cycle_MenuCtrl_Level, 2},
     {MUICFG_Cycle_MenuCtrl_Speed, 0},

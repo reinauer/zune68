@@ -810,7 +810,7 @@ static const struct vector_image vector_table[] = {
     {16, 10, checkbox_draw},
     {10, 10, mx_draw},
     {15, 8, cycle_draw},
-    {10, 11, popup_draw},
+    {10, 10, popup_draw},
     {10, 11, popfile_draw},
     {10, 11, popdrawer_draw},
 
