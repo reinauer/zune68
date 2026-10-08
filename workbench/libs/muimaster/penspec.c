@@ -17,12 +17,46 @@
 
 extern struct Library *MUIMasterBase;
 
+static int pen_hex_digit(UBYTE c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+/* Parse one bounded 32-bit channel, leaving the delimiter to the caller. */
+static BOOL pen_hex_channel(const char **cursor, ULONG *value)
+{
+    const char *s = *cursor;
+    ULONG n = 0;
+    unsigned digits = 0;
+    int digit;
+
+    while ((digit = pen_hex_digit(*s)) >= 0)
+    {
+        if (++digits > 8) return FALSE;
+        n = (n << 4) | digit;
+        s++;
+    }
+    if (!digits) return FALSE;
+    *cursor = s;
+    *value = n;
+    return TRUE;
+}
+
 /* From ASCII to internal representation */
 BOOL zune_pen_spec_to_intern(const struct MUI_PenSpec *spec,
     struct MUI_PenSpec_intern *intern)
 {
+    unsigned length;
+
     if (!spec || !intern)
         return FALSE;
+    /* A public PenSpec is fixed-size; string callers may end earlier. */
+    for (length = 0; length < sizeof(spec->buf); length++)
+        if (!spec->buf[length]) break;
+    if (length == sizeof(spec->buf)) return FALSE;
 
     memset(intern, 0, sizeof(*intern));
 
@@ -50,30 +84,39 @@ BOOL zune_pen_spec_to_intern(const struct MUI_PenSpec *spec,
     case 'r':
     default:
         {
-            const char *s;
-            const char *t;
+            const char *s = spec->buf;
+            ULONG channels[3];
+            unsigned i;
 
-            s = spec->buf;
-            if (*s == 'r')
+            if (*s == 'r') { s++; length--; }
+            if (length == 6 && !memchr(s, ',', length))
             {
-                s++;
+                /* Classic MUI expands compact RRGGBB into the most
+                 * significant byte of each 32-bit graphics channel. */
+                for (i = 0; i < 3; i++)
+                {
+                    int hi = pen_hex_digit(s[2 * i]);
+                    int lo = pen_hex_digit(s[2 * i + 1]);
+                    if (hi < 0 || lo < 0) return FALSE;
+                    channels[i] = (ULONG)((hi << 4) | lo) << 24;
+                }
             }
-            t = s;
-            intern->p_rgb.red = strtoul(s, (char **)&s, 16);
-            if (s == t)
-                return FALSE;
-
-            s++;
-            t = s;
-            intern->p_rgb.green = strtoul(s, (char **)&s, 16);
-            if (s == t)
-                return FALSE;
-
-            s++;
-            t = s;
-            intern->p_rgb.blue = strtoul(s, (char **)&s, 16);
-            if (s == t)
-                return FALSE;
+            else
+            {
+                for (i = 0; i < 3; i++)
+                {
+                    if (!pen_hex_channel(&s, &channels[i])) return FALSE;
+                    if (i < 2)
+                    {
+                        if (*s != ',') return FALSE;
+                        s++;
+                    }
+                }
+                if (*s) return FALSE;
+            }
+            intern->p_rgb.red = channels[0];
+            intern->p_rgb.green = channels[1];
+            intern->p_rgb.blue = channels[2];
 
             intern->p_type = PST_RGB;
             break;
