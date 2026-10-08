@@ -111,6 +111,8 @@ static Object *saveas_menuitem;
 static Object *aboutzune_menuitem;
 static Object *quit_menuitem;
 static Object *LastSavedConfigdata = NULL;
+/* Only Test (including file import) changes the application's live prefs. */
+static BOOL LiveTestActive = FALSE;
 static STRPTR appname = NULL;
 
 static Object *main_wnd;
@@ -556,6 +558,7 @@ void load_prefs(CONST_STRPTR name)
 
 /*      D(bug("zune::load_prefs: created configdata %p\n", configdata)); */
         LastSavedConfigdata = configdata;
+        LiveTestActive = FALSE;
 
         /* Call MUIM_Settingsgroup_ConfigToGadgets for every group */
         for (i=0;main_page_entries[i].name;i++)
@@ -575,6 +578,9 @@ void test_prefs(void)
 {
     Object *cfg;
 
+    /* Configdata_Save has no success result. Conservatively remember the
+     * write attempt so Cancel can restore even after a partial write. */
+    LiveTestActive = TRUE;
     save_prefs(appname, FALSE);
 /*      load_prefs(); */
     cfg = MUI_NewObject(MUIC_Configdata, MUIA_Configdata_Application, (IPTR)app, TAG_DONE);
@@ -587,6 +593,9 @@ void restore_prefs(CONST_STRPTR name)
     char buf[255];
     int i;
 
+    if (!LastSavedConfigdata)
+        return;
+
     /* Restore the preferences which were active when the window opened. */
     for (i = 0; main_page_entries[i].name; i++)
     {
@@ -597,8 +606,14 @@ void restore_prefs(CONST_STRPTR name)
                      (IPTR)LastSavedConfigdata);
     }
 
+    /* Revert still resets edited gadgets. Untested edits never reached
+     * ENV, so writing here would needlessly reopen the target's windows. */
+    if (!LiveTestActive)
+        return;
+
     snprintf(buf, 255, "ENV:zune/%s.prefs", name);
     DoMethod(LastSavedConfigdata, MUIM_Configdata_Save, (IPTR)buf);
+    LiveTestActive = FALSE;
 
     /*
      * MUIA_Application_Configdata transfers ownership to Application,
@@ -676,7 +691,7 @@ void main_open_menu(void)
             /* activate prefs in test mode */
             test_prefs();
 
-            /*      D(bug("zune::save_prefs: disposed configdata %p\n", configdata)); */
+            MUI_DisposeObject(configdata);
         }
                           
     }
