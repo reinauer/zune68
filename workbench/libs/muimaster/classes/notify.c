@@ -870,19 +870,13 @@ IPTR Notify__MUIM_DisconnectParent(struct IClass *cl, Object *obj,
 IPTR Notify__MUIM_GetConfigItem(struct IClass *cl, Object *obj,
     struct MUIP_GetConfigItem *msg)
 {
-    IPTR found =
-        DoMethod(muiGlobalInfo(obj)->mgi_Configdata, MUIM_Dataspace_Find,
-        msg->id);
+    struct MUI_GlobalInfo *gi = muiGlobalInfo(obj);
 
-    if (found)
-    {
-        *msg->storage = found;
-        return TRUE;
-    }
-    else
-    {
+    if (!msg->storage || !gi || !gi->mgi_Configdata ||
+        gi->mgi_Configdata == obj)
         return FALSE;
-    }
+
+    return DoMethodA(gi->mgi_Configdata, (Msg)msg);
 }
 
 

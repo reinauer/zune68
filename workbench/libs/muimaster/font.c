@@ -76,14 +76,13 @@ struct TextFont *zune_font_get(Object *obj, IPTR font)
             }
 
         }
-        else                    /* fallback to window normal font */
+        if (!mri->mri_Fonts[-preset]) /* missing or unavailable preset */
         {
             /* avoid infinite recursion */
             if (preset != (SIPTR) MUIV_Font_Normal && preset
                 != (SIPTR) MUIV_Font_Fixed)
             {
-                /* don't do this, would result in the font being closed more than once */
-/*              return (mri->mri_Fonts[-preset] = zune_font_get(obj, MUIV_Font_Normal)); */
+                /* Normal owns the fallback; do not cache and close it twice. */
                 return zune_font_get(obj, MUIV_Font_Normal);
             }
         }

@@ -252,10 +252,10 @@ struct def_strval
 const static struct def_strval DefStrValues[] = {
     {MUICFG_Font_Normal, ""},
     {MUICFG_Font_List, ""},
-    {MUICFG_Font_Tiny, ""},
+    {MUICFG_Font_Tiny, "helvetica/9"},
     {MUICFG_Font_Fixed, ""},
-    {MUICFG_Font_Title, ""},
-    {MUICFG_Font_Big, ""},
+    {MUICFG_Font_Title, "helvetica/9"},
+    {MUICFG_Font_Big, "helvetica/15"},
     {MUICFG_Font_Button, ""},
     {MUICFG_Font_Knob, ""},
     {MUICFG_String_Background, "2:m2"},
@@ -1127,6 +1127,45 @@ IPTR Configdata__MUIM_GetULong(struct IClass *cl, Object *obj,
 }
 
 /**************************************************************************
+ MUIM_GetConfigItem
+ Builtin numeric settings return values; custom settings retain dataspace
+ pointers. Resolve builtin defaults even when no preferences file exists.
+**************************************************************************/
+IPTR Configdata__MUIM_GetConfigItem(struct IClass *cl, Object *obj,
+    struct MUIP_GetConfigItem *msg)
+{
+    int i;
+    IPTR value;
+
+    if (!msg->storage)
+        return FALSE;
+
+    for (i = 0; DefULValues[i].id; i++)
+    {
+        if (DefULValues[i].id == msg->id)
+        {
+            struct MUIP_Configdata_GetULong getmsg =
+                { MUIM_Configdata_GetULong, msg->id };
+
+            *msg->storage = Configdata__MUIM_GetULong(cl, obj, &getmsg);
+            return TRUE;
+        }
+    }
+
+    {
+        struct MUIP_Configdata_GetString getmsg =
+            { MUIM_Configdata_GetString, msg->id };
+
+        value = Configdata__MUIM_GetString(cl, obj, &getmsg);
+    }
+    if (!value)
+        return FALSE;
+
+    *msg->storage = value;
+    return TRUE;
+}
+
+/**************************************************************************
  MUIM_Configdata_SetULong
 **************************************************************************/
 IPTR Configdata__MUIM_SetULong(struct IClass *cl, Object *obj,
@@ -1360,6 +1399,8 @@ BOOPSI_DISPATCHER(IPTR, Configdata_Dispatcher, cl, obj, msg)
         return Configdata__OM_DISPOSE(cl, obj, (APTR) msg);
     case OM_GET:
         return Configdata__OM_GET(cl, obj, (APTR) msg);
+    case MUIM_GetConfigItem:
+        return Configdata__MUIM_GetConfigItem(cl, obj, (APTR) msg);
     case MUIM_Configdata_GetString:
         return Configdata__MUIM_GetString(cl, obj, (APTR) msg);
     case MUIM_Configdata_GetULong:
