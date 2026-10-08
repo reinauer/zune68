@@ -111,6 +111,7 @@ struct MUI_GroupData
                                  * children */
     /* MUI4 group with tabs */
     Object *titlegroup;
+    APTR paint_clip;            /* previous clipping during virtual painting */
 };
 
 /* Note:
@@ -132,6 +133,7 @@ struct MUI_GroupData
 #define GROUP_HSPACING    (1<<7)
 #define GROUP_VSPACING    (1<<8)
 #define GROUP_CHANGED     (1<<9)
+#define GROUP_PAINTING    (1<<10)
 
 
 /* During minmax calculations objects with a weight of 0 shall
@@ -589,6 +591,7 @@ IPTR Group__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             case MUIA_ContextMenu:
             case MUIA_ContextMenuTrigger:
             case MUIA_ControlChar:
+            case MUIA_CustomBackfill:
             case MUIA_CycleChain:
             case MUIA_Draggable:
             case MUIA_FillArea:
@@ -1157,6 +1160,58 @@ static struct Region *group_children_clip_region(struct IClass *cl,
     return region;
 }
 
+/* Private MUI virtual-group painting protocol. These method IDs are used
+ * by existing subclasses to prepare and release their content clipping.
+ * MUI 3.9 calls neither method for an ordinary Group or Area.
+ */
+#define MUIM_Virtgroup_BeginPaint 0x80425b5cUL
+#define MUIM_Virtgroup_EndPaint   0x8042da52UL
+
+/* Establish the outer virtual clip before a subclass installs its own.
+ * MUI clipping handles represent the previous region, which can be NULL.
+ * Existing subclasses rely on this outer clip when tracking their handle.
+ */
+IPTR Group__MUIM_Virtgroup_BeginPaint(struct IClass *cl, Object *obj)
+{
+    struct MUI_GroupData *data = INST_DATA(cl, obj);
+    struct Region *region;
+    struct Rectangle rect;
+
+    if (data->flags & GROUP_PAINTING)
+        return FALSE;
+    region = NewRegion();
+    if (!region)
+        return FALSE;
+    rect.MinX = _mleft(obj);
+    rect.MinY = _mtop(obj);
+    rect.MaxX = _mright(obj);
+    rect.MaxY = _mbottom(obj);
+    if (_mwidth(obj) > 0 && _mheight(obj) > 0 &&
+        !OrRectRegion(region, &rect))
+    {
+        DisposeRegion(region);
+        return FALSE;
+    }
+    data->paint_clip = MUI_AddClipRegion(muiRenderInfo(obj), region);
+    if (data->paint_clip == (APTR)-1)
+        return FALSE;
+    data->flags |= GROUP_PAINTING;
+    return TRUE;
+}
+
+IPTR Group__MUIM_Virtgroup_EndPaint(struct IClass *cl, Object *obj)
+{
+    struct MUI_GroupData *data = INST_DATA(cl, obj);
+
+    if (data->flags & GROUP_PAINTING)
+    {
+        MUI_RemoveClipping(muiRenderInfo(obj), data->paint_clip);
+        data->paint_clip = (APTR)-1;
+        data->flags &= ~GROUP_PAINTING;
+    }
+    return 0;
+}
+
 /**************************************************************************
  MUIM_Draw - draw the group
 **************************************************************************/
@@ -1171,9 +1226,15 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
     int page;
     struct Region *region = NULL;
     APTR clip = (APTR) - 1;
+    BOOL virtual = (data->flags & GROUP_VIRTUAL) != 0;
+    ULONG fill = _flags(obj) & MADF_FILLAREA;
 
     if (data->flags & GROUP_CHANGING)
         return FALSE;
+
+    /* Area draws the frame; virtual contents belong inside the paint pair. */
+    if (virtual)
+        _flags(obj) &= ~MADF_FILLAREA;
 
     if (muiGlobalInfo(obj)->mgi_Prefs->window_redraw
         == WINDOW_REDRAW_WITHOUT_CLEAR)
@@ -1191,6 +1252,18 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
     else
     {
         DoSuperMethodA(cl, obj, (Msg) msg);
+    }
+
+    if (virtual)
+    {
+        _flags(obj) |= fill;
+        if (!DoMethod(obj, MUIM_Virtgroup_BeginPaint))
+            return FALSE;
+        if ((msg->flags & MADF_DRAWOBJECT) &&
+            !(msg->flags & MADF_DRAWUPDATE))
+            DoMethod(obj, MUIM_DrawBackground,
+                _mleft(obj), _mtop(obj), _mwidth(obj), _mheight(obj),
+                _mleft(obj), _mtop(obj), 0);
     }
 
     if ((msg->flags & MADF_DRAWUPDATE) && data->update == 1)
@@ -1230,7 +1303,7 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
 
             if (!diff_virt_offx && !diff_virt_offy)
             {
-                return 1;
+                goto finish;
             }
 
             /* sba: I don't know how MUI handle this but ScrollRasterBF() made problems when scrolling
@@ -1325,22 +1398,7 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
         {
             if (!(msg->flags & MADF_DRAWOBJECT)
                 && !(msg->flags & MADF_DRAWALL))
-                return TRUE;
-        }
-    }
-
-    if (data->flags & GROUP_VIRTUAL && !region)
-    {
-        /* Not really needed if MUI Draws all the objects, maybe that's
-         * what DRAWALL is for??? */
-        if ((region = NewRegion()))
-        {
-            struct Rectangle rect;
-            rect.MinX = _mleft(obj);
-            rect.MinY = _mtop(obj);
-            rect.MaxX = _mright(obj);
-            rect.MaxY = _mbottom(obj);
-            OrRectRegion(region, &rect);
+                goto finish;
         }
     }
 
@@ -1384,6 +1442,10 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
     {
         MUI_RemoveClipRegion(muiRenderInfo(obj), clip);
     }
+
+finish:
+    if (virtual)
+        DoMethod(obj, MUIM_Virtgroup_EndPaint);
 
     data->old_virt_offx = data->virt_offx;
     data->old_virt_offy = data->virt_offy;
@@ -3443,6 +3505,10 @@ BOOPSI_DISPATCHER(IPTR, Group_Dispatcher, cl, obj, msg)
         return Group__MUIM_Setup(cl, obj, (APTR) msg);
     case MUIM_Cleanup:
         return Group__MUIM_Cleanup(cl, obj, (APTR) msg);
+    case MUIM_Virtgroup_BeginPaint:
+        return Group__MUIM_Virtgroup_BeginPaint(cl, obj);
+    case MUIM_Virtgroup_EndPaint:
+        return Group__MUIM_Virtgroup_EndPaint(cl, obj);
     case MUIM_Draw:
         return Group__MUIM_Draw(cl, obj, (APTR) msg);
 

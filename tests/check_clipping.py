@@ -86,6 +86,34 @@ class ClipHarness(NotifyHarness):
         self.machine.cleanup()
 
 
+def check_virtual_paint(path):
+    for failure in ('none', 'region', 'rect', 'intersect'):
+        h = ClipHarness(path)
+        cl = 0x70000
+        h.mem.w16(cl + 32, 246)
+        outer = h.blob(bytes(12))
+        h.mem.w32(LAYER + 126, outer)
+        h.fail_region = failure == 'region'
+        h.fail_rect = failure == 'rect'
+        if failure == 'intersect':
+            h.call('ZuneAddClipRegion', MRI, h.alloc(12))
+            h.fail_intersect = True
+        old_clip = h.mem.r32(LAYER + 126)
+        count = h.mem.r32(MRI + 168)
+        result = h.call('Group__MUIM_Virtgroup_BeginPaint', cl, OBJECT)
+        assert bool(result) == (failure == 'none')
+        if result:
+            assert h.mem.r32(LAYER + 126) != old_clip
+            assert h.mem.r32(MRI + 168) == count + 1
+            assert not h.call('Group__MUIM_Virtgroup_BeginPaint', cl, OBJECT)
+        h.call('Group__MUIM_Virtgroup_EndPaint', cl, OBJECT)
+        assert h.mem.r32(LAYER + 126) == old_clip
+        assert h.mem.r32(MRI + 168) == count
+        if failure == 'intersect':
+            h.call('ZuneRemoveClipRegion', MRI, outer)
+        h.finish()
+
+
 def check(path):
     # A damaged layer is not necessarily inside BeginRefresh/BeginUpdate.
     for simple in [False, True]:
@@ -154,3 +182,4 @@ def check(path):
 if __name__ == '__main__':
     for name in sys.argv[1:]:
         check(Path(name))
+        check_virtual_paint(Path(name))

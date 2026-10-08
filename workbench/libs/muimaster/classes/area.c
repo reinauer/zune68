@@ -308,6 +308,11 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 data->mad_DisableCount |= (1 << 31);
             break;
 
+        case MUIA_CustomBackfill:
+            _handle_bool_tag(data->mad_Flags2, tag->ti_Data,
+                MADF2_CUSTOMBACKFILL);
+            break;
+
         case MUIA_FillArea:
             _handle_bool_tag(data->mad_Flags, tag->ti_Data, MADF_FILLAREA);
             break;
@@ -519,6 +524,11 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             MUI_Redraw(obj, MADF_DRAWOBJECT);
             break;
 
+        case MUIA_CustomBackfill:
+            _handle_bool_tag(data->mad_Flags2, tag->ti_Data,
+                MADF2_CUSTOMBACKFILL);
+            break;
+
         case MUIA_FillArea:
             _handle_bool_tag(data->mad_Flags, tag->ti_Data, MADF_FILLAREA);
             break;
@@ -727,6 +737,10 @@ static IPTR Area__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_BottomEdge:
         STORE = (IPTR)_bottom(obj);
+        return TRUE;
+
+    case MUIA_CustomBackfill:
+        STORE = !!(data->mad_Flags2 & MADF2_CUSTOMBACKFILL);
         return TRUE;
 
     case MUIA_ControlChar:
@@ -957,6 +971,28 @@ void __area_finish_minmax(Object *obj, struct MUI_MinMax *MinMaxInfo)
  * must go as far as theoretical bottom frame border.
  */
 
+/* The classic callback uses inclusive bounds, not width/height. The
+ * reserved offsets are zero, including explicit DrawBackground requests.
+ * Keep this in the normal background path so parent and layer clips apply.
+ */
+static IPTR Area_CustomBackfill(Object *obj, LONG left, LONG top,
+    LONG width, LONG height)
+{
+    struct MUI_AreaData *data = muiAreaData(obj);
+    IPTR result;
+
+    if (width <= 0 || height <= 0)
+        return FALSE;
+    /* Custom painters may call their superclass DrawBackground for the
+     * ordinary pattern. Do not dispatch the same callback recursively.
+     */
+    data->mad_Flags2 |= MADF2_BACKFILL_ACTIVE;
+    result = DoMethod(obj, MUIM_CustomBackfill, left, top,
+        left + (ULONG)width - 1, top + (ULONG)height - 1, 0, 0);
+    data->mad_Flags2 &= ~MADF2_BACKFILL_ACTIVE;
+    return result;
+}
+
 /*
  * draw object background if MADF_FILLAREA.
  */
@@ -970,6 +1006,13 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
     struct Region *clipregion = NULL;
     APTR cliphandle = NULL;
     BOOL use_clipping = FALSE;
+
+    /* Virtual groups paint their contents inside BeginPaint/EndPaint.
+     * Their surrounding frame background only needs a full redraw.
+     */
+    if ((data->mad_Flags & MADF_ISVIRTUALGROUP) &&
+        !(flags & MADF_DRAWALL))
+        return;
 
     if (!(data->mad_Flags & MADF_SELECTED) ||
             !(data->mad_Flags & MADF_SHOWSELSTATE))
@@ -1030,6 +1073,13 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
     }
 
     if (data->mad_Flags & MADF_FILLAREA) {
+        if ((data->mad_Flags2 & MADF2_CUSTOMBACKFILL) &&
+            !(flags & MADF_DRAWALL)) {
+            r.MinX = _mleft(obj);
+            r.MinY = _mtop(obj);
+            r.MaxX = _mright(obj);
+            r.MaxY = _mbottom(obj);
+        }
         rects[0] = r;
         numrects = 1;
     } else {
@@ -1057,7 +1107,12 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
     }
 
     for (i = 0; i < numrects; i++) {
-        if (!background) {
+        if ((data->mad_Flags2 & (MADF2_CUSTOMBACKFILL |
+                MADF2_BACKFILL_ACTIVE)) == MADF2_CUSTOMBACKFILL) {
+            Area_CustomBackfill(obj, rects[i].MinX, rects[i].MinY,
+                rects[i].MaxX - rects[i].MinX + 1,
+                rects[i].MaxY - rects[i].MinY + 1);
+        } else if (!background) {
             /* For rounded frames, we already drew parent background, so draw object
              * background with clipping. For non-rounded frames, this will do the rest
              */
@@ -1338,6 +1393,11 @@ static IPTR Area__MUIM_DrawBackground(struct IClass *cl, Object *obj,
 
     if (!(data->mad_Flags & MADF_CANDRAW)) /* not between show/hide */
         return FALSE;
+
+    if ((data->mad_Flags2 & (MADF2_CUSTOMBACKFILL |
+            MADF2_BACKFILL_ACTIVE)) == MADF2_CUSTOMBACKFILL)
+        return Area_CustomBackfill(obj, msg->left, msg->top,
+            msg->width, msg->height);
 
     if ((msg->flags & MADF_SELECTED) && (msg->flags & MADF_SHOWSELSTATE) &&
             data->mad_SelBack) {

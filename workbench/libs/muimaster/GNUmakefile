@@ -105,6 +105,8 @@ check-core: core $(BUILD)/compatcheck
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_config_items.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
+	$(PYTHON) ../../../tests/check_custom_backfill.py \
+	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_application_services.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_dynamic_layout.py \

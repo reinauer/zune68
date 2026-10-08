@@ -385,7 +385,7 @@ struct MUIP_CreateFrameClippingRegion
 #define MUIA_ControlChar \
     (MUIB_MUI | 0x0042120b)   /* MUI: V4  isg char              */
 #define MUIA_CustomBackfill \
-    (MUIB_MUI | 0x00420a63)   /* undoc    i..                   */
+    (MUIB_MUI | 0x00420a63)   /* undoc    isg BOOL              */
 #define MUIA_CycleChain \
     (MUIB_MUI | 0x00421ce7)   /* MUI: V11 isg LONG              */
 #define MUIA_Disabled \
@@ -545,6 +545,10 @@ struct MUI_AreaData
 };
 
 /* Flags during MUIM_Draw */
+/* Internal flags stored in mad_Flags2; the public prefix stays fixed. */
+#define MADF2_CUSTOMBACKFILL   (1UL << 0)
+#define MADF2_BACKFILL_ACTIVE  (1UL << 1)
+
 #define MADF_DRAWOBJECT        (1<< 0)  /* draw object completely */
 #define MADF_DRAWUPDATE        (1<< 1)  /* update object */
 
