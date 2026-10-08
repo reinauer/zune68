@@ -522,16 +522,21 @@ static BOOL SetupRenderInfo(Object *obj, struct MUI_WindowData *data,
             UnlockPubScreen(NULL, scr);
             data->wd_Flags &= ~MUIWF_SCREENLOCKED;
         }
+        mri->mri_Screen = NULL;
         return FALSE;
     }
 
     if (!InitCustomFrames(obj, mri))
     {
+        DisposeCustomFrames(mri);
+        FreeScreenDrawInfo(scr, mri->mri_DrawInfo);
+        mri->mri_DrawInfo = NULL;
         if (data->wd_Flags & MUIWF_SCREENLOCKED)
         {
             UnlockPubScreen(NULL, scr);
             data->wd_Flags &= ~MUIWF_SCREENLOCKED;
         }
+        mri->mri_Screen = NULL;
         return FALSE;
     }
 
@@ -4022,6 +4027,24 @@ static void WindowShow(struct IClass *cl, Object *obj)
     DoShowMethod(data->wd_RootObject);
 }
 
+/* Base-owned setup resources must also unwind when a subclass rejects
+ * Setup after calling its superclass, or filters Cleanup entirely.
+ */
+static void CleanupWindowSetup(struct MUI_WindowData *data)
+{
+    struct MUI_ImageSpec_intern *background = data->wd_Background;
+
+    data->wd_Background = NULL;
+    zune_imspec_cleanup(background);
+
+    if (data->wd_dnd)
+    {
+        struct DragNDrop *dnd = data->wd_dnd;
+        data->wd_dnd = NULL;
+        DeleteDragNDrop(dnd);
+    }
+}
+
 static ULONG WindowOpen(struct IClass *cl, Object *obj)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
@@ -4029,13 +4052,23 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
     if (!data->wd_RootObject)
         return FALSE;
 
-    if (!DoMethod(obj, MUIM_Window_Setup))
+    /* The screen belongs to the whole subclass setup/cleanup chain. */
+    if (!SetupRenderInfo(obj, data, &data->wd_RenderInfo))
         return FALSE;
+
+    if (!DoMethod(obj, MUIM_Window_Setup))
+    {
+        CleanupWindowSetup(data);
+        CleanupRenderInfo(obj, data, &data->wd_RenderInfo);
+        return FALSE;
+    }
 
     /* I got display info, so calculate your display dependant data */
     if (!DoSetupMethod(data->wd_RootObject, &data->wd_RenderInfo))
     {
         DoMethod(obj, MUIM_Window_Cleanup);
+        CleanupWindowSetup(data);
+        CleanupRenderInfo(obj, data, &data->wd_RenderInfo);
         return FALSE;
     }
 
@@ -4056,6 +4089,8 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
         data->wd_Menustrip = NULL;
         DoMethod(data->wd_RootObject, MUIM_Cleanup);
         DoMethod(obj, MUIM_Window_Cleanup);
+        CleanupWindowSetup(data);
+        CleanupRenderInfo(obj, data, &data->wd_RenderInfo);
         return FALSE;
     }
 
@@ -4134,6 +4169,8 @@ static ULONG WindowClose(struct IClass *cl, Object *obj)
     /* free display dependant data */
     if (data->wd_RootObject) DoMethod(data->wd_RootObject, MUIM_Cleanup);
     DoMethod(obj, MUIM_Window_Cleanup);
+    CleanupWindowSetup(data);
+    CleanupRenderInfo(obj, data, &data->wd_RenderInfo);
     return TRUE;
 }
 
@@ -4288,9 +4325,6 @@ IPTR Window__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
 
-    if (!SetupRenderInfo(obj, data, &data->wd_RenderInfo))
-        return FALSE;
-
     data->wd_Background =
         zune_imspec_setup(MUII_WindowBack, &data->wd_RenderInfo);
 
@@ -4308,15 +4342,7 @@ IPTR Window__MUIM_Cleanup(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
 
-    zune_imspec_cleanup(data->wd_Background);
-
-    if (data->wd_dnd)
-    {
-        DeleteDragNDrop(data->wd_dnd);
-        data->wd_dnd = NULL;
-    }
-
-    CleanupRenderInfo(obj, data, &data->wd_RenderInfo);
+    CleanupWindowSetup(data);
     return TRUE;
 }
 

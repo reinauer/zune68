@@ -94,15 +94,18 @@ class PenHarness(Harness):
 
 
 def check(path):
+    from check_window_lifecycle import WindowHarness
     for derived in (False, True):
         for handles in ([0x10000 | i for i in range(8)],
                         [2, 0x10009, -1, 0x10009, 4, 0x10000, 6, 0x1000b]):
-            h = PenHarness(path, handles, derived)
+            h = WindowHarness(path, 'root setup failure', handles, derived)
             try:
                 for cycle in range(3):
                     h.requests.clear()
                     h.released.clear()
-                    assert h.call('Window__MUIM_Setup', CLASS, OBJECT, MESSAGE)
+                    # Real open acquires pens, then the failed child setup
+                    # takes the window's resource cleanup path.
+                    h.opened(1)
                     assert len(h.requests) == 8, 'MARK must also be initialized'
                     pens = h.mem.r32(DATA + 12)
                     assert pens == PUBLIC_PENS
@@ -110,11 +113,10 @@ def check(path):
                         # Failed BACKGROUND allocation borrows BACKGROUNDPEN=7.
                         expected = 7 if handle == -1 else handle & 0xffff
                         assert h.mem.r16(pens + 2 * i) == expected, (i, handle)
-                    assert h.call('Window__MUIM_Cleanup', CLASS, OBJECT, MESSAGE)
                     expected = [p & 0xffff for p in handles if p >= 0x10000]
                     assert Counter(h.released) == Counter(expected), (cycle, h.released, expected)
                     # Cleanup consumes ownership; stale handles cannot release twice.
-                    h.call('Window__MUIM_Cleanup', CLASS, OBJECT, MESSAGE)
+                    h.opened(0)
                     assert Counter(h.released) == Counter(expected)
                     assert not h.allocations, 'derived shades need no heap storage'
             finally:
