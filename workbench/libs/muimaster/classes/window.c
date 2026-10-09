@@ -4357,7 +4357,17 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
         WINDOW_REDRAW_WITHOUT_CLEAR)
     {
         if (reshow)
+        {
+            /* An object that does not fill its area keeps the old child
+             * pixels after relayout; clear them with the inherited
+             * background, as MUI 3.8/3.9 do for hidden/removed children */
+            if (!(_flags(current_obj) & MADF_FILLAREA))
+                DoMethod(current_obj, MUIM_DrawBackground,
+                    _left(current_obj), _top(current_obj),
+                    _width(current_obj), _height(current_obj),
+                    _left(current_obj), _top(current_obj), 0);
             MUI_Redraw(current_obj, MADF_DRAWOBJECT);
+        }
     }
     else
     {
