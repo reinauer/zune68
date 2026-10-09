@@ -61,6 +61,22 @@ static LONG sample(Object *o)
     return n;
 }
 
+/* Print a pen histogram of the object's inner area */
+static void histogram(const char *name, Object *o)
+{
+    LONG x, y, counts[16] = { 0 };
+    int i;
+
+    for (y = _mtop(o); y <= _mbottom(o); y++)
+        for (x = _mleft(o); x <= _mright(o); x++)
+            counts[ReadPixel(_rp(o), x, y) & 15]++;
+    printf("%s pens:", name);
+    for (i = 0; i < 16; i++)
+        if (counts[i])
+            printf(" %d=%ld", i, (long)counts[i]);
+    printf("\n");
+}
+
 int main(void)
 {
     struct MUI_CustomClass *mcc;
@@ -109,6 +125,13 @@ int main(void)
     mode = 2;
     set(disabled, MUIA_Disabled, FALSE);
     printf("after enable: disabled=%ld\n", (long)sample(disabled));
+
+    /* Disabled object whose Draw calls only the superclass: count the
+     * ghost pattern pixels the built-in drawing leaves behind */
+    set(disabled, MUIA_Disabled, TRUE);
+    printf("disabled super-only: disabled=%ld\n", (long)sample(disabled));
+    histogram("disabled super-only", disabled);
+    histogram("enabled plain", plain);
     rc = 0;
 done:
     if (app)
