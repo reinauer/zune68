@@ -15,237 +15,192 @@
 
 extern struct Library *MUIMasterBase;
 
-static void draw_thick_line(struct RastPort *rp, int x1, int y1, int x2,
-    int y2)
-{
-    Move(rp, x1, y1);
-    Draw(rp, x2, y2);
-    Move(rp, x1 + 1, y1);
-    Draw(rp, x2 + 1, y2);
-}
-
 //#define SPACING 1
 #define HSPACING 0
 #define VSPACING 0
 
-#define ARROW_SPACING 1
-#define ARROW_VSPACING ARROW_SPACING
-#define ARROW_HSPACING ARROW_SPACING
-#define VERTARROW_VSPACING ARROW_VSPACING
-#define HORIZARROW_HSPACING ARROW_HSPACING
+
+/* MUI 3.8/3.9 built-in arrows are chevrons with two pixel wide strokes:
+ * 10x5 pointing up or down and 4x8 pointing left or right. Larger areas
+ * centre the same shape. */
+static void arrow_span(struct RastPort *rp, LONG x, LONG y, LONG minx,
+    LONG maxx)
+{
+    LONG x2 = x + 1;
+
+    if (x < minx)
+        x = minx;
+    if (x2 > maxx)
+        x2 = maxx;
+    if (x <= x2)
+        RectFill(rp, x, y, x2, y);
+}
+
+static void arrow_vertical(struct MUI_RenderInfo *mri, LONG left, LONG top,
+    LONG width, LONG height, BOOL up)
+{
+    struct RastPort *rport = mri->mri_RastPort;
+    LONG n = MIN(height, width / 2), cx = left + width / 2, y0, r;
+
+    if (n < 1)
+        return;
+    y0 = top + (height - n) / 2;
+    SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
+    for (r = 0; r < n; r++)
+    {
+        LONG y = up ? y0 + r : y0 + n - 1 - r;
+
+        arrow_span(rport, cx - 1 - r, y, left, left + width - 1);
+        arrow_span(rport, cx - 1 + r, y, left, left + width - 1);
+    }
+}
+
+static void arrow_horizontal(struct MUI_RenderInfo *mri, LONG left,
+    LONG top, LONG width, LONG height, BOOL leftwards)
+{
+    struct RastPort *rport = mri->mri_RastPort;
+    LONG n = MIN(height / 2, width), x0, y0, r;
+
+    if (n < 1)
+        return;
+    x0 = left + (width - n) / 2;
+    y0 = top + (height - 2 * n) / 2;
+    SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
+    for (r = 0; r < n; r++)
+    {
+        LONG x = leftwards ? x0 + n - 1 - r : x0 + r - 1;
+
+        arrow_span(rport, x, y0 + r, x0, x0 + n - 1);
+        arrow_span(rport, x, y0 + 2 * n - 1 - r, x0, x0 + n - 1);
+    }
+}
 
 void arrowup_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG width, LONG height, LONG state)
 {
-    int cx;
-    struct RastPort *rport = mri->mri_RastPort;
-
-    SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
-
-    cx = width / 2;
-
-    if ((width > 8 + ARROW_SPACING) && (height > 8 + ARROW_SPACING))
-    {
-        Move(rport, left + ARROW_HSPACING + 1,
-            top + height - 1 - VERTARROW_VSPACING);
-        Draw(rport, left + width - cx, top + VERTARROW_VSPACING);
-    }
-    Move(rport, left + ARROW_HSPACING,
-        top + height - 1 - VERTARROW_VSPACING);
-    Draw(rport, left + width - cx - 1, top + VERTARROW_VSPACING);
-    if ((width > 8 + ARROW_SPACING) && (height > 8 + ARROW_SPACING))
-    {
-        Move(rport, left + width - 1 - ARROW_HSPACING - 1,
-            top + height - 1 - VERTARROW_VSPACING);
-        Draw(rport, left + cx - 1, top + VERTARROW_VSPACING);
-    }
-    Move(rport, left + width - 1 - ARROW_HSPACING,
-        top + height - 1 - VERTARROW_VSPACING);
-    Draw(rport, left + cx, top + VERTARROW_VSPACING);
+    arrow_vertical(mri, left, top, width, height, TRUE);
 }
 
 void arrowdown_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG width, LONG height, LONG state)
 {
-    int cx;
-    struct RastPort *rport = mri->mri_RastPort;
-
-    SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
-
-    cx = width / 2;
-
-    if ((width > 8 + ARROW_SPACING) && (height > 8 + ARROW_SPACING))
-    {
-        Move(rport, left + ARROW_HSPACING + 1, top + VERTARROW_VSPACING);
-        Draw(rport, left + width - cx,
-            top + height - 1 - VERTARROW_VSPACING);
-    }
-    Move(rport, left + ARROW_HSPACING, top + VERTARROW_VSPACING);
-    Draw(rport, left + width - cx - 1,
-        top + height - 1 - VERTARROW_VSPACING);
-    if ((width > 8 + ARROW_SPACING) && (height > 8 + ARROW_SPACING))
-    {
-        Move(rport, left + width - 1 - ARROW_HSPACING - 1,
-            top + VERTARROW_VSPACING);
-        Draw(rport, left + cx - 1, top + height - 1 - VERTARROW_VSPACING);
-    }
-    Move(rport, left + width - 1 - ARROW_HSPACING,
-        top + VERTARROW_VSPACING);
-    Draw(rport, left + cx, top + height - 1 - VERTARROW_VSPACING);
+    arrow_vertical(mri, left, top, width, height, FALSE);
 }
 
 void arrowleft_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG width, LONG height, LONG state)
 {
-    int cy;
-    struct RastPort *rport = mri->mri_RastPort;
-
-    SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
-
-    cy = height / 2;
-
-    if ((height > 8 + ARROW_SPACING) && (width > 8 + ARROW_SPACING))
-    {
-        Move(rport, left + width - 1 - HORIZARROW_HSPACING,
-            top + ARROW_VSPACING + 1);
-        Draw(rport, left + HORIZARROW_HSPACING, top + height - cy);
-    }
-    Move(rport, left + width - 1 - HORIZARROW_HSPACING,
-        top + ARROW_VSPACING);
-    Draw(rport, left + HORIZARROW_HSPACING, top + height - cy - 1);
-    if ((height > 8 + ARROW_SPACING) && (width > 8 + ARROW_SPACING))
-    {
-        Move(rport, left + width - 1 - HORIZARROW_HSPACING,
-            top + height - 1 - ARROW_VSPACING - 1);
-        Draw(rport, left + HORIZARROW_HSPACING, top + cy - 1);
-    }
-    Move(rport, left + width - 1 - HORIZARROW_HSPACING,
-        top + height - 1 - ARROW_VSPACING);
-    Draw(rport, left + HORIZARROW_HSPACING, top + cy);
+    arrow_horizontal(mri, left, top, width, height, TRUE);
 }
 
 void arrowright_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG width, LONG height, LONG state)
 {
-    int cy;
+    arrow_horizontal(mri, left, top, width, height, FALSE);
+}
+
+/* MUI 3.8/3.9 built-in glyphs drawn at their natural size, one bit per
+ * pixel with the most significant bit leftmost, centred in the area. */
+static void glyph_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
+    LONG width, LONG height, const UWORD *rows, LONG gw, LONG gh)
+{
     struct RastPort *rport = mri->mri_RastPort;
+    LONG x0 = left + (width - gw) / 2, y0 = top + (height - gh) / 2;
+    LONG y, x, start;
 
     SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
-
-    cy = height / 2;
-
-    if ((height > 8 + ARROW_SPACING) && (width > 8 + ARROW_SPACING))
+    for (y = 0; y < gh; y++)
     {
-        Move(rport, left + HORIZARROW_HSPACING, top + ARROW_VSPACING + 1);
-        Draw(rport, left + width - 1 - HORIZARROW_HSPACING,
-            top + height - cy);
+        if (y0 + y < top || y0 + y >= top + height)
+            continue;
+        for (x = 0; x < gw; x = start)
+        {
+            while (x < gw && !(rows[y] & (0x8000 >> x)))
+                x++;
+            for (start = x; start < gw && (rows[y] & (0x8000 >> start));)
+                start++;
+            if (start > x)
+            {
+                LONG l = MAX(x0 + x, left);
+                LONG r = MIN(x0 + start - 1, left + width - 1);
+
+                if (l <= r)
+                    RectFill(rport, l, y0 + y, r, y0 + y);
+            }
+        }
     }
-    Move(rport, left + HORIZARROW_HSPACING, top + ARROW_VSPACING);
-    Draw(rport, left + width - 1 - HORIZARROW_HSPACING,
-        top + height - cy - 1);
-    if ((height > 8 + ARROW_SPACING) && (width > 8 + ARROW_SPACING))
-    {
-        Move(rport, left + HORIZARROW_HSPACING,
-            top + height - 1 - ARROW_VSPACING - 1);
-        Draw(rport, left + width - 1 - HORIZARROW_HSPACING, top + cy - 1);
-    }
-    Move(rport, left + HORIZARROW_HSPACING,
-        top + height - 1 - ARROW_VSPACING);
-    Draw(rport, left + width - 1 - HORIZARROW_HSPACING, top + cy);
 }
+
+static const UWORD checkmark_glyph[] = {
+    0x0038, 0x0060, 0x00c0, 0xe180, 0x7300, 0x3e00, 0x1c00
+};
+static const UWORD popfile_glyph[] = {
+    0xff00, 0xc180, 0xc140, 0xc120, 0xc1f0, 0xc030, 0xc030, 0xc030,
+    0xc030, 0xfff0
+};
+static const UWORD popdrawer_glyph[] = {
+    0x03c0, 0x0420, 0xf810, 0xfc10, 0xc7f0, 0xc010, 0xc010, 0xc010,
+    0xfff0
+};
 
 void checkbox_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG width, LONG height, LONG state)
 {
-    int h_spacing = width / 4;
-    int v_spacing = height / 4;
-    int bottom = top + height - 1;
-    int right = left + width - 1;
-
     /* Draw checkmark (only if image is in selected state) */
-
     if (state == IDS_SELECTED)
-    {
-        left += h_spacing;
-        right -= h_spacing;
-        width -= h_spacing * 2;
-        top += v_spacing;
-        bottom -= v_spacing;
-        height -= v_spacing * 2;
-
-        SetAPen(mri->mri_RastPort, mri->mri_Pens[MPEN_TEXT]);
-
-        draw_thick_line(mri->mri_RastPort, left, top + height / 3, left,
-            bottom);
-        draw_thick_line(mri->mri_RastPort, left + 1, bottom, right - 1,
-            top);
-    }
+        glyph_draw(mri, left, top, width, height, checkmark_glyph, 13, 7);
 }
+
+/* MUI 3.8/3.9 radio button: top-left edge (T), bottom-right edge (B) and
+ * the selected fill (F), swapping the edge pens with the state. */
+static const char *const mx_map[] = {
+    "..TTTTTTTTTTTTB..",
+    ".TT...........BB.",
+    "TT...FFFFFFF...BB",
+    "TT..FFFFFFFFF..BB",
+    "TT..FFFFFFFFF..BB",
+    "TT..FFFFFFFFF..BB",
+    "TT...FFFFFFF...BB",
+    ".TT...........BB.",
+    "..TBBBBBBBBBBBB..",
+};
 
 void mx_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
     LONG height, LONG state)
 {
     struct RastPort *rport = mri->mri_RastPort;
-    int bottom = top + height - 1;
-    int right = left + width - 1;
-    int col1;
-    int col2;
+    BOOL selected = state == IDS_SELECTED;
+    LONG x0 = left + (width - 17) / 2, y0 = top + (height - 9) / 2;
+    LONG x, y;
 
-    if (state == IDS_SELECTED)
+    for (y = 0; y < 9; y++)
     {
-        col1 = MPEN_SHADOW;
-        col2 = MPEN_SHINE;
-    }
-    else
-    {
-        col1 = MPEN_SHINE;
-        col2 = MPEN_SHADOW;
-    }
-
-    SetAPen(rport, mri->mri_Pens[col1]);
-    RectFill(rport, left + 3, top, right - 3, top);
-    WritePixel(rport, left + 2, top + 1);
-    WritePixel(rport, left + 1, top + 2);
-    RectFill(rport, left, top + 3, left, bottom - 3);
-    WritePixel(rport, left + 1, bottom - 2);
-    WritePixel(rport, left + 2, bottom - 1);
-
-    SetAPen(rport, mri->mri_Pens[col2]);
-    WritePixel(rport, right - 2, top + 1);
-    WritePixel(rport, right - 1, top + 2);
-    RectFill(rport, right, top + 3, right, bottom - 3);
-    WritePixel(rport, right - 1, bottom - 2);
-    WritePixel(rport, right - 2, bottom - 1);
-    RectFill(rport, left + 3, bottom, right - 3, bottom);
-
-    SetAPen(rport, mri->mri_DrawInfo->dri_Pens[BACKGROUNDPEN]);
-    RectFill(rport, left + 3, top + 1, right - 3, bottom - 1);
-    RectFill(rport, left + 2, top + 2, right - 2, bottom - 2);
-    RectFill(rport, left + 1, top + 3, right - 1, bottom - 3);
-
-    if (state == IDS_SELECTED)
-    {
-        left += 3;
-        right -= 3;
-        width -= 6;
-        top += 3;
-        bottom -= 3;
-        height -= 6;
-
-        SetAPen(rport, mri->mri_Pens[MPEN_FILL]);
-        if ((width >= 5) && (height >= 5))
+        if (y0 + y < top || y0 + y >= top + height)
+            continue;
+        for (x = 0; x < 17; x++)
         {
-            RectFill(rport, left, top + 2, left, bottom - 2);
-            RectFill(rport, left + 1, top + 1, left + 1, bottom - 1);
-            RectFill(rport, left + 2, top, right - 2, bottom);
-            RectFill(rport, right - 1, top + 1, right - 1, bottom - 1);
-            RectFill(rport, right, top + 2, right, bottom - 2);
-        }
-        else
-        {
-            RectFill(rport, left, top, right, bottom);
-            RectFill(rport, left - 1, top + 1, right + 1, bottom - 1);
-            RectFill(rport, left + 1, top - 1, right - 1, bottom + 1);
+            LONG pen;
+
+            if (x0 + x < left || x0 + x >= left + width)
+                continue;
+            switch (mx_map[y][x])
+            {
+            case 'T':
+                pen = selected ? MPEN_SHADOW : MPEN_SHINE;
+                break;
+            case 'B':
+                pen = selected ? MPEN_SHINE : MPEN_SHADOW;
+                break;
+            case 'F':
+                if (!selected)
+                    continue;
+                pen = MPEN_FILL;
+                break;
+            default:
+                continue;
+            }
+            SetAPen(rport, mri->mri_Pens[pen]);
+            WritePixel(rport, x0 + x, y0 + y);
         }
     }
 }
@@ -355,74 +310,13 @@ void popup_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
 void popfile_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG width, LONG height, LONG state)
 {
-    int right, bottom;
-    int edgex, edgey;
-    struct RastPort *rport = mri->mri_RastPort;
-
-    right = left + width - 1;
-    bottom = top + height - 1;
-
-    edgex = left + width * 5 / 8;
-    edgey = top + height * 5 / 8;
-
-    SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
-    Move(rport, left, top);
-    Draw(rport, left, bottom);
-    Move(rport, left + 1, top);
-    Draw(rport, left + 1, bottom);
-
-    Move(rport, left, bottom);
-    Draw(rport, right, bottom);
-    Move(rport, left, bottom - 1);
-    Draw(rport, right, bottom - 1);
-
-    Move(rport, right, bottom - 1);
-    Draw(rport, right, edgey);
-    Move(rport, right - 1, bottom - 1);
-    Draw(rport, right - 1, edgey);
-
-    Move(rport, right, edgey - 1);
-    Draw(rport, edgex, edgey - 1);
-    Draw(rport, edgex, top);
-    Draw(rport, left + 2, top);
-    Move(rport, left + 2, top + 1);
-    Draw(rport, edgex - 1, top + 1);
-
-    Move(rport, edgex + 1, top);
-    Draw(rport, right, edgey - 1);
-
+    glyph_draw(mri, left, top, width, height, popfile_glyph, 12, 10);
 }
 
 void popdrawer_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG width, LONG height, LONG state)
 {
-    int right, bottom;
-    int halfx, halfy, quartery;
-    struct RastPort *rport = mri->mri_RastPort;
-
-    right = left + width - 1;
-    bottom = top + height - 1;
-
-    halfx = (left + right) / 2;
-    halfy = (top + bottom) / 2;
-    quartery = top + height / 4;
-
-    SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
-    Move(rport, left, quartery);
-    Draw(rport, left, bottom);
-    Move(rport, left + 1, quartery);
-    Draw(rport, left + 1, bottom);
-    Draw(rport, right, bottom);
-    Draw(rport, right, halfy);
-    Draw(rport, halfx, halfy);
-    Draw(rport, halfx, quartery);
-    Draw(rport, left + 1, quartery);
-
-    Move(rport, halfx, quartery - 1);
-    Draw(rport, halfx + 2, top);
-    Draw(rport, right - 2, top);
-    Draw(rport, right, quartery - 1);
-    Draw(rport, right, halfy);
+    glyph_draw(mri, left, top, width, height, popdrawer_glyph, 12, 9);
 }
 
 static void stddrawer_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
@@ -803,16 +697,16 @@ struct vector_image
 };
 
 static const struct vector_image vector_table[] = {
-    {8 + 2 * ARROW_SPACING, 8 + 2 * ARROW_SPACING, arrowup_draw},
-    {8 + 2 * ARROW_SPACING, 8 + 2 * ARROW_SPACING, arrowdown_draw},
-    {8 + 2 * ARROW_SPACING, 8 + 2 * ARROW_SPACING, arrowleft_draw},
-    {8 + 2 * ARROW_SPACING, 8 + 2 * ARROW_SPACING, arrowright_draw},
-    {16, 10, checkbox_draw},
-    {10, 10, mx_draw},
+    {10, 5, arrowup_draw},
+    {10, 5, arrowdown_draw},
+    {4, 8, arrowleft_draw},
+    {4, 8, arrowright_draw},
+    {13, 7, checkbox_draw},
+    {17, 9, mx_draw},
     {15, 8, cycle_draw},
     {10, 10, popup_draw},
-    {10, 11, popfile_draw},
-    {10, 11, popdrawer_draw},
+    {12, 10, popfile_draw},
+    {12, 9, popdrawer_draw},
 
     {13, 8, drawer_draw},
     {13, 8, harddisk_draw},

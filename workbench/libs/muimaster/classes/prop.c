@@ -172,7 +172,7 @@ IPTR Prop__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     if (data->horiz)
     {
-        data->minwidth = 6;
+        data->minwidth = 12;
         data->minheight = 6;
         data->maxwidth = MUI_MAXMAX;
         data->maxheight = MUI_MAXMAX;
@@ -182,7 +182,7 @@ IPTR Prop__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     else
     {
         data->minwidth = 6;
-        data->minheight = 6;
+        data->minheight = 12;
         data->maxwidth = MUI_MAXMAX;
         data->maxheight = MUI_MAXMAX;
         data->defwidth = 6;
@@ -410,7 +410,7 @@ IPTR Prop__MUIM_Setup(struct IClass *cl, Object *obj,
         data->gadgetid = DoMethod(_win(obj), MUIM_Window_AllocGadgetID);
         if (data->horiz)
         {
-            data->minwidth = 6;
+            data->minwidth = 12;
             data->minheight = 6;
             data->maxwidth = MUI_MAXMAX;
             data->maxheight = MUI_MAXMAX;
@@ -420,7 +420,7 @@ IPTR Prop__MUIM_Setup(struct IClass *cl, Object *obj,
         else
         {
             data->minwidth = 6;
-            data->minheight = 6;
+            data->minheight = 12;
             data->maxwidth = MUI_MAXMAX;
             data->maxheight = MUI_MAXMAX;
             data->defwidth = 6;
