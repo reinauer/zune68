@@ -52,12 +52,14 @@ static Object *contents(int kind)
 
 int main(void)
 {
-    static const char *const names[] = { "text", "big", "small" };
+    static const char *const names[] = {
+        "text", "big", "small", "small-autobars"
+    };
     int kind, rc = 0;
 
     if (!(MUIMasterBase = OpenLibrary("muimaster.library", 19)))
         return 20;
-    for (kind = 0; kind < 3; kind++)
+    for (kind = 0; kind < 4; kind++)
     {
         Object *app, *win, *sg, *virt;
         struct Window *w = NULL;
@@ -69,6 +71,7 @@ int main(void)
                 MUIA_Window_Title, "virtbounds",
                 WindowContents, VGroup,
                     Child, sg = ScrollgroupObject,
+                        MUIA_Scrollgroup_AutoBars, kind == 3,
                         MUIA_Scrollgroup_Contents, virt = contents(kind),
                         End,
                     End,
@@ -89,6 +92,17 @@ int main(void)
             printf("%s window=%d,%d\n", names[kind], w->Width, w->Height);
             report("scrollgroup", sg);
             report("virtual", virt);
+            {
+                Object *vbar = NULL;
+                ULONG shown = 0;
+
+                get(sg, MUIA_Scrollgroup_VertBar, &vbar);
+                if (vbar)
+                {
+                    get(vbar, MUIA_ShowMe, &shown);
+                    printf("  vertbar shown=%lu\n", (unsigned long)shown);
+                }
+            }
         }
         else
             rc = 20;
