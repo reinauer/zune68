@@ -3126,14 +3126,17 @@ static void ForwardAppMessage(struct MUI_WindowData *data, Object *child,
  * calculate real dimensions from programmer requirements.
  * may be overridden by user settings if MUIA_Window_ID is set.
  */
-/* MUIV_Window_Height_Screen and MUIV_Window_Height_Visible
- * are not handled yet, as their Width couterparts.
- */
 static void WindowSelectDimensions(struct MUI_WindowData *data)
 {
     if (!data->wd_Width)
     {
         struct Screen *scr = data->wd_RenderInfo.mri_Screen;
+        /* Screen percentages give the outer window size in MUI 3.8/3.9,
+         * while wd_Width/wd_Height are inner dimensions. */
+        LONG hborders = data->wd_RenderInfo.mri_BorderLeft
+            + data->wd_RenderInfo.mri_BorderRight;
+        LONG vborders = data->wd_RenderInfo.mri_BorderTop
+            + data->wd_RenderInfo.mri_BorderBottom;
 
         if (data->wd_ReqWidth > 0)
             data->wd_Width = data->wd_ReqWidth;
@@ -3150,13 +3153,13 @@ static void WindowSelectDimensions(struct MUI_WindowData *data)
                 data->wd_ReqWidth, MUIV_Window_Width_Screen(0)))
         {
             data->wd_Width = scr->Width
-                * (-(data->wd_ReqWidth + 200)) / 100;
+                * (-(data->wd_ReqWidth + 200)) / 100 - hborders;
         }
         else if (_between(MUIV_Window_Width_Visible(100),
                 data->wd_ReqWidth, MUIV_Window_Width_Visible(0)))
         {
             data->wd_Width = scr->Width
-                * (-(data->wd_ReqWidth + 100)) / 100;
+                * (-(data->wd_ReqWidth + 100)) / 100 - hborders;
         }
 
         if (data->wd_ReqHeight > 0)
@@ -3167,23 +3170,21 @@ static void WindowSelectDimensions(struct MUI_WindowData *data)
                 data->wd_ReqHeight, MUIV_Window_Height_MinMax(0)))
         {
             data->wd_Height = data->wd_MinMax.MinHeight
-                - data->wd_ReqHeight
-                * (data->wd_MinMax.MaxHeight - data->wd_MinMax.MinHeight);
+                - (data->wd_ReqHeight
+                * (data->wd_MinMax.MaxHeight - data->wd_MinMax.MinHeight))
+                / 100;
         }
         else if (_between(MUIV_Window_Height_Screen(100),
                 data->wd_ReqHeight, MUIV_Window_Height_Screen(0)))
         {
-            int height =
-                scr->Height - data->wd_RenderInfo.mri_BorderTop -
-                data->wd_RenderInfo.mri_BorderBottom;
-
-            data->wd_Height = height * (-(data->wd_ReqHeight + 200)) / 100;
+            data->wd_Height = scr->Height
+                * (-(data->wd_ReqHeight + 200)) / 100 - vborders;
         }
         else if (_between(MUIV_Window_Height_Visible(100),
                 data->wd_ReqHeight, MUIV_Window_Height_Visible(0)))
         {
             data->wd_Height = scr->Height
-                * (-(data->wd_ReqHeight + 100)) / 100;
+                * (-(data->wd_ReqHeight + 100)) / 100 - vborders;
         }
 
         /* scaled */
@@ -4045,13 +4046,18 @@ static void WindowMinMax(Object *obj, struct MUI_WindowData *data)
 /*            data->wd_MinMax.MinHeight, */
 /*            data->wd_MinMax.MaxWidth, data->wd_MinMax.MaxHeight)); */
 
-    if(data->wd_MinMax.MaxWidth > data->wd_RenderInfo.mri_Screen->Width)
+    /* The inner maximum leaves room for the window borders on screen */
     {
-        data->wd_MinMax.MaxWidth = data->wd_RenderInfo.mri_Screen->Width;
-    }
-    if(data->wd_MinMax.MaxHeight > data->wd_RenderInfo.mri_Screen->Height)
-    {
-        data->wd_MinMax.MaxHeight = data->wd_RenderInfo.mri_Screen->Height;
+        struct MUI_RenderInfo *mri = &data->wd_RenderInfo;
+        LONG maxw = mri->mri_Screen->Width - mri->mri_BorderLeft
+            - mri->mri_BorderRight;
+        LONG maxh = mri->mri_Screen->Height - mri->mri_BorderTop
+            - mri->mri_BorderBottom;
+
+        if (data->wd_MinMax.MaxWidth > maxw)
+            data->wd_MinMax.MaxWidth = MAX(maxw, data->wd_MinMax.MinWidth);
+        if (data->wd_MinMax.MaxHeight > maxh)
+            data->wd_MinMax.MaxHeight = MAX(maxh, data->wd_MinMax.MinHeight);
     }
 }
 
