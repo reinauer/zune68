@@ -330,9 +330,27 @@ IPTR Text__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 /*      D(bug("YSize=%ld\n", _font(obj)->tf_YSize)); */
 
 
-    msg->MinMaxInfo->MinWidth += data->ztext->width;
-    msg->MinMaxInfo->DefWidth += data->ztext->width;
-    msg->MinMaxInfo->MaxWidth += data->ztext->width;
+    /* Area supplied the frame and inner spacing. MUI 3.8/3.9 pad the
+     * default width with that spacing once more; without a minimum, the
+     * default content width is three 'W' glyphs. */
+    if (data->mtd_Flags & MTDF_SETMIN)
+    {
+        msg->MinMaxInfo->MinWidth += data->ztext->width;
+        msg->MinMaxInfo->DefWidth += data->ztext->width + _subwidth(obj);
+    }
+    else
+    {
+        struct RastPort rp;
+
+        InitRastPort(&rp);
+        SetFont(&rp, _font(obj));
+        msg->MinMaxInfo->DefWidth += TextLength(&rp, "WWW", 3);
+    }
+
+    if (data->mtd_Flags & MTDF_SETMAX)
+        msg->MinMaxInfo->MaxWidth += data->ztext->width;
+    else
+        msg->MinMaxInfo->MaxWidth += MUI_MAXMAX;
 
     msg->MinMaxInfo->MinHeight += height;
     msg->MinMaxInfo->DefHeight += height;
@@ -341,12 +359,6 @@ IPTR Text__MUIM_AskMinMax(struct IClass *cl, Object *obj,
         msg->MinMaxInfo->MaxHeight += MUI_MAXMAX;
     else
         msg->MinMaxInfo->MaxHeight += height;
-
-    if (!(data->mtd_Flags & MTDF_SETMAX))
-        msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
-
-    if (!(data->mtd_Flags & MTDF_SETMIN))
-        msg->MinMaxInfo->MinWidth = 0;
 
     D(bug
         ("Text_AskMinMax 0x%p (%s): Min=%ldx%ld Max=%ldx%ld Def=%ldx%ld\n",
