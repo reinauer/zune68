@@ -454,17 +454,21 @@ Object *INTERNAL_ImageButton(CONST_STRPTR label, CONST_STRPTR imagePath,
             TAG_DONE);
         break;
 
+    /* A negative space is a stretchable spacer with weight -space, as in
+     * MUI 3.8/3.9; zero is a default-weight spacer */
     case MUIO_HSpace: /* LONG space   */
         return MUI_NewObject(MUIC_Rectangle,
             MUIA_VertWeight, 0,
-            MUIA_FixWidth, params[0],
+            (LONG)params[0] < 0 ? MUIA_HorizWeight : MUIA_FixWidth,
+            (LONG)params[0] < 0 ? -(LONG)params[0] : (LONG)params[0],
             TAG_DONE);
         break;
 
     case MUIO_VSpace: /* LONG space   */
         return MUI_NewObject(MUIC_Rectangle,
             MUIA_HorizWeight, 0,
-            MUIA_FixHeight, params[0],
+            (LONG)params[0] < 0 ? MUIA_VertWeight : MUIA_FixHeight,
+            (LONG)params[0] < 0 ? -(LONG)params[0] : (LONG)params[0],
             TAG_DONE);
         break;
 
