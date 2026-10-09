@@ -190,13 +190,13 @@ struct def_ulval
 const static struct def_ulval DefULValues[] = {
     {MUICFG_Window_Spacing_Left, 4},
     {MUICFG_Window_Spacing_Right, 4},
-    {MUICFG_Window_Spacing_Top, 3},
+    {MUICFG_Window_Spacing_Top, 4},
 #ifdef ZUNE68_GCC_NATIVE
     {MUICFG_Window_Buttons, MUIV_Window_Button_MUI | MUIV_Window_Button_Iconify},
 #else
     {MUICFG_Window_Buttons, 0},
 #endif
-    {MUICFG_Window_Spacing_Bottom, 3},
+    {MUICFG_Window_Spacing_Bottom, 4},
     {MUICFG_Window_Positions, WINDOW_POSITION_FORGET_ON_EXIT},
     {MUICFG_Window_Redraw, WINDOW_REDRAW_WITHOUT_CLEAR},
     {MUICFG_Window_Refresh, WINDOW_REFRESH_SIMPLE},

@@ -48,7 +48,7 @@ def check(path):
     # A fresh application must return usable margins without a saved prefs
     # file. Zero is also a successful scalar result, not a failed lookup.
     for direct in (False, True):
-        for item, expected in ((1, 4), (2, 4), (3, 3), (4, 3),
+        for item, expected in ((1, 4), (2, 4), (3, 4), (4, 4),
                                (5, 4), (6, 1), (7, 4), (8, 4), (9, 0)):
             assert h.query(item, direct) == (1, expected), item
         ok, ptr = h.query(36, direct)
