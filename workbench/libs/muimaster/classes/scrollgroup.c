@@ -43,7 +43,9 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
              ** no NextObject()
              */
 
-            if (data->usewinborder)
+            /* With window-border or automatic scrollers, MUI 3.9 sizes
+             * the group exactly like its contents */
+            if (data->usewinborder || data->autobars)
             {
                 lm->lm_MinMax.MinWidth = _minwidth(data->contents);
                 lm->lm_MinMax.MinHeight = _minheight(data->contents);
@@ -177,8 +179,9 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
             }
 
             /* MUI 3.8/3.9 always show both scrollers and the move button
-             * outside the window border, even when the contents fit */
-            if (!data->usewinborder)
+             * outside the window border, even when the contents fit,
+             * unless MUIA_Scrollgroup_AutoBars asks to hide unneeded ones */
+            if (!data->usewinborder && !data->autobars)
             {
                 if (!hbar)
                     cont_height -= horiz_height;
@@ -349,6 +352,8 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
     data->button = button;
     data->contents = contents;
     data->usewinborder = usewinborder;
+    data->autobars =
+        GetTagData(MUIA_Scrollgroup_AutoBars, FALSE, msg->ops_AttrList);
 
     data->hook.h_Entry = (HOOKFUNC) Scrollgroup_Function;
     data->hook.h_Data = data;
@@ -388,6 +393,29 @@ IPTR Scrollgroup__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     case MUIA_Scrollgroup_VertBar:
         STORE = (IPTR) data->vert;
         return 1;
+    case MUIA_Scrollgroup_AutoBars:
+        STORE = data->autobars;
+        return 1;
+    }
+
+    return DoSuperMethodA(cl, obj, (Msg) msg);
+}
+
+IPTR Scrollgroup__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
+{
+    struct Scrollgroup_DATA *data = INST_DATA(cl, obj);
+    struct TagItem *tag = FindTagItem(MUIA_Scrollgroup_AutoBars,
+        msg->ops_AttrList);
+
+    if (tag && (BOOL)!!tag->ti_Data != data->autobars)
+    {
+        data->autobars = !!tag->ti_Data;
+        if (_flags(obj) & MADF_SETUP)
+        {
+            /* Re-layout so scroller visibility follows the new mode */
+            if (DoMethod(obj, MUIM_Group_InitChange))
+                DoMethod(obj, MUIM_Group_ExitChange);
+        }
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
@@ -431,6 +459,8 @@ BOOPSI_DISPATCHER(IPTR, Scrollgroup_Dispatcher, cl, obj, msg)
         return Scrollgroup__OM_NEW(cl, obj, (struct opSet *)msg);
     case OM_GET:
         return Scrollgroup__OM_GET(cl, obj, (struct opGet *)msg);
+    case OM_SET:
+        return Scrollgroup__OM_SET(cl, obj, (struct opSet *)msg);
     case OM_DISPOSE:
         return Scrollgroup__OM_DISPOSE(cl, obj, msg);
     case MUIM_Show:

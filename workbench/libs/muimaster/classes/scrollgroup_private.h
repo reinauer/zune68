@@ -13,6 +13,7 @@ struct Scrollgroup_DATA
     struct Hook hook;
     struct Hook *layout_hook;
     BOOL usewinborder;
+    BOOL autobars;              /* MUIA_Scrollgroup_AutoBars */
 };
 
 #endif /* _SCROLLGROUP_PRIVATE_H_ */
