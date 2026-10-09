@@ -84,10 +84,11 @@ def check(path):
     assert h.pixel == 3, 'library painted over custom content'
     h.redraw(h.custom, False)
     assert h.events == ['area', 'text', 'custom'], h.events
-    # Direct Area subclasses get the same opportunity to replace Super paint.
+    # MUI 3.8/3.9 Area draws no ghost pattern (ghostclasses.c), so direct
+    # Area subclasses keep their own disabled appearance.
     h.mem.w32(h.custom + 24, h.area)
     h.redraw(h.custom, True)
-    assert h.events == ['area', 'ghost', 'custom'], h.events
+    assert h.events == ['area', 'custom'], h.events
     h.machine.cleanup()
     print(f'{path}: disabled paint stays at the built-in Draw boundary')
 

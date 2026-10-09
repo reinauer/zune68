@@ -44,7 +44,11 @@ static IPTR __attribute__((noinline)) builtinDraw(Class *cl __asm("a0"),
         while (derived && derived->cl_Dispatcher.h_Entry !=
                 (HOOKFUNC)builtinDispatcher)
             derived = derived->cl_Super;
-        if (derived == cl)
+        /* MUI 3.8/3.9 Area and Rectangle draw no ghost pattern; custom
+         * subclasses of them paint their own disabled appearance */
+        if (derived == cl && !(cl->cl_ID &&
+                (!strcmp((const char *)cl->cl_ID, MUIC_Area) ||
+                !strcmp((const char *)cl->cl_ID, MUIC_Rectangle))))
             ZuneDrawDisabled(obj);
     }
     return result;
