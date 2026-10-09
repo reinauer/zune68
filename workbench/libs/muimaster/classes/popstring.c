@@ -45,7 +45,7 @@ IPTR Popstring__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     obj = (Object *) DoSuperNewTags(cl, obj, 0,
         MUIA_Group_Horiz, TRUE,
-        MUIA_Group_Spacing, 0,
+        MUIA_Group_Spacing, 1,
         (string ? Child : TAG_IGNORE), (IPTR) string,
         Child, (IPTR) button,
         TAG_MORE, (IPTR) msg->ops_AttrList);

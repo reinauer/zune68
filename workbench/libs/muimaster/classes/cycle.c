@@ -89,8 +89,10 @@ IPTR Cycle__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         MUIA_Background, MUII_ButtonBack,
         MUIA_InputMode, MUIV_InputMode_RelVerify,
         MUIA_Group_Horiz, TRUE,
+        MUIA_Group_Spacing, 0,
         Child, (IPTR) (imgobj = ImageObject,
             MUIA_InnerLeft, 2,
+            MUIA_InnerRight, 1,
             MUIA_Image_Spec, (IPTR) "6:17",
             MUIA_Image_FreeVert, TRUE,
             End),
@@ -308,7 +310,10 @@ static void UpdateEntries(Object *obj, struct MUI_CycleData *data)
     /* Count the number of entries */
     for (i = 0; data->entries && data->entries[i]; i++)
     {
+        /* MUI 3.8/3.9 pad the label by two pixels on each side */
         page = TextObject,
+            MUIA_InnerLeft, 2,
+            MUIA_InnerRight, 2,
             MUIA_Text_Contents, (IPTR) data->entries[i],
             MUIA_Text_PreParse, (IPTR) "\033c", End;
 

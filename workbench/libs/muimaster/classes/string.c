@@ -934,8 +934,9 @@ IPTR String__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     }
     else
     {
-        msg->MinMaxInfo->MinWidth += _font(obj)->tf_XSize * 4;
-        msg->MinMaxInfo->DefWidth += _font(obj)->tf_XSize * 12;
+        /* MUI 3.8/3.9 use fixed content widths, independent of font */
+        msg->MinMaxInfo->MinWidth += 20;
+        msg->MinMaxInfo->DefWidth += 100;
         msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
     }
 
