@@ -2,7 +2,7 @@
 #define _MUI_CLASSES_LIST_H
 
 /*
-    Copyright © 2002-2013, The AROS Development Team. All rights reserved.
+    Copyright ï¿½ 2002-2013, The AROS Development Team. All rights reserved.
     $Id$
 */
 
@@ -359,6 +359,9 @@ enum
 
 
 extern const struct __MUIBuiltinClass _MUI_List_desc;   /* PRIV */
+
+/* Inner width of the entry area, excluding the List's own scroller. */
+WORD List_EntryAreaWidth(struct IClass *cl, Object *obj); /* PRIV */
 
 
 

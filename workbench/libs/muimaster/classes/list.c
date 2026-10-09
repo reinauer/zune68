@@ -818,9 +818,12 @@ static int CalcDimsOfEntry(struct IClass *cl, Object *obj, int pos)
         {
             zune_text_get_bounds(text, obj);
 
-            if (text->height > data->entries[pos]->height)
+            /* Row pitch includes the Listview font leading preference */
+            if (text->height + data->prefs_linespacing
+                > data->entries[pos]->height)
             {
-                data->entries[pos]->height = text->height;
+                data->entries[pos]->height =
+                    text->height + data->prefs_linespacing;
                 /* entry height changed, redraw all entries later */
                 ret = 1;
             }
@@ -1837,31 +1840,34 @@ IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     }
     else
     {
-        msg->MinMaxInfo->MinWidth += 40;
-        msg->MinMaxInfo->DefWidth += 100;
+        /* MUI 3.8/3.9: the framed entry area is at least 40 pixels wide
+         * and defaults to 80 pixels of content. The frame belongs to
+         * the entry area, whose MinMax the group already included. */
+        msg->MinMaxInfo->MinWidth +=
+            MAX(40 - _subwidth(obj) - _subwidth(data->area), 0);
+        msg->MinMaxInfo->DefWidth += 80;
         msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
     }
 
-    if (data->entries_num > 0)
+    if ((data->flags & LIST_ADJUSTHEIGHT) && (data->entries_num > 0))
     {
-        if (data->flags & LIST_ADJUSTHEIGHT)
-        {
-            msg->MinMaxInfo->MinHeight += data->entries_totalheight;
-            msg->MinMaxInfo->DefHeight = msg->MinMaxInfo->MinHeight;
-            msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->MinHeight;
-        }
-        else
-        {
-            ULONG h = data->entry_maxheight + data->prefs_linespacing;
-            msg->MinMaxInfo->MinHeight += 2 * h + data->prefs_linespacing;
-            msg->MinMaxInfo->DefHeight += 8 * h + data->prefs_linespacing;
-            msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
-        }
+        msg->MinMaxInfo->MinHeight += data->entries_totalheight;
+        msg->MinMaxInfo->DefHeight = msg->MinMaxInfo->MinHeight;
+        msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->MinHeight;
     }
     else
     {
-        msg->MinMaxInfo->MinHeight += 36;
-        msg->MinMaxInfo->DefHeight += 96;
+        /* Three rows minimum and eight by default, from the font rather
+         * than the entries. The group result already holds the scroller,
+         * so the rows must not be stacked on top of it. */
+        LONG row = _font(obj)->tf_YSize + data->prefs_linespacing;
+
+        LONG frame = _subheight(obj) + _subheight(data->area);
+
+        msg->MinMaxInfo->MinHeight = MAX(msg->MinMaxInfo->MinHeight,
+            frame + 3 * row);
+        msg->MinMaxInfo->DefHeight = MAX(msg->MinMaxInfo->DefHeight,
+            frame + 8 * row);
         msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
     }
     D(bug("List %p minheight=%d, line maxh=%d\n",
@@ -1878,6 +1884,13 @@ IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 ******************************************************************************
 *
 */
+
+WORD List_EntryAreaWidth(struct IClass *cl, Object *obj)
+{
+    struct MUI_ListData *data = INST_DATA(cl, obj);
+
+    return _mwidth(data->area);
+}
 
 IPTR List__MUIM_Layout(struct IClass *cl, Object *obj,
     struct MUIP_Layout *msg)

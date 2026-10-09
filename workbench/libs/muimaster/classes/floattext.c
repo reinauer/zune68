@@ -69,7 +69,8 @@ static UWORD FitParagraphLine(STRPTR text, ULONG length, WORD width,
     return char_count;
 }
 
-static void SetText(Object *obj, struct Floattext_DATA *data)
+static void SetText(struct IClass *cl, Object *obj,
+    struct Floattext_DATA *data)
 {
     WORD width;
     struct Window *window;
@@ -90,8 +91,13 @@ static void SetText(Object *obj, struct Floattext_DATA *data)
     DoMethod(obj, MUIM_List_Clear);
 
     window = (struct Window *)XGET(obj, MUIA_Window);
+#if ZUNE_BUILTIN_FLOATTEXT
+    /* Wrap to the entry area, which excludes the List's scroller */
+    width = List_EntryAreaWidth(cl->cl_Super, obj);
+#else
     width = XGET(obj, MUIA_Width) - XGET(obj, MUIA_InnerLeft)
         - XGET(obj, MUIA_InnerRight) - 8;
+#endif
 
     /* Only do layout if we have some text and a window in which to put it */
 
@@ -470,7 +476,7 @@ IPTR Floattext__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     else if (data->tabsize > 20)
         data->tabsize = 20;
 
-    SetText(obj, data);
+    SetText(cl, obj, data);
 
     return (IPTR) obj;
 }
@@ -556,7 +562,7 @@ IPTR Floattext__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         else if (data->tabsize > 20)
             data->tabsize = 20;
 
-        SetText(obj, data);
+        SetText(cl, obj, data);
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
@@ -576,7 +582,7 @@ IPTR Floattext__MUIM_Draw(struct IClass *cl, Object *obj,
     if ((msg->flags & MADF_DRAWOBJECT) != 0 && data->oldwidth != _width(obj))
     {
         data->oldwidth = _width(obj);
-        SetText(obj, data);
+        SetText(cl, obj, data);
     }
 
     return 0;
@@ -609,7 +615,7 @@ IPTR Floattext__MUIM_Floattext_Append(struct IClass *cl, Object *obj,
             strcat(newtext, msg->Text);
             FreeVec(data->text);
             data->text = newtext;
-            SetText(obj, data);
+            SetText(cl, obj, data);
         }
     }
 

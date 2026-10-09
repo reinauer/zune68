@@ -37,6 +37,9 @@ class FloattextHarness(Harness):
         self.trap(EXEC - 630, self.copy)
         self.trap(GRAPHICS - 54, lambda: self.cpu.w_reg(0, self.cpu.r_reg(0) * 8))
         self.trap(GRAPHICS - 696, self.fit)
+        # Wrapping width comes from the List entry area, not MUIA_Width.
+        self.trap(self.symbols['_List_EntryAreaWidth'],
+                  lambda: self.cpu.w_reg(0, self.width & 0xffff))
         self.trap(self.symbols['_DoMethod'], self.method)
         self.trap(self.symbols['_DoSuperMethodA'], self.super_method)
 
@@ -84,8 +87,7 @@ class FloattextHarness(Harness):
         self.mem.w32(storage, tag + 8)
 
     def get_attr(self):
-        values = {0x80421591: self.window, 0x8042b59c: self.width + 8,
-                  0x804228f8: 0, 0x804297ff: 0}
+        values = {0x80421591: self.window}
         self.mem.w32(self.cpu.r_reg(9), values[self.cpu.r_reg(0)] & 0xffffffff)
         self.cpu.w_reg(0, 1)
 
