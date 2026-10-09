@@ -379,9 +379,12 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
             msg->MinMaxInfo->DefWidth += minmax.DefWidth;
         }
 
+        /* Scale before dividing; integer XSize/8 was zero for small fonts */
         if (data->flags & MIF_FONTMATCHWIDTH)
         {
-            msg->MinMaxInfo->DefWidth *= _font(obj)->tf_XSize / 8;
+            msg->MinMaxInfo->DefWidth = CLAMP(
+                msg->MinMaxInfo->DefWidth * _font(obj)->tf_XSize / 8,
+                msg->MinMaxInfo->MinWidth, msg->MinMaxInfo->MaxWidth);
         }
 
 
@@ -400,7 +403,9 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
 
         if (data->flags & MIF_FONTMATCHHEIGHT)
         {
-            msg->MinMaxInfo->DefHeight *= _font(obj)->tf_YSize / 8;
+            msg->MinMaxInfo->DefHeight = CLAMP(
+                msg->MinMaxInfo->DefHeight * _font(obj)->tf_YSize / 8,
+                msg->MinMaxInfo->MinHeight, msg->MinMaxInfo->MaxHeight);
         }
     }
     else if (data->old_image)
