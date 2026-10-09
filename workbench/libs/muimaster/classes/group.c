@@ -2003,8 +2003,9 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     {
         data->saved_minwidth = msg->MinMaxInfo->MinWidth;
         data->saved_minheight = msg->MinMaxInfo->MinHeight;
-        msg->MinMaxInfo->MinWidth = super_minwidth + 2;
-        msg->MinMaxInfo->MinHeight = super_minheight + 2;
+        /* MUI 3.8/3.9 keep eight pixels of virtual content visible */
+        msg->MinMaxInfo->MinWidth = super_minwidth + 8;
+        msg->MinMaxInfo->MinHeight = super_minheight + 8;
 
         //kprintf("## min %d x %d   def %d x %d  max %d x %d\n",
         //    msg->MinMaxInfo->MinWidth,

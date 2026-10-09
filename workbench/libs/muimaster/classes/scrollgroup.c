@@ -70,22 +70,19 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
                 maxxxxheight += _minheight(data->horiz);
                 lm->lm_MinMax.MinHeight = maxxxxheight;
 
-                maxxxxwidth = _defwidth(data->contents);
-                if (_defwidth(data->horiz) > maxxxxwidth)
-                    maxxxxwidth = _defwidth(data->horiz);
-                if (maxxxxwidth < lm->lm_MinMax.MinWidth)
-                    maxxxxwidth = lm->lm_MinMax.MinWidth;
-                lm->lm_MinMax.DefWidth = maxxxxwidth;
-
-                maxxxxheight = _defheight(data->contents);
-                if (_defheight(data->vert) > maxxxxheight)
-                    maxxxxheight = _defheight(data->vert);
-                if (maxxxxheight < lm->lm_MinMax.MinHeight)
-                    maxxxxheight = lm->lm_MinMax.MinHeight;
-                lm->lm_MinMax.DefHeight = maxxxxheight;
-
-                lm->lm_MinMax.MaxWidth = MUI_MAXMAX;
-                lm->lm_MinMax.MaxHeight = MUI_MAXMAX;
+                /* MUI 3.8/3.9: default and maximum are the contents'
+                 * sizes plus the scrollers */
+                lm->lm_MinMax.DefWidth = MAX(lm->lm_MinMax.MinWidth,
+                    _defwidth(data->contents) + _minwidth(data->vert));
+                lm->lm_MinMax.DefHeight = MAX(lm->lm_MinMax.MinHeight,
+                    _defheight(data->contents) + _minheight(data->horiz));
+                lm->lm_MinMax.MaxWidth = CLAMP((LONG)_maxwidth(data->contents)
+                    + _minwidth(data->vert), lm->lm_MinMax.DefWidth,
+                    MUI_MAXMAX);
+                lm->lm_MinMax.MaxHeight = CLAMP(
+                    (LONG)_maxheight(data->contents)
+                    + _minheight(data->horiz), lm->lm_MinMax.DefHeight,
+                    MUI_MAXMAX);
             }
 
             //kprintf("scrollgroup minmax: min %d x %d  def %d x %d\n",
@@ -161,7 +158,7 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
                 {
                     cont_width -= vert_width;
                     virt_width =
-                        CLAMP(cont_width, virt_minwidth, virt_maxheight);
+                        CLAMP(cont_width, virt_minwidth, virt_maxwidth);
                     vbar = TRUE;
                 }
                 //kprintf("      2: %d x %d   hbar %d  vbar %d\n",
@@ -177,6 +174,17 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
                 }
                 //kprintf("      3: %d x %d   hbar %d  vbar %d\n",
                 //    cont_width, cont_height, hbar, vbar);
+            }
+
+            /* MUI 3.8/3.9 always show both scrollers and the move button
+             * outside the window border, even when the contents fit */
+            if (!data->usewinborder)
+            {
+                if (!hbar)
+                    cont_height -= horiz_height;
+                if (!vbar)
+                    cont_width -= vert_width;
+                hbar = vbar = TRUE;
             }
 
             cont_width += _subwidth(data->contents);
