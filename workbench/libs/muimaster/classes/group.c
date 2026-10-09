@@ -1917,7 +1917,9 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     cstate = lm.lm_Children->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
-        if (!(_flags(child) & MADF_SHOWME))
+        /* Custom layout hooks see every child, as in MUI 3.8/3.9, so
+         * hidden children need valid dimensions too */
+        if (!(_flags(child) & MADF_SHOWME) && !data->layout_hook)
             /* BORDERGADGETs should handle this itself */
             continue;
         /*  Ask child  */
@@ -2160,6 +2162,99 @@ static void Layout1D_redistribution(WORD *sizep, WORD minsize,
 // redistribute. The second redistribution never breaks minmax constraint
 // (there should be a mathematical proof, but feel free to prove me wrong
 // with an example)
+/* Final settling pass: the two redistribution passes above can leave a
+ * child outside its min/max range while others absorb the difference.
+ * Clamp every child, then share any remainder by weight among children
+ * that can still move, until no space is left or nothing can move. */
+static void Layout1D_settle(struct MinList *children, WORD remainder,
+    BOOL group_horiz)
+{
+    APTR cstate;
+    Object *child;
+    int round;
+
+    for (round = 0; round < 32; round++)
+    {
+        ULONG weights = 0, movable = 0;
+        LONG share = remainder;
+
+        cstate = children->mlh_Head;
+        while ((child = NextObject(&cstate)))
+        {
+            WORD *size, min, max;
+
+            if (IS_HIDDEN(child))
+                continue;
+            size = group_horiz ? &_width(child) : &_height(child);
+            min = group_horiz ? _minwidth(child) : _minheight(child);
+            max = group_horiz ? _maxwidth(child) : _maxheight(child);
+            if (*size < min)
+            {
+                remainder -= min - *size;
+                *size = min;
+            }
+            else if (*size > max)
+            {
+                remainder += *size - max;
+                *size = max;
+            }
+        }
+        if (remainder == 0)
+            return;
+
+        cstate = children->mlh_Head;
+        while ((child = NextObject(&cstate)))
+        {
+            WORD size, min, max;
+
+            if (IS_HIDDEN(child))
+                continue;
+            size = group_horiz ? _width(child) : _height(child);
+            min = group_horiz ? _minwidth(child) : _minheight(child);
+            max = group_horiz ? _maxwidth(child) : _maxheight(child);
+            if ((remainder > 0 && size < max) || (remainder < 0 && size > min))
+            {
+                movable++;
+                weights += group_horiz ? _hweight(child) : _vweight(child);
+            }
+        }
+        if (movable == 0)
+            return;
+
+        share = remainder;
+        cstate = children->mlh_Head;
+        while ((child = NextObject(&cstate)) && remainder != 0)
+        {
+            WORD *size, min, max;
+            LONG delta, weight;
+
+            if (IS_HIDDEN(child))
+                continue;
+            size = group_horiz ? &_width(child) : &_height(child);
+            min = group_horiz ? _minwidth(child) : _minheight(child);
+            max = group_horiz ? _maxwidth(child) : _maxheight(child);
+            if (!((remainder > 0 && *size < max)
+                    || (remainder < 0 && *size > min)))
+                continue;
+
+            weight = group_horiz ? _hweight(child) : _vweight(child);
+            delta = weights ? share * weight / (LONG)weights
+                : share / (LONG)movable;
+            if (delta == 0)
+                delta = remainder > 0 ? 1 : -1;
+            if ((delta > 0 && delta > remainder)
+                || (delta < 0 && delta < remainder))
+                delta = remainder;
+            if (*size + delta > max)
+                delta = max - *size;
+            if (*size + delta < min)
+                delta = min - *size;
+            *size += delta;
+            remainder -= delta;
+        }
+    }
+}
+
 static void Layout1D_minmax_constraints_and_redistrib(struct MinList
     *children, WORD total_size, WORD remainder, WORD samesize,
     BOOL group_horiz)
@@ -2276,6 +2371,8 @@ static void Layout1D_minmax_constraints_and_redistrib(struct MinList
         // dont break here if remainder == 0, some minmax constraints
         // may not be respected
     }                           // end for
+
+    Layout1D_settle(children, remainder, group_horiz);
 
     // to easily spot layout bugs, nothing like a (division by zero) exception
 /*      if (remainder != 0) */
