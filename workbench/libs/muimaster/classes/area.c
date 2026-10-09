@@ -427,6 +427,9 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
+    if (data->mad_DisableCount)
+        data->mad_Flags |= MADF_DISABLED;
+
     /* In Soliton MUIA_Selected was set to MUIV_InputMode_RelVerify (=1)
      ** for MUIA_Input_Mode MUIV_InputMode_RelVerify which is wrong of
      ** course but MUI seems to filter this out so we have to do it also
@@ -710,6 +713,13 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
         }
     }
+
+    /* Mirror the disable count in the public MADF_DISABLED flag, which
+     * MUI 3.8/3.9 clients test while drawing */
+    if (data->mad_DisableCount)
+        data->mad_Flags |= MADF_DISABLED;
+    else
+        data->mad_Flags &= ~MADF_DISABLED;
 
     if (change_disable) {
         /* Simulate left mouse button release if the area becomes disabled */
