@@ -149,6 +149,8 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
         return NULL;
     text->width = text->height = 0;
     text->styles = 0;
+    text->nontext = 0;
+    text->truncate = 0;
     NewList((struct List *)&text->lines);
     text->arena_next = (UBYTE *)(text + 1);
     text->arena_end = text->arena_next + ZTEXT_ARENA_SIZE;
@@ -607,6 +609,7 @@ void zune_text_get_bounds(ZText * text, Object * obj)
     text->width = 0;
     text->height = 0;
     text->styles = 0;
+    text->nontext = 0;
 
     font = _font(obj);
     /* Measuring needs a RastPort with the object's font. Copying the
@@ -639,6 +642,8 @@ void zune_text_get_bounds(ZText * text, Object * obj)
             chunk_node->node.mln_Succ;
             chunk_node = (ZTextChunk *) chunk_node->node.mln_Succ)
         {
+            if (!chunk_node->str)
+                text->nontext = 1;
             if (chunk_node->spec)
             {
                 struct MUI_MinMax minmax;
@@ -820,7 +825,19 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
                 {
                     SetDrMd(rp, JAM1);
                 }
-                Text(rp, chunk_node->str, strlen(chunk_node->str));
+                {
+                    LONG len = strlen(chunk_node->str);
+
+                    if (text->truncate && x + chunk_node->cwidth > right + 1)
+                    {
+                        struct TextExtent te;
+
+                        len = (right + 1 > x) ? TextFit(rp, chunk_node->str,
+                            len, &te, NULL, 1, right + 1 - x, 32767) : 0;
+                    }
+                    if (len > 0)
+                        Text(rp, chunk_node->str, len);
+                }
             }
             x += chunk_node->cwidth;
         }

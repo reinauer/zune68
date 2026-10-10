@@ -430,8 +430,12 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
      * overhang of algorithmic bold or italic, so leave room for that. */
     overhang = ((data->ztext->styles & (FSF_BOLD | FSF_ITALIC))
         || (_font(obj)->tf_Style & FSF_ITALIC)) ? 8 : 0;
-    if (data->ztext->width + overhang <= _mwidth(obj)
-        && data->ztext->height <= _mheight(obj))
+    /* Like MUI, wider plain text is cut to whole characters, not
+     * clipped */
+    data->ztext->truncate = 1;
+    if (data->ztext->height <= _mheight(obj)
+        && (data->ztext->width + overhang <= _mwidth(obj)
+            || (!overhang && !data->ztext->nontext)))
         clip = (APTR)-1;
     else
         clip = MUI_AddClipping(muiRenderInfo(obj), _mleft(obj),

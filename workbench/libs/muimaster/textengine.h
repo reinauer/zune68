@@ -46,6 +46,9 @@ struct ZText {
     UBYTE *arena_next;  /* inline space for lines and chunks */
     UBYTE *arena_end;
     UBYTE styles;       /* text chunk styles, set by zune_text_get_bounds */
+    UBYTE nontext;      /* image or object chunks, set by get_bounds */
+    UBYTE truncate;     /* draw only whole characters left of the right
+                         * edge, as MUI's Text class does */
 };
 
 typedef struct ZText ZText;
