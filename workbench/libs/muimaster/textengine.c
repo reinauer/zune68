@@ -112,6 +112,7 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
     /* STRPTR *lines; */
     /* int i; */
     STRPTR dup_content;
+    char local_content[128];
     CONST_STRPTR buf;
     int preparse_len;
     struct zune_context zc;
@@ -124,7 +125,10 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
     if (!content)
         content = "";
     preparse_len = preparse ? strlen(preparse) : 0;
-    if (!(dup_content = mui_alloc(preparse_len + strlen(content) + 1)))
+    /* The parser only needs a temporary copy; keep short ones on stack */
+    if (preparse_len + strlen(content) < sizeof(local_content))
+        dup_content = (STRPTR)local_content;
+    else if (!(dup_content = mui_alloc(preparse_len + strlen(content) + 1)))
     {
         mui_free(text);
         return NULL;
@@ -171,7 +175,8 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
             break;
     }
 
-    mui_free(dup_content);
+    if (dup_content != (STRPTR)local_content)
+        mui_free(dup_content);
     return text;
 }
 
@@ -189,8 +194,7 @@ void zune_text_destroy(ZText * text)
                 (struct ZTextChunk *)RemTail((struct List *)&ztl->
                     chunklist)))
         {
-            if (ztc->str)
-                mui_free(ztc->str);
+            /* String chunks hold their text inline (zune_text_chunk_new) */
             if (ztc->spec)
             {
                 FreeVec((APTR) ztc->spec);
@@ -223,7 +227,19 @@ void zune_text_chunk_new(struct zune_context *zc)
     if (zc->text == zc->text_start)
         return;
 
-    if (!(ztc = mui_alloc_struct(ZTextChunk)))
+    /* A text chunk carries its string in the same allocation, which
+     * halves allocator traffic when lists re-parse entries per draw */
+    if (!zc->imspec && !zc->obj && !zc->alpha_data)
+    {
+        LONG len = zc->text - zc->text_start;
+
+        if (!(ztc = mui_alloc(sizeof(ZTextChunk) + len + 1)))
+            return;
+        ztc->str = (char *)(ztc + 1);
+        memcpy(ztc->str, zc->text_start, len);
+        ztc->str[len] = 0;
+    }
+    else if (!(ztc = mui_alloc_struct(ZTextChunk)))
         return;
 
     ztc->style = zc->style;
@@ -251,17 +267,11 @@ void zune_text_chunk_new(struct zune_context *zc)
 
         AddTail((struct List *)&zc->line->chunklist, (struct Node *)ztc);
     }
-    else if ((ztc->str = (char *)mui_alloc(zc->text - zc->text_start + 1)))
+    else
     {
-        strncpy(ztc->str, zc->text_start, zc->text - zc->text_start + 1);
-        ztc->str[zc->text - zc->text_start] = 0;
         D(bug("zune_text_chunk_new: string %s\n", ztc->str));
 
         AddTail((struct List *)&zc->line->chunklist, (struct Node *)ztc);
-    }
-    else
-    {
-        mui_free(ztc);
     }
 }
 
