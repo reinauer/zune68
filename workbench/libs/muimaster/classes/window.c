@@ -4034,8 +4034,20 @@ static void SetRootObjInnerSpacing(Object *obj,
 static void WindowMinMax(Object *obj, struct MUI_WindowData *data)
 {
     SetRootObjInnerSpacing(obj, data);
-    /* inquire about sizes */
+    /* inquire about sizes; like MUI, Area stores them in the root's own
+     * minmax */
     DoMethod(data->wd_RootObject, MUIM_AskMinMax, (IPTR) & data->wd_MinMax);
+    {
+        const struct MUI_MinMax *mm =
+            &muiAreaData(data->wd_RootObject)->mad_MinMax;
+
+        data->wd_MinMax.MinWidth = mm->MinWidth;
+        data->wd_MinMax.MinHeight = mm->MinHeight;
+        data->wd_MinMax.MaxWidth = mm->MaxWidth;
+        data->wd_MinMax.MaxHeight = mm->MaxHeight;
+        data->wd_MinMax.DefWidth = mm->DefWidth;
+        data->wd_MinMax.DefHeight = mm->DefHeight;
+    }
 /*      D(bug("*** root minmax = %ld,%ld => %ld,%ld\n", */
 /*            data->wd_MinMax.MinWidth, */
 /*            data->wd_MinMax.MinHeight, */

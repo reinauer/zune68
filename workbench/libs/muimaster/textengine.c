@@ -662,11 +662,14 @@ void zune_text_get_bounds(ZText * text, Object * obj)
             else if (chunk_node->obj)
             {
                 struct MUI_MinMax MinMax;
+                struct MUIP_AskMinMax amm = { MUIM_AskMinMax, &MinMax };
 
-                DoMethod(chunk_node->obj, MUIM_AskMinMax, (IPTR) & MinMax);
-                __area_finish_minmax(chunk_node->obj, &MinMax);
-                chunk_node->cwidth = MinMax.DefWidth;
-                chunk_node->cheight = MinMax.DefHeight;
+                /* Area points the message at the object's own minmax and
+                 * __area_finish_minmax updates it in place. */
+                DoMethodA(chunk_node->obj, (Msg)&amm);
+                __area_finish_minmax(chunk_node->obj, amm.MinMaxInfo);
+                chunk_node->cwidth = amm.MinMaxInfo->DefWidth;
+                chunk_node->cheight = amm.MinMaxInfo->DefHeight;
                 line_node->lheight =
                     MAX(line_node->lheight, chunk_node->cheight);
             }

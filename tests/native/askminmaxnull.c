@@ -41,6 +41,19 @@ int main(void)
     printf("string min %ldx%ld max %ldx%ld def %ldx%ld\n",
         (LONG)_minwidth(obj), (LONG)_minheight(obj), (LONG)_maxwidth(obj),
         (LONG)_maxheight(obj), (LONG)_defwidth(obj), (LONG)_defheight(obj));
+    {
+        /* With a caller's buffer: where do the results go, and does the
+         * message keep the caller's pointer? */
+        struct MUI_MinMax mine = { 7777, 7777, 7777, 7777, 7777, 7777 };
+        struct MUIP_AskMinMax amm;
+        amm.MethodID = MUIM_AskMinMax;
+        amm.MinMaxInfo = &mine;
+        _minwidth(obj) = 5555;
+        DoMethodA(obj, (Msg)&amm);
+        printf("own buffer: msg keeps it %d, buffer min %ldx%ld, _minwidth %ld\n",
+            amm.MinMaxInfo == &mine, (LONG)mine.MinWidth, (LONG)mine.MinHeight,
+            (LONG)_minwidth(obj));
+    }
     DoMethod(obj, MUIM_Cleanup);
     MUI_DisposeObject(obj);
     MUI_DisposeObject(app);

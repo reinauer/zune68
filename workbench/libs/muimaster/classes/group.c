@@ -2043,7 +2043,8 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
         if (!(_flags(child) & MADF_SHOWME) && !data->layout_hook)
             /* BORDERGADGETs should handle this itself */
             continue;
-        /*  Ask child  */
+        /*  Ask child; Area points the message at the child's minmax  */
+        childMsg.MinMaxInfo = &childMinMax;
         DoMethodA(child, (Msg) & childMsg);
         /*  D(bug("*** group 0x%p, child 0x%p min=%ld,%ld\n", */
         /*      obj, child, childMinMax.MinWidth, childMinMax.MinHeight)); */

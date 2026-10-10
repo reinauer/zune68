@@ -24,6 +24,10 @@ class WindowHarness(PenHarness):
         self.mode = mode
         self.events = []
         self.mem.w32(ROOT_SLOT, ROOT)
+        # Area stores the root's sizes in its own mad_MinMax (after the
+        # 28 byte notify data, renderinfo, private word and font), which
+        # WindowMinMax reads.
+        self.mem.w_block(ROOT + 40, struct.pack('>6H', 10, 10, 10000, 10000, 100, 50))
         self.mem.w32(DRAWINFO + 8, FONT)
         self.mem.w16(FONT + 20, 8)
         self.mem.w32(WINDOW + 50, RP)
