@@ -113,7 +113,8 @@ void ZuneDrawDisabled(Object *obj)
 #endif
             {
                 /* fallback */
-                const static UWORD pattern[] = { 0x8888, 0x2222, };
+                /* MUI 3.9 phase: x % 4 == 1 on even rows, 3 on odd rows */
+                const static UWORD pattern[] = { 0x4444, 0x1111, };
                 LONG fg = ((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_Pens[MPEN_SHADOW];
 
                 SetDrMd(((struct __dummyAreaData__ *)(obj))->mad.mad_RenderInfo->mri_RastPort, JAM1);

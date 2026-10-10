@@ -291,34 +291,16 @@ void cycle_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
     Draw(rport, right, bottom);
 }
 
+/* MUI 3.9's popup arrow, measured in a PopButton(MUII_PopUp) */
+static const UWORD popup_glyph[] = {
+    0x0000, 0xc0c0, 0x6180, 0x3300, 0x1e00, 0x0c00, 0x0000, 0xffc0,
+    0xffc0, 0x0000
+};
+
 void popup_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
     LONG height, LONG state)
 {
-    int right, bottom, cx;
-    struct RastPort *rport = mri->mri_RastPort;
-
-    height -= 3;
-
-    SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
-
-    cx = width / 2;
-
-    Move(rport, left + HSPACING + 1, top + VSPACING);
-    Draw(rport, left + width - cx, top + height - 1 - VSPACING);
-    Move(rport, left + HSPACING, top + VSPACING);
-    Draw(rport, left + width - cx - 1, top + height - 1 - VSPACING);
-
-    Move(rport, left + width - 1 - HSPACING - 1, top + VSPACING);
-    Draw(rport, left + cx - 1, top + height - 1 - VSPACING);
-    Move(rport, left + width - 1 - HSPACING, top + VSPACING);
-    Draw(rport, left + cx, top + height - 1 - VSPACING);
-
-    bottom = top + height - 1 + 3;
-    right = left + width - 1;
-    Move(rport, left, bottom - 2);
-    Draw(rport, right, bottom - 2);
-    Move(rport, left, bottom - 1);
-    Draw(rport, right, bottom - 1);
+    glyph_draw(mri, left, top, width, height, popup_glyph, 10, 10);
 }
 
 void popfile_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
