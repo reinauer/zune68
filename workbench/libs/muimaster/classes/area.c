@@ -607,6 +607,11 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             data->mad_HorizWeight = tag->ti_Data;
             break;
 
+        case MUIA_Weight:
+            /* MUI also accepts this after creation (Voyager's buttons). */
+            data->mad_HorizWeight = data->mad_VertWeight = tag->ti_Data;
+            break;
+
         case MUIA_Pressed:
             if (tag->ti_Data)
                 data->mad_Flags |= MADF_PRESSED;
