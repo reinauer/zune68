@@ -103,6 +103,7 @@ struct MUI_GroupData
     LONG old_virt_offx, old_virt_offy;  /* Saved virtual positions,
                                          * used for update == 2 */
     LONG virt_mwidth, virt_mheight;     /* The complete width */
+    LONG told_mwidth, told_mheight;     /* Size last notified */
     LONG saved_minwidth, saved_minheight;
     LONG dont_forward_get;      /* Set temporarily to 1 so that the get method
                                  * is not forwarded */
@@ -3147,6 +3148,17 @@ IPTR Group__MUIM_Layout(struct IClass *cl, Object *obj,
             nfset(obj, MUIA_Virtgroup_Top, new_virt_offy);
         }
 
+        /* A relayout of the virtual group alone (a layout hook reporting
+         * a new page size) must still reach a Scrollgroup's scrollers. */
+        if (data->virt_mwidth != data->told_mwidth ||
+            data->virt_mheight != data->told_mheight)
+        {
+            data->told_mwidth = data->virt_mwidth;
+            data->told_mheight = data->virt_mheight;
+            SetAttrs(obj, MUIA_Group_Forward, FALSE,
+                MUIA_Virtgroup_Width, data->virt_mwidth,
+                MUIA_Virtgroup_Height, data->virt_mheight, TAG_DONE);
+        }
     }
 
     return 0;

@@ -24,6 +24,26 @@
 extern struct Library *MUIMasterBase;
 
 
+/* Scroller ranges follow the contents' virtual size, which a layout
+ * hook may only report while laying out (Voyager's page view). */
+static void Scrollgroup_UpdateProps(struct Scrollgroup_DATA *data)
+{
+    LONG top = 0, left = 0, width = 0, height = 0;
+
+    get(data->contents, MUIA_Virtgroup_Left, &left);
+    get(data->contents, MUIA_Virtgroup_Top, &top);
+    get(data->contents, MUIA_Virtgroup_Width, &width);
+    get(data->contents, MUIA_Virtgroup_Height, &height);
+
+    SetAttrs(data->horiz, MUIA_Prop_First, left,
+        MUIA_Prop_Entries, width,
+        MUIA_Prop_Visible, _mwidth(data->contents), TAG_DONE);
+
+    SetAttrs(data->vert, MUIA_Prop_First, top,
+        MUIA_Prop_Entries, height,
+        MUIA_Prop_Visible, _mheight(data->contents), TAG_DONE);
+}
+
 AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
     AROS_UFHA(struct Hook *, hook, A0),
     AROS_UFHA(Object *, obj, A2),
@@ -239,6 +259,47 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
              * and _mheight() should be enough, or we invent a new flag */
             MUI_Layout(data->contents, 0, 0, cont_width, cont_height, 0);
 
+            /* A layout hook may report the virtual size only while laying
+             * out (Voyager's page view reports a 1x1 minimum), so with
+             * automatic scrollers check the laid out contents once more. */
+            if (data->autobars && !data->usewinborder && !(hbar && vbar))
+            {
+                IPTR vw = 0, vh = 0;
+                BOOL nv = vbar, nh = hbar;
+
+                get(data->contents, MUIA_Virtgroup_Width, &vw);
+                get(data->contents, MUIA_Virtgroup_Height, &vh);
+                if ((LONG)vh > _mheight(data->contents))
+                    nv = TRUE;
+                if ((LONG)vw > _mwidth(data->contents)
+                    - (nv && !vbar ? vert_width : 0))
+                    nh = TRUE;
+                if (nv != vbar || nh != hbar)
+                {
+                    cont_width = lay_width - (nv ? vert_width : 0);
+                    cont_height = lay_height - (nh ? horiz_height : 0);
+                    set(data->vert, MUIA_ShowMe, nv);
+                    set(data->horiz, MUIA_ShowMe, nh);
+                    set(data->button, MUIA_ShowMe, nv && nh);
+                    if (nv)
+                        MUI_Layout(data->vert, cont_width, 0, vert_width,
+                            cont_height, 0);
+                    if (nh)
+                        MUI_Layout(data->horiz, 0, cont_height, cont_width,
+                            horiz_height, 0);
+                    if (nv && nh)
+                        MUI_Layout(data->button, cont_width, cont_height,
+                            vert_width, horiz_height, 0);
+                    MUI_Layout(data->contents, 0, 0, cont_width,
+                        cont_height, 0);
+                }
+            }
+
+            /* Keep the scrollers in step with a relayout of the contents
+             * (MUIM_Group_ExitChange), which happens while hidden. */
+            if (_flags(obj) & MADF_SETUP)
+                Scrollgroup_UpdateProps(data);
+
             //kprintf(" contents size after layout: %d x %d inner %d x %d\n",
             //        _width(data->contents), _height(data->contents),
             //        _mwidth(data->contents), _mheight(data->contents));
@@ -286,6 +347,12 @@ AROS_UFH3(ULONG, Scrollgroup_Function,
         break;
     case 4:
         nnset(data->vert, MUIA_Prop_First, val);
+        break;
+    case 5:
+        /* The contents' virtual size changed in a relayout of its own,
+         * which happens while it is hidden. */
+        if (_flags(data->contents) & MADF_SETUP)
+            Scrollgroup_UpdateProps(data);
         break;
     }
     return 0;
@@ -371,6 +438,12 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
     DoMethod(contents, MUIM_Group_DoMethodNoForward, MUIM_Notify,
         MUIA_Virtgroup_Top, MUIV_EveryTime, (IPTR) obj, 4, MUIM_CallHook,
         (IPTR) & data->hook, 4, MUIV_TriggerValue);
+    DoMethod(contents, MUIM_Group_DoMethodNoForward, MUIM_Notify,
+        MUIA_Virtgroup_Height, MUIV_EveryTime, (IPTR) obj, 4, MUIM_CallHook,
+        (IPTR) & data->hook, 5, MUIV_TriggerValue);
+    DoMethod(contents, MUIM_Group_DoMethodNoForward, MUIM_Notify,
+        MUIA_Virtgroup_Width, MUIV_EveryTime, (IPTR) obj, 4, MUIM_CallHook,
+        (IPTR) & data->hook, 5, MUIV_TriggerValue);
 
     D(bug("Scrollgroup_New(0x%p)\n", obj));
     D(bug(" vert = 0x%p, horiz = 0x%p, button = 0x%p\n", vert, horiz, button));
@@ -432,21 +505,8 @@ IPTR Scrollgroup__MUIM_Show(struct IClass *cl, Object *obj,
     struct MUIP_Show *msg)
 {
     struct Scrollgroup_DATA *data = INST_DATA(cl, obj);
-    LONG top = 0, left = 0, width = 0, height = 0;
 
-    get(data->contents, MUIA_Virtgroup_Left, &left);
-    get(data->contents, MUIA_Virtgroup_Top, &top);
-    get(data->contents, MUIA_Virtgroup_Width, &width);
-    get(data->contents, MUIA_Virtgroup_Height, &height);
-
-    SetAttrs(data->horiz, MUIA_Prop_First, left,
-        MUIA_Prop_Entries, width,
-        MUIA_Prop_Visible, _mwidth(data->contents), TAG_DONE);
-
-    SetAttrs(data->vert, MUIA_Prop_First, top,
-        MUIA_Prop_Entries, height,
-        MUIA_Prop_Visible, _mheight(data->contents), TAG_DONE);
-
+    Scrollgroup_UpdateProps(data);
     return DoSuperMethodA(cl, obj, (Msg) msg);
 }
 
