@@ -64,6 +64,13 @@ enum slider_flags
     } while(0)
 
 
+static LONG knob_text_width(Object *obj, struct RastPort *rp, LONG val)
+{
+    char *buf = (char *)DoMethod(obj, MUIM_Numeric_Stringify, val);
+
+    return buf ? TextLength(rp, buf, strlen(buf)) : 0;
+}
+
 static void CalcKnobDimensions(struct IClass *cl, Object *obj)
 {
     struct MUI_SliderData *data = INST_DATA(cl, obj);
@@ -72,6 +79,7 @@ static void CalcKnobDimensions(struct IClass *cl, Object *obj)
     LONG max = 0;
     LONG val;
     LONG width;
+    LONG all = FALSE;
     struct RastPort rp;
 
     knob_frame =
@@ -92,16 +100,46 @@ static void CalcKnobDimensions(struct IClass *cl, Object *obj)
         max = MUI_MAXMAX;
     }
 
-    /* Determine the width of the knob */
-    for (val = min; val <= max; val++)
+    /* Determine the width of the knob. As in MUI 3.8/3.9, all values are
+     * formatted only with MUIA_Numeric_CheckAllSizes; otherwise a few
+     * representative values are checked: the limits, zero and, for each
+     * digit count in range, the all-eights, all-nines and lowest values. */
+    longget(obj, MUIA_Numeric_CheckAllSizes, &all);
+    if (all)
     {
-        LONG nw;
-        char *buf;
+        for (val = min; val <= max; val++)
+            width = MAX(width, knob_text_width(obj, &rp, val));
+    }
+    else
+    {
+        LONG limit = MAX(max, min == (LONG)0x80000000 ? 0x7fffffff : -min);
+        LONG eights = 0, nines = 0, low = 1;
 
-        buf = (char *)DoMethod(obj, MUIM_Numeric_Stringify, val);
-        nw = TextLength(&rp, buf, strlen(buf));
-        if (nw > width)
-            width = nw;
+        width = MAX(knob_text_width(obj, &rp, min),
+            knob_text_width(obj, &rp, max));
+        if (min <= 0 && max >= 0)
+            width = MAX(width, knob_text_width(obj, &rp, 0));
+        while (low <= limit && low > 0)
+        {
+            LONG cand[3], i;
+
+            eights = eights * 10 + 8;
+            nines = nines * 10 + 9;
+            cand[0] = eights;
+            cand[1] = nines;
+            cand[2] = low;
+            for (i = 0; i < 3; i++)
+            {
+                if (cand[i] >= min && cand[i] <= max)
+                    width = MAX(width, knob_text_width(obj, &rp, cand[i]));
+                if (-cand[i] >= min && -cand[i] <= max)
+                    width = MAX(width, knob_text_width(obj, &rp, -cand[i]));
+            }
+            /* Stop before the next digit count overflows a LONG */
+            if (nines > 0x7fffffff / 10 - 9)
+                break;
+            low *= 10;
+        }
     }
     data->max_text_width = width;
     data->knob_width = width +
