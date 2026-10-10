@@ -150,7 +150,7 @@ MUIA_Application_Description [I.G]        done
 MUIA_Application_DiskObject [ISG]         done
 MUIA_Application_DoubleStart [..G]        triggered; OM_GET value todo
 MUIA_Application_DropObject [IS.]         todo
-MUIA_Application_ForceQuit [..G]          not triggered yet
+MUIA_Application_ForceQuit [.SG]          done
 MUIA_Application_HelpFile [ISG]           stored; otherwise unused
 MUIA_Application_Iconified [.SG]          done
 MUIA_Application_Menu [I.G]               unimplemented (OBSOLETE)
@@ -661,6 +661,12 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
 
         case MUIA_Application_RexxHook:
             data->app_RexxHook = (struct Hook *)tag->ti_Data;
+            break;
+
+        case MUIA_Application_ForceQuit:
+            /* Documented as get-only, but MUI 3.9 accepts it and IBrowse
+             * sets it from its own ARexx QUIT FORCE before quitting. */
+            data->app_ForceQuit = tag->ti_Data ? TRUE : FALSE;
             break;
 
         case MUIA_Application_DropObject:
@@ -1330,6 +1336,12 @@ static IPTR Application__OM_SET(struct IClass *cl, Object *obj,
             data->app_RexxHook = (struct Hook *)tag->ti_Data;
             break;
 
+        case MUIA_Application_ForceQuit:
+            /* Documented as get-only, but MUI 3.9 accepts it and IBrowse
+             * sets it from its own ARexx QUIT FORCE before quitting. */
+            data->app_ForceQuit = tag->ti_Data ? TRUE : FALSE;
+            break;
+
         case MUIA_Application_DropObject:
             data->app_DropObject = (Object *)tag->ti_Data;
             break;
@@ -1615,6 +1627,129 @@ static IPTR Application__MUIM_RemInputHandler(struct IClass *cl,
 
 void _zune_window_message(struct IntuiMessage *imsg);   /* from window.c */
 
+/* Queue an id for the next MUIM_Application_NewInput. */
+static BOOL application_return_id(struct MUI_ApplicationData *data,
+    ULONG id)
+{
+    struct RIDNode *rid = CreateRIDNode(data, id);
+
+    if (!rid)
+        return FALSE;
+    AddTail((struct List *)&data->app_ReturnIDQueue, (struct Node *)rid);
+    return TRUE;
+}
+
+/* MUI's standard ARexx commands. They take precedence over the
+ * application's own commands of the same name, as in MUI 3.9. */
+enum { REXX_QUIT, REXX_HIDE, REXX_DEACTIVATE, REXX_SHOW, REXX_ACTIVATE,
+    REXX_INFO, REXX_HELP, REXX_BUILTINS };
+
+static const struct
+{
+    CONST_STRPTR name;
+    CONST_STRPTR template;
+} rexx_builtins[REXX_BUILTINS] = {
+    {"quit", "FORCE/S"}, {"hide", NULL}, {"deactivate", NULL},
+    {"show", NULL}, {"activate", NULL}, {"info", "ITEM/A"},
+    {"help", "FILE/A"}
+};
+
+/* MUI 3.9 replies -4 when the arguments do not match the template. */
+#define REXX_BAD_ARGS (-4)
+
+static void rexx_help_section(BPTR fh, CONST_STRPTR title)
+{
+    FPrintf(fh, (STRPTR)"%s\n\nCommand      Template\n"
+        "-------      --------\n", (IPTR)title);
+}
+
+static void rexx_help_line(BPTR fh, CONST_STRPTR name, CONST_STRPTR template)
+{
+    if (!template || template == MC_TEMPLATE_ID)
+        template = "";
+    FPrintf(fh, (STRPTR)"%-12s %s\n", (IPTR)name, (IPTR)template);
+}
+
+static LONG rexx_help(struct MUI_ApplicationData *data, CONST_STRPTR file)
+{
+    struct MUI_Command *cmd;
+    BPTR fh = Open((STRPTR)file, MODE_NEWFILE);
+    int i;
+
+    if (!fh)
+        return RETURN_ERROR;
+    rexx_help_section(fh, "Standard-Commands:");
+    for (i = 0; i < REXX_BUILTINS; i++)
+        rexx_help_line(fh, rexx_builtins[i].name, rexx_builtins[i].template);
+    if (data->app_Commands && data->app_Commands->mc_Name)
+    {
+        FPrintf(fh, (STRPTR)"\n\nCommands for application \"%s\":\n\n"
+            "Command      Template\n-------      --------\n",
+            (IPTR)(data->app_Title ? data->app_Title : (STRPTR)""));
+        for (cmd = data->app_Commands; cmd->mc_Name; cmd++)
+            rexx_help_line(fh, cmd->mc_Name, cmd->mc_Template);
+    }
+    Close(fh);
+    return RETURN_OK;
+}
+
+static LONG rexx_info(struct MUI_ApplicationData *data, CONST_STRPTR item)
+{
+    static const char *const items[] = {
+        "base", "title", "author", "copyright", "description", "version",
+        "screen", NULL
+    };
+    CONST_STRPTR value = NULL;
+    STRPTR copy;
+    int i;
+
+    for (i = 0; items[i] && Stricmp((STRPTR)item, (STRPTR)items[i]); i++)
+        ;
+    switch (i)
+    {
+    case 0: value = data->app_Base; break;
+    case 1: value = data->app_Title; break;
+    case 2: value = data->app_Author; break;
+    case 3: value = data->app_Copyright; break;
+    case 4: value = data->app_Description; break;
+    case 5: value = data->app_Version; break;
+    case 6: value = ""; break;
+    default: return RETURN_ERROR;
+    }
+    copy = StrDup(value ? value : (CONST_STRPTR)"?");
+    if (!copy)
+        return RETURN_FAIL;
+    FreeVec(data->app_RexxString);
+    data->app_RexxString = copy;
+    return RETURN_OK;
+}
+
+static LONG rexx_builtin(struct MUI_ApplicationData *data, Object *obj,
+    int which, IPTR *args)
+{
+    switch (which)
+    {
+    case REXX_QUIT:
+        data->app_ForceQuit = args[0] ? TRUE : FALSE;
+        if (!application_return_id(data, MUIV_Application_ReturnID_Quit))
+            return RETURN_FAIL;
+        break;
+    case REXX_HIDE:
+    case REXX_SHOW:
+        set(obj, MUIA_Application_Iconified, which == REXX_HIDE);
+        break;
+    case REXX_DEACTIVATE:
+    case REXX_ACTIVATE:
+        set(obj, MUIA_Application_Active, which == REXX_ACTIVATE);
+        break;
+    case REXX_INFO:
+        return rexx_info(data, (CONST_STRPTR)args[0]);
+    case REXX_HELP:
+        return rexx_help(data, (CONST_STRPTR)args[0]);
+    }
+    return RETURN_OK;
+}
+
 /*
  * MUIM_Application_InputBuffered : process all pending events
  */
@@ -1625,8 +1760,10 @@ static void application_rexx(struct MUI_ApplicationData *data, Object *obj,
     struct RexxMsg *previous_msg = data->app_RexxMsg;
     STRPTR previous_string = data->app_RexxString;
     STRPTR command = (STRPTR)rmsg->rm_Args[0];
-    ULONG length = 0;
+    CONST_STRPTR template = NULL;
+    ULONG length = 0, parameters = 0;
     LONG result = RETURN_ERROR;
+    int builtin;
     IPTR *args = NULL;
     STRPTR arguments = NULL;
     struct RDArgs *rdargs = NULL, *parsed = NULL;
@@ -1639,45 +1776,79 @@ static void application_rexx(struct MUI_ApplicationData *data, Object *obj,
     while (*command == ' ' || *command == '\t') command++;
     while (command[length] && command[length] != ' '
         && command[length] != '\t') length++;
-    while (cmd && cmd->mc_Name)
+    for (builtin = 0; builtin < REXX_BUILTINS; builtin++)
     {
-        if (length == strlen(cmd->mc_Name)
-            && Strnicmp(command, cmd->mc_Name, length) == 0)
+        if (length == strlen(rexx_builtins[builtin].name)
+            && Strnicmp(command, (STRPTR)rexx_builtins[builtin].name,
+                length) == 0)
             break;
-        cmd++;
     }
-    if (cmd && cmd->mc_Name)
+    if (builtin < REXX_BUILTINS)
     {
+        template = rexx_builtins[builtin].template;
+        parameters = 1;
+    }
+    else
+    {
+        while (cmd && cmd->mc_Name)
+        {
+            if (length == strlen(cmd->mc_Name)
+                && Strnicmp(command, cmd->mc_Name, length) == 0)
+                break;
+            cmd++;
+        }
+        if (!cmd || !cmd->mc_Name)
+        {
+            if (data->app_RexxHook)
+                result = CallHookPkt(data->app_RexxHook, obj, rmsg);
+            goto done;
+        }
+        if ((STRPTR)cmd->mc_Template == MC_TEMPLATE_ID)
+        {
+            /* A plain return id; MUI ignores any arguments. */
+            result = application_return_id(data, cmd->mc_Parameters)
+                ? RETURN_OK : RETURN_FAIL;
+            goto done;
+        }
         if (!cmd->mc_Hook)
             goto done;
-        if (cmd->mc_Template)
-        {
-            STRPTR tail = command + length;
-            if (cmd->mc_Parameters > (ULONG)-1 / sizeof(IPTR))
-                goto done;
-            args = AllocVec((cmd->mc_Parameters ? cmd->mc_Parameters : 1)
-                * sizeof(IPTR), MEMF_ANY | MEMF_CLEAR);
-            while (*tail == ' ' || *tail == '\t') tail++;
-            length = strlen(tail);
-            arguments = AllocVec(length + 2, MEMF_ANY);
-            rdargs = AllocDosObject(DOS_RDARGS, NULL);
-            if (!args || !arguments || !rdargs)
-                goto done;
-            CopyMem(tail, arguments, length);
-            arguments[length] = '\n';
-            arguments[length + 1] = 0;
-            rdargs->RDA_Source.CS_Buffer = arguments;
-            rdargs->RDA_Source.CS_Length = length + 1;
-            rdargs->RDA_Source.CS_CurChr = 0;
-            rdargs->RDA_Flags |= RDAF_NOPROMPT;
-            parsed = ReadArgs(cmd->mc_Template, (LONG *)args, rdargs);
-            if (!parsed)
-                goto done;
-        }
-        result = CallHookPkt(cmd->mc_Hook, obj, args);
+        template = cmd->mc_Template;
+        parameters = cmd->mc_Parameters;
     }
-    else if (data->app_RexxHook)
-        result = CallHookPkt(data->app_RexxHook, obj, rmsg);
+    if (template)
+    {
+        STRPTR tail = command + length;
+        if (parameters > (ULONG)-1 / sizeof(IPTR))
+            goto done;
+        args = AllocVec((parameters ? parameters : 1) * sizeof(IPTR),
+            MEMF_ANY | MEMF_CLEAR);
+        while (*tail == ' ' || *tail == '\t') tail++;
+        length = strlen(tail);
+        arguments = AllocVec(length + 2, MEMF_ANY);
+        rdargs = AllocDosObject(DOS_RDARGS, NULL);
+        if (!args || !arguments || !rdargs)
+            goto done;
+        CopyMem(tail, arguments, length);
+        arguments[length] = '\n';
+        arguments[length + 1] = 0;
+        rdargs->RDA_Source.CS_Buffer = arguments;
+        rdargs->RDA_Source.CS_Length = length + 1;
+        rdargs->RDA_Source.CS_CurChr = 0;
+        rdargs->RDA_Flags |= RDAF_NOPROMPT;
+        parsed = ReadArgs((STRPTR)template, (LONG *)args, rdargs);
+        if (!parsed)
+        {
+            result = REXX_BAD_ARGS;
+            goto done;
+        }
+    }
+    if (builtin < REXX_BUILTINS)
+    {
+        IPTR none = 0;
+        result = rexx_builtin(data, obj, builtin, args ? args : &none);
+    }
+    else
+        result = CallHookPkt(cmd->mc_Hook, obj, args);
 
 done:
     if (parsed) FreeArgs(parsed);
@@ -2076,7 +2247,6 @@ static IPTR Application__MUIM_ReturnID(struct IClass *cl, Object *obj,
     struct MUIP_Application_ReturnID *msg)
 {
     struct MUI_ApplicationData *data = INST_DATA(cl, obj);
-    struct RIDNode *rid;
 
 /*
     if (!data->app_RIDMemChunk)
@@ -2085,11 +2255,7 @@ static IPTR Application__MUIM_ReturnID(struct IClass *cl, Object *obj,
             g_mem_chunk_create(struct RIDNode, 10, G_ALLOC_AND_FREE);
     }
 */
-    rid = CreateRIDNode(data, msg->retid);
-    if (!rid)
-        return FALSE;
-    AddTail((struct List *)&data->app_ReturnIDQueue, (struct Node *)rid);
-    return TRUE;
+    return application_return_id(data, msg->retid);
 }
 
 

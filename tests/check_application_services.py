@@ -255,7 +255,8 @@ def check(path):
         msg = h.rexx(command)
         h.dispatch(BUFFERED)
         assert h.replies == [msg]
-        assert h.mem.r32(msg + 32) == (10 if fail else 0)
+        # MUI 3.9 replies -4 when the arguments do not match the template.
+        assert h.mem.r32(msg + 32) == (0xfffffffc if fail else 0)
         if fail:
             assert not h.hooks and not h.mem.r32(msg + 36)
         else:
@@ -264,6 +265,49 @@ def check(path):
         assert not h.mem.r32(DATA + FIELDS['rexx_msg'])
         assert not h.mem.r32(DATA + FIELDS['rexx_string'])
         h.finish()
+
+    # MC_TEMPLATE_ID commands queue their id and ignore arguments.
+    h = ApplicationHarness(path)
+    hook = h.hook(string='command')
+    h.field('commands', h.words(h.blob(b'RESCAN\0'), 0xffffffff, 77, hook,
+                                0, 0, 0, 0))
+    msg = h.rexx('rescan extra words')
+    h.dispatch(BUFFERED)
+    assert h.replies == [msg] and h.mem.r32(msg + 32) == 0 and not h.hooks
+    signals = h.words(0)
+    assert h.dispatch(INPUT, signals) == 77
+    h.finish()
+
+    # Built-in commands take precedence over an application's own command
+    # of the same name; QUIT FORCE sets ForceQuit (MUI 3.9 probe).
+    for command, force in [('quit', 0), ('QUIT FORCE', 1)]:
+        h = ApplicationHarness(path)
+        hook = h.hook(string='command')
+        h.field('commands', h.words(h.blob(b'QUIT\0'), 0, 0, hook,
+                                    0, 0, 0, 0))
+        h.fail_parse = False
+        msg = h.rexx(command)
+        if not force:
+            # The modelled ReadArgs stores the source text for FORCE/S.
+            h.read_args = lambda h=h: (h.mem.w32(h.cpu.r_reg(2), 0),
+                                       h.cpu.w_reg(0, h.cpu.r_reg(3)))
+            h.trap(DOS - 798, h.read_args)
+        h.dispatch(BUFFERED)
+        assert h.replies == [msg] and h.mem.r32(msg + 32) == 0 and not h.hooks
+        signals = h.words(0)
+        assert h.dispatch(INPUT, signals) == 0xffffffff
+        storage = h.words(5)
+        h.dispatch(0x104, 0x804257df, storage)
+        assert h.mem.r32(storage) == force, (command, h.mem.r32(storage))
+        h.finish()
+
+    # IBrowse sets the documented get-only ForceQuit; MUI 3.9 accepts it.
+    h = ApplicationHarness(path)
+    storage = h.words(0)
+    h.dispatch(0x103, h.words(0x804257df, 1, 0, 0), 0)
+    h.dispatch(0x104, 0x804257df, storage)
+    assert h.mem.r32(storage) == 1
+    h.finish()
 
     for failed_call in [1, 2, 3]:  # args, source string, RDArgs
         h = ApplicationHarness(path)
