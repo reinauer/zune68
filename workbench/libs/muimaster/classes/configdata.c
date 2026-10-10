@@ -1161,6 +1161,13 @@ IPTR Configdata__MUIM_GetConfigItem(struct IClass *cl, Object *obj,
     if (!value)
         return FALSE;
 
+    /* Zune keeps the string backgrounds as image specs, MUI returns pen
+     * specs for them; Textinput.mcc obtains a pen from the answer. */
+    if ((msg->id == MUICFG_String_Background
+        || msg->id == MUICFG_String_ActiveBackground)
+        && ((STRPTR)value)[0] == '2' && ((STRPTR)value)[1] == ':')
+        value += 2;
+
     *msg->storage = value;
     return TRUE;
 }
