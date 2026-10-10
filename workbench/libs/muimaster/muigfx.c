@@ -9,6 +9,7 @@
 #include <graphics/rastport.h>
 #include <proto/exec.h>
 #include <proto/graphics.h>
+#include <proto/intuition.h>
 #include "muimaster_intern.h"
 #include "frame.h"
 #include "imspec.h"
@@ -146,17 +147,24 @@ static void Gfx_DrawImage(struct MUI_RenderInfo *mri __asm("a0"),
             0, 0, flags & 1);
 }
 
-/* Scroll the rectangle and fill the exposed part with the backfill; on
- * a simple refresh window the hidden parts become damage, as with
- * ClipBlit followed by ScrollRaster. */
+/* As the MorphOS reimplementation does: scroll with ScrollWindowRaster,
+ * which fills the exposed part with the backfill and reports damage as
+ * IDCMP_REFRESHWINDOW; -1/-2 for an empty width/height, 0 without a
+ * scroll, 1 otherwise. */
 static LONG Gfx_ScrollRaster(struct RastPort *rp __asm("a0"),
     WORD dx __asm("d0"), WORD dy __asm("d1"), WORD left __asm("d2"),
     WORD top __asm("d3"), WORD right __asm("d4"), WORD bottom __asm("d5"))
 {
-    if (!rp || (!dx && !dy))
+    if (right - left + 1 <= 0)
+        return -1;
+    if (bottom - top + 1 <= 0)
+        return -2;
+    if (!dx && !dy)
         return 0;
-    ScrollRasterBF(rp, dx, dy, left, top, right, bottom);
-    return rp->Layer && (rp->Layer->Flags & LAYERREFRESH);
+    if (rp && rp->Layer && rp->Layer->Window)
+        ScrollWindowRaster((struct Window *)rp->Layer->Window, dx, dy,
+            left, top, right, bottom);
+    return 1;
 }
 
 static APTR Vectors[4 + MUIGFX_SLOTS + 1];
