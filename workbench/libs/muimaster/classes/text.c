@@ -191,6 +191,13 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             }
             break;
 
+        case MUIA_Text_SetVMax:
+            /* Documented as init-only, but MUI 3.9 takes it from SetAttrs
+             * for the next layout: IBrowse sets it FALSE on its Add and
+             * Search buttons so they fill the Location row's height. */
+            _handle_bool_tag(data->mtd_Flags, tag->ti_Data, MTDF_SETVMAX);
+            break;
+
         case MUIA_Text_PreParse:
             {
                 char *new_preparse =
