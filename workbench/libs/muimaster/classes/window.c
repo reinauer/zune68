@@ -777,7 +777,8 @@ static void ChangeEvents(struct MUI_WindowData *data, ULONG new_events)
     }
 }
 
-static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data);
+static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data,
+    ULONG flags);
 static void CreateWindowScrollbars(Object *obj,
     struct MUI_WindowData *data);
 static void CalcAltDimensions(Object *obj, struct MUI_WindowData *data,
@@ -838,15 +839,14 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
     }
     if (width < 15)
         width = 15;
+    /* MUI 3.9 adds its gadgets however narrow the window is */
     needed = left + right + count * width + 16;
-    if (needed > win->Width ||
-        needed > data->wd_MinMax.MaxWidth + win->BorderLeft + win->BorderRight)
-        return;
     items = AllocVec(2 * sizeof(*items), MEMF_PUBLIC | MEMF_CLEAR);
     if (!items)
         return;
     data->wd_TitleGadgets = items;
-    data->wd_TitleMinWidth = needed;
+    /* Keep the gadgets visible when resizing, unless they never fit */
+    data->wd_TitleMinWidth = needed <= win->Width ? needed : 0;
     for (i = 0; i < 2; i++)
     {
         struct NativeTitleGadget *item = &items[i];
@@ -1015,10 +1015,10 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
         && data->wd_MinMax.MinWidth == data->wd_MinMax.MaxWidth)
         flags &= ~WFLG_SIZEGADGET;
 
-    if (!(flags & WFLG_SIZEBRIGHT))
+    if ((flags & WFLG_SIZEGADGET) && !(flags & WFLG_SIZEBRIGHT))
         flags |= WFLG_SIZEBBOTTOM;
 
-    CalcWindowPosition(obj, data);
+    CalcWindowPosition(obj, data, flags);
 
     struct Screen *scr = data->wd_RenderInfo.mri_Screen;
     if ((visinfo = GetVisualInfoA(scr, NULL)))
@@ -1125,7 +1125,9 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
         WA_RMBTrap :
         TAG_IGNORE, (IPTR) TRUE,
         WA_Gadgets, (IPTR) gadgets,
-        data->wd_ZoomGadget ?
+        /* MUI 3.9 adds no zoom gadget to a window without a size gadget
+         * (tests/native/titlegadgets.c) */
+        data->wd_ZoomGadget && (flags & WFLG_SIZEGADGET) ?
         WA_Zoom :
         TAG_IGNORE, (IPTR) & altdims,
         backfill, (IPTR) LAYERS_NOBACKFILL, TAG_DONE);
@@ -1337,13 +1339,20 @@ static VOID RefreshWindow(Object *oWin, struct MUI_WindowData *data)
 }
 
 
-/* Initialize data->wd_X and data->wd_Y for DisplayWindow */
-static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data)
+/* Initialize data->wd_X and data->wd_Y for DisplayWindow. The outer size
+ * uses the borders the window will really get: mri_BorderBottom assumes a
+ * size gadget, which fixed-size windows (IBrowse's requesters) do not
+ * have, and MUI 3.9 centres those on their actual height. */
+static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data,
+    ULONG flags)
 {
     struct MUI_RenderInfo *mri = &data->wd_RenderInfo;
     struct Screen *scr = mri->mri_Screen;
+    BOOL sizing = (flags & WFLG_SIZEGADGET) && !(flags & WFLG_BORDERLESS);
+    WORD bottom = sizing && (flags & WFLG_SIZEBBOTTOM) ? mri->mri_BorderBottom
+        : (flags & WFLG_BORDERLESS) ? 0 : scr->WBorBottom;
     WORD width = mri->mri_BorderLeft + data->wd_Width + mri->mri_BorderRight,
-        height = mri->mri_BorderTop + data->wd_Height + mri->mri_BorderBottom;
+        height = mri->mri_BorderTop + data->wd_Height + bottom;
     ULONG refw = 0, refx = 0, refh = 0, refy = 0;
 
     data->wd_X = data->wd_ReqX;
