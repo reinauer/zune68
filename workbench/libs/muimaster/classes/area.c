@@ -327,7 +327,7 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_FixHeight:
             data->mad_Flags |= MADF_FIXHEIGHT;
-            data->mad_HardHeight = tag->ti_Data;
+            data->mad_HardHeight = data->mad_FixHeight = tag->ti_Data;
             break;
 
         case MUIA_FixHeightTxt:
@@ -336,7 +336,7 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_FixWidth:
             data->mad_Flags |= MADF_FIXWIDTH;
-            data->mad_HardWidth = tag->ti_Data;
+            data->mad_HardWidth = data->mad_FixWidth = tag->ti_Data;
             break;
 
         case MUIA_FixWidthTxt:

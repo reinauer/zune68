@@ -21,7 +21,7 @@ class ColorfieldHarness(Harness):
         super().__init__(path)
         self.allocated = allocated
         self.obtained, self.released, self.colors = [], [], []
-        self.mem.w16(CLASS + 32, 256)
+        self.mem.w16(CLASS + 32, 272)
         self.mem.w32(OBJECT + 28, MRI)
         self.mem.w32(MRI + 4, SCREEN)
         self.mem.w32(MRI + 20, RP)
@@ -178,7 +178,7 @@ def check(path):
                       bytes.fromhex('4ef9') + struct.pack('>I', callback))
         h.cleanup()
         assert h.released == [11] and len(h.colors) == count
-        assert h.mem.r32(OBJECT + 256 + 4) == 0xeeeeeeee
+        assert h.mem.r32(OBJECT + 272 + 4) == 0xeeeeeeee
         assert h.get_pen() == NONE
     finally:
         h.machine.cleanup()

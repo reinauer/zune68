@@ -486,23 +486,25 @@ struct MUI_AreaData
     BYTE mad_subwidth;          /* additional width (frame & innerspacing) */
     BYTE mad_subheight;         /* additional height (frame & innerspacing) */
     ULONG mad_Flags;            /* some flags; see below */
-    ULONG mad_Flags2;
 // 40 bytes up to here
 
-    /* The following data is private */
+    /* The private data up to offset 80 follows MUI's layout, because
+     * applications read it through MUI's private macros (Voyager's
+     * _vtop and _shorthelp). Offsets are within the area data. */
     /* START PRIV */
-// offset 40
-    UWORD mad_HorizWeight;      /* weight values for layout. default 100 */
-    UWORD mad_VertWeight;
-// offset 44
-// ?
-// offset 48
-    ULONG mad_IDCMP;            /* IDCMP flags this listens to (for HandleInput) */
-// offset 52
-    CONST_STRPTR mad_BackgroundSpec;
-// offset 56
-    IPTR mad_FontPreset;        /* MUIV_Font_xxx or pointer to struct TextFont */
-// offset 76
+    UWORD mad_HorizWeight;      /* 40: weight values for layout. default 100 */
+    UWORD mad_VertWeight;       /* 42 */
+    WORD mad_HorizDisappear;    /* 44 */
+    WORD mad_VertDisappear;     /* 46 */
+    ULONG mad_IDCMP;            /* 48: IDCMP flags this listens to (for HandleInput) */
+    CONST_STRPTR mad_BackgroundSpec;    /* 52 */
+    IPTR mad_FontPreset;        /* 56: MUIV_Font_xxx or pointer to struct TextFont */
+    CONST_STRPTR mad_ShortHelp; /* 60: bubble help */
+    LONG mad_FixWidth;          /* 64: MUIA_FixWidth as MUI keeps it */
+    LONG mad_FixHeight;         /* 68: MUIA_FixHeight as MUI keeps it */
+    LONG mad_VirtualTop;        /* 72: _top() as a LONG, kept up to date */
+    ULONG mad_Flags2;           /* 76 */
+// 80
     CONST_STRPTR mad_FrameTitle;        /* for groups. Req. mad_Frame > 0 */
 // Inner values at offset 88 in MUI:
     BYTE mad_InnerLeft;         /* frame or hardcoded */
@@ -527,7 +529,6 @@ struct MUI_AreaData
     CONST_STRPTR mad_HardHeightTxt;
 // TODO: move SelBack in RenderInfo as it's common for all objects
     struct MUI_ImageSpec_intern *mad_SelBack;   /* selected state background */
-    CONST_STRPTR mad_ShortHelp; /* bubble help */
 // there's an event handler at 114
     struct MUI_EventHandlerNode mad_ehn;
     struct MUI_InputHandlerNode mad_Timer;      /* MUIA_Timer */

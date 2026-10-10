@@ -4121,6 +4121,7 @@ static void WindowShow(struct IClass *cl, Object *obj)
 
     _left(data->wd_RootObject) = win->BorderLeft;
     _top(data->wd_RootObject) = win->BorderTop;
+    muiAreaData(data->wd_RootObject)->mad_VirtualTop = win->BorderTop;
     _width(data->wd_RootObject) = data->wd_Width;
     _height(data->wd_RootObject) = data->wd_Height;
 
@@ -4357,6 +4358,7 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
         struct Window *win = data->wd_RenderInfo.mri_Window;
         _left(data->wd_RootObject) = win->BorderLeft;
         _top(data->wd_RootObject) = win->BorderTop;
+        muiAreaData(data->wd_RootObject)->mad_VirtualTop = win->BorderTop;
         _width(data->wd_RootObject) = data->wd_Width;
         _height(data->wd_RootObject) = data->wd_Height;
     }

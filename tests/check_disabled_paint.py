@@ -62,8 +62,8 @@ class PaintHarness(Harness):
     def redraw(self, cl, disabled):
         self.events.clear()
         self.mem.w32(OBJECT - 4, cl)
-        # Native Area ends at object+246; the disable count is its last LONG.
-        self.mem.w32(OBJECT + 242, 0x80000000 if disabled else 0)
+        # Native Area ends at object+262; the disable count is its last LONG.
+        self.mem.w32(OBJECT + 258, 0x80000000 if disabled else 0)
         self.call('MUI_Redraw', OBJECT, 1)
 
 

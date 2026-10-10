@@ -488,6 +488,7 @@ static void Group_ShiftChildren(struct IClass *cl, Object *obj,
 
         _left(child) -= dx;
         _top(child) -= dy;
+        muiAreaData(child)->mad_VirtualTop -= dy;
         while (childclass && childclass != cl)
             childclass = childclass->cl_Super;
         if (childclass)

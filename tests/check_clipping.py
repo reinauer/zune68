@@ -96,7 +96,7 @@ def check_virtual_paint(path):
     for failure in ('none', 'region', 'rect', 'intersect'):
         h = ClipHarness(path)
         cl = 0x70000
-        h.mem.w16(cl + 32, 246)
+        h.mem.w16(cl + 32, 262)
         outer = h.blob(bytes(12))
         h.mem.w32(LAYER + 126, outer)
         h.fail_region = failure == 'region'
@@ -137,8 +137,8 @@ def check_virtual_paint(path):
     for update, dx, dy, expected in cases:
         for fail_second in (False, True) if len(expected) == 2 else (False,):
             h = ClipHarness(path)
-            cl, data = 0x70000, OBJECT + 246
-            h.mem.w16(cl + 32, 246)
+            cl, data = 0x70000, OBJECT + 262
+            h.mem.w16(cl + 32, 262)
             h.mem.w_block(OBJECT + 52, struct.pack('>4h', 10, 20, 100, 80))
             h.mem.w_block(OBJECT + 60, bytes([3, 4, 8, 10]))
             h.mem.w32(data + 64, update)

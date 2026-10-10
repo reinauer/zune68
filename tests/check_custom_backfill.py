@@ -41,7 +41,7 @@ class BackfillHarness(Harness):
         args = [self.mem.r32(self.cpu.r_sp() + 4 + i * 4) for i in range(9)]
         self.events.append(args)
         if args[1] == BACKFILL:
-            assert self.mem.r32(OBJECT + 68) & 2
+            assert self.mem.r32(OBJECT + 104) & 2
         self.cpu.w_reg(0, 1)
 
     def enable(self, value):
@@ -65,7 +65,7 @@ class BackfillHarness(Harness):
 
 def check_group(path):
     h = BackfillHarness(path)
-    h.mem.w16(CLASS + 32, 246)
+    h.mem.w16(CLASS + 32, 262)
     childlist, node, child = 0x75000, 0x75100, 0x7510c
     h.mem.w32(childlist, node)
     h.mem.w32(node, childlist + 4)
@@ -108,7 +108,7 @@ def check(path):
     assert h.enabled() == 0
     h.enable(1)
     assert h.enabled() == 1
-    assert h.mem.r32(OBJECT + 68) & 1
+    assert h.mem.r32(OBJECT + 104) & 1
     for left, top, width, height in [(8, 17, 13, 11), (-9, -7, 4, 3), (0, 0, 1, 1)]:
         assert h.background(left, top, width, height) == 1
         assert len(h.events) == 1
@@ -122,14 +122,14 @@ def check(path):
     h.mem.w32(OBJECT + 64, 1 << 14)
     # A custom painter's superclass call must use ordinary background
     # painting instead of dispatching the callback recursively.
-    assert h.mem.r32(OBJECT + 68) == 1
-    h.mem.w32(OBJECT + 68, 3)
+    assert h.mem.r32(OBJECT + 104) == 1
+    h.mem.w32(OBJECT + 104, 3)
     h.background(0, 0, 5, 5)
     assert len(h.events) == 1 and h.events[0][1] != BACKFILL
-    h.mem.w32(OBJECT + 68, 1)
+    h.mem.w32(OBJECT + 104, 1)
     h.enable(0)
     assert h.enabled() == 0
-    assert not h.mem.r32(OBJECT + 68) & 1
+    assert not h.mem.r32(OBJECT + 104) & 1
     h.background(0, 0, 5, 5)
     assert len(h.events) == 1 and h.events[0][1] != BACKFILL
     assert not h.allocations

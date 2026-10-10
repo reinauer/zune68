@@ -70,6 +70,7 @@
 
     _left(obj) = left + _mleft(parent);
     _top(obj) = top + _mtop(parent);
+    muiAreaData(obj)->mad_VirtualTop = top + _mtop(parent);
     _width(obj) = width;
     _height(obj) = height;
 

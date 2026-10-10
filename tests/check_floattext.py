@@ -9,7 +9,7 @@ from check_class_lifetime import Harness, EXEC, INTUITION, MASTER, STACK, REFS
 
 CLASS, OBJECT, MESSAGE, TAGS = 0x70000, 0x71000, 0x72000, 0x73000
 WINDOW, UTILITY, GRAPHICS, TEXT = 0x74000, 0x75000, 0x76000, 0x77000
-DATA = OBJECT + 256
+DATA = OBJECT + 272
 TEXT_TAG, SKIP_TAG, TAB_TAG = 0x8042d16a, 0x80425c7d, 0x80427d17
 
 
@@ -25,7 +25,7 @@ class FloattextHarness(Harness):
         if '___UtilityBase' in self.symbols:
             self.mem.w32(self.symbols['___UtilityBase'], UTILITY)
         self.mem.w32(self.symbols['_GfxBase'], GRAPHICS)
-        self.mem.w16(CLASS + 32, 256)
+        self.mem.w16(CLASS + 32, 272)
         self.mem.w32(WINDOW + 50, WINDOW + 512)  # Window.RPort
         self.trap(UTILITY - 48, self.next_tag)
         self.trap(UTILITY - 138, lambda: self.cpu.w_reg(0,

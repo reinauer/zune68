@@ -104,17 +104,17 @@ def check(path):
     h = LayoutHarness(path)
     # Group instance starts beyond Area; no membership change is required
     # for ExitChange to request a layout. A changing parent defers it.
-    h.mem.w16(CLASS + 32, 256)
+    h.mem.w16(CLASS + 32, 272)
     h.mem.w32(OBJECT + 64, SETUP)
     h.mem.w32(OBJECT + 16, 0)
     h.call('Group__MUIM_ExitChange', CLASS, OBJECT, h.words(0))
     assert len(h.events) == 1
     parent = h.blob(bytes(400))
     h.mem.w32(OBJECT + 16, parent)
-    h.mem.w32(parent + 256 + 8, 1 << 4)
+    h.mem.w32(parent + 272 + 8, 1 << 4)
     h.call('Group__MUIM_ExitChange', CLASS, OBJECT, h.words(0))
     assert len(h.events) == 1
-    h.mem.w32(parent + 256 + 8, 0)
+    h.mem.w32(parent + 272 + 8, 0)
     h.call('Group__MUIM_ExitChange', CLASS, OBJECT, h.words(0))
     assert len(h.events) == 2
     # A custom layout hook receives the live child list and inner geometry.
@@ -122,7 +122,7 @@ def check(path):
     hook, entry = h.blob(bytes(20)), h.blob(bytes(4))
     h.mem.w32(children, children + 4)
     h.mem.w32(children + 8, children)
-    h.mem.w32(OBJECT + 256 + 4, hook)
+    h.mem.w32(OBJECT + 272 + 4, hook)
     h.mem.w32(hook + 8, entry)
     h.mem.w16(OBJECT + 28 + 28, 100)  # mad_Box.Width
     h.mem.w16(OBJECT + 28 + 30, 50)
@@ -146,7 +146,7 @@ def check(path):
     # A custom virtual layout may shrink its requested content extent,
     # but its public virtual dimensions must still cover the viewport.
     # This follows the grow/shrink sequence in native/relayout.c.
-    h.mem.w32(OBJECT + 256 + 8, 1 << 6)  # GROUP_VIRTUAL
+    h.mem.w32(OBJECT + 272 + 8, 1 << 6)  # GROUP_VIRTUAL
     requested = [20, 10]
     def virtual_layout():
         msg = h.cpu.r_reg(9)
