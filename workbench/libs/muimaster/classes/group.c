@@ -1445,7 +1445,11 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
         }
         else
         {
-            struct Region *r = group_children_clip_region(cl, obj);
+            /* Without FILLAREA, Area paints only outside the inner box,
+             * where the clip excludes nothing. In refresh mode each clip
+             * costs two refresh cycles, so skip it. */
+            struct Region *r = (_flags(obj) & MADF_FILLAREA)
+                ? group_children_clip_region(cl, obj) : NULL;
             APTR c = (APTR)-1;
             if (r)
                 c = MUI_AddClipRegion(muiRenderInfo(obj), r);

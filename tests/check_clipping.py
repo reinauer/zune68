@@ -282,6 +282,41 @@ def check_refresh_culling(path):
           'preserves early-return state and leaves explicit redraws unchanged')
 
 
+def check_virtual_clip_skip(path):
+    # Each clip inside BeginRefresh costs two EndRefresh/BeginRefresh
+    # cycles. Install one only when output could leave the virtual bounds.
+    for case in ('inside', 'damage', 'installed', 'control'):
+        h = ClipHarness(path)
+        box = (10, 10, 20, 20) if case == 'inside' else (0, 0, 150, 150)
+        h.mem.w_block(OBJECT + 52, struct.pack('>4h', *box))
+        h.parent(OBJECT, 0, 0, 100, 100)
+        if case == 'damage':
+            h.mem.w32(MRI + 16, WINDOW)
+            h.mem.w32(WINDOW + 50, RP)
+            h.mem.w32(WINDOW + 124, LAYER)
+            h.mem.w32(MRI + 24, 8)
+            damage = h.blob(struct.pack('>4hI', 16, 22, 39, 37, 1))
+            h.mem.w32(LAYER + 156, damage)
+        clip = None
+        if case == 'installed':
+            region = h.alloc(12)
+            h.mem.w_block(region, struct.pack('>4h', 20, 20, 40, 40))
+            clip = h.call('ZuneAddClipRegion', MRI, region)
+            h.protocol.clear()
+        h.call('MUI_Redraw', OBJECT, 1)
+        assert h.draws == 1, case
+        if case == 'control':
+            assert h.region_allocations == 1
+            assert h.rectangles == [(0, 0, 99, 99)], h.rectangles
+        else:
+            assert not h.region_allocations and not h.protocol, case
+        if clip is not None:
+            h.call('ZuneRemoveClipRegion', MRI, clip)
+        h.finish()
+    print(f'{path.name}: virtual children inside their bounds, damage or '
+          'installed clip draw without another clip region')
+
+
 def check(path):
     # A damaged layer is not necessarily inside BeginRefresh/BeginUpdate.
     for simple in [False, True]:
@@ -352,3 +387,4 @@ if __name__ == '__main__':
         check(Path(name))
         check_virtual_paint(Path(name))
         check_refresh_culling(Path(name))
+        check_virtual_clip_skip(Path(name))

@@ -248,6 +248,24 @@ void ZuneDrawDisabled(Object *obj)
             if (bounds.MaxX < bounds.MinX || bounds.MaxY < bounds.MinY)
                 return;
         }
+        /* No clip is needed when the object, the refresh damage or the
+         * innermost installed clip already lies within the visible bounds.
+         * In refresh mode every install costs two EndRefresh/BeginRefresh
+         * cycles. */
+        if (have_bounds &&
+            ((_left(obj) >= bounds.MinX && _right(obj) <= bounds.MaxX &&
+              _top(obj) >= bounds.MinY && _bottom(obj) <= bounds.MaxY) ||
+             (have_damage &&
+              damage_bounds.MinX >= bounds.MinX &&
+              damage_bounds.MaxX <= bounds.MaxX &&
+              damage_bounds.MinY >= bounds.MinY &&
+              damage_bounds.MaxY <= bounds.MaxY) ||
+             (muiRenderInfo(obj)->mri_rCount > 0 &&
+              isRegionWithinBounds(muiRenderInfo(obj)->mri_rArray[
+                  muiRenderInfo(obj)->mri_rCount - 1], bounds.MinX,
+                  bounds.MinY, bounds.MaxX - bounds.MinX + 1,
+                  bounds.MaxY - bounds.MinY + 1))))
+            have_bounds = FALSE;
         if (have_bounds)
         {
             /* All ancestors clip to rectangles: intersect on stack, then
