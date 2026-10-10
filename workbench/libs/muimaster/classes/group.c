@@ -3478,6 +3478,27 @@ IPTR Group__MUIM_DrawBackground(struct IClass *cl, Object *obj,
     return DoSuperMethodA(cl, obj, (Msg) msg);
 }
 
+/* TRUE when obj is a plain built-in Group whose MUIM_DrawBackground would
+ * only hand the request on to its parent. Objects inheriting a background
+ * skip such levels instead of making two method calls per level. */
+BOOL Group_PassesBackground(Object *obj)
+{
+    struct IClass *cl = OCLASS(obj);
+    struct MUI_AreaData *ad;
+
+#if defined(__MAXON__) || defined(__amigaos4__)
+    if (cl->cl_Dispatcher.h_Entry != (HOOKFUNC)_MUI_Group_desc.dispatcher)
+#else
+    if (cl->cl_Dispatcher.h_SubEntry != (HOOKFUNC)_MUI_Group_desc.dispatcher)
+#endif
+        return FALSE;
+    ad = muiAreaData(obj);
+    return (BOOL)(!(((struct MUI_GroupData *)INST_DATA(cl, obj))->flags
+        & GROUP_VIRTUAL) && (ad->mad_Flags & MADF_CANDRAW) &&
+        !ad->mad_Background && !ad->mad_SelBack &&
+        !(ad->mad_Flags2 & MADF2_CUSTOMBACKFILL));
+}
+
 /**************************************************************************
  MUIM_FindAreaObject
  Find the given object or return NULL

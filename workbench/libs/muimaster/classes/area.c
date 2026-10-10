@@ -1386,6 +1386,8 @@ Area__MUIM_DrawParentBackground(struct IClass *cl, Object *obj,
     /* Notify keeps the parent; a GetAttr per level of an inherited
      * background costs a full OM_GET dispatch */
     parent = _parent(obj);
+    while (parent && Group_PassesBackground(parent))
+        parent = _parent(parent);
     if (parent) {
         DoMethod(parent, MUIM_DrawBackground, msg->left, msg->top, msg->width,
                  msg->height, msg->xoffset, msg->yoffset, msg->flags);
