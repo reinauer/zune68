@@ -168,39 +168,48 @@ static const char *const mx_map[] = {
 void mx_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
     LONG height, LONG state)
 {
+    static const char roles[3] = { 'T', 'B', 'F' };
     struct RastPort *rport = mri->mri_RastPort;
     BOOL selected = state == IDS_SELECTED;
     LONG x0 = left + (width - 17) / 2, y0 = top + (height - 9) / 2;
-    LONG x, y;
+    LONG x, y, r;
 
-    for (y = 0; y < 9; y++)
+    /* One pen per role; runs of four or more pixels are cheaper as
+     * RectFill than as WritePixel (tests/native/gfxprims.c) */
+    for (r = 0; r < 3; r++)
     {
-        if (y0 + y < top || y0 + y >= top + height)
-            continue;
-        for (x = 0; x < 17; x++)
-        {
-            LONG pen;
+        LONG pen;
 
-            if (x0 + x < left || x0 + x >= left + width)
+        if (roles[r] == 'F' && !selected)
+            continue;
+        pen = roles[r] == 'T' ? (selected ? MPEN_SHADOW : MPEN_SHINE)
+            : roles[r] == 'B' ? (selected ? MPEN_SHINE : MPEN_SHADOW)
+            : MPEN_FILL;
+        SetAPen(rport, mri->mri_Pens[pen]);
+        for (y = 0; y < 9; y++)
+        {
+            if (y0 + y < top || y0 + y >= top + height)
                 continue;
-            switch (mx_map[y][x])
+            for (x = 0; x < 17; x++)
             {
-            case 'T':
-                pen = selected ? MPEN_SHADOW : MPEN_SHINE;
-                break;
-            case 'B':
-                pen = selected ? MPEN_SHINE : MPEN_SHADOW;
-                break;
-            case 'F':
-                if (!selected)
+                LONG end;
+
+                if (mx_map[y][x] != roles[r])
                     continue;
-                pen = MPEN_FILL;
-                break;
-            default:
-                continue;
+                for (end = x; end + 1 < 17 && mx_map[y][end + 1] == roles[r];)
+                    end++;
+                {
+                    LONG l = MAX(x0 + x, left);
+                    LONG rt = MIN(x0 + end, left + width - 1);
+
+                    if (rt - l >= 3)
+                        RectFill(rport, l, y0 + y, rt, y0 + y);
+                    else
+                        for (; l <= rt; l++)
+                            WritePixel(rport, l, y0 + y);
+                }
+                x = end;
             }
-            SetAPen(rport, mri->mri_Pens[pen]);
-            WritePixel(rport, x0 + x, y0 + y);
         }
     }
 }

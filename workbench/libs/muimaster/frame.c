@@ -379,13 +379,18 @@ static void frame_custom_down(struct dt_frame_image *fi,
  Drawing primitives - optimized for performance
 **************************************************************************/
 
+/* Measured on a 68020 planar screen (tests/native/gfxprims.c): RectFill
+ * is fastest for horizontal lines, Move/Draw for vertical ones, and
+ * repeating the current pen still costs a library call. */
+
 /** Horizontal line drawing */
 static inline void draw_horizontal_line(struct RastPort *rp, int x1, int x2,
                                         int y, ULONG pen)
 {
     if (x1 > x2)
         return; /* Safety check */
-    SetAPen(rp, pen);
+    if (rp->FgPen != (BYTE)pen)
+        SetAPen(rp, pen);
     RectFill(rp, x1, y, x2, y);
 }
 
@@ -395,8 +400,10 @@ static inline void draw_vertical_line(struct RastPort *rp, int x, int y1,
 {
     if (y1 > y2)
         return; /* Safety check */
-    SetAPen(rp, pen);
-    RectFill(rp, x, y1, x, y2);
+    if (rp->FgPen != (BYTE)pen)
+        SetAPen(rp, pen);
+    Move(rp, x, y1);
+    Draw(rp, x, y2);
 }
 
 /**************************************************************************
