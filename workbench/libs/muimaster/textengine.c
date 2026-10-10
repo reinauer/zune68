@@ -576,8 +576,24 @@ void zune_text_get_bounds(ZText * text, Object * obj)
     text->height = 0;
 
     font = _font(obj);
-    InitRastPort(&rp);
-    SetFont(&rp, font);
+    /* Measuring needs a RastPort with the object's font. Copying the
+     * object's own RastPort avoids InitRastPort and usually SetFont; the
+     * copy is only used for TextLength and never draws. */
+    if ((_flags(obj) & MADF_SETUP) && muiRenderInfo(obj)
+        && muiRenderInfo(obj)->mri_RastPort)
+    {
+        rp = *_rp(obj);
+        if (rp.Font != font)
+            SetFont(&rp, font);
+        /* Measure with the plain style, as a fresh RastPort would */
+        if (rp.AlgoStyle)
+            SetSoftStyle(&rp, FS_NORMAL, AskSoftStyle(&rp));
+    }
+    else
+    {
+        InitRastPort(&rp);
+        SetFont(&rp, font);
+    }
 
     for (line_node = (ZTextLine *) text->lines.mlh_Head;
         line_node->node.mln_Succ;
@@ -662,7 +678,8 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
     D(bug("zune_text_draw(%p) %d %d %d\n", obj, left, right, top));
 
     rp = _rp(obj);
-    SetFont(rp, _font(obj));
+    if (rp->Font != _font(obj))
+        SetFont(rp, _font(obj));
     SetSoftStyle(rp, style, AskSoftStyle(rp));
 
     for (line_node = (ZTextLine *) text->lines.mlh_Head;
