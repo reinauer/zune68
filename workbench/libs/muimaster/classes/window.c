@@ -1330,6 +1330,16 @@ static VOID RefreshWindow(Object *oWin, struct MUI_WindowData *data)
     {
         if (MUI_BeginRefresh(&data->wd_RenderInfo, 0))
         {
+            struct Window *win = data->wd_RenderInfo.mri_Window;
+            LONG left = win->BorderLeft, top = win->BorderTop;
+
+            /* MUI 3.9's layer backfill hook paints damage with the window
+             * background before objects redraw; IBrowse's toolbar leaves
+             * the room between its buttons to it. The refresh clip limits
+             * this to the damaged area. */
+            zune_imspec_draw(data->wd_Background, &data->wd_RenderInfo,
+                left, top, win->Width - win->BorderRight - left,
+                win->Height - win->BorderBottom - top, left, top, 0);
             MUI_Redraw(data->wd_RootObject, MADF_DRAWALL);
             // but should only draw focus without using MUIM_GoActive !
             ActivateObject(data);
