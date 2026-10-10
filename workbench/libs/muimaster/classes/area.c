@@ -1001,10 +1001,36 @@ static IPTR Area_CustomBackfill(Object *obj, LONG left, LONG top,
     LONG width, LONG height)
 {
     struct MUI_AreaData *data = muiAreaData(obj);
+    struct MUI_RenderInfo *mri = muiRenderInfo(obj);
+    APTR clip = (APTR)-1;
     IPTR result;
 
     if (width <= 0 || height <= 0)
         return FALSE;
+    /* Virtual group backfills (Voyager's page) draw whole content lines
+     * that touch the box and rely on MUI to clip them to it; otherwise a
+     * partly visible last line spills below the group. */
+    if ((data->mad_Flags & (MADF_ISVIRTUALGROUP | MADF_INVIRTUALGROUP))
+        && !(mri->mri_rCount > 0
+            && isRegionWithinBounds(mri->mri_rArray[mri->mri_rCount - 1],
+                left, top, width, height)))
+    {
+        struct Region *region = NewRegion();
+        struct Rectangle rect;
+
+        rect.MinX = left;
+        rect.MinY = top;
+        rect.MaxX = left + width - 1;
+        rect.MaxY = top + height - 1;
+        if (region && !OrRectRegion(region, &rect))
+        {
+            DisposeRegion(region);
+            region = NULL;
+        }
+        if (!region)
+            return FALSE;
+        clip = MUI_AddClipRegion(mri, region);
+    }
     /* Custom painters may call their superclass DrawBackground for the
      * ordinary pattern. Do not dispatch the same callback recursively.
      */
@@ -1012,6 +1038,8 @@ static IPTR Area_CustomBackfill(Object *obj, LONG left, LONG top,
     result = DoMethod(obj, MUIM_CustomBackfill, left, top,
         left + (ULONG)width - 1, top + (ULONG)height - 1, 0, 0);
     data->mad_Flags2 &= ~MADF2_BACKFILL_ACTIVE;
+    if (clip != (APTR)-1)
+        MUI_RemoveClipRegion(mri, clip);
     return result;
 }
 

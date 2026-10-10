@@ -8,6 +8,7 @@ import struct
 import sys
 from pathlib import Path
 from check_class_lifetime import Harness, INTUITION
+from check_clipping import GFX, LAYERS, MRI, RP, LAYER
 
 CLASS, OBJECT, MESSAGE, TAGS, UTILITY = 0x70000, 0x71000, 0x72000, 0x73000, 0x74000
 CUSTOM = 0x80420a63
@@ -103,6 +104,54 @@ def check_group(path):
     h.machine.cleanup()
 
 
+def check_virtual(path):
+    """Virtual group backfills draw whole lines; clip them to the box."""
+    h = BackfillHarness(path)
+    h.mem.w32(h.symbols['_GfxBase'], GFX)
+    h.mem.w32(h.symbols['_LayersBase'], LAYERS)
+    h.mem.w32(MRI + 20, RP)
+    h.mem.w32(RP, LAYER)
+    h.mem.w32(OBJECT + 28, MRI)
+    rects, clips = [], []
+    def rect():
+        bounds = bytes(h.mem.r_block(h.cpu.r_reg(9), 8))
+        rects.append(struct.unpack('>4h', bounds))
+        h.mem.w_block(h.cpu.r_reg(8), bounds)
+        h.cpu.w_reg(0, 1)
+    def install():
+        old = h.mem.r32(LAYER + 126)
+        h.mem.w32(LAYER + 126, h.cpu.r_reg(9))
+        h.cpu.w_reg(0, old)
+    def dispose():
+        h.cpu.w_reg(9, h.cpu.r_reg(8))
+        h.free_vec()
+    h.trap(GFX - 516, lambda: h.cpu.w_reg(0, h.alloc(12)))
+    h.trap(GFX - 534, dispose)
+    h.trap(GFX - 510, rect)
+    h.trap(LAYERS - 174, install)
+    def method():
+        args = [h.mem.r32(h.cpu.r_sp() + 4 + i * 4) for i in range(9)]
+        clips.append((args[1], h.mem.r32(LAYER + 126)))
+        h.cpu.w_reg(0, 1)
+    h.trap(h.symbols['_DoMethod'], method)
+    h.enable(1)
+    for flag in (1 << 30, 1 << 29):  # MADF_ISVIRTUALGROUP, INVIRTUALGROUP.
+        h.mem.w32(OBJECT + 64, (1 << 14) | flag)
+        rects.clear()
+        clips.clear()
+        assert h.background(8, 17, 13, 11) == 1
+        assert rects == [(8, 17, 20, 27)], rects
+        assert len(clips) == 1 and clips[0][0] == BACKFILL and clips[0][1]
+        assert h.mem.r32(LAYER + 126) == 0
+    h.mem.w32(OBJECT + 64, 1 << 14)
+    rects.clear()
+    clips.clear()
+    h.background(8, 17, 13, 11)
+    assert not rects and clips == [(BACKFILL, 0)], clips
+    assert not h.allocations
+    h.machine.cleanup()
+
+
 def check(path):
     h = BackfillHarness(path)
     assert h.enabled() == 0
@@ -134,10 +183,11 @@ def check(path):
     assert len(h.events) == 1 and h.events[0][1] != BACKFILL
     assert not h.allocations
     h.machine.cleanup()
-    print(f'{path}: custom backfill bounds, routing and disabled state passed')
+    print(f'{path}: custom backfill bounds, routing, clipping and disabled state passed')
 
 
 if __name__ == '__main__':
     for name in sys.argv[1:]:
         check(Path(name))
         check_group(Path(name))
+        check_virtual(Path(name))
