@@ -889,6 +889,12 @@ static IPTR Area__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     const struct MUI_FrameSpec_intern *frame;
     struct MUI_FrameSpec_intern tempframe;
 
+    /* Like MUI, a NULL MinMaxInfo means the object's own minmax, and the
+     * message is updated so subclasses see it after the super call.
+     * Voyager measures form fields this way and reads _minwidth(). */
+    if (!msg->MinMaxInfo)
+        msg->MinMaxInfo = &data->mad_MinMax;
+
     frame = get_intframe(obj, data, &tempframe);
     zframe = zune_zframe_get(obj, frame);
 
