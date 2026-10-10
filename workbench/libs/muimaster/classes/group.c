@@ -1199,6 +1199,104 @@ static struct Region *group_children_clip_region(struct IClass *cl,
     return region;
 }
 
+#define GROUP_GAP_CHILDREN 32
+
+/* Collect the visible children of a group clipped to its inner box.
+ * Returns the count, or -1 when there are too many for the gap painter. */
+static int group_collect_children(struct IClass *cl, Object *obj,
+    struct Rectangle *kids)
+{
+    struct MUI_GroupData *data = INST_DATA(cl, obj);
+    struct MinList *ChildList = NULL;
+    APTR cstate;
+    Object *child;
+    LONG page = -1;
+    int n = 0;
+
+    get(data->family, MUIA_Family_List, &ChildList);
+    cstate = ChildList->mlh_Head;
+    while ((child = NextObject(&cstate)))
+    {
+        struct Rectangle rect;
+
+        if (child != data->titlegroup)
+            ++page;
+        if ((data->flags & GROUP_PAGEMODE) && (page != data->active_page)
+            && (child != data->titlegroup))
+            continue;
+        if (!(muiAreaData(child)->mad_Flags & MADF_CANDRAW)
+            || _width(child) <= 0 || _height(child) <= 0)
+            continue;
+
+        rect.MinX = MAX(_left(child), _mleft(obj));
+        rect.MinY = MAX(_top(child), _mtop(obj));
+        rect.MaxX = MIN(_right(child), _mright(obj));
+        rect.MaxY = MIN(_bottom(child), _mbottom(obj));
+        if (rect.MaxX < rect.MinX || rect.MaxY < rect.MinY)
+            continue;
+        if (n == GROUP_GAP_CHILDREN)
+            return -1;
+        kids[n++] = rect;
+    }
+    return n;
+}
+
+/* Paint the group background only where no child covers the inner box,
+ * using a band sweep instead of a clip region. Region clipping allocated
+ * temporary regions and rebuilt the layer clip for every group drawn. */
+static void group_fill_gaps(Object *obj, const struct Rectangle *kids,
+    int n)
+{
+    WORD ys[2 * GROUP_GAP_CHILDREN + 2], xs[GROUP_GAP_CHILDREN][2];
+    WORD left = _mleft(obj), right = _mright(obj);
+    int ny = 0, i, j, k;
+
+    ys[ny++] = _mtop(obj);
+    ys[ny++] = _mbottom(obj) + 1;
+    for (i = 0; i < n; i++)
+    {
+        ys[ny++] = kids[i].MinY;
+        ys[ny++] = kids[i].MaxY + 1;
+    }
+    for (i = 1; i < ny; i++)        /* insertion sort, small n */
+        for (j = i; j > 0 && ys[j - 1] > ys[j]; j--)
+        {
+            WORD t = ys[j]; ys[j] = ys[j - 1]; ys[j - 1] = t;
+        }
+
+    for (i = 0; i + 1 < ny; i++)
+    {
+        WORD y0 = ys[i], y1 = ys[i + 1] - 1, x = left;
+        int nx = 0;
+
+        if (y0 > y1 || y0 < _mtop(obj) || y1 > _mbottom(obj))
+            continue;
+        /* Bands split at every child edge, so a child covers a band fully
+         * or not at all */
+        for (j = 0; j < n; j++)
+            if (kids[j].MinY <= y0 && kids[j].MaxY >= y1)
+            {
+                for (k = nx++; k > 0 && xs[k - 1][0] > kids[j].MinX; k--)
+                {
+                    xs[k][0] = xs[k - 1][0];
+                    xs[k][1] = xs[k - 1][1];
+                }
+                xs[k][0] = kids[j].MinX;
+                xs[k][1] = kids[j].MaxX;
+            }
+        for (j = 0; j <= nx; j++)
+        {
+            WORD gap_end = (j < nx) ? xs[j][0] - 1 : right;
+
+            if (gap_end >= x)
+                DoMethod(obj, MUIM_DrawBackground, x, y0, gap_end - x + 1,
+                    y1 - y0 + 1, x, y0, _flags(obj));
+            if (j < nx && xs[j][1] + 1 > x)
+                x = xs[j][1] + 1;
+        }
+    }
+}
+
 /* Private MUI virtual-group painting protocol. These method IDs are used
  * by existing subclasses to prepare and release their content clipping.
  * MUI 3.9 calls neither method for an ordinary Group or Area.
@@ -1327,15 +1425,36 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
     if (muiGlobalInfo(obj)->mgi_Prefs->window_redraw
         == WINDOW_REDRAW_WITHOUT_CLEAR)
     {
-        struct Region *r = group_children_clip_region(cl, obj);
-        APTR c = (APTR)-1;
-        if (r)
-            c = MUI_AddClipRegion(muiRenderInfo(obj), r);
+        struct Rectangle kids[GROUP_GAP_CHILDREN];
+        int nkids = -1;
 
-        DoSuperMethodA(cl, obj, (Msg) msg);
+        /* Custom backfill hooks keep one call for the whole inner box */
+        if (!virtual && (_flags(obj) & MADF_FILLAREA)
+            && !(muiAreaData(obj)->mad_Flags2 & MADF2_CUSTOMBACKFILL))
+            nkids = group_collect_children(cl, obj, kids);
 
-        if (r)
-            MUI_RemoveClipRegion(muiRenderInfo(obj), c);
+        if (nkids >= 0)
+        {
+            /* Area paints the frame and its surround; the group fills
+             * the uncovered parts of its inner box itself */
+            _flags(obj) &= ~MADF_FILLAREA;
+            DoSuperMethodA(cl, obj, (Msg) msg);
+            _flags(obj) |= MADF_FILLAREA;
+            if (msg->flags & MADF_DRAWOBJECT)
+                group_fill_gaps(obj, kids, nkids);
+        }
+        else
+        {
+            struct Region *r = group_children_clip_region(cl, obj);
+            APTR c = (APTR)-1;
+            if (r)
+                c = MUI_AddClipRegion(muiRenderInfo(obj), r);
+
+            DoSuperMethodA(cl, obj, (Msg) msg);
+
+            if (r)
+                MUI_RemoveClipRegion(muiRenderInfo(obj), c);
+        }
     }
     else
     {
