@@ -1153,12 +1153,22 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
     }
 
     if (data->mad_Flags & MADF_FILLAREA) {
-        if ((data->mad_Flags2 & MADF2_CUSTOMBACKFILL) &&
-            !(flags & MADF_DRAWALL)) {
-            r.MinX = _mleft(obj);
-            r.MinY = _mtop(obj);
-            r.MaxX = _mright(obj);
-            r.MaxY = _mbottom(obj);
+        /* MUI 3.9 passes a custom backfill the whole box (below a frame
+         * title) when the frame is drawn too, and only the inner box when
+         * the frame keeps its pixels (tests/native/backfillrect.c).
+         * Newstring paints its field colour this way. */
+        if (data->mad_Flags2 & MADF2_CUSTOMBACKFILL) {
+            if (drawframe) {
+                r.MinX = _left(obj);
+                r.MinY = _top(obj) + data->mad_TitleHeightAbove;
+                r.MaxX = _right(obj);
+                r.MaxY = _bottom(obj);
+            } else {
+                r.MinX = _mleft(obj);
+                r.MinY = _mtop(obj);
+                r.MaxX = _mright(obj);
+                r.MaxY = _mbottom(obj);
+            }
         }
         rects[0] = r;
         numrects = 1;
