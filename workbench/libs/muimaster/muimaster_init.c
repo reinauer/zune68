@@ -28,6 +28,8 @@ struct Library *MUIMasterBase, *MUIScreenBase, *CyberGfxBase;
 BOOL ZuneGccInit(void);
 void ZuneGccCleanup(void);
 BOOL Locale_Initialize(void);
+void MUIGfx_Install(struct Library *owner);
+void MUIGfx_Remove(void);
 void Locale_Deinitialize(void);
 static const struct {
     struct Library **base;
@@ -56,6 +58,7 @@ void L_ExpungeLib(struct Library *library)
 {
     struct MUIMasterBase_intern *base = MUIMB(library);
     unsigned i = sizeof(dependencies) / sizeof(dependencies[0]);
+    MUIGfx_Remove();
     Locale_Deinitialize();
     ZuneGccCleanup();
     if (base->topaz8font) CloseFont(base->topaz8font);
@@ -108,6 +111,7 @@ ULONG L_InitLib(struct Library *library)
     }
     if (!ZuneGccInit()) goto fail;
     Locale_Initialize();
+    MUIGfx_Install(library);
     return TRUE;
 fail:
     L_ExpungeLib(library);

@@ -26,6 +26,32 @@ class InitHarness(Harness):
         self.trap(GRAPHICS - 78, self.close_font)
         self.trap(self.symbols['_Locale_Initialize'], self.locale_init)
         self.trap(self.symbols['_Locale_Deinitialize'], self.locale_exit)
+        # The in-memory muigfx.library: Forbid/Permit, FindName,
+        # MakeLibrary and AddLibrary into a model library list.
+        self.trap(EXEC - 132, lambda: None)
+        self.trap(EXEC - 138, lambda: None)
+        self.trap(EXEC - 276, lambda: self.cpu.w_reg(0, 0))
+        self.trap(EXEC - 84, self.make_library)
+        self.trap(EXEC - 396, self.add_library)
+        self.lib_list = self.alloc(12)
+        self.mem.w32(self.lib_list, self.lib_list + 4)
+        self.mem.w32(self.lib_list + 8, self.lib_list)
+        self.added = []
+
+    def make_library(self):
+        vectors, count = self.cpu.r_reg(8), 0
+        while self.mem.r32(vectors + 4 * count) != 0xffffffff:
+            count += 1
+        negative, positive = (count * 6 + 3) & ~3, self.cpu.r_reg(0)
+        base = self.alloc(negative + positive) + negative
+        self.mem.w16(base + 16, negative)
+        self.mem.w16(base + 18, positive)
+        self.cpu.w_reg(0, base)
+
+    def add_library(self):
+        node = self.cpu.r_reg(9)
+        self.added.append(self.mem.r_cstr(self.mem.r32(node + 10)))
+        self.link(node, self.lib_list, self.mem.r32(self.lib_list))
 
     def open_library(self):
         name = self.mem.r_cstr(self.cpu.r_reg(9))
@@ -98,26 +124,32 @@ def check(path):
     assert h.call('L_InitLib')
     assert 'muiscreen.library' not in h.opens
     assert 'cybergraphics.library' not in h.opens
+    assert h.added == ['muigfx.library'], h.added
     count = len(h.opens)
     size = h.mem.r32(h.symbols['_LibInitTable'])
     pens = h.mem.r32(MASTER + size - 4)
     for index, expected in enumerate([b's3', b'', b's7', b'', b's4', b's2', b's5', b's8']):
         assert h.mem.r_cstr(pens + 32 * index).encode() == expected, (index, h.mem.r_cstr(pens + 32 * index), expected)
     h.call('L_ExpungeLib')
+    assert h.mem.r32(h.lib_list) == h.lib_list + 4, 'muigfx.library not removed'
+    del h.allocations[h.lib_list]
     assert not h.live_libraries and not h.allocations
     h.machine.cleanup()
     for failed_open in range(1, count + 1):
         h = InitHarness(path, fail=failed_open)
         restore_cleanup(h)
         assert not h.call('L_InitLib')
+        assert not h.added
+        del h.allocations[h.lib_list]
         assert not h.live_libraries and not h.allocations
         h.machine.cleanup()
     h = InitHarness(path, allocation_failure=1)
     restore_cleanup(h)
     assert not h.call('L_InitLib')
+    del h.allocations[h.lib_list]
     assert not h.live_libraries and not h.allocations
     h.machine.cleanup()
-    print(f'{path.name}: native startup, pens and {count} failed opens unwind cleanly')
+    print(f'{path.name}: native startup, pens, muigfx.library and {count} failed opens unwind cleanly')
 
 
 if __name__ == '__main__':
