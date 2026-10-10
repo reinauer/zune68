@@ -161,7 +161,9 @@ static void _zune_focus_new(Object *obj, int type)
     SetABPenDrMd(rp, _pens(obj)[MPEN_SHINE], _pens(obj)[MPEN_SHADOW], JAM2);
 
     if (type == ZUNE_FOCUS_TYPE_ACTIVE_OBJ) {
-        SetDrPt(rp, 0xCCCC);
+        /* MUI 3.9 frames the active object with a solid shine line one
+         * pixel outside its box (tests/native/activeframe.c) */
+        SetDrPt(rp, 0xFFFF);
         x1--;
         y1--;
         x2++;
