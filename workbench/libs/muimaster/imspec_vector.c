@@ -151,65 +151,70 @@ void checkbox_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
         glyph_draw(mri, left, top, width, height, checkmark_glyph, 13, 7);
 }
 
-/* MUI 3.8/3.9 radio button: top-left edge (T), bottom-right edge (B) and
- * the selected fill (F), swapping the edge pens with the state. */
+/* MUI 3.8/3.9 radio button: top-left edge (T), bottom-right edge (B),
+ * the inside (I) and the selected fill (F), swapping the edge pens with
+ * the state. The inside is painted with the background pen and the fill
+ * only when selected; the corners outside the outline stay transparent,
+ * as MUI 3.9 shows on a white IBrowse page. */
 static const char *const mx_map[] = {
     "..TTTTTTTTTTTTB..",
-    ".TT...........BB.",
-    "TT...FFFFFFF...BB",
-    "TT..FFFFFFFFF..BB",
-    "TT..FFFFFFFFF..BB",
-    "TT..FFFFFFFFF..BB",
-    "TT...FFFFFFF...BB",
-    ".TT...........BB.",
+    ".TTIIIIIIIIIIIBB.",
+    "TTIIIFFFFFFFIIIBB",
+    "TTIIFFFFFFFFFIIBB",
+    "TTIIFFFFFFFFFIIBB",
+    "TTIIFFFFFFFFFIIBB",
+    "TTIIIFFFFFFFIIIBB",
+    ".TTIIIIIIIIIIIBB.",
     "..TBBBBBBBBBBBB..",
 };
+
+static LONG mx_pen(char c, BOOL selected)
+{
+    switch (c)
+    {
+    case 'T': return selected ? MPEN_SHADOW : MPEN_SHINE;
+    case 'B': return selected ? MPEN_SHINE : MPEN_SHADOW;
+    case 'F': return selected ? MPEN_FILL : MPEN_BACKGROUND;
+    case 'I': return MPEN_BACKGROUND;
+    }
+    return -1;
+}
 
 void mx_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
     LONG height, LONG state)
 {
-    static const char roles[3] = { 'T', 'B', 'F' };
     struct RastPort *rport = mri->mri_RastPort;
     BOOL selected = state == IDS_SELECTED;
     LONG x0 = left + (width - 17) / 2, y0 = top + (height - 9) / 2;
-    LONG x, y, r;
+    LONG x, y;
 
-    /* One pen per role; runs of four or more pixels are cheaper as
-     * RectFill than as WritePixel (tests/native/gfxprims.c) */
-    for (r = 0; r < 3; r++)
+    /* Runs of four or more pixels are cheaper as RectFill than as
+     * WritePixel (tests/native/gfxprims.c) */
+    for (y = 0; y < 9; y++)
     {
-        LONG pen;
-
-        if (roles[r] == 'F' && !selected)
+        if (y0 + y < top || y0 + y >= top + height)
             continue;
-        pen = roles[r] == 'T' ? (selected ? MPEN_SHADOW : MPEN_SHINE)
-            : roles[r] == 'B' ? (selected ? MPEN_SHINE : MPEN_SHADOW)
-            : MPEN_FILL;
-        SetAPen(rport, mri->mri_Pens[pen]);
-        for (y = 0; y < 9; y++)
+        for (x = 0; x < 17; x++)
         {
-            if (y0 + y < top || y0 + y >= top + height)
+            LONG pen = mx_pen(mx_map[y][x], selected), end;
+
+            if (pen < 0)
                 continue;
-            for (x = 0; x < 17; x++)
+            for (end = x; end + 1 < 17
+                && mx_pen(mx_map[y][end + 1], selected) == pen;)
+                end++;
             {
-                LONG end;
+                LONG l = MAX(x0 + x, left);
+                LONG rt = MIN(x0 + end, left + width - 1);
 
-                if (mx_map[y][x] != roles[r])
-                    continue;
-                for (end = x; end + 1 < 17 && mx_map[y][end + 1] == roles[r];)
-                    end++;
-                {
-                    LONG l = MAX(x0 + x, left);
-                    LONG rt = MIN(x0 + end, left + width - 1);
-
-                    if (rt - l >= 3)
-                        RectFill(rport, l, y0 + y, rt, y0 + y);
-                    else
-                        for (; l <= rt; l++)
-                            WritePixel(rport, l, y0 + y);
-                }
-                x = end;
+                SetAPen(rport, mri->mri_Pens[pen]);
+                if (rt - l >= 3)
+                    RectFill(rport, l, y0 + y, rt, y0 + y);
+                else
+                    for (; l <= rt; l++)
+                        WritePixel(rport, l, y0 + y);
             }
+            x = end;
         }
     }
 }

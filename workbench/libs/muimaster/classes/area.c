@@ -1086,8 +1086,10 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
         !(flags & MADF_DRAWALL))
         return;
 
+    /* Like MUI 3.9, only an object with its own background shows the
+     * selected background; others keep their parent's. */
     if (!(data->mad_Flags & MADF_SELECTED) ||
-            !(data->mad_Flags & MADF_SHOWSELSTATE))
+            !(data->mad_Flags & MADF_SHOWSELSTATE) || !data->mad_Background)
         background = data->mad_Background;
     else
         background = data->mad_SelBack;
@@ -1496,7 +1498,7 @@ static IPTR Area__MUIM_DrawBackground(struct IClass *cl, Object *obj,
             msg->width, msg->height);
 
     if ((msg->flags & MADF_SELECTED) && (msg->flags & MADF_SHOWSELSTATE) &&
-            data->mad_SelBack) {
+            data->mad_SelBack && data->mad_Background) {
         /*      D(bug("Area_DrawBackground(%p): selected bg\n", obj)); */
         bg = data->mad_SelBack;
         state = IDS_SELECTED;
