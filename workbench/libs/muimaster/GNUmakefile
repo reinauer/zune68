@@ -20,7 +20,10 @@ $(error TRACE must be 0 or 1)
 endif
 endif
 CRTFLAGS = -noixemul
-CFLAGS ?= -std=gnu17 -Os -g -Wall -Wno-pointer-sign
+# Longword-aligned code entry points cost ~0.1% in size and keep 68020+
+# instruction fetch and cache behaviour independent of link layout.
+CFLAGS ?= -std=gnu17 -Os -g -Wall -Wno-pointer-sign \
+	-falign-functions=4 -falign-loops=4 -falign-jumps=4
 CPPFLAGS += -DMUIMASTER_YES_INLINE_STDARG= -DZUNE68_GCC_NATIVE \
   -DMUI_OBSOLETE -DMUIMASTER_LIBRARY_BUILD -DZUNE_NO_CYBERGRAPHICS \
   -I$(BUILD)/include -I$(BUILD) -Igcc -Iinclude -I. -include include/clib/muimaster_protos.h \
