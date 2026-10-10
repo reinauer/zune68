@@ -1222,10 +1222,12 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
         } else {
             /* D(bug(" Area_Draw(%p):%ld: zune_imspec_draw\n", obj,
                    __LINE__)); */
-            zune_imspec_draw(background, data->mad_RenderInfo, rects[i].MinX,
-                             rects[i].MinY, rects[i].MaxX - rects[i].MinX + 1,
-                             rects[i].MaxY - rects[i].MinY + 1, rects[i].MinX,
-                             rects[i].MinY, 0);
+            /* Patterns start at the object's corner, as in MUI 3.9 */
+            zune_imspec_draw_at(background, data->mad_RenderInfo,
+                rects[i].MinX, rects[i].MinY,
+                rects[i].MaxX - rects[i].MinX + 1,
+                rects[i].MaxY - rects[i].MinY + 1, rects[i].MinX,
+                rects[i].MinY, 0, _left(obj), _top(obj));
         }
     }
 
@@ -1542,17 +1544,18 @@ static IPTR Area__MUIM_DrawBackground(struct IClass *cl, Object *obj,
 
     if (zframe->customframe == NULL) {
         /*      D(bug("Area_DrawBackground(%p): draw bg\n", obj)); */
-        zune_imspec_draw(bg, data->mad_RenderInfo, msg->left, msg->top, msg->width,
-                         msg->height, msg->xoffset, msg->yoffset, state);
+        zune_imspec_draw_at(bg, data->mad_RenderInfo, msg->left, msg->top,
+            msg->width, msg->height, msg->xoffset, msg->yoffset, state,
+            _left(obj), _top(obj));
 
         //     if (!data->mad_FrameTitle)
         //     {
 
     } else {
         if (zframe->noalpha == FALSE) {
-            zune_imspec_draw(bg, data->mad_RenderInfo, msg->left, msg->top,
-                             msg->width, msg->height, msg->xoffset, msg->yoffset,
-                             state);
+            zune_imspec_draw_at(bg, data->mad_RenderInfo, msg->left,
+                msg->top, msg->width, msg->height, msg->xoffset,
+                msg->yoffset, state, _left(obj), _top(obj));
         }
     }
 

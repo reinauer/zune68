@@ -54,8 +54,8 @@ const static UWORD gridpattern1[] = {
 };
 
 const static UWORD gridpattern2[] = {
-    0x4444,
-    0x1111,
+    0x8888,
+    0x2222,
 };
 
 typedef struct
@@ -771,11 +771,31 @@ void zune_imspec_hide(struct MUI_ImageSpec_intern *spec)
 }
 
 
+/* Patterns start at (ox, oy) when origin is set: MUI 3.9 aligns an
+ * object's pattern background to the object's top left corner
+ * (tests/native/patternphase.c). Without it they stay aligned to the
+ * RastPort as before. */
+static void imspec_draw(struct MUI_ImageSpec_intern *spec,
+    struct RastPort *rp, struct MUI_RenderInfo *mri, LONG left, LONG top,
+    LONG width, LONG height, LONG xoffset, LONG yoffset, LONG state,
+    LONG dx, LONG dy, WORD mode, LONG abs_l, LONG abs_t, LONG abs_r,
+    LONG abs_b, BOOL origin, LONG ox, LONG oy);
+
 void zune_imspec_drawbuffered(struct MUI_ImageSpec_intern *spec,
     struct RastPort *rp, struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG width, LONG height, LONG xoffset, LONG yoffset, LONG state,
     LONG dx, LONG dy, WORD mode, LONG abs_l, LONG abs_t, LONG abs_r,
     LONG abs_b)
+{
+    imspec_draw(spec, rp, mri, left, top, width, height, xoffset, yoffset,
+        state, dx, dy, mode, abs_l, abs_t, abs_r, abs_b, FALSE, 0, 0);
+}
+
+static void imspec_draw(struct MUI_ImageSpec_intern *spec,
+    struct RastPort *rp, struct MUI_RenderInfo *mri, LONG left, LONG top,
+    LONG width, LONG height, LONG xoffset, LONG yoffset, LONG state,
+    LONG dx, LONG dy, WORD mode, LONG abs_l, LONG abs_t, LONG abs_r,
+    LONG abs_b, BOOL origin, LONG ox, LONG oy)
 {
     LONG right = left + width - 1;
     LONG bottom = top + height - 1;
@@ -801,10 +821,26 @@ void zune_imspec_drawbuffered(struct MUI_ImageSpec_intern *spec,
         {
             LONG fg = mri->mri_Pens[patternPens[spec->u.pattern].fg];
             LONG bg = mri->mri_Pens[patternPens[spec->u.pattern].bg];
+            const UWORD *pattern = patternPens[spec->u.pattern].pattern;
+            UWORD rows[2];
+
+            if (origin)
+            {
+                /* Rotate so pattern column 0, row 0 lands on the origin */
+                ULONG sx = (ULONG)(ox - dx) & 15;
+                int i;
+
+                for (i = 0; i < 2; i++)
+                {
+                    UWORD w = pattern[(i - (oy - dy)) & 1];
+                    rows[i] = sx ? (UWORD)((w >> sx) | (w << (16 - sx))) : w;
+                }
+                pattern = rows;
+            }
             SetDrMd(rp, JAM2);
             SetAPen(rp, fg);
             SetBPen(rp, bg);
-            SetAfPt(rp, patternPens[spec->u.pattern].pattern, 1);
+            SetAfPt(rp, (UWORD *)pattern, 1);
             RectFill(rp, left - dx, top - dy, right - dx, bottom - dy);
             SetAfPt(rp, NULL, 0);
         }
@@ -891,6 +927,15 @@ void zune_imspec_draw(struct MUI_ImageSpec_intern *spec,
     zune_imspec_drawbuffered(spec, mri->mri_RastPort, mri, left, top, width,
         height, xoffset, yoffset, state, 0, 0, 0, left, top, left + width,
         top + height);
+}
+
+void zune_imspec_draw_at(struct MUI_ImageSpec_intern *spec,
+    struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
+    LONG height, LONG xoffset, LONG yoffset, LONG state, LONG ox, LONG oy)
+{
+    imspec_draw(spec, mri->mri_RastPort, mri, left, top, width, height,
+        xoffset, yoffset, state, 0, 0, 0, left, top, left + width,
+        top + height, TRUE, ox, oy);
 }
 
 /**************************************************************************
