@@ -404,6 +404,7 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
 {
     struct MUI_TextData *data = INST_DATA(cl, obj);
     APTR clip;
+    WORD overhang;
 
 /*    D(bug("muimaster.library/text.c: Draw Text Object at " */
 /*        "0x%p %ldx%ldx%ldx%ld\n", obj, _left(obj), _top(obj), */
@@ -425,8 +426,11 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
     }
 
     /* Installing a clip region rebuilds the layer's clip rectangles.
-     * Text that fits with room for style overhang needs no clipping. */
-    if (data->ztext->width + 8 <= _mwidth(obj)
+     * Text that fits needs no clipping; TextLength does not include the
+     * overhang of algorithmic bold or italic, so leave room for that. */
+    overhang = ((data->ztext->styles & (FSF_BOLD | FSF_ITALIC))
+        || (_font(obj)->tf_Style & FSF_ITALIC)) ? 8 : 0;
+    if (data->ztext->width + overhang <= _mwidth(obj)
         && data->ztext->height <= _mheight(obj))
         clip = (APTR)-1;
     else

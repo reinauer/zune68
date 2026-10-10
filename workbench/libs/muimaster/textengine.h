@@ -45,6 +45,7 @@ struct ZText {
     struct MinList lines;
     UBYTE *arena_next;  /* inline space for lines and chunks */
     UBYTE *arena_end;
+    UBYTE styles;       /* text chunk styles, set by zune_text_get_bounds */
 };
 
 typedef struct ZText ZText;

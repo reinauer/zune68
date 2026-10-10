@@ -148,6 +148,7 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
     if (!(text = AllocVec(sizeof(ZText) + ZTEXT_ARENA_SIZE, MEMF_ANY)))
         return NULL;
     text->width = text->height = 0;
+    text->styles = 0;
     NewList((struct List *)&text->lines);
     text->arena_next = (UBYTE *)(text + 1);
     text->arena_end = text->arena_next + ZTEXT_ARENA_SIZE;
@@ -605,6 +606,7 @@ void zune_text_get_bounds(ZText * text, Object * obj)
 
     text->width = 0;
     text->height = 0;
+    text->styles = 0;
 
     font = _font(obj);
     /* Measuring needs a RastPort with the object's font. Copying the
@@ -676,6 +678,7 @@ void zune_text_get_bounds(ZText * text, Object * obj)
                 chunk_node->cwidth =
                     TextLength(&rp, chunk_node->str,
                     strlen(chunk_node->str));
+                text->styles |= chunk_node->style;
                 D(bug("zune_text_get_bounds(%s,%x) => cwidth=%d\n",
                         chunk_node->str, obj, chunk_node->cwidth));
             }
