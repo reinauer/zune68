@@ -1349,17 +1349,21 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
     /* Background drawing */
     Area_Draw_handle_background(obj, data, msg->flags, zframe);
 
-    obj_font = _font(obj);
-    _font(obj) = zune_font_get(obj, MUIV_Font_Title);
-    SetFont(_rp(obj), _font(obj));
-
-    /* Frame and frametitle drawing */
+    /* Frame and frametitle drawing; only a title needs the title font */
     if (!(data->mad_Flags & MADF_FRAMEPHANTOM)) {
+        if (data->mad_FrameTitle) {
+            obj_font = _font(obj);
+            _font(obj) = zune_font_get(obj, MUIV_Font_Title);
+            SetFont(_rp(obj), _font(obj));
+        }
         Area_Draw_handle_frame(obj, data, zframe);
+        if (data->mad_FrameTitle)
+            _font(obj) = obj_font;
     }
 
-    _font(obj) = obj_font;
-    SetFont(_rp(obj), _font(obj));
+    /* Subclasses draw with the object's font selected */
+    if (_rp(obj)->Font != _font(obj))
+        SetFont(_rp(obj), _font(obj));
 
     /*    MUI_RemoveClipping(muiRenderInfo(obj), areaclip);*/
 
