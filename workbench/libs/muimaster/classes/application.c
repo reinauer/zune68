@@ -369,7 +369,9 @@ static void Application_ReloadConfigdata(struct IClass *cl, Object *obj)
     Object *cfg;
 
     cfg = MUI_NewObject(MUIC_Configdata,
-        MUIA_Configdata_Application, obj, TAG_DONE);
+        MUIA_Configdata_Application, obj, MUIA_Configdata_SignalPort,
+        ((struct MUI_ApplicationData *)INST_DATA(cl, obj))
+            ->app_GlobalInfo.mgi_WindowsPort, TAG_DONE);
     if (cfg)
         set(obj, MUIA_Application_Configdata, cfg);
 }
@@ -383,7 +385,8 @@ static void Application_SetupConfigNotify(struct IClass *cl, Object *obj)
         return;
 
     data->app_CfgNotifyName = NULL;
-    data->app_CfgNotifyPort = CreateMsgPort();
+    data->app_CfgNotifyPort =
+        ZuneCreateSharedPort(data->app_GlobalInfo.mgi_WindowsPort);
     if (!data->app_CfgNotifyPort)
         return;
 
@@ -391,7 +394,7 @@ static void Application_SetupConfigNotify(struct IClass *cl, Object *obj)
     data->app_CfgNotifyName = StrDup(name);
     if (!data->app_CfgNotifyName)
     {
-        DeleteMsgPort(data->app_CfgNotifyPort);
+        ZuneDeleteSharedPort(data->app_CfgNotifyPort);
         data->app_CfgNotifyPort = NULL;
         return;
     }
@@ -406,7 +409,7 @@ static void Application_SetupConfigNotify(struct IClass *cl, Object *obj)
     {
         FreeVec(data->app_CfgNotifyName);
         data->app_CfgNotifyName = NULL;
-        DeleteMsgPort(data->app_CfgNotifyPort);
+        ZuneDeleteSharedPort(data->app_CfgNotifyPort);
         data->app_CfgNotifyPort = NULL;
     }
 }
@@ -510,6 +513,7 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
 
     data->app_GlobalInfo.mgi_Configdata =
         MUI_NewObject(MUIC_Configdata, MUIA_Configdata_Application, obj,
+        MUIA_Configdata_SignalPort, data->app_GlobalInfo.mgi_WindowsPort,
         TAG_DONE);
     if (!data->app_GlobalInfo.mgi_Configdata)
     {
@@ -525,8 +529,9 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
 //    D(bug("muimaster.library/application.c: Message Port created at 0x%p\n",
 //    data->app_GlobalInfo.mgi_WindowPort));
 
-    /* Setup timer stuff */
-    if (!(data->app_TimerPort = CreateMsgPort()))
+    /* Setup timer stuff; MUI 3.9 uses one signal for all internal ports */
+    if (!(data->app_TimerPort =
+            ZuneCreateSharedPort(data->app_GlobalInfo.mgi_WindowsPort)))
     {
         CoerceMethod(cl, obj, OM_DISPOSE);
         return 0;
@@ -825,7 +830,8 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
     if (data->app_Menustrip)
         DoMethod(data->app_Menustrip, MUIM_ConnectParent, (IPTR) obj);
 
-    data->app_AppPort = CreateMsgPort();
+    data->app_AppPort =
+        ZuneCreateSharedPort(data->app_GlobalInfo.mgi_WindowsPort);
     data->app_GlobalInfo.mgi_AppPort = data->app_AppPort;
     if (data->app_AppPort == NULL)
     {
@@ -997,7 +1003,7 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
         }
         DeleteIORequest((struct IORequest *)data->app_TimerReq);
     }
-    DeleteMsgPort(data->app_TimerPort);
+    ZuneDeleteSharedPort(data->app_TimerPort);
 
     if (data->app_RexxPort)
     {
@@ -1027,13 +1033,13 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
         while ((msg = GetMsg(data->app_AppPort)))
             ReplyMsg(msg);
 
-        DeleteMsgPort(data->app_AppPort);
+        ZuneDeleteSharedPort(data->app_AppPort);
     }
 
     if (data->app_CfgNotifyPort)
     {
         EndNotify(&data->app_CfgNotifyRequest);
-        DeleteMsgPort(data->app_CfgNotifyPort);
+        ZuneDeleteSharedPort(data->app_CfgNotifyPort);
     }
 
     if (data->app_CfgNotifyName)

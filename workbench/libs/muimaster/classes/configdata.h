@@ -270,6 +270,10 @@ struct MUIP_Configdata_SetString
     (MUIB_Configdata | 0x00000001)  /* ZV1: PRIV .g.  struct ZunePrefsNew * */
 #define MUIA_Configdata_ApplicationBase \
     (MUIB_Configdata | 0x00000002)  /* ZV1: i..  Object * */
+#define MUIA_Configdata_SignalPort  /* PRIV */ \
+    (MUIB_Configdata | 0x00000003)  /* ZV1: PRIV i..  struct MsgPort * */
+#define MUIM_Configdata_PubScreensChanged  /* PRIV */ \
+    (MUIB_Configdata | 0x0000002C)
 
 
 extern const struct __MUIBuiltinClass _MUI_Configdata_desc;     /* PRIV */

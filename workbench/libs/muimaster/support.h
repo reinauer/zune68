@@ -79,6 +79,8 @@ APTR ZuneAddClipRegion(struct MUI_RenderInfo *, struct Region *);
 void ZuneRemoveClipRegion(struct MUI_RenderInfo *, APTR);
 
 void ZuneDrawDisabled(Object *obj);
+struct MsgPort *ZuneCreateSharedPort(struct MsgPort *owner);
+void ZuneDeleteSharedPort(struct MsgPort *port);
 
 Object *ZuneNextObject(APTR iterator);
 #undef NextObject

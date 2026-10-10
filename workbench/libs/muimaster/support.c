@@ -297,3 +297,32 @@ Object *ZuneNextObject(APTR iterator)
     *cursor = (struct _Object *)header->o_Node.mln_Succ;
     return (Object *)BASEOBJECT(header);
 }
+
+
+/* A message port that signals with another port's signal bit. MUI 3.9
+ * multiplexes an application's internal ports on one signal; a task such
+ * as IBrowse otherwise runs out of signals for OpenClipboard(). Receivers
+ * drain such ports with GetMsg() whenever the shared signal arrives. */
+struct MsgPort *ZuneCreateSharedPort(struct MsgPort *owner)
+{
+    struct MsgPort *port;
+
+    if (!owner)
+        return CreateMsgPort();
+    port = AllocMem(sizeof(*port), MEMF_PUBLIC | MEMF_CLEAR);
+    if (port)
+    {
+        port->mp_Node.ln_Type = NT_MSGPORT;
+        port->mp_Flags = PA_SIGNAL;
+        port->mp_SigBit = owner->mp_SigBit;
+        port->mp_SigTask = owner->mp_SigTask;
+        NewList(&port->mp_MsgList);
+    }
+    return port;
+}
+
+void ZuneDeleteSharedPort(struct MsgPort *port)
+{
+    if (port)
+        FreeMem(port, sizeof(*port));
+}
