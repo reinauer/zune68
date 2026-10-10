@@ -248,7 +248,7 @@ static void _zune_focus_destroy(Object *obj, int type)
             clip = MUI_AddClipRegion(muiRenderInfo(obj), region);
         }
 
-        MUI_Redraw(obj, MADF_DRAWOBJECT);
+        MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
 
         if (region) {
             MUI_RemoveClipRegion(muiRenderInfo(obj), clip);
@@ -524,7 +524,7 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             if (_flags(obj) & MADF_CANDRAW) {
                 zune_imspec_show(data->mad_Background, obj);
             }
-            MUI_Redraw(obj, MADF_DRAWOBJECT);
+            MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
             break;
 
         case MUIA_CustomBackfill:
@@ -674,10 +674,10 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
              */
             if (tag->ti_Data && !(data->mad_Flags & MADF_SELECTED)) {
                 data->mad_Flags |= MADF_SELECTED;
-                MUI_Redraw(obj, MADF_DRAWOBJECT);
+                MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
             } else if (!tag->ti_Data && (data->mad_Flags & MADF_SELECTED)) {
                 data->mad_Flags &= ~MADF_SELECTED;
-                MUI_Redraw(obj, MADF_DRAWOBJECT);
+                MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
             } else {
                 /* Attribute value not changed, don't fire notification */
                 tag->ti_Tag = TAG_IGNORE;
@@ -725,7 +725,7 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         /* Simulate left mouse button release if the area becomes disabled */
         if (_flags(obj) & MADF_SETUP)
             handle_release(cl, obj, TRUE);
-        MUI_Redraw(obj, MADF_DRAWOBJECT);
+        MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
     }
 
     return DoSuperMethodA(cl, obj, (Msg)msg);
@@ -1008,7 +1008,8 @@ static IPTR Area_CustomBackfill(Object *obj, LONG left, LONG top,
  */
 static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
                                         ULONG flags,
-                                        const struct ZuneFrameGfx *zframe)
+                                        const struct ZuneFrameGfx *zframe,
+                                        BOOL drawframe)
 {
     struct MUI_ImageSpec_intern *background;
     struct Rectangle r, r2, rects[4];
@@ -1053,6 +1054,12 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
         bgw = _width(obj);
         bgh = _height(obj) - bgtop;
         bgtop += _top(obj);
+        /* A frame that is not redrawn keeps its pixels */
+        if (!drawframe) {
+            bgleft += zframe->ileft;
+            bgw -= zframe->ileft + zframe->iright;
+            bgh -= zframe->ibottom;
+        }
     }
 
     r.MinX = bgleft;
@@ -1152,7 +1159,7 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
         MUI_RemoveClipRegion(data->mad_RenderInfo, cliphandle);
     }
 
-    if (muiGlobalInfo(obj)->mgi_Prefs->window_redraw ==
+    if (drawframe && muiGlobalInfo(obj)->mgi_Prefs->window_redraw ==
             WINDOW_REDRAW_WITHOUT_CLEAR) {
         if (bgtop > _top(obj) && !(flags & MADF_DRAWALL)) {
             /* Fill in the gap produced by the title with the background
@@ -1304,6 +1311,7 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
     const struct ZuneFrameGfx *zframe;
     struct TextFont *obj_font = NULL;
     ULONG flags = data->mad_Flags & MADF_DRAWFLAGS;
+    BOOL drawframe;
 
     // APTR areaclip;
 
@@ -1346,11 +1354,20 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
         area_update_msizes(obj, data, frame, zframe);
     }
 
+    /* Like MUI, an object repaints its own frame only when asked to:
+     * by its parent group, the window, or a state change that alters the
+     * frame. Plain MUI_Redraw(obj, MADF_DRAWOBJECT) keeps it. Rounded,
+     * custom and phantom frames are always handled as before, and so are
+     * titles, which reach below the frame line into the background. */
+    drawframe = (flags & (MADF_DRAWFRAME | MADF_DRAWALL)) ||
+        zframe->customframe || zframe->border_radius > 0 ||
+        (data->mad_Flags & MADF_FRAMEPHANTOM) || data->mad_FrameTitle;
+
     /* Background drawing */
-    Area_Draw_handle_background(obj, data, msg->flags, zframe);
+    Area_Draw_handle_background(obj, data, msg->flags, zframe, drawframe);
 
     /* Frame and frametitle drawing; only a title needs the title font */
-    if (!(data->mad_Flags & MADF_FRAMEPHANTOM)) {
+    if (drawframe && !(data->mad_Flags & MADF_FRAMEPHANTOM)) {
         if (data->mad_FrameTitle) {
             obj_font = _font(obj);
             _font(obj) = zune_font_get(obj, MUIV_Font_Title);

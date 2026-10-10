@@ -339,7 +339,7 @@ IPTR PanelGroup__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         DoMethod(obj, MUIM_Group_InitChange);
         DoMethod(obj, MUIM_Group_ExitChange);
         /* Mark objects for display refresh */
-        MUI_Redraw(obj, MADF_DRAWOBJECT);
+        MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);

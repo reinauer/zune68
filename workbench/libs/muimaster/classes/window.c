@@ -1319,7 +1319,7 @@ static VOID RefreshWindow(Object *oWin, struct MUI_WindowData *data)
             MUI_Redraw(data->wd_RootObject, MADF_DRAWALL);
         }
         else
-            MUI_Redraw(data->wd_RootObject, MADF_DRAWOBJECT);
+            MUI_Redraw(data->wd_RootObject, MADF_DRAWOBJECT | MADF_DRAWFRAME);
         // but should only draw focus without using MUIM_GoActive !
         ActivateObject(data);
     }
@@ -4218,7 +4218,7 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
         ScreenToFront(data->wd_RenderInfo.mri_Screen);
     }
 
-    MUI_Redraw(data->wd_RootObject, MADF_DRAWOBJECT);
+    MUI_Redraw(data->wd_RootObject, MADF_DRAWOBJECT | MADF_DRAWFRAME);
 
     D(bug("MUIC_Window:windowOpen() ActiveObject=%p\n",
             data->wd_ActiveObject));
@@ -4366,7 +4366,10 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
                     _left(current_obj), _top(current_obj),
                     _width(current_obj), _height(current_obj),
                     _left(current_obj), _top(current_obj), 0);
-            MUI_Redraw(current_obj, MADF_DRAWOBJECT);
+            /* Its size is unchanged, so like MUI it keeps its own frame
+             * unless the clear above painted over it */
+            MUI_Redraw(current_obj, MADF_DRAWOBJECT |
+                ((_flags(current_obj) & MADF_FILLAREA) ? 0 : MADF_DRAWFRAME));
         }
     }
     else

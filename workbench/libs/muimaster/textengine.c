@@ -772,7 +772,8 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
                 _height(chunk_node->obj) = chunk_node->cheight;
                 DoShowMethod(chunk_node->obj);
                 pensave = GetAPen(rp);
-                MUI_Redraw(chunk_node->obj, MADF_DRAWOBJECT);
+                MUI_Redraw(chunk_node->obj,
+                    MADF_DRAWOBJECT | MADF_DRAWFRAME);
                 SetAPen(rp, pensave);
                 DoHideMethod(chunk_node->obj);
             }

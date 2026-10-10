@@ -2193,7 +2193,7 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
             Object *o = NULL;
 
             get(_win(obj), MUIA_Window_RootObject, &o);
-            MUI_Redraw(o, MADF_DRAWOBJECT);
+            MUI_Redraw(o, MADF_DRAWOBJECT | MADF_DRAWFRAME);
 
             MUI_EndRefresh(muiRenderInfo(obj), 0);
         }

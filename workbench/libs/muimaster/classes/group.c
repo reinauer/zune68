@@ -1541,7 +1541,7 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
             continue;
         }
 
-        MUI_Redraw(child, MADF_DRAWOBJECT);
+        MUI_Redraw(child, MADF_DRAWOBJECT | MADF_DRAWFRAME);
         muiRenderInfo(obj)->mri_ClipRect = group_rect;
     }
 

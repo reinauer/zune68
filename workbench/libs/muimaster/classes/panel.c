@@ -548,7 +548,7 @@ IPTR PanelTitle__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     if (redraw && (_flags(obj) & MADF_SETUP)) {
-        MUI_Redraw(obj, MADF_DRAWOBJECT);
+        MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
@@ -844,7 +844,7 @@ IPTR PanelTitle__MUIM_PanelTitle_Toggle(struct IClass *cl, Object *obj, struct M
     if (data->collapsible) {
         set(_parent(obj), MUIA_Panel_Collapsed, !data->collapsed);
         if (_flags(obj) & MADF_SETUP) {
-            MUI_Redraw(obj, MADF_DRAWOBJECT);
+            MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
         }
 
         return TRUE;
@@ -1156,7 +1156,7 @@ IPTR Panel__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     if (redraw) {
-        MUI_Redraw(obj, MADF_DRAWOBJECT);
+        MUI_Redraw(obj, MADF_DRAWOBJECT | MADF_DRAWFRAME);
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
