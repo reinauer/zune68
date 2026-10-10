@@ -209,13 +209,16 @@ IPTR Busy__MUIM_Draw(Class *cl, Object *obj, struct MUIP_Draw *msg)
     
     if (!(msg->flags & (MADF_DRAWOBJECT | MADF_DRAWUPDATE))) return 0;
         
-    for(x = 0; x < _mwidth(obj); x++)
+    /* One RectFill per 8 pixel stripe rather than per column. */
+    for(x = 0; x < _mwidth(obj); )
     {
-        WORD col;
-        
-        col = ((x + data->pos) / 8) % 2;
+        WORD col = ((x + data->pos) / 8) % 2;
+        WORD run = 8 - (x + data->pos) % 8;
+
+        if (x + run > _mwidth(obj)) run = _mwidth(obj) - x;
         SetAPen(_rp(obj), _pens(obj)[col ? MPEN_SHADOW : MPEN_SHINE]);
-        RectFill(_rp(obj), _mleft(obj) + x, _mtop(obj), _mleft(obj) + x, _mbottom(obj));
+        RectFill(_rp(obj), _mleft(obj) + x, _mtop(obj), _mleft(obj) + x + run - 1, _mbottom(obj));
+        x += run;
     }
     
     return retval;

@@ -9,6 +9,7 @@ CFLAGS ?= -std=gnu17 -Os -g -Wall -Wno-pointer-sign
 MASTER := $(ROOT)/workbench/libs/muimaster
 RAW := $(ROOT)/workbench/classes/zune/rawimage
 LISTTREE := $(ROOT)/workbench/classes/zune/listtree
+BUSY := $(ROOT)/workbench/classes/zune/busy
 COMMON := $(ROOT)/workbench/classes/zune/nlist/include
 BZ := $(ROOT)/vendor/bzip2
 OBJ := $(BUILD)/imageclass
@@ -21,7 +22,8 @@ BZFILES := bzlib decompress huffman crctable randtable blocksort compress
 BZOBJS := $(addprefix $(OBJ)/bz2/,$(addsuffix .o,$(BZFILES)))
 .PHONY: all
 all: $(BUILD)/Libs/MUI/Rawimage.mcc $(BUILD)/Libs/MUI/Pixmap.mui \
- $(BUILD)/Libs/MUI/Listtree.mcc
+ $(BUILD)/Libs/MUI/Listtree.mcc \
+ $(BUILD)/Libs/MUI/Busy.mcc
 $(OBJ)/rawimage.o: library.c $(RAW)/Rawimage.c $(RAW)/Rawimage_private.h GNUmakefile
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -DBUILD_RAWIMAGE -MMD -MP -c $< -o $@
@@ -43,10 +45,16 @@ $(BUILD)/Libs/MUI/Rawimage.mcc: $(OBJ)/rawimage.o $(OBJ)/superattrs.o
 $(BUILD)/Libs/MUI/Pixmap.mui: $(OBJ)/pixmap.o $(OBJ)/superattrs.o $(BZOBJS)
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
+$(OBJ)/busy.o: busy_library.c $(wildcard $(BUSY)/*.[ch]) GNUmakefile
+	@mkdir -p $(@D)
+	$(CC) $(FLAGS) -I. -I$(BUSY) -MMD -MP -c $< -o $@
+$(BUILD)/Libs/MUI/Busy.mcc: $(OBJ)/busy.o
+	@mkdir -p $(@D)
+	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
 $(OBJ)/format.o: ../plugin/format.c
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -c $< -o $@
 $(BUILD)/Libs/MUI/Listtree.mcc: $(OBJ)/listtree.o $(OBJ)/format.o
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
--include $(OBJ)/rawimage.d $(OBJ)/pixmap.d $(OBJ)/listtree.d
+-include $(OBJ)/rawimage.d $(OBJ)/pixmap.d $(OBJ)/listtree.d $(OBJ)/busy.d
