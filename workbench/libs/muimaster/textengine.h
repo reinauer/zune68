@@ -43,6 +43,8 @@ struct ZText {
 
 /* private */
     struct MinList lines;
+    UBYTE *arena_next;  /* inline space for lines and chunks */
+    UBYTE *arena_end;
 };
 
 typedef struct ZText ZText;

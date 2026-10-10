@@ -61,6 +61,7 @@ extern struct Library *MUIMasterBase;
 
 struct zune_context
 {
+    ZText *ztext;               /* owner of new lines and chunks */
     LONG dripen;
     LONG pen;
     ULONG style;
@@ -102,6 +103,32 @@ int zune_text_merge(ZText * text, Object * obj, int x, int y,
     ZText * tomerge);
 
 
+/* Most texts are one line with a chunk or two. Lines and chunks come from
+ * space inline after the ZText, so parsing one usually takes a single
+ * allocation; texts are re-parsed on every change and list entry draw. */
+#define ZTEXT_ARENA_SIZE 192
+
+static APTR ztext_alloc(ZText *text, ULONG size)
+{
+    APTR mem;
+
+    size = (size + 3) & ~3UL;
+    if (text->arena_next + size <= text->arena_end)
+    {
+        mem = text->arena_next;
+        text->arena_next += size;
+        memset(mem, 0, size);
+        return mem;
+    }
+    return mui_alloc(size);
+}
+
+static void ztext_free(ZText *text, APTR mem)
+{
+    if ((UBYTE *)mem < (UBYTE *)(text + 1) || (UBYTE *)mem >= text->arena_end)
+        mui_free(mem);
+}
+
 /**************************************************************************
 ...
 **************************************************************************/
@@ -118,9 +145,12 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
     struct zune_context zc;
     int arg;
 
-    if (!(text = mui_alloc_struct(ZText)))
+    if (!(text = AllocVec(sizeof(ZText) + ZTEXT_ARENA_SIZE, MEMF_ANY)))
         return NULL;
+    text->width = text->height = 0;
     NewList((struct List *)&text->lines);
+    text->arena_next = (UBYTE *)(text + 1);
+    text->arena_end = text->arena_next + ZTEXT_ARENA_SIZE;
 
     if (!content)
         content = "";
@@ -140,6 +170,7 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
 
     buf = dup_content;
 
+    zc.ztext = text;
     zc.pen = -1;
     zc.dripen = -1;
     zc.style = FS_NORMAL;
@@ -203,9 +234,9 @@ void zune_text_destroy(ZText * text)
                     zune_imspec_cleanup(ztc->image);
                 }
             }
-            mui_free(ztc);
+            ztext_free(text, ztc);
         }
-        mui_free(ztl);
+        ztext_free(text, ztl);
     }
     mui_free(text);
 }
@@ -233,13 +264,13 @@ void zune_text_chunk_new(struct zune_context *zc)
     {
         LONG len = zc->text - zc->text_start;
 
-        if (!(ztc = mui_alloc(sizeof(ZTextChunk) + len + 1)))
+        if (!(ztc = ztext_alloc(zc->ztext, sizeof(ZTextChunk) + len + 1)))
             return;
         ztc->str = (char *)(ztc + 1);
         memcpy(ztc->str, zc->text_start, len);
         ztc->str[len] = 0;
     }
-    else if (!(ztc = mui_alloc_struct(ZTextChunk)))
+    else if (!(ztc = ztext_alloc(zc->ztext, sizeof(ZTextChunk))))
         return;
 
     ztc->style = zc->style;
@@ -499,7 +530,7 @@ static ZTextLine *zune_text_parse_line(CONST_STRPTR * s_ptr,
         return NULL;
     if (!(s = *s_ptr))
         return NULL;
-    if (!(ztl = mui_alloc_struct(ZTextLine)))
+    if (!(ztl = ztext_alloc(zc->ztext, sizeof(ZTextLine))))
         return NULL;
     NewList((struct List *)&ztl->chunklist);
 
@@ -680,7 +711,10 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
     rp = _rp(obj);
     if (rp->Font != _font(obj))
         SetFont(rp, _font(obj));
-    SetSoftStyle(rp, style, AskSoftStyle(rp));
+    /* SetSoftStyle and the AskSoftStyle it needs are not free; most
+     * RastPorts already draw plain text */
+    if (rp->AlgoStyle != style)
+        SetSoftStyle(rp, style, AskSoftStyle(rp));
 
     for (line_node = (ZTextLine *) text->lines.mlh_Head;
         line_node->node.mln_Succ;
@@ -779,7 +813,7 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
                     D(bug("chunk_node->pen == %d\n", chunk_node->pen));
                     SetABPenDrMd(rp, chunk_node->pen, 0, JAM1);
                 }
-                else
+                else if (rp->DrawMode != JAM1)
                 {
                     SetDrMd(rp, JAM1);
                 }
