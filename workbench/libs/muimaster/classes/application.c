@@ -1402,12 +1402,9 @@ static IPTR Application__OM_GET(struct IClass *cl, Object *obj,
         return TRUE;
 
     case MUIA_Version:
-        STORE = ZUNE68_BUILTIN_VERSION;
-        return TRUE;
-
     case MUIA_Revision:
-        STORE = ZUNE68_BUILTIN_REVISION;
-        return TRUE;
+        /* Notify reports the version of the object's class library. */
+        return DoSuperMethodA(cl, obj, (Msg)msg);
 
     case MUIA_Application_Author:
         STORE = (IPTR) data->app_Author;

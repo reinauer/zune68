@@ -204,9 +204,11 @@ class ApplicationHarness(NotifyHarness):
 def check(path):
     h = ApplicationHarness(path)
     storage = h.words(0)
+    # MUIA_Version/Revision go to Notify, modelled here as a superclass
+    # call that stores nothing.
     for attr in [0x80422301, 0x80427eaa]:
-        assert h.dispatch(0x104, attr, storage)
-        assert h.mem.r32(storage) == 1
+        assert not h.dispatch(0x104, attr, storage)
+        assert h.mem.r32(storage) == 0
     h.dispatch(RETURN_ID, 101)
     h.dispatch(RETURN_ID, 102)
     messages = [h.blob(bytes(64)) for _ in range(3)]

@@ -527,6 +527,28 @@ IPTR Notify__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 
 
 /*
+ * The library of the nearest external class an object belongs to; like
+ * MUI, MUIA_Version and MUIA_Revision report its version. Custom classes
+ * keep the library given to MUI_CreateCustomClass() in h_Data, built-in
+ * classes keep MUIMasterBase.
+ */
+static struct Library *ClassLibrary(Object *obj)
+{
+    struct IClass *c;
+
+    for (c = OCLASS(obj); c; c = c->cl_Super)
+    {
+        struct Library *lib = (struct Library *)c->cl_Dispatcher.h_Data;
+
+        if (lib == MUIMasterBase)
+            break;
+        if (lib && lib->lib_Node.ln_Type == NT_LIBRARY)
+            return lib;
+    }
+    return NULL;
+}
+
+/*
  * OM_GET
  */
 IPTR Notify__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
@@ -535,6 +557,7 @@ IPTR Notify__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 #define STORE *(msg->opg_Storage)
 
     struct MUI_NotifyData *data = INST_DATA(cl, obj);
+    struct Library *lib;
 
 //kprintf("*** Notify->GET\n");
     switch (msg->opg_AttrID)
@@ -567,7 +590,8 @@ IPTR Notify__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_Revision:
-        STORE = ZUNE68_BUILTIN_REVISION;
+        lib = ClassLibrary(obj);
+        STORE = lib ? lib->lib_Revision : ZUNE68_BUILTIN_REVISION;
         return TRUE;
 
     case MUIA_UserData:
@@ -575,7 +599,8 @@ IPTR Notify__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_Version:
-        STORE = ZUNE68_BUILTIN_VERSION;
+        lib = ClassLibrary(obj);
+        STORE = lib ? lib->lib_Version : ZUNE68_BUILTIN_VERSION;
         return TRUE;
     }
 

@@ -156,12 +156,9 @@ IPTR Family__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_Version:
-        *store = ZUNE68_BUILTIN_VERSION;
-        return TRUE;
-
     case MUIA_Revision:
-        *store = ZUNE68_BUILTIN_REVISION;
-        return TRUE;
+        /* Notify reports the version of the object's class library. */
+        return DoSuperMethodA(cl, obj, (Msg)msg);
 
     case MUIA_Family_ChildCount:
         {

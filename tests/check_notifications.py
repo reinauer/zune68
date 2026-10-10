@@ -134,13 +134,48 @@ class NotifyHarness(Harness):
 def check(path):
     # Built-in versions describe Zune68's implementation series, not the
     # library release number or a claimed proprietary MUI feature level.
-    for name in ['Notify', 'Family', 'Group', 'Text', 'Rectangle', 'Window']:
+    VERSION, REVISION = 0x80422301, 0x80427eaa
+    for name in ['Text', 'Rectangle', 'Window']:
         h = NotifyHarness(path)
         storage = h.words(0)
-        for attr in [0x80422301, 0x80427eaa]:
+        for attr in [VERSION, REVISION]:
             assert h.call(name + '__OM_GET', CLASS, OBJECT,
                           h.words(0x104, attr, storage))
             assert h.mem.r32(storage) == 1
+        h.finish()
+    # Groups and families leave the answer to Notify.
+    for name in ['Family', 'Group']:
+        for attr in [VERSION, REVISION]:
+            h = NotifyHarness(path)
+            h.call(name + '__OM_GET', CLASS, OBJECT, h.words(0x104, attr, h.words(0)))
+            assert h.dead, name
+            h.machine.cleanup()
+    # Notify reports the nearest external class library, as MUI does, and
+    # the built-in series for built-in classes. OCLASS is at object - 4,
+    # IClass h_Data at 16 and cl_Super at 24.
+    for library, expected in [(None, (1, 1)), ('external', (20, 131)),
+                              ('subclass', (20, 131))]:
+        h = NotifyHarness(path)
+        builtin = h.words(*[0] * 8)
+        h.mem.w32(builtin + 16, h.mem.r32(h.symbols['_MUIMasterBase']))
+        cls = h.words(*[0] * 8)
+        h.mem.w32(cls + 24, builtin)
+        if library:
+            lib = h.words(*[0] * 9)
+            h.mem.w8(lib + 8, 9)  # NT_LIBRARY
+            h.mem.w16(lib + 20, 20)
+            h.mem.w16(lib + 22, 131)
+            h.mem.w32(cls + 16, lib)
+        if library == 'subclass':
+            own = h.words(*[0] * 8)
+            h.mem.w32(own + 24, cls)
+            cls = own
+        h.mem.w32(OBJECT - 4, cls if library else builtin)
+        for attr, value in zip([VERSION, REVISION], expected):
+            storage = h.words(0)
+            assert h.call('Notify__OM_GET', CLASS, OBJECT,
+                          h.words(0x104, attr, storage))
+            assert h.mem.r32(storage) == value, (library, hex(attr), h.mem.r32(storage))
         h.finish()
 
     for failed_call in [1, 2, 3]:  # list header, node, parameter copy

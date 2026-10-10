@@ -703,11 +703,9 @@ IPTR Group__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     switch (msg->opg_AttrID)
     {
     case MUIA_Version:
-        STORE = ZUNE68_BUILTIN_VERSION;
-        return 1;
     case MUIA_Revision:
-        STORE = ZUNE68_BUILTIN_REVISION;
-        return 1;
+        /* Notify reports the version of the object's class library. */
+        return DoSuperMethodA(cl, obj, (Msg)msg);
     case MUIA_Group_ActivePage:
         STORE = data->active_page;
         return 1;
