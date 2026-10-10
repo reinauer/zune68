@@ -76,11 +76,13 @@ ULONG L_InitLib(struct Library *library)
 {
     struct MUIMasterBase_intern *base = MUIMB(library);
     struct TextAttr font = { "topaz.font", 8, FS_NORMAL, FPF_ROMFONT };
-    /* Half pens are derived from the screen by Window setup. */
+    /* Half pens are derived from the screen by Window setup; the mark
+     * pen defaults to MUI 3.9's built-in colour. */
     static const signed char system_pens[MPEN_COUNT] = {
         SHINEPEN, -1, BACKGROUNDPEN, -1, SHADOWPEN,
-        TEXTPEN, FILLPEN, HIGHLIGHTTEXTPEN
+        TEXTPEN, FILLPEN, -1
     };
+    static const char mark_pen[] = "rffa997";
     unsigned i;
     MUIMasterBase = library;
     InitSemaphore(&base->ZuneSemaphore);
@@ -109,6 +111,8 @@ ULONG L_InitLib(struct Library *library)
             base->defaultPens[i].buf[1] = '0' + system_pens[i];
         }
     }
+    for (i = 0; i < sizeof(mark_pen); ++i)
+        base->defaultPens[MPEN_MARK].buf[i] = mark_pen[i];
     if (!ZuneGccInit()) goto fail;
     Locale_Initialize();
     MUIGfx_Install(library);

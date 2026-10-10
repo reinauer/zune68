@@ -285,9 +285,10 @@ static ULONG DoHalfshineGun(ULONG a, ULONG b)
     return val;
 }
 
+/* Measured against MUI 3.9 with several shadow/background colours. */
 static ULONG DoHalfshadowGun(ULONG a, ULONG b)
 {
-    ULONG val = ((((a) >> 24) + 5 * ((b) >> 24)) / 6);
+    ULONG val = (46 * ((a) >> 24) + 212 * ((b) >> 24)) >> 8;
     val = val + (val << 8) + (val << 16) + (val << 24);
     return val;
 }

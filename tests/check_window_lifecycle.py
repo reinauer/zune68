@@ -20,7 +20,7 @@ ROOT_CLEANUP = 0x8042d985
 
 class WindowHarness(PenHarness):
     def __init__(self, path, mode='success', handles=None, derived=False):
-        super().__init__(path, handles or [0x10000 | i for i in range(8)], derived)
+        super().__init__(path, handles or [0xffff0000 | i for i in range(8)], derived)
         self.mode = mode
         self.events = []
         self.mem.w32(ROOT_SLOT, ROOT)

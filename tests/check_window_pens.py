@@ -96,8 +96,10 @@ class PenHarness(Harness):
 def check(path):
     from check_window_lifecycle import WindowHarness
     for derived in (False, True):
-        for handles in ([0x10000 | i for i in range(8)],
-                        [2, 0x10009, -1, 0x10009, 4, 0x10000, 6, 0x1000b]):
+        # Owned pens carry MUI 3.9's 0xffff0000 flag.
+        for handles in ([0xffff0000 | i for i in range(8)],
+                        [2, 0xffff0009, -1, 0xffff0009, 4, 0xffff0000, 6,
+                         0xffff000b]):
             h = WindowHarness(path, 'root setup failure', handles, derived)
             try:
                 for cycle in range(3):
@@ -113,7 +115,7 @@ def check(path):
                         # Failed BACKGROUND allocation borrows BACKGROUNDPEN=7.
                         expected = 7 if handle == -1 else handle & 0xffff
                         assert h.mem.r16(pens + 2 * i) == expected, (i, handle)
-                    expected = [p & 0xffff for p in handles if p >= 0x10000]
+                    expected = [p & 0xffff for p in handles if p > 0xffff]
                     assert Counter(h.released) == Counter(expected), (cycle, h.released, expected)
                     # Cleanup consumes ownership; stale handles cannot release twice.
                     h.opened(0)

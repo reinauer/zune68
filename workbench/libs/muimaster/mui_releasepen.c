@@ -8,7 +8,7 @@
 #include "mui.h"
 #include "muimaster_intern.h"
 
-#define MUIPEN_HIMASK 0xFFFF0000   /* ??? */
+#define MUIPEN_HIMASK 0xFFFF0000   /* set by MUI_ObtainPen() for owned pens */
 
 /*****************************************************************************
 
@@ -45,7 +45,7 @@
     if (pen == -1)
         return;
 
-    if (mri->mri_Colormap && ((pen & MUIPEN_HIMASK) == 0x10000))
+    if (mri->mri_Colormap && ((pen & MUIPEN_HIMASK) == MUIPEN_HIMASK))
     {
         ReleasePen(mri->mri_Colormap, MUIPEN(pen));
     }

@@ -128,7 +128,7 @@ def check(path):
     count = len(h.opens)
     size = h.mem.r32(h.symbols['_LibInitTable'])
     pens = h.mem.r32(MASTER + size - 4)
-    for index, expected in enumerate([b's3', b'', b's7', b'', b's4', b's2', b's5', b's8']):
+    for index, expected in enumerate([b's3', b'', b's7', b'', b's4', b's2', b's5', b'rffa997']):
         assert h.mem.r_cstr(pens + 32 * index).encode() == expected, (index, h.mem.r_cstr(pens + 32 * index), expected)
     h.call('L_ExpungeLib')
     assert h.mem.r32(h.lib_list) == h.lib_list + 4, 'muigfx.library not removed'

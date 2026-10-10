@@ -193,7 +193,10 @@ static void set_pen_from_rgb(struct MUI_PenSpec_intern *psi,
     struct ColorMap *cm, ULONG r, ULONG g, ULONG b)
 {
     LONG pen;
+    /* MUI 3.9 allocates an exact pen while free pens remain and only
+     * then falls back to the closest colour. */
     struct TagItem obp_tags[] = {
+        {OBP_Precision, PRECISION_EXACT},
         {OBP_FailIfBad, FALSE},
         {TAG_DONE, 0L}
     };

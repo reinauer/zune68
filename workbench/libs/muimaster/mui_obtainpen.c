@@ -62,9 +62,8 @@
     if ((retval != -1) && (intern.p_is_allocated))
     {
         /* flag to indicate that ReleasePen() needs to be called
-           in MUI_ReleasePen() */
-                       
-        retval |= 0x10000;
+           in MUI_ReleasePen(); MUI 3.9 sets the whole upper word */
+        retval |= 0xffff0000;
     }
 
     return retval;
