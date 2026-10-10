@@ -5,6 +5,7 @@
 
 /*** Name *******************************************************************/
 #define MUIC_Listtree "Listtree.mcc"
+#define ListtreeObject MUI_NewObject(MUIC_Listtree
 
 /*** Identifier base ********************************************************/
 

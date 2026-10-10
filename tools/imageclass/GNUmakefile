@@ -8,6 +8,7 @@ CPUFLAGS ?= -m68000 -msoft-float
 CFLAGS ?= -std=gnu17 -Os -g -Wall -Wno-pointer-sign
 MASTER := $(ROOT)/workbench/libs/muimaster
 RAW := $(ROOT)/workbench/classes/zune/rawimage
+LISTTREE := $(ROOT)/workbench/classes/zune/listtree
 COMMON := $(ROOT)/workbench/classes/zune/nlist/include
 BZ := $(ROOT)/vendor/bzip2
 OBJ := $(BUILD)/imageclass
@@ -19,13 +20,17 @@ FLAGS := $(CPUFLAGS) -noixemul $(CFLAGS) -fno-builtin -fno-common \
 BZFILES := bzlib decompress huffman crctable randtable blocksort compress
 BZOBJS := $(addprefix $(OBJ)/bz2/,$(addsuffix .o,$(BZFILES)))
 .PHONY: all
-all: $(BUILD)/Libs/MUI/Rawimage.mcc $(BUILD)/Libs/MUI/Pixmap.mui
+all: $(BUILD)/Libs/MUI/Rawimage.mcc $(BUILD)/Libs/MUI/Pixmap.mui \
+ $(BUILD)/Libs/MUI/Listtree.mcc
 $(OBJ)/rawimage.o: library.c $(RAW)/Rawimage.c $(RAW)/Rawimage_private.h GNUmakefile
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -DBUILD_RAWIMAGE -MMD -MP -c $< -o $@
 $(OBJ)/pixmap.o: library.c $(MASTER)/classes/pixmap.c $(MASTER)/classes/pixmap_private.h GNUmakefile
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -MMD -MP -c $< -o $@
+$(OBJ)/listtree.o: listtree_library.c $(wildcard $(LISTTREE)/*.[ch]) GNUmakefile
+	@mkdir -p $(@D)
+	$(CC) $(FLAGS) -Wno-incompatible-pointer-types -I. -I$(LISTTREE) -MMD -MP -c $< -o $@
 $(OBJ)/bz2/%.o: $(BZ)/%.c $(BZ)/bzlib.h $(BZ)/bzlib_private.h GNUmakefile
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -DBZ_NO_STDIO -Wno-unused-but-set-variable -c $< -o $@
@@ -38,4 +43,10 @@ $(BUILD)/Libs/MUI/Rawimage.mcc: $(OBJ)/rawimage.o $(OBJ)/superattrs.o
 $(BUILD)/Libs/MUI/Pixmap.mui: $(OBJ)/pixmap.o $(OBJ)/superattrs.o $(BZOBJS)
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
--include $(OBJ)/rawimage.d $(OBJ)/pixmap.d
+$(OBJ)/format.o: ../plugin/format.c
+	@mkdir -p $(@D)
+	$(CC) $(FLAGS) -c $< -o $@
+$(BUILD)/Libs/MUI/Listtree.mcc: $(OBJ)/listtree.o $(OBJ)/format.o
+	@mkdir -p $(@D)
+	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
+-include $(OBJ)/rawimage.d $(OBJ)/pixmap.d $(OBJ)/listtree.d

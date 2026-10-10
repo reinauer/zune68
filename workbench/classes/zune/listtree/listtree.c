@@ -50,6 +50,12 @@ struct MUIS_Listtree_TreeNodeInt
     struct MUI_NListtree_TreeNode *ref;
 };
 
+/* NULL stands for the root list in both classes */
+static struct MUI_NListtree_TreeNode *TreeNodeRef(APTR node)
+{
+    return node ? ((struct MUIS_Listtree_TreeNodeInt *)node)->ref : NULL;
+}
+
 #define SYNC_TREENODE_FLAGS(tn)                                                 \
    if (tn && tn->tn_User)                                                       \
       ((struct MUIS_Listtree_TreeNode *)tn->tn_User)->tn_Flags = tn->tn_Flags;
@@ -403,7 +409,7 @@ IPTR Listtree__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case(MUIA_Listtree_Active):
             set(data->nlisttree, MUIA_NListtree_Active,
-                    ((struct MUIS_Listtree_TreeNodeInt *)tag->ti_Data)->ref);
+                    TreeNodeRef((APTR)tag->ti_Data));
             break;
 
         /* Setting MUIA_List_First causes weird behaviour of scroll bar */
@@ -454,7 +460,13 @@ IPTR Listtree__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     FORWARDGET(MUIA_Frame, MUIA_Frame)
     FORWARDGET(MUIA_Listtree_DoubleClick, MUIA_NListtree_DoubleClick)
     FORWARDGET(MUIA_List_Active, MUIA_NList_Active)
-    FORWARDGET(MUIA_Listtree_Active, MUIA_NListtree_Active)
+    case MUIA_Listtree_Active:
+    {
+        struct MUI_NListtree_TreeNode *tn = (struct MUI_NListtree_TreeNode *)
+            XGET(data->nlisttree, MUIA_NListtree_Active);
+        *(msg->opg_Storage) = (IPTR)(tn ? tn->tn_User : NULL);
+        return TRUE;
+    }
     FORWARDGET(MUIA_Listtree_Quiet, MUIA_NListtree_Quiet)
     FORWARDGET(MUIA_List_Visible, MUIA_NList_Visible)
     FORWARDGET(MUIA_List_VertProp_First, MUIA_NList_Prop_First)
@@ -495,7 +507,7 @@ IPTR Listtree__MUIM_Listtree_Insert(struct IClass *cl, Object *obj, struct MUIP_
         ln = msg->ListNode;
         break;
     default:
-        ln = ((struct MUIS_Listtree_TreeNodeInt *)msg->ListNode)->ref;
+        ln = TreeNodeRef(msg->ListNode);
     }
 
     switch((IPTR)msg->PrevNode)
@@ -507,7 +519,7 @@ IPTR Listtree__MUIM_Listtree_Insert(struct IClass *cl, Object *obj, struct MUIP_
         pn = msg->PrevNode;
         break;
     default:
-        pn = ((struct MUIS_Listtree_TreeNodeInt *)msg->PrevNode)->ref;
+        pn = TreeNodeRef(msg->PrevNode);
     }
 
     created = (struct MUI_NListtree_TreeNode *)DoMethod(data->nlisttree,
@@ -536,7 +548,7 @@ IPTR Listtree__MUIM_Listtree_GetEntry(struct IClass *cl, Object *obj, struct MUI
         tn = msg->Node;
         break;
     default:
-        tn = ((struct MUIS_Listtree_TreeNodeInt *)msg->Node)->ref;
+        tn = TreeNodeRef(msg->Node);
     }
 
     found = (struct MUI_NListtree_TreeNode *) DoMethod(data->nlisttree,
@@ -563,7 +575,7 @@ IPTR Listtree__MUIM_Listtree_Remove(struct IClass *cl, Object *obj, struct MUIP_
         ln = msg->ListNode;
         break;
     default:
-        ln = ((struct MUIS_Listtree_TreeNodeInt *)msg->ListNode)->ref;
+        ln = TreeNodeRef(msg->ListNode);
     }
 
     switch((IPTR)msg->TreeNode)
@@ -575,7 +587,7 @@ IPTR Listtree__MUIM_Listtree_Remove(struct IClass *cl, Object *obj, struct MUIP_
         tn = msg->TreeNode;
         break;
     default:
-        tn = ((struct MUIS_Listtree_TreeNodeInt *)msg->TreeNode)->ref;
+        tn = TreeNodeRef(msg->TreeNode);
     }
 
     /* Deallocating of MUIS_Listtree_TreeNode is happening in the DestructHook */
@@ -637,7 +649,7 @@ IPTR Listtree__MUIM_Listtree_GetNr(struct IClass *cl, Object *obj, struct MUIP_L
         tn = msg->TreeNode;
         break;
     default:
-        tn = ((struct MUIS_Listtree_TreeNodeInt *)msg->TreeNode)->ref;
+        tn = TreeNodeRef(msg->TreeNode);
     }
 
     return DoMethod(data->nlisttree, MUIM_NListtree_GetNr, tn, msg->Flags);
@@ -654,7 +666,7 @@ IPTR Listtree__MUIM_Listtree_Rename(struct IClass *cl, Object *obj, struct MUIP_
         tn = msg->TreeNode;
         break;
     default:
-        tn = ((struct MUIS_Listtree_TreeNodeInt *)msg->TreeNode)->ref;
+        tn = TreeNodeRef(msg->TreeNode);
     }
 
     renamed = (struct MUI_NListtree_TreeNode *)DoMethod(data->nlisttree,
@@ -673,7 +685,7 @@ IPTR Listtree__MUIM_List_Redraw(struct IClass *cl, Object *obj, struct MUIP_List
 {
     struct Listtree_DATA *data = INST_DATA(cl, obj);
     struct MUI_NListtree_TreeNode * entry = msg->entry ?
-            ((struct MUIS_Listtree_TreeNodeInt *)msg->entry)->ref : NULL;
+            TreeNodeRef(msg->entry) : NULL;
 
     switch(msg->pos)
     {
@@ -697,7 +709,7 @@ IPTR Listtree__MUIM_Listtree_Open(struct IClass *cl, Object *obj, struct MUIP_Li
         ln = msg->ListNode;
         break;
     default:
-        ln = ((struct MUIS_Listtree_TreeNodeInt *)msg->ListNode)->ref;
+        ln = TreeNodeRef(msg->ListNode);
     }
 
     switch((IPTR)msg->TreeNode)
@@ -709,7 +721,7 @@ IPTR Listtree__MUIM_Listtree_Open(struct IClass *cl, Object *obj, struct MUIP_Li
         tn = msg->TreeNode;
         break;
     default:
-        tn = ((struct MUIS_Listtree_TreeNodeInt *)msg->TreeNode)->ref;
+        tn = TreeNodeRef(msg->TreeNode);
     }
 
     return DoMethod(data->nlisttree, MUIM_NListtree_Open, ln, tn, msg->Flags);
@@ -727,7 +739,7 @@ IPTR Listtree__MUIM_Listtree_FindName(struct IClass *cl, Object *obj, struct MUI
         ln = msg->ListNode;
         break;
     default:
-        ln = ((struct MUIS_Listtree_TreeNodeInt *)msg->ListNode)->ref;
+        ln = TreeNodeRef(msg->ListNode);
     }
 
     found = (struct MUI_NListtree_TreeNode *) DoMethod(data->nlisttree, MUIM_NListtree_FindName,
@@ -813,7 +825,7 @@ IPTR Listtree__MUIM_Listtree_Close(struct IClass *cl, Object *obj, struct MUIP_L
         ln = msg->ListNode;
         break;
     default:
-        ln = ((struct MUIS_Listtree_TreeNodeInt *)msg->ListNode)->ref;
+        ln = TreeNodeRef(msg->ListNode);
     }
 
     switch((IPTR)msg->TreeNode)
@@ -825,7 +837,7 @@ IPTR Listtree__MUIM_Listtree_Close(struct IClass *cl, Object *obj, struct MUIP_L
         tn = msg->TreeNode;
         break;
     default:
-        tn = ((struct MUIS_Listtree_TreeNodeInt *)msg->TreeNode)->ref;
+        tn = TreeNodeRef(msg->TreeNode);
     }
 
     return DoMethod(data->nlisttree, MUIM_NListtree_Close, ln, tn, msg->Flags);

@@ -28,7 +28,7 @@ PLUGINS = {
     'thebar/mcp': 'TheBar.mcp',
     'thebar/toolbar_mcc': 'Toolbar.mcc',
 }
-IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui')
+IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc')
 CLASS_FILES = (*PLUGINS.values(), *IMAGE_CLASSES)
 EXAMPLES = ['HelloZune', 'HGroup', 'VGroup', 'VHGroup', 'VHGroup2', 'HVGroup', 'Notify', 'TheBarDemo']
 
@@ -119,6 +119,7 @@ def sdk(build):
     for name in ['TheBar_mcc.h', 'TheBar_mcp.h', 'Toolbar_mcc.h']:
         copy(CLASSES / 'thebar/include/mui' / name, build / 'SDK/include/mui' / name)
     copy(CLASSES / 'rawimage/Rawimage_mcc.h', build / 'SDK/include/mui/Rawimage_mcc.h')
+    copy(CLASSES / 'listtree/Listtree_mcc.h', build / 'SDK/include/mui/Listtree_mcc.h')
     copy(CLASSES / 'rawimage/MCC_Rawimage.doc', build / 'Docs/Rawimage/MCC_Rawimage.doc')
     copy(ROOT / 'vendor/bzip2/LICENSE', build / 'Docs/bzip2/LICENSE')
     copy(ROOT / 'vendor/bzip2/ORIGIN', build / 'Docs/bzip2/ORIGIN')
