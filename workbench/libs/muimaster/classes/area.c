@@ -1383,7 +1383,9 @@ Area__MUIM_DrawParentBackground(struct IClass *cl, Object *obj,
     if (!(data->mad_Flags & MADF_CANDRAW)) /* not between show/hide */
         return FALSE;
 
-    get(obj, MUIA_Parent, &parent);
+    /* Notify keeps the parent; a GetAttr per level of an inherited
+     * background costs a full OM_GET dispatch */
+    parent = _parent(obj);
     if (parent) {
         DoMethod(parent, MUIM_DrawBackground, msg->left, msg->top, msg->width,
                  msg->height, msg->xoffset, msg->yoffset, msg->flags);
