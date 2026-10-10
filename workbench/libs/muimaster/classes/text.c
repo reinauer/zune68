@@ -163,7 +163,10 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                     data->contents = new_contents;
                     if (_flags(obj) & MADF_SETUP)
                         setup_text(data, obj);
-                    MUI_Redraw(obj, MADF_DRAWOBJECT); /* should be optimized */
+                    /* Repaint only the contents; frame and outer
+                     * background are unchanged, as in MUI 3.8/3.9 */
+                    data->update = 1;
+                    MUI_Redraw(obj, MADF_DRAWUPDATE);
                 }
             }
             break;
@@ -184,7 +187,10 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                     data->preparse = new_preparse;
                     if (_flags(obj) & MADF_SETUP)
                         setup_text(data, obj);
-                    MUI_Redraw(obj, MADF_DRAWOBJECT); /* should be optimized */
+                    /* Repaint only the contents; frame and outer
+                     * background are unchanged, as in MUI 3.8/3.9 */
+                    data->update = 1;
+                    MUI_Redraw(obj, MADF_DRAWUPDATE);
                 }
             }
             break;
@@ -377,7 +383,6 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
     struct MUIP_Draw *msg)
 {
     struct MUI_TextData *data = INST_DATA(cl, obj);
-    Object *act = NULL;
     APTR clip;
 
 /*    D(bug("muimaster.library/text.c: Draw Text Object at " */
@@ -395,24 +400,29 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
     if (msg->flags & MADF_DRAWUPDATE && data->update == 1)
     {
         DoMethod(obj, MUIM_DrawBackground, _mleft(obj), _mtop(obj),
-            _mwidth(obj), _mheight(obj), _mleft(obj), _mtop(obj), 0);
+            _mwidth(obj), _mheight(obj), _mleft(obj), _mtop(obj),
+            _flags(obj));
     }
 
-    clip = MUI_AddClipping(muiRenderInfo(obj), _mleft(obj), _mtop(obj),
-        _mwidth(obj), _mheight(obj));
+    /* Installing a clip region rebuilds the layer's clip rectangles.
+     * Text that fits with room for style overhang needs no clipping. */
+    if (data->ztext->width + 8 <= _mwidth(obj)
+        && data->ztext->height <= _mheight(obj))
+        clip = (APTR)-1;
+    else
+        clip = MUI_AddClipping(muiRenderInfo(obj), _mleft(obj),
+            _mtop(obj), _mwidth(obj), _mheight(obj));
 
     SetAPen(_rp(obj), _pens(obj)[MPEN_TEXT]);
 
     {
-        get(_win(obj), MUIA_Window_ActiveObject, &act);
-        {
-            int y = (_mheight(obj) - data->ztext->height) / 2;
-            zune_text_draw(data->ztext, obj,
-                _mleft(obj), _mright(obj), _mtop(obj) + y);
-        }
+        int y = (_mheight(obj) - data->ztext->height) / 2;
+        zune_text_draw(data->ztext, obj,
+            _mleft(obj), _mright(obj), _mtop(obj) + y);
     }
 
-    MUI_RemoveClipping(muiRenderInfo(obj), clip);
+    if (clip != (APTR)-1)
+        MUI_RemoveClipping(muiRenderInfo(obj), clip);
     data->update = 0;
     return TRUE;
 }
