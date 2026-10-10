@@ -1043,6 +1043,27 @@ static IPTR Area_CustomBackfill(Object *obj, LONG left, LONG top,
     return result;
 }
 
+/* A custom backfill that passes a request on to Area gets the object's
+ * ordinary background, as in MUI 3.9. IBrowse's toolbar group handles only
+ * its whole box itself and passes smaller areas, such as a button that
+ * has just lost its image, to its superclass. */
+static IPTR Area__MUIM_CustomBackfill(struct IClass *cl, Object *obj,
+    struct MUIP_CustomBackfill *msg)
+{
+    struct MUI_AreaData *data = INST_DATA(cl, obj);
+    ULONG active = data->mad_Flags2 & MADF2_BACKFILL_ACTIVE;
+
+    if (msg->right < msg->left || msg->bottom < msg->top)
+        return FALSE;
+    /* Paint the plain background, not the custom callback again */
+    data->mad_Flags2 |= MADF2_BACKFILL_ACTIVE;
+    DoMethod(obj, MUIM_DrawBackground, msg->left, msg->top,
+        msg->right - msg->left + 1, msg->bottom - msg->top + 1,
+        msg->left, msg->top, data->mad_Flags);
+    data->mad_Flags2 = (data->mad_Flags2 & ~MADF2_BACKFILL_ACTIVE) | active;
+    return TRUE;
+}
+
 /*
  * draw object background if MADF_FILLAREA.
  */
@@ -2580,6 +2601,8 @@ BOOPSI_DISPATCHER(IPTR, Area_Dispatcher, cl, obj, msg)
         return Area__MUIM_Draw(cl, obj, (APTR)msg);
     case MUIM_DrawBackground:
         return Area__MUIM_DrawBackground(cl, obj, (APTR)msg);
+    case MUIM_CustomBackfill:
+        return Area__MUIM_CustomBackfill(cl, obj, (APTR)msg);
     case MUIM_DrawBackgroundBuffered:
         return Area__MUIM_DrawBackgroundBuffered(cl, obj, (APTR)msg);
     case MUIM_DrawParentBackground:

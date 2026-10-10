@@ -176,6 +176,18 @@ def check(path):
     h.background(0, 0, 5, 5)
     assert len(h.events) == 1 and h.events[0][1] != BACKFILL
     h.mem.w32(OBJECT + 104, 1)
+    # A custom backfill passing a request on to Area gets the ordinary
+    # background, as in MUI 3.9 (IBrowse's toolbar group relies on it).
+    h.events.clear()
+    h.mem.w_block(MESSAGE, struct.pack('>I6i', BACKFILL, 200, 15, 223, 38, 0, 0))
+    assert h.call('DoMethodA', OBJECT, MESSAGE) == 1
+    assert len(h.events) == 1, h.events
+    assert h.events[0][:9] == [OBJECT, BACKGROUND, 200, 15, 24, 24, 200, 15,
+                               1 << 14], h.events[0]
+    assert h.mem.r32(OBJECT + 104) == 1, 'active flag restored'
+    h.events.clear()
+    h.mem.w_block(MESSAGE, struct.pack('>I6i', BACKFILL, 5, 5, 4, 9, 0, 0))
+    assert h.call('DoMethodA', OBJECT, MESSAGE) == 0 and not h.events
     h.enable(0)
     assert h.enabled() == 0
     assert not h.mem.r32(OBJECT + 104) & 1
@@ -183,7 +195,7 @@ def check(path):
     assert len(h.events) == 1 and h.events[0][1] != BACKFILL
     assert not h.allocations
     h.machine.cleanup()
-    print(f'{path}: custom backfill bounds, routing, clipping and disabled state passed')
+    print(f'{path}: custom backfill bounds, routing, fallback, clipping and disabled state passed')
 
 
 if __name__ == '__main__':
