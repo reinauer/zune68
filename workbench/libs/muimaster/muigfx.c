@@ -13,6 +13,7 @@
 #include "muimaster_intern.h"
 #include "frame.h"
 #include "imspec.h"
+#include "imspec_intern.h"
 #include "mui.h"
 
 #define MUIGFX_NAME "muigfx.library"
@@ -86,22 +87,41 @@ static void Gfx_DrawFrame(struct MUI_RenderInfo *mri __asm("a0"),
         left, top, width, height);
 }
 
+/* Like MUI's muigfx, always return an image: scalable images, unknown
+ * specs and missing files report 0x0 to 10000x10000 with an 8x8 default
+ * (TearOffPanel sizes its handles from that), fixed-size images their
+ * own size. */
 static struct MUIGfxImage *Gfx_GetImage(struct MUI_RenderInfo *mri __asm("a0"),
     STRPTR spec __asm("a1"), ULONG flags __asm("d0"))
 {
+    static const struct MUI_MinMax scalable = {
+        0, 0, MUI_MAXMAX, MUI_MAXMAX, 8, 8
+    };
     struct MUIGfxImage *image;
 
-    if (!mri || !spec)
-        return NULL;
     if (!(image = AllocVec(sizeof(*image), MEMF_ANY | MEMF_CLEAR)))
         return NULL;
-    image->spec = zune_imspec_setup((IPTR)spec, mri);
-    if (!image->spec)
+    image->minmax = scalable;
+    if (mri && spec)
+        image->spec = zune_imspec_setup((IPTR)spec, mri);
+    if (image->spec)
     {
-        FreeVec(image);
-        return NULL;
+        switch (image->spec->type)
+        {
+        case IST_PATTERN:
+        case IST_COLOR:
+        case IST_SCALED_GRADIENT:
+        case IST_TILED_GRADIENT:
+        case IST_BOOPSI:
+            break;
+        case IST_BRUSH:
+            if (!image->spec->u.brush.dt[0])
+                break;
+            /* fall through */
+        default:
+            zune_imspec_askminmax(image->spec, &image->minmax);
+        }
     }
-    zune_imspec_askminmax(image->spec, &image->minmax);
     return image;
 }
 
@@ -109,7 +129,8 @@ static void Gfx_ReleaseImage(struct MUIGfxImage *image __asm("a0"))
 {
     if (!image)
         return;
-    zune_imspec_cleanup(image->spec);
+    if (image->spec)
+        zune_imspec_cleanup(image->spec);
     FreeVec(image);
 }
 
@@ -142,9 +163,13 @@ static void Gfx_DrawImage(struct MUI_RenderInfo *mri __asm("a0"),
     LONG top __asm("d1"), LONG width __asm("d2"), LONG height __asm("d3"),
     ULONG flags __asm("d4"), ULONG flags2 __asm("d5"))
 {
-    if (mri && image && width > 0 && height > 0)
-        zune_imspec_draw(image->spec, mri, left, top, width, height,
-            0, 0, flags & 1);
+    if (!mri || !image || !image->spec || width <= 0 || height <= 0)
+        return;
+    /* MUI draws nothing for a brush whose file is missing. */
+    if (image->spec->type == IST_BRUSH && !image->spec->u.brush.dt[0])
+        return;
+    zune_imspec_draw(image->spec, mri, left, top, width, height,
+        0, 0, flags & 1);
 }
 
 /* As the MorphOS reimplementation does: scroll with ScrollWindowRaster,
