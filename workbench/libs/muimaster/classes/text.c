@@ -33,6 +33,7 @@ struct MUI_TextData
 {
     ULONG mtd_Flags;
     STRPTR contents;
+    ULONG contents_size;    /* allocated bytes of contents */
     CONST_STRPTR preparse;
     TEXT hichar;
     ZText *ztext;
@@ -51,6 +52,29 @@ struct MUI_TextData
 #include "native_version.h"
 
 static void setup_text(struct MUI_TextData *data, Object *obj);
+
+/* Copy new contents, reusing the buffer when the text fits. Status
+ * lines are set repeatedly with similar lengths, so round the size up.
+ * The source may point into the current buffer. */
+static BOOL store_contents(struct MUI_TextData *data, CONST_STRPTR src)
+{
+    ULONG len = strlen(src) + 1, size;
+    STRPTR buf;
+
+    if (data->contents && len <= data->contents_size)
+    {
+        memmove(data->contents, src, len);
+        return TRUE;
+    }
+    size = (len + 31) & ~31UL;
+    if (!(buf = AllocVec(size, MEMF_ANY)))
+        return FALSE;
+    memcpy(buf, src, len);
+    FreeVec(data->contents);
+    data->contents = buf;
+    data->contents_size = size;
+    return TRUE;
+}
 
 /**************************************************************************
 OM_NEW
@@ -75,7 +99,7 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         {
         case MUIA_Text_Contents:
             if (tag->ti_Data)
-                data->contents = StrDup((STRPTR) tag->ti_Data);
+                store_contents(data, (STRPTR) tag->ti_Data);
             break;
 
         case MUIA_Text_HiChar:
@@ -110,7 +134,7 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     if (!data->preparse)
         data->preparse = StrDup("");
     if (!data->contents)
-        data->contents = StrDup("");
+        store_contents(data, "");
 
     if (!data->contents || !data->preparse)
     {
@@ -149,18 +173,14 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         {
         case MUIA_Text_Contents:
             {
-                char *new_contents =
-                    StrDup(((char *)tag->ti_Data) ? (char *)tag->
-                    ti_Data : "");
-                if (new_contents)
+                if (store_contents(data, ((char *)tag->ti_Data) ?
+                    (char *)tag->ti_Data : ""))
                 {
                     if (data->ztext)
                     {
                         zune_text_destroy(data->ztext);
                         data->ztext = NULL;
                     }
-                    FreeVec(data->contents);
-                    data->contents = new_contents;
                     if (_flags(obj) & MADF_SETUP)
                         setup_text(data, obj);
                     /* Repaint only the contents; frame and outer
