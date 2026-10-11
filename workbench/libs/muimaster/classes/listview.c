@@ -97,6 +97,10 @@ IPTR Listview__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     data = INST_DATA(cl, obj);
     data->list = list;
+    /* The zero side spacings are defaults, not the application's: a
+     * listview as window contents gets the window spacing, as in MUI 3.9
+     * (tests/native/listact.c) */
+    muiAreaData(obj)->mad_Flags &= ~(MADF_INNERLEFT | MADF_INNERRIGHT);
 
     /* parse initial taglist, forward to list */
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
