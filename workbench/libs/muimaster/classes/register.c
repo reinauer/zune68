@@ -494,7 +494,9 @@ IPTR Register__MUIM_Setup(struct IClass *cl, Object *obj,
 
     for (i = 0; i < data->numitems; i++)
     {
-        data->items[i].ztext = zune_text_new(NULL, data->labels[i], ZTEXT_ARG_NONE, 0);
+        /* MUI 3.9 centres the titles on their tabs */
+        data->items[i].ztext = zune_text_new("\33c", data->labels[i],
+            ZTEXT_ARG_NONE, 0);
         zune_text_get_bounds(data->items[i].ztext, obj);
     }
 
