@@ -148,6 +148,8 @@ enum
 #define MUIO_Label_LeftAligned   (1<<10)
 #define MUIO_Label_Centered      (1<<11)
 #define MUIO_Label_FreeVert      (1<<12)
+#define MUIO_Label_Tiny          (1<<13)
+#define MUIO_Label_DontCopy      (1<<14)
 
 /* flag for MUIO_MenustripNM: check for "localized" menu items such
  * as "O\0Open" */

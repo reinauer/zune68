@@ -226,7 +226,7 @@ Object *INTERNAL_ImageButton(CONST_STRPTR label, CONST_STRPTR imagePath,
     {
     case MUIO_Label:           /* STRPTR label, ULONG flags */
         {
-            struct TagItem tags[5];
+            struct TagItem tags[6];
             int ntags = 0;
 
             if (params[1] & MUIO_Label_SingleFrame)
@@ -265,6 +265,15 @@ Object *INTERNAL_ImageButton(CONST_STRPTR label, CONST_STRPTR imagePath,
             {
                 tags[ntags].ti_Tag = MUIA_Text_SetVMax;
                 tags[ntags].ti_Data = (IPTR) FALSE;
+                ntags++;
+            }
+
+            /* MUI 3.9: the label in the tiny font (YAM's quick search
+             * bar) */
+            if (params[1] & MUIO_Label_Tiny)
+            {
+                tags[ntags].ti_Tag = MUIA_Font;
+                tags[ntags].ti_Data = (IPTR) MUIV_Font_Tiny;
                 ntags++;
             }
 
