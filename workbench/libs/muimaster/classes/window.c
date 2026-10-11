@@ -3230,6 +3230,35 @@ static void ForwardAppMessage(struct MUI_WindowData *data, Object *child,
 }
 
 
+/* The right and bottom borders the window will get (see
+ * DisplayWindow()): mri_BorderBottom is the size gadget's, but a window
+ * without one, or of fixed size, gets the screen's plain border. */
+static void WindowRealBorders(struct MUI_WindowData *data, LONG *rightp,
+    LONG *bottomp)
+{
+    struct MUI_RenderInfo *mri = &data->wd_RenderInfo;
+    struct Screen *scr = mri->mri_Screen;
+    ULONG flags = data->wd_CrtFlags;
+    BOOL sizing;
+    LONG right, bottom;
+
+    sizing = (flags & WFLG_SIZEGADGET) && !(flags & WFLG_BORDERLESS)
+        && !(data->wd_MinMax.MinWidth == data->wd_MinMax.MaxWidth
+        && data->wd_MinMax.MinHeight == data->wd_MinMax.MaxHeight);
+    right = mri->mri_BorderRight;
+    bottom = (flags & WFLG_BORDERLESS) ? 0 : scr->WBorBottom;
+    if (sizing && !(flags & WFLG_SIZEBRIGHT))
+        bottom = mri->mri_BorderBottom;
+    if (sizing && (flags & WFLG_SIZEBRIGHT) && mri->mri_SizeImage)
+        right = MAX(right, IM(mri->mri_SizeImage)->Width);
+    if ((data->wd_Flags & MUIWF_USERIGHTSCROLLER) && mri->mri_UpImage)
+        right = MAX(right, IM(mri->mri_UpImage)->Width);
+    if ((data->wd_Flags & MUIWF_USEBOTTOMSCROLLER) && mri->mri_LeftImage)
+        bottom = MAX(bottom, IM(mri->mri_LeftImage)->Height);
+    *rightp = right;
+    *bottomp = bottom;
+}
+
 /*
  * calculate real dimensions from programmer requirements.
  * may be overridden by user settings if MUIA_Window_ID is set.
@@ -3242,10 +3271,11 @@ static void WindowSelectDimensions(struct MUI_WindowData *data)
         /* Pixel sizes and screen percentages give the outer window size
          * in MUI 3.8/3.9 (a 400 pixel MUIA_Window_Width opens a window 400
          * wide), while wd_Width/wd_Height are inner dimensions. */
-        LONG hborders = data->wd_RenderInfo.mri_BorderLeft
-            + data->wd_RenderInfo.mri_BorderRight;
-        LONG vborders = data->wd_RenderInfo.mri_BorderTop
-            + data->wd_RenderInfo.mri_BorderBottom;
+        LONG right, bottom, hborders, vborders;
+
+        WindowRealBorders(data, &right, &bottom);
+        hborders = data->wd_RenderInfo.mri_BorderLeft + right;
+        vborders = data->wd_RenderInfo.mri_BorderTop + bottom;
 
         if (data->wd_ReqWidth > 0)
             data->wd_Width = data->wd_ReqWidth - hborders;
@@ -4268,28 +4298,11 @@ static BOOL WindowFits(struct MUI_WindowData *data)
 {
     struct MUI_RenderInfo *mri = &data->wd_RenderInfo;
     struct Screen *scr = mri->mri_Screen;
-
-    ULONG flags = data->wd_CrtFlags;
-    BOOL sizing;
     LONG right, bottom;
 
     if (!scr || scr->Width <= 0 || scr->Height <= 0)
         return TRUE;
-    /* the borders the window will get (see DisplayWindow()): a window of
-     * fixed size has no size gadget */
-    sizing = (flags & WFLG_SIZEGADGET) && !(flags & WFLG_BORDERLESS)
-        && !(data->wd_MinMax.MinWidth == data->wd_MinMax.MaxWidth
-        && data->wd_MinMax.MinHeight == data->wd_MinMax.MaxHeight);
-    right = mri->mri_BorderRight;
-    bottom = (flags & WFLG_BORDERLESS) ? 0 : scr->WBorBottom;
-    if (sizing && !(flags & WFLG_SIZEBRIGHT))
-        bottom = mri->mri_BorderBottom;
-    if (sizing && (flags & WFLG_SIZEBRIGHT) && mri->mri_SizeImage)
-        right = MAX(right, IM(mri->mri_SizeImage)->Width);
-    if ((data->wd_Flags & MUIWF_USERIGHTSCROLLER) && mri->mri_UpImage)
-        right = MAX(right, IM(mri->mri_UpImage)->Width);
-    if ((data->wd_Flags & MUIWF_USEBOTTOMSCROLLER) && mri->mri_LeftImage)
-        bottom = MAX(bottom, IM(mri->mri_LeftImage)->Height);
+    WindowRealBorders(data, &right, &bottom);
     return data->wd_MinMax.MinWidth + mri->mri_BorderLeft + right
         <= scr->Width
         && data->wd_MinMax.MinHeight + mri->mri_BorderTop + bottom
