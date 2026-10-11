@@ -844,7 +844,8 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
         !!(buttons & MUIV_Window_Button_Iconify);
     LONG i, needed, added = 0;
 
-    if (!count || !data->wd_Title || !*data->wd_Title ||
+    /* MUI 3.9 adds them to untitled windows too (tests/native/notitle.c) */
+    if (!count ||
         (win->Flags & (WFLG_BORDERLESS | WFLG_BACKDROP)) ||
         (data->wd_Flags & MUIWF_TOOLBOX) || height < 8)
         return;
@@ -1153,6 +1154,9 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
         data->wd_ScreenTitle ?
         WA_ScreenTitle :
         TAG_IGNORE, (IPTR) data->wd_ScreenTitle,
+        /* Like MUI 3.9, a window on a locked public screen is one of its
+         * visitors (tests/native/notitle.c) */
+        (data->wd_Flags & MUIWF_SCREENLOCKED) ? WA_PubScreen :
         WA_CustomScreen, (IPTR) scr,
         WA_InnerWidth, (IPTR) data->wd_Width,
         WA_InnerHeight, (IPTR) data->wd_Height,
@@ -1172,7 +1176,8 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
             0) ? TRUE : FALSE, WA_ExtraGadget_Iconify,
         (IPTR) ((buttons & MUIV_Window_Button_Iconify) != 0) ? TRUE : FALSE,
 #endif
-        data->wd_NoMenus ?
+        /* MUI 3.9 also traps the right button without a menu strip */
+        data->wd_NoMenus || !menu ?
         WA_RMBTrap :
         TAG_IGNORE, (IPTR) TRUE,
         WA_Gadgets, (IPTR) gadgets,
@@ -2799,7 +2804,7 @@ static void HandleInputEvent(Object *win, struct MUI_WindowData *data,
         {
             AROS_ATOMIC_OR(iWin->Flags, WFLG_RMBTRAP);
         }
-        else if (!data->wd_NoMenus)
+        else if (!data->wd_NoMenus && data->wd_Menu)
         {
             AROS_ATOMIC_AND(iWin->Flags, ~WFLG_RMBTRAP);
         }
@@ -3656,7 +3661,7 @@ IPTR Window__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             data->wd_NoMenus = (BOOL) tag->ti_Data;
             if (data->wd_RenderInfo.mri_Window)
             {
-                if (data->wd_NoMenus)
+                if (data->wd_NoMenus || !data->wd_Menu)
                     AROS_ATOMIC_OR(data->wd_RenderInfo.mri_Window->Flags, WFLG_RMBTRAP);
                 else
                     AROS_ATOMIC_AND(data->wd_RenderInfo.mri_Window->Flags, ~WFLG_RMBTRAP);
