@@ -95,7 +95,9 @@ IPTR Radio__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 MUIA_ShowSelState, FALSE,
                 MUIA_Selected, state,
                 MUIA_Text_Contents, (IPTR)entries[i],
-                MUIA_Text_SetMax, TRUE,
+                /* Setup gives every label the widest one's width */
+                MUIA_Text_SetMax, FALSE,
+                MUIA_InnerTop, 1,
                 MUIA_Frame, MUIV_Frame_None,
                 MUIA_Text_PreParse, (IPTR)"\33l",
                 End),
@@ -187,6 +189,8 @@ IPTR Radio__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
 IPTR Radio__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
 {
+    struct Radio_DATA *data = INST_DATA(cl, obj);
+
     if (!DoSuperMethodA(cl, obj, msg))
         return FALSE;
 
@@ -195,6 +199,31 @@ IPTR Radio__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
     set(obj, MUIA_Group_VertSpacing,
         muiGlobalInfo(obj)->mgi_Prefs->radiobutton_vspacing);
 
+    /* MUI 3.9 makes every label as wide as the widest, left aligned, and
+     * one pixel lower than the button's top (tests/native/compoundwalk.c) */
+    {
+        Object **texts = data->buttons + 2 * data->entries_num;
+        struct RastPort rp;
+        LONG widest = 0;
+        int i;
+
+        for (i = 0; i < data->entries_num; i++)
+        {
+            STRPTR contents = NULL;
+
+            get(texts[i], MUIA_Text_Contents, &contents);
+            InitRastPort(&rp);
+            SetFont(&rp, _font(texts[i]));
+            if (contents)
+                widest = MAX(widest, TextLength(&rp, contents,
+                    strlen(contents)));
+        }
+        for (i = 0; i < data->entries_num; i++)
+        {
+            muiAreaData(texts[i])->mad_Flags |= MADF_FIXWIDTH;
+            muiAreaData(texts[i])->mad_HardWidth = widest;
+        }
+    }
     return TRUE;
 }
 
