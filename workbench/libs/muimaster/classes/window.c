@@ -76,10 +76,13 @@ struct IDNode
 };
 
 #ifdef ZUNE68_GCC_NATIVE
-/* Ordinary border gadgets need no additional BOOPSI class or image bitmap. */
+/* Title gadgets are BOOPSI buttons like MUI 3.9's: their image paints the
+ * whole box in the title bar colour before drawing its borders. */
 struct NativeTitleGadget
 {
-    struct Gadget gadget;
+    struct Gadget *gadget;
+    Object *image;
+    ULONG id;
     struct Border frame[2];
     struct Border symbol[4];
     WORD frame_xy[12];
@@ -174,6 +177,7 @@ struct MUI_WindowData
     LONG wd_PenHandles[MPEN_COUNT];
 #ifdef ZUNE68_GCC_NATIVE
     struct NativeTitleGadget *wd_TitleGadgets;
+    Class *wd_TitleImageClass;
     WORD wd_TitleMinWidth;
 #endif
     struct WindowEventCursor *wd_EventCursors;
@@ -803,6 +807,31 @@ static void NativeTitleRectangle(WORD *xy, WORD left, WORD top,
     xy[8] = left;  xy[9] = top;
 }
 
+/* The title gadget image: its Border chain is the ImageData (IA_Data). */
+static BOOPSI_DISPATCHER(IPTR, NativeTitleImage_Dispatcher, cl, obj, msg)
+{
+    if (msg->MethodID == IM_DRAW || msg->MethodID == IM_DRAWFRAME)
+    {
+        struct impDraw *draw = (struct impDraw *)msg;
+        struct Image *im = (struct Image *)obj;
+        struct RastPort *rp = draw->imp_RPort;
+        UWORD *pens = draw->imp_DrInfo->dri_Pens;
+        WORD x = draw->imp_Offset.X + im->LeftEdge;
+        WORD y = draw->imp_Offset.Y + im->TopEdge;
+        BOOL inactive = draw->imp_State == IDS_INACTIVENORMAL ||
+            draw->imp_State == IDS_INACTIVESELECTED ||
+            draw->imp_State == IDS_INACTIVEDISABLED;
+
+        SetDrMd(rp, JAM1);
+        SetAPen(rp, pens[inactive ? BACKGROUNDPEN : FILLPEN]);
+        RectFill(rp, x, y, x + im->Width - 1, y + im->Height - 1);
+        DrawBorder(rp, (struct Border *)im->ImageData, x, y);
+        return TRUE;
+    }
+    return DoSuperMethodA(cl, obj, msg);
+}
+BOOPSI_DISPATCHER_END
+
 static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
     struct Window *win)
 {
@@ -813,7 +842,7 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
     LONG height = win->BorderTop, width = 2 * height + 1;
     LONG count = !!(buttons & MUIV_Window_Button_MUI) +
         !!(buttons & MUIV_Window_Button_Iconify);
-    LONG i, needed;
+    LONG i, needed, added = 0;
 
     if (!count || !data->wd_Title || !*data->wd_Title ||
         (win->Flags & (WFLG_BORDERLESS | WFLG_BACKDROP)) ||
@@ -841,6 +870,11 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
         width = 15;
     /* MUI 3.9 adds its gadgets however narrow the window is */
     needed = left + right + count * width + 16;
+    data->wd_TitleImageClass = MakeClass(NULL, IMAGECLASS, NULL, 0, 0);
+    if (!data->wd_TitleImageClass)
+        return;
+    data->wd_TitleImageClass->cl_Dispatcher.h_Entry =
+        (HOOKFUNC)NativeTitleImage_Dispatcher;
     items = AllocVec(2 * sizeof(*items), MEMF_PUBLIC | MEMF_CLEAR);
     if (!items)
         return;
@@ -863,16 +897,7 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
         if (!id)
             continue;
         right += width;
-        g = &item->gadget;
-        g->LeftEdge = -right;
-        g->TopEdge = 0;
-        g->Width = width;
-        g->Height = height;
-        g->Flags = GFLG_RELRIGHT | GFLG_GADGHNONE;
-        g->Activation = GACT_RELVERIFY | GACT_TOPBORDER;
-        g->GadgetType = GTYP_BOOLGADGET;
-        g->GadgetID = id;
-        g->GadgetRender = &item->frame[0];
+        item->id = id;
         /* Title gadgets share the top/bottom frame lines with the system
          * gadgets. An inset bevel adds an unwanted line inside the title. */
         item->frame_xy[0] = 0;
@@ -961,11 +986,24 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
             item->symbol[part].NextBorder = part + 1 < parts ?
                 &item->symbol[part + 1] : NULL;
         }
-        /* Before the system drag gadget, so this region remains clickable. */
-        AddGadget(win, g, 0);
+        item->image = NewObject(data->wd_TitleImageClass, NULL,
+            IA_Width, width, IA_Height, height, IA_Data, &item->frame[0],
+            TAG_DONE);
+        g = item->image ? (struct Gadget *)NewObject(NULL, BUTTONGCLASS,
+            GA_RelRight, -right, GA_Top, 0, GA_Width, width,
+            GA_Height, height, GA_TopBorder, TRUE, GA_RelVerify, TRUE,
+            GA_Highlight, GFLG_GADGHNONE, GA_Image, item->image,
+            GA_ID, id, TAG_DONE) : NULL;
+        if (!g)
+            continue;
+        item->gadget = g;
+        /* Before the system drag gadget, so this region remains clickable,
+         * in creation order like MUI 3.9. Like MUI 3.9, do not refresh the
+         * frame: Intuition would then cut the title at these gadgets,
+         * earlier than MUI 3.9's, which paint over it instead. */
+        AddGadget(win, g, added++);
         RefreshGList(g, win, NULL, 1);
     }
-    RefreshWindowFrame(win);
 }
 
 static void FreeNativeTitleGadgets(Object *obj, struct MUI_WindowData *data)
@@ -973,12 +1011,25 @@ static void FreeNativeTitleGadgets(Object *obj, struct MUI_WindowData *data)
     if (data->wd_TitleGadgets)
     {
         int i;
+        /* the window is closed, so the gadgets are no longer attached */
         for (i = 0; i < 2; i++)
-            if (data->wd_TitleGadgets[i].gadget.GadgetID)
-                DoMethod(obj, MUIM_Window_FreeGadgetID,
-                    data->wd_TitleGadgets[i].gadget.GadgetID);
+        {
+            struct NativeTitleGadget *item = &data->wd_TitleGadgets[i];
+
+            if (item->gadget)
+                DisposeObject(item->gadget);
+            if (item->image)
+                DisposeObject(item->image);
+            if (item->id)
+                DoMethod(obj, MUIM_Window_FreeGadgetID, item->id);
+        }
         FreeVec(data->wd_TitleGadgets);
         data->wd_TitleGadgets = NULL;
+    }
+    if (data->wd_TitleImageClass)
+    {
+        FreeClass(data->wd_TitleImageClass);
+        data->wd_TitleImageClass = NULL;
     }
     data->wd_TitleMinWidth = 0;
 }
@@ -2840,9 +2891,9 @@ void _zune_window_message(struct IntuiMessage *imsg)
 #ifdef ZUNE68_GCC_NATIVE
             if (data->wd_TitleGadgets && imsg->IAddress)
             {
-                if (imsg->IAddress == &data->wd_TitleGadgets[0].gadget)
+                if (imsg->IAddress == data->wd_TitleGadgets[0].gadget)
                     action = MUIV_Window_Button_MUI;
-                else if (imsg->IAddress == &data->wd_TitleGadgets[1].gadget)
+                else if (imsg->IAddress == data->wd_TitleGadgets[1].gadget)
                     action = MUIV_Window_Button_Iconify;
             }
 #elif defined(__AROS__)
