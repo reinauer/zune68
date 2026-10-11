@@ -682,8 +682,19 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
             i = 0;
             do
             {
-                rdargs->RDA_Source.CS_Buffer = ptr;
-                rdargs->RDA_Source.CS_Length = strlen(ptr);
+                /* ReadArgs() wants the line terminated by a newline; a
+                 * column of just "BAR" (xSysInfo's lists) failed without
+                 * it and lost its bar */
+                char line[128];
+                LONG len = strlen(ptr);
+
+                if (len > (LONG)sizeof(line) - 2)
+                    len = sizeof(line) - 2;
+                CopyMem(ptr, line, len);
+                line[len++] = '\n';
+                line[len] = '\0';
+                rdargs->RDA_Source.CS_Buffer = line;
+                rdargs->RDA_Source.CS_Length = len;
                 rdargs->RDA_Source.CS_CurChr = 0;
                 rdargs->RDA_DAList = 0;
                 rdargs->RDA_Buffer = NULL;
@@ -1822,10 +1833,22 @@ IPTR List__MUIM_Cleanup(struct IClass *cl, Object *obj,
 /**************************************************************************
  MUIM_AskMinMax
 **************************************************************************/
+/* MUI 3.9 (20.x) shows a list title as a row of title buttons above the
+ * framed entry area, one per column, with the scroller beside both
+ * (tests/native/barfmt.c). The strip is the font height plus a 1 pixel
+ * bevel and 2 pixels of spacing above and below. */
+static WORD List_TitleStrip(Object *obj, struct MUI_ListData *data)
+{
+    if (!data->title || data->area_replaced || !_font(obj))
+        return 0;
+    return _font(obj)->tf_YSize + 6;
+}
+
 IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUIP_AskMinMax *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    WORD strip = List_TitleStrip(obj, data);
 
     DoSuperMethodA(cl, obj, (Msg) msg);
 
@@ -1850,7 +1873,7 @@ IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 
     if ((data->flags & LIST_ADJUSTHEIGHT) && (data->entries_num > 0))
     {
-        msg->MinMaxInfo->MinHeight += data->entries_totalheight;
+        msg->MinMaxInfo->MinHeight += data->entries_totalheight + strip;
         msg->MinMaxInfo->DefHeight = msg->MinMaxInfo->MinHeight;
         msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->MinHeight;
     }
@@ -1861,7 +1884,8 @@ IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
          * so the rows must not be stacked on top of it. */
         LONG row = _font(obj)->tf_YSize + data->prefs_linespacing;
 
-        LONG frame = _subheight(obj) + _subheight(data->area);
+        /* the scroller beside the title strip counts against both */
+        LONG frame = _subheight(obj) + _subheight(data->area) + strip;
 
         msg->MinMaxInfo->MinHeight = MAX(msg->MinMaxInfo->MinHeight,
             frame + 3 * row);
@@ -1897,6 +1921,13 @@ IPTR List__MUIM_Layout(struct IClass *cl, Object *obj,
     struct MUI_ListData *data = INST_DATA(cl, obj);
     ULONG rc = DoSuperMethodA(cl, obj, (Msg) msg);
     LONG new_entries_first = data->entries_first;
+    WORD strip = List_TitleStrip(obj, data);
+
+    /* the title buttons take the top of the entry area's place */
+    if (strip > 0 && _height(data->area) > strip)
+        MUI_Layout(data->area, _left(data->area) - _mleft(obj),
+            _top(data->area) - _mtop(obj) + strip, _width(data->area),
+            _height(data->area) - strip, 0);
 
     /* Calc the numbers of entries visible */
     CalcVertVisible(cl, obj);
@@ -2015,6 +2046,48 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
     }
 }
 
+/* The title buttons: each column, with its share of the spacing and its
+ * bar, gets a bevel of shine above and left, shadow below and right,
+ * with background corners where shine and shadow meet, as in MUI 3.9. */
+static void List_DrawTitleStrip(struct IClass *cl, Object *obj)
+{
+    struct MUI_ListData *data = INST_DATA(cl, obj);
+    struct RastPort *rp = _rp(obj);
+    WORD strip = List_TitleStrip(obj, data);
+    LONG top = _top(data->area) - strip, bottom = _top(data->area) - 1;
+    LONG left = _left(data->area), right = _right(data->area);
+    LONG x0 = left, x1 = _mleft(data->area);
+    ULONG col;
+
+    SetAPen(rp, _pens(obj)[MPEN_BACKGROUND]);
+    RectFill(rp, left, top, right, bottom);
+    for (col = 0; col < data->columns && x0 <= right; col++)
+    {
+        ULONG halfdelta = data->ci[col].delta / 2;
+        LONG end;
+
+        x1 += data->ci[col].entries_width + halfdelta;
+        end = (col + 1 == data->columns || !data->ci[col].bar
+            || x1 + BAR_WIDTH > right) ? right : x1;
+        if (col + 1 < data->columns && !data->ci[col].bar)
+            end = x1 + data->ci[col].delta - halfdelta - 1;
+        if (end > right)
+            end = right;
+        SetAPen(rp, _pens(obj)[MPEN_SHINE]);
+        Move(rp, x0, bottom - 1);
+        Draw(rp, x0, top);
+        Draw(rp, end - 1, top);
+        SetAPen(rp, _pens(obj)[MPEN_SHADOW]);
+        Move(rp, x0 + 1, bottom);
+        Draw(rp, end, bottom);
+        Draw(rp, end, top + 1);
+        x0 = end + 1;
+        x1 += (data->ci[col].bar ? BAR_WIDTH : 0)
+            + data->ci[col].delta - halfdelta;
+    }
+    List_DrawEntry(cl, obj, ENTRY_TITLE, top + 2);
+}
+
 /**************************************************************************
  MUIM_Draw
 **************************************************************************/
@@ -2044,7 +2117,14 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
         return ret;
 
     /* Calculate the title height */
-    if (data->title)
+    if (List_TitleStrip(obj, data))
+    {
+        data->title_height = 0;
+        if ((msg->flags & MADF_DRAWUPDATE) == 0
+            || data->update == UPDATEMODE_ALL)
+            List_DrawTitleStrip(cl, obj);
+    }
+    else if (data->title)
     {
         data->title_height = data->entries[ENTRY_TITLE]->height + 2;
     }
@@ -2218,11 +2298,12 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
             if (data->ci[col].bar)
             {
-                SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
+                /* MUI 3.9: shadow, then shine (tests/native/barfmt.c) */
+                SetAPen(_rp(obj), _pens(obj)[MPEN_SHADOW]);
                 Move(_rp(obj), x1, y);
                 Draw(_rp(obj), x1,
                     y + data->entries[ENTRY_TITLE]->height - 1);
-                SetAPen(_rp(obj), _pens(obj)[MPEN_SHADOW]);
+                SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
                 Move(_rp(obj), x1 + 1, y);
                 Draw(_rp(obj), x1 + 1,
                     y + data->entries[ENTRY_TITLE]->height - 1);
@@ -2246,10 +2327,10 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
         if (data->ci[col].bar)
         {
-            SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
+            SetAPen(_rp(obj), _pens(obj)[MPEN_SHADOW]);
             Move(_rp(obj), x1, y);
             Draw(_rp(obj), x1, _mbottom(data->area));
-            SetAPen(_rp(obj), _pens(obj)[MPEN_SHADOW]);
+            SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
             Move(_rp(obj), x1 + 1, y);
             Draw(_rp(obj), x1 + 1, _mbottom(data->area));
 
