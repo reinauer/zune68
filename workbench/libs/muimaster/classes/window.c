@@ -3151,15 +3151,16 @@ static void WindowSelectDimensions(struct MUI_WindowData *data)
     if (!data->wd_Width)
     {
         struct Screen *scr = data->wd_RenderInfo.mri_Screen;
-        /* Screen percentages give the outer window size in MUI 3.8/3.9,
-         * while wd_Width/wd_Height are inner dimensions. */
+        /* Pixel sizes and screen percentages give the outer window size
+         * in MUI 3.8/3.9 (a 400 pixel MUIA_Window_Width opens a window 400
+         * wide), while wd_Width/wd_Height are inner dimensions. */
         LONG hborders = data->wd_RenderInfo.mri_BorderLeft
             + data->wd_RenderInfo.mri_BorderRight;
         LONG vborders = data->wd_RenderInfo.mri_BorderTop
             + data->wd_RenderInfo.mri_BorderBottom;
 
         if (data->wd_ReqWidth > 0)
-            data->wd_Width = data->wd_ReqWidth;
+            data->wd_Width = data->wd_ReqWidth - hborders;
         else if (data->wd_ReqWidth == MUIV_Window_Width_Default)
             data->wd_Width = data->wd_MinMax.DefWidth;
         else if (_between(MUIV_Window_Width_MinMax(100),
@@ -3183,7 +3184,7 @@ static void WindowSelectDimensions(struct MUI_WindowData *data)
         }
 
         if (data->wd_ReqHeight > 0)
-            data->wd_Height = data->wd_ReqHeight;
+            data->wd_Height = data->wd_ReqHeight - vborders;
         else if (data->wd_ReqHeight == MUIV_Window_Height_Default)
             data->wd_Height = data->wd_MinMax.DefHeight;
         else if (_between(MUIV_Window_Height_MinMax(100),

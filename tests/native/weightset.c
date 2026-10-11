@@ -39,7 +39,15 @@ int main(void)
     set(win, MUIA_Window_Open, TRUE);
     get(win, MUIA_Window_Open, &open);
     if (open)
+    {
+        struct Window *w = NULL;
+
+        get(win, MUIA_Window_Window, &w);
         printf("widths string %ld add %ld bm %ld\n", (LONG)_width(str), (LONG)_width(add), (LONG)_width(bm));
+        if (w)
+            printf("window %d x %d borders %d %d\n", w->Width, w->Height,
+                w->BorderLeft, w->BorderRight);
+    }
     MUI_DisposeObject(app);
     CloseLibrary(MUIMasterBase);
     return 0;
