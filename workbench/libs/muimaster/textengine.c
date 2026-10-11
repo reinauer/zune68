@@ -43,7 +43,8 @@ extern struct Library *MUIMasterBase;
 * From the beginning:
 * the input string is parsed line by line. Each line is formed of chunks
 * of symbols having the same rendering style. As a special case,
-* HiChar is a single letter chunk with underline style.
+* HiChar is a single letter chunk underlined like MUI 3.9 (ZTEXT_STYLE_HICHAR);
+* a HiIndex character has the underlined soft style.
 * Size calculation is done by calculating for each line the width and
 * height of each chunk, then line width is the sum of widths and line height
 * is the max height. *Text width will be max line width, and text height
@@ -560,7 +561,7 @@ static ZTextLine *zune_text_parse_line(CONST_STRPTR * s_ptr,
         {
             ULONG styleback = zc->style;
             zune_text_chunk_new(zc);
-            zc->style |= FSF_UNDERLINED;
+            zc->style |= ZTEXT_STYLE_HICHAR;
             zc->text_start = s;
             zc->text = ++s;
             zune_text_chunk_new(zc);
@@ -573,7 +574,8 @@ static ZTextLine *zune_text_parse_line(CONST_STRPTR * s_ptr,
         if (*argtype == ZTEXT_ARG_HICHARIDX && arg == c)
         {
             ULONG styleback = zc->style;
-            /* underline next char */
+            /* underline next char; unlike HiChar, MUI 3.9 uses the
+             * soft style here (tests/native/ulprobe.c) */
             zune_text_chunk_new(zc);
             zc->style |= FSF_UNDERLINED;
             zc->text_start = ++s;
@@ -705,7 +707,8 @@ void zune_text_get_bounds(ZText * text, Object * obj)
             struct TextExtent te;
             LONG len = strlen(chunk_node->str);
 
-            SetSoftStyle(&rp, chunk_node->style, AskSoftStyle(&rp));
+            SetSoftStyle(&rp, chunk_node->style & ~ZTEXT_STYLE_HICHAR,
+                AskSoftStyle(&rp));
             TextExtent(&rp, chunk_node->str, len, &te);
             SetSoftStyle(&rp, FS_NORMAL, AskSoftStyle(&rp));
             line_node->lwidth += te.te_Extent.MaxX - te.te_Extent.MinX + 1
@@ -815,10 +818,10 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
             }
             else if (chunk_node->str)
             {
-                if (chunk_node->style != style)
+                if ((chunk_node->style & ~ZTEXT_STYLE_HICHAR) != style)
                 {
-                    SetSoftStyle(rp, chunk_node->style, 0xff);
-                    style = chunk_node->style;
+                    style = chunk_node->style & ~ZTEXT_STYLE_HICHAR;
+                    SetSoftStyle(rp, style, 0xff);
                 }
                 if (chunk_node->cheight == 0)
                     Move(rp, x, _font(obj)->tf_Baseline + top);
@@ -863,6 +866,18 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
                     }
                     if (len > 0)
                         Text(rp, chunk_node->str, len);
+                    /* MUI 3.9 underlines a shortcut one pixel short of
+                     * its advance, two rows below the baseline but within
+                     * the font (tests/native/ulprobe.c) */
+                    if (len > 0 && (chunk_node->style & ZTEXT_STYLE_HICHAR))
+                    {
+                        struct TextFont *font = _font(obj);
+                        WORD y = rp->cp_y - font->tf_Baseline;
+
+                        y += MIN(font->tf_Baseline + 2, font->tf_YSize - 1);
+                        RectFill(rp, x, y,
+                            x + MAX(chunk_node->cwidth - 2, 0), y);
+                    }
                 }
             }
             x += chunk_node->cwidth;

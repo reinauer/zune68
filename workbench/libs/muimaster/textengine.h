@@ -15,6 +15,10 @@
 
 struct MUI_ImageSpec_intern;
 
+/* Chunk style bit for a shortcut character, whose underline is drawn
+ * like MUI 3.9's rather than by graphics.library (FSF_UNDERLINED) */
+#define ZTEXT_STYLE_HICHAR 0x80
+
 typedef struct ZTextChunk {
     struct MinNode node; /* embedded node */
     char                 *str;
