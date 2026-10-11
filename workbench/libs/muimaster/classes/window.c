@@ -1417,8 +1417,19 @@ static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data,
     BOOL sizing = (flags & WFLG_SIZEGADGET) && !(flags & WFLG_BORDERLESS);
     WORD bottom = sizing && (flags & WFLG_SIZEBBOTTOM) ? mri->mri_BorderBottom
         : (flags & WFLG_BORDERLESS) ? 0 : scr->WBorBottom;
-    WORD width = mri->mri_BorderLeft + data->wd_Width + mri->mri_BorderRight,
-        height = mri->mri_BorderTop + data->wd_Height + bottom;
+    WORD right = mri->mri_BorderRight;
+    WORD width, height;
+
+    /* Intuition widens the borders to fit border scrollers, so MUI 3.9
+     * centres IBrowse's Preferences window on its real width */
+    if ((data->wd_Flags & MUIWF_USERIGHTSCROLLER) && mri->mri_UpImage
+        && IM(mri->mri_UpImage)->Width > right)
+        right = IM(mri->mri_UpImage)->Width;
+    if ((data->wd_Flags & MUIWF_USEBOTTOMSCROLLER) && mri->mri_LeftImage
+        && IM(mri->mri_LeftImage)->Height > bottom)
+        bottom = IM(mri->mri_LeftImage)->Height;
+    width = mri->mri_BorderLeft + data->wd_Width + right;
+    height = mri->mri_BorderTop + data->wd_Height + bottom;
     ULONG refw = 0, refx = 0, refh = 0, refy = 0;
 
     data->wd_X = data->wd_ReqX;
