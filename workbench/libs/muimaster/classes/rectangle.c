@@ -192,13 +192,12 @@ IPTR Rectangle__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     {
 /*          msg->MinMaxInfo->MinWidth += 1; */
 /*          msg->MinMaxInfo->MinHeight += 1;             */
-        if (data->Type == RECTANGLE_TYPE_HBAR)
-        {
-            msg->MinMaxInfo->MinHeight += 2;
-        }
-        else if (data->Type == RECTANGLE_TYPE_VBAR)
+        /* MUI 3.9 makes both kinds of bar at least 2x2 */
+        if (data->Type == RECTANGLE_TYPE_HBAR
+            || data->Type == RECTANGLE_TYPE_VBAR)
         {
             msg->MinMaxInfo->MinWidth += 2;
+            msg->MinMaxInfo->MinHeight += 2;
         }
     }
     else

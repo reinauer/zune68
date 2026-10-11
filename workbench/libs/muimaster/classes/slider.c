@@ -321,13 +321,15 @@ IPTR Slider__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     longget(obj, MUIA_Numeric_Min, &min);
     longget(obj, MUIA_Numeric_Max, &max);
 
+    /* MUI 3.9: the default length is four knobs, and the maximum adds
+     * the frame to MUI_MAXMAX (tests/native/widgetsizes.c) */
     if (data->flags & SLIDER_HORIZ)
     {
         msg->MinMaxInfo->MinWidth += data->knob_width + 1;
         msg->MinMaxInfo->MinHeight += data->knob_height;
-        msg->MinMaxInfo->DefWidth += data->knob_width * 4 + 2;
+        msg->MinMaxInfo->DefWidth += data->knob_width * 4;
         msg->MinMaxInfo->DefHeight += data->knob_height;
-        msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
+        msg->MinMaxInfo->MaxWidth += MUI_MAXMAX;
         msg->MinMaxInfo->MaxHeight += data->knob_height;
     }
     else
@@ -335,9 +337,9 @@ IPTR Slider__MUIM_AskMinMax(struct IClass *cl, Object *obj,
         msg->MinMaxInfo->MinWidth += data->knob_width;
         msg->MinMaxInfo->MinHeight += data->knob_height + 1;
         msg->MinMaxInfo->DefWidth += data->knob_width;
-        msg->MinMaxInfo->DefHeight += data->knob_height * 4 + 2;
+        msg->MinMaxInfo->DefHeight += data->knob_height * 4;
         msg->MinMaxInfo->MaxWidth += data->knob_width;
-        msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
+        msg->MinMaxInfo->MaxHeight += MUI_MAXMAX;
     }
 
     return TRUE;

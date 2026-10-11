@@ -248,7 +248,13 @@ IPTR Gauge__MUIM_Setup(struct IClass *cl, Object *obj,
         InitRastPort(&rp);
         SetFont(&rp, _font(obj));
 
-        data->info_width = TextLength(&rp, data->buf, strlen(data->buf));
+        {
+            /* MUI 3.9 sizes the info text for the maximum value */
+            char widest[GAUGE_BUFSIZE];
+
+            snprintf(widest, sizeof(widest), data->info, data->max);
+            data->info_width = TextLength(&rp, widest, strlen(widest));
+        }
         data->info_height = _font(obj)->tf_YSize;
     }
     else
@@ -274,30 +280,48 @@ IPTR Gauge__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct Gauge_DATA *data = INST_DATA(cl, obj);
     DoSuperMethodA(cl, obj, (Msg) msg);
 
+    /* MUI 3.9 (tests/native/widgetsizes.c): without an info text a gauge
+     * is at least 3x3 and 30x8 (or 8x30) by default; an info text sets
+     * the thickness to its height + 2 and its width + 8 (horizontal) or
+     * + 2 (vertical). */
     if (data->horiz)
     {
-        msg->MinMaxInfo->MinWidth += data->info_width;
-        msg->MinMaxInfo->MinHeight += data->info_height + 2;
-        msg->MinMaxInfo->DefWidth += data->info_width + 10;
-        msg->MinMaxInfo->DefHeight += data->info_height + 2;
-        msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
         if (data->info)
+        {
+            msg->MinMaxInfo->MinWidth += data->info_width + 8;
+            msg->MinMaxInfo->MinHeight += data->info_height + 2;
+            msg->MinMaxInfo->DefWidth += data->info_width + 8;
+            msg->MinMaxInfo->DefHeight += data->info_height + 2;
             msg->MinMaxInfo->MaxHeight += data->info_height + 2;
+        }
         else
+        {
+            msg->MinMaxInfo->MinWidth += 3;
+            msg->MinMaxInfo->MinHeight += 3;
+            msg->MinMaxInfo->DefWidth += 30;
+            msg->MinMaxInfo->DefHeight += 8;
             msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
-
+        }
+        msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
     }
     else
     {
-        msg->MinMaxInfo->MinWidth += data->info_width + 2;
-        msg->MinMaxInfo->MinHeight += data->info_height;
-        msg->MinMaxInfo->DefWidth += data->info_width + 2;
-        msg->MinMaxInfo->DefHeight += data->info_height + 10;
         if (data->info)
+        {
+            msg->MinMaxInfo->MinWidth += data->info_width + 2;
+            msg->MinMaxInfo->MinHeight += data->info_height + 2;
+            msg->MinMaxInfo->DefWidth += data->info_width + 2;
+            msg->MinMaxInfo->DefHeight += 30;
             msg->MinMaxInfo->MaxWidth += data->info_width + 2;
+        }
         else
+        {
+            msg->MinMaxInfo->MinWidth += 3;
+            msg->MinMaxInfo->MinHeight += 3;
+            msg->MinMaxInfo->DefWidth += 8;
+            msg->MinMaxInfo->DefHeight += 30;
             msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
-
+        }
         msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
     }
     return 0;
