@@ -153,8 +153,10 @@ def check(path):
                  ('\nhello', 80, None, ['', 'hello']),
                  ('\x1b', 80, None, []),
                  ('hello\x1b', 80, None, ['hello\x1b']),
-                 ('a\tb', 16, None, ['a        ', 'b']),
-                 ('\t\t', 1, None, ['        ']),
+                 # MUI 3.9 keeps a tab on the line that breaks at it and
+                 # starts the next line right after the break
+                 ('a\tb', 16, None, ['a', '        ', 'b']),
+                 ('\t\t', 1, None, ['        ', '        ']),
                  ('\x1bbhello world', 80, None, ['\x1bbhello', '\x1bbworld']),
                  ('xcax', 8, 'x', ['c', 'a']),
                  ('xxx', 80, 'x', []), ('', 80, None, [])]

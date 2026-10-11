@@ -35,37 +35,46 @@ static long MyStrLen(const char *ptr)
     return (((long)ptr) - ((long)start));
 }
 
+#define FLOATTEXT_MARGIN 4
+
 /*
- * Calculates the number of characters that will fit on a line of a given
- * pixel width.
+ * Fits the next line of a paragraph into a pixel width like MUI 3.9
+ * (tests/native/ftwidth.c): the line ends before the last space among the
+ * characters that fit and the next line starts right after that space, so
+ * a space following a word that fills a line exactly makes an empty line;
+ * a word without such a space is split. Returns the number of characters
+ * consumed and stores the length of the line itself in *line_count.
  */
 static UWORD FitParagraphLine(STRPTR text, ULONG length, WORD width,
-   ULONG offset, struct Window *window)
+   ULONG offset, struct RastPort *rp, ULONG *line_count)
 {
     struct TextExtent temp_extent;
-    ULONG char_count;
-    UBYTE *p, *q = text + offset;
+    ULONG char_count, i;
 
+    *line_count = 0;
     if (offset >= length || width <= 0)
         return 0;
 
-    char_count = TextFit(window->RPort, text + offset,
+    char_count = TextFit(rp, text + offset,
         MIN(length - offset, 65535), &temp_extent, NULL, 1, width, 32767);
 
     /* A glyph wider than the available space must still make progress. */
     if (char_count == 0)
         char_count = 1;
 
-    /* Find the last space in the fitted substring */
-
-    if (offset + char_count != length)
+    if (offset + char_count < length)
     {
-        for (p = text + offset + char_count; p > q && *p != ' '; p--);
-        for (; p > q && *p == ' '; p--);
-        if (p > q)
-            char_count = p - q + 1;
+        for (i = char_count; i-- > 0;)
+        {
+            if (text[offset + i] == ' ')
+            {
+                *line_count = i;
+                return i + 1;
+            }
+        }
     }
 
+    *line_count = char_count;
     return char_count;
 }
 
@@ -74,11 +83,12 @@ static void SetText(struct IClass *cl, Object *obj,
 {
     WORD width;
     struct Window *window;
+    struct RastPort rp;
     ULONG i, count, pos, line_size = 0, space_count = 0, extra_space_count,
         space_width, space_multiple = 0, bonus_space_count = 0, line_len,
         bonus_space_mod = 1, space_no_in = 0, space_no_out, stripped_pos,
         stripped_count, stripped_size = 0, control_count, old_control_count,
-        tab_count;
+        tab_count, consumed;
     UBYTE *text, *p, *q, *r, c, *line = NULL, *old_line,
         *stripped_text = NULL;
     LONG len, stripped_len;
@@ -92,8 +102,12 @@ static void SetText(struct IClass *cl, Object *obj,
 
     window = (struct Window *)XGET(obj, MUIA_Window);
 #if ZUNE_BUILTIN_FLOATTEXT
-    /* Wrap to the entry area, which excludes the List's scroller */
+    /* Wrap to the entry area, which excludes the List's scroller, less
+     * a margin: MUI 3.9 fills 26 pixels less than the Listview's width
+     * (tests/native/ftwidth.c) */
     width = List_EntryAreaWidth(cl->cl_Super, obj);
+    if (width > 0)
+        width = MAX(width - FLOATTEXT_MARGIN, 1);
 #else
     width = XGET(obj, MUIA_Width) - XGET(obj, MUIA_InnerLeft)
         - XGET(obj, MUIA_InnerRight) - 8;
@@ -103,9 +117,14 @@ static void SetText(struct IClass *cl, Object *obj,
 
     if (data->text && window != NULL && width > 0)
     {
+        /* Measure in the list's own font: the window's RastPort holds
+         * whichever font was drawn last */
+        InitRastPort(&rp);
+        SetFont(&rp, _font(obj) ? _font(obj) : window->RPort->Font);
+
         /* Get width of a space character */
 
-        space_width = TextLength(window->RPort, " ", 1);
+        space_width = TextLength(&rp, " ", 1);
 
         /* Lay out each paragraph */
 
@@ -129,6 +148,7 @@ static void SetText(struct IClass *cl, Object *obj,
                 if (stripped_text == NULL)
                 {
                     FreeVec(line);
+                    DeinitRastPort(&rp);
                     data->typesetting = FALSE;
                     return;
                 }
@@ -171,8 +191,9 @@ static void SetText(struct IClass *cl, Object *obj,
 
                 /* Divide this paragraph into lines */
 
-                while (pos < len && (stripped_count = FitParagraphLine(
-                    stripped_text, stripped_len, width, stripped_pos, window)) != 0)
+                while (pos < len && (consumed = FitParagraphLine(
+                    stripped_text, stripped_len, width, stripped_pos, &rp,
+                    &stripped_count)) != 0)
                 {
                     /* Count number of characters for this line in original
                      * text */
@@ -215,6 +236,17 @@ static void SetText(struct IClass *cl, Object *obj,
                     stripped_count = i;
                     count = p - (text + pos);
 
+                    /* A line breaking at a tab keeps the tab, like
+                     * MUI 3.9 */
+                    if (consumed > stripped_count && p < text + len
+                        && *p == '\t')
+                    {
+                        control_count++;
+                        tab_count++;
+                        stripped_count += data->tabsize;
+                        count++;
+                    }
+
                     /* Default to justified text if it's enabled and this
                      * isn't the last line of the paragraph */
 
@@ -245,7 +277,7 @@ static void SetText(struct IClass *cl, Object *obj,
                         /* Find out how many extra spaces to insert for fully
                          * justified text */
 
-                        spare = width - TextLength(window->RPort,
+                        spare = width - TextLength(&rp,
                             stripped_text + stripped_pos, stripped_count);
                         if (spare > 0)
                             extra_space_count = spare / space_width;
@@ -291,6 +323,7 @@ static void SetText(struct IClass *cl, Object *obj,
                     {
                         FreeVec(old_line);
                         FreeVec(stripped_text);
+                        DeinitRastPort(&rp);
                         data->typesetting = FALSE;
                         return;
                     }
@@ -322,7 +355,7 @@ static void SetText(struct IClass *cl, Object *obj,
                     space_no_in = space_no_out = 0;
                     while (*p != '\0')
                     {
-                        if (*p == ' ' && justify && !is_empty)
+                        if (*p == ' ' && justify)
                         {
                             /* Add extra spaces to justify text */
 
@@ -387,29 +420,28 @@ static void SetText(struct IClass *cl, Object *obj,
                         MUIV_List_Insert_Bottom);
                     *p = c;
 
-                    /* Move on to first word of next line */
+                    /* Move on past the space the line broke at (unless
+                     * the line took a whole tab instead) */
 
                     stripped_pos += stripped_count;
                     pos += count;
-                    if (pos != len)
+                    if (consumed > stripped_count)
                     {
-                        if (data->skipchars != NULL)
+                        stripped_pos++;
+                        for (found = FALSE; !found && pos < len; pos++)
                         {
-                            for (found = FALSE, p = text + pos;
-                                !found && pos < len; pos++, p++)
+                            p = text + pos;
+                            if (*p == '\33')
                             {
-                                for (r = data->skipchars;
-                                    *r != '\0' && *r != *p; r++);
-                                if (*r == '\0' && *p != ' ' && *p != '\t')
-                                    found = TRUE;
+                                if (pos + 1 < len)
+                                    pos++;
+                                continue;
                             }
-                            if (found) { pos--; p--; }
+                            for (r = data->skipchars;
+                                r != NULL && *r != '\0' && *r != *p; r++);
+                            if (r == NULL || *r == '\0' || *p == ' ')
+                                found = TRUE;
                         }
-                        else
-                            for (p = text + pos; *p == ' ' || *p == '\t';
-                                pos++, p++);
-                        for (p = stripped_text + stripped_pos; *(p++) == ' ';
-                            stripped_pos++);
                     }
                 }
                 /* Empty/filtered paragraphs still advance to the newline. */
@@ -424,6 +456,7 @@ static void SetText(struct IClass *cl, Object *obj,
         }
         FreeVec(line);
         FreeVec(stripped_text);
+        DeinitRastPort(&rp);
     }
 
     data->typesetting = FALSE;
