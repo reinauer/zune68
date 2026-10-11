@@ -2013,7 +2013,9 @@ group_minmax_pagemode(struct IClass *cl, Object *obj,
     APTR cstate;
     Object *child;
     struct MUI_GroupData *data = INST_DATA(cl, obj);
-    struct MUI_MinMax tmp = { 0, 0, MUI_MAXMAX, MUI_MAXMAX, 0, 0 };
+    /* MUI 3.9: a page group may grow as far as its largest page may,
+     * so a page of fixed height does not cap the others (xSysInfo) */
+    struct MUI_MinMax tmp = { 0, 0, 0, 0, 0, 0 };
 
     cstate = children->mlh_Head;
 
@@ -2031,8 +2033,8 @@ group_minmax_pagemode(struct IClass *cl, Object *obj,
         D(bug("minmax_pagemode(0x%p) minh child = %d tmpmin=%d\n", obj,
                 _minheight(child), tmp.MinHeight));
         tmp.MinWidth = MAX(tmp.MinWidth, _minwidth(child));
-        tmp.MaxHeight = MIN(tmp.MaxHeight, w0_maxheight(child));
-        tmp.MaxWidth = MIN(tmp.MaxWidth, w0_maxwidth(child));
+        tmp.MaxHeight = MAX(tmp.MaxHeight, w0_maxheight(child));
+        tmp.MaxWidth = MAX(tmp.MaxWidth, w0_maxwidth(child));
         tmp.DefHeight = MAX(tmp.DefHeight,
             ((w0_defheight(child) <
                     MUI_MAXMAX) ? w0_defheight(child) : tmp.DefHeight));
@@ -2042,6 +2044,9 @@ group_minmax_pagemode(struct IClass *cl, Object *obj,
                     MUI_MAXMAX) ? w0_defwidth(child) : tmp.DefWidth));
         D(bug("minmax_pagemode(0x%p) defw = %ld\n", obj, tmp.DefWidth));
     }
+
+    if (tmp.MaxWidth == 0 && tmp.MaxHeight == 0)
+        tmp.MaxWidth = tmp.MaxHeight = MUI_MAXMAX;
 
     if (data->titlegroup)
     {
