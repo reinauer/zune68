@@ -57,6 +57,12 @@
     {
         Object *obj = NewObjectA(cl, NULL, tags);
 
+        /* A built-in class stays alive while it has objects (expunge
+         * checks cl_ObjectCount), so its objects keep no reference, like
+         * MUI 3.9: one freed with DisposeObject() instead of
+         * MUI_DisposeObject() must not keep the library resident. */
+        if (obj && (cl->cl_Flags & CLF_INLIST))
+            MUI_FreeClass(cl);
         if (obj) return obj;
 
         bug("*** Could not create object of %s\n", classid);
