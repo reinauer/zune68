@@ -924,6 +924,14 @@ void zune_imspec_draw(struct MUI_ImageSpec_intern *spec,
     struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
     LONG height, LONG xoffset, LONG yoffset, LONG state)
 {
+    /* A plain pen, the usual window background, needs none of the
+     * argument shuffling of the general path below */
+    if (spec && spec->type == IST_COLOR)
+    {
+        zune_penspec_drawdirect(&spec->u.penspec, mri->mri_RastPort, mri,
+            left, top, left + width - 1, top + height - 1);
+        return;
+    }
     zune_imspec_drawbuffered(spec, mri->mri_RastPort, mri, left, top, width,
         height, xoffset, yoffset, state, 0, 0, 0, left, top, left + width,
         top + height);
