@@ -1419,8 +1419,14 @@ static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data,
     BOOL sizing = (flags & WFLG_SIZEGADGET) && !(flags & WFLG_BORDERLESS);
     WORD bottom = sizing && (flags & WFLG_SIZEBBOTTOM) ? mri->mri_BorderBottom
         : (flags & WFLG_BORDERLESS) ? 0 : scr->WBorBottom;
-    WORD right = mri->mri_BorderRight;
+    WORD right = mri->mri_BorderRight, top = mri->mri_BorderTop;
     WORD width, height;
+
+    /* without a title and title bar gadgets Intuition gives the window
+     * just the plain top border (YAM's splash window) */
+    if (!(flags & WFLG_BORDERLESS) && !data->wd_Title
+        && !(flags & (WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET)))
+        top = scr->WBorTop;
 
     /* Intuition widens the borders to fit border scrollers, so MUI 3.9
      * centres IBrowse's Preferences window on its real width */
@@ -1431,7 +1437,7 @@ static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data,
         && IM(mri->mri_LeftImage)->Height > bottom)
         bottom = IM(mri->mri_LeftImage)->Height;
     width = mri->mri_BorderLeft + data->wd_Width + right;
-    height = mri->mri_BorderTop + data->wd_Height + bottom;
+    height = top + data->wd_Height + bottom;
     ULONG refw = 0, refx = 0, refh = 0, refy = 0;
 
     data->wd_X = data->wd_ReqX;
@@ -1440,18 +1446,31 @@ static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data,
     /* Get dimensions of reference window */
     if (data->wd_RefWindow != NULL)
     {
-        get(data->wd_RefWindow, MUIA_Window_LeftEdge, &refx);
-        get(data->wd_RefWindow, MUIA_Window_Width, &refw);
-        get(data->wd_RefWindow, MUIA_Window_TopEdge, &refy);
-        get(data->wd_RefWindow, MUIA_Window_Height, &refh);
+        struct Window *ref = NULL;
+
+        /* MUI 3.9 centres on the reference window's outer box (YAM's
+         * Configuration Warning over its Configuration window) */
+        get(data->wd_RefWindow, MUIA_Window_Window, &ref);
+        if (ref)
+        {
+            refx = ref->LeftEdge;
+            refy = ref->TopEdge;
+            refw = ref->Width;
+            refh = ref->Height;
+        }
+        else
+        {
+            get(data->wd_RefWindow, MUIA_Window_LeftEdge, &refx);
+            get(data->wd_RefWindow, MUIA_Window_Width, &refw);
+            get(data->wd_RefWindow, MUIA_Window_TopEdge, &refy);
+            get(data->wd_RefWindow, MUIA_Window_Height, &refh);
+        }
     }
 
     /* Adjust X */
     if (data->wd_X == MUIV_Window_LeftEdge_Centered)
     {
         if (data->wd_RefWindow != NULL)
-            /* FIXME: refw/refh are GZZ client sizes while width/height
-               include borders; reference-window centering mixes geometry bases. */
             data->wd_X = refx + (refw - width) / 2;
         else
             data->wd_X = (scr->ViewPort.DWidth - width) / 2;
@@ -1465,7 +1484,7 @@ static void CalcWindowPosition(Object *obj, struct MUI_WindowData *data,
     if (data->wd_Y == MUIV_Window_TopEdge_Centered)
     {
         if (data->wd_RefWindow != NULL)
-            data->wd_Y = refy + (refh - data->wd_Height) / 2;
+            data->wd_Y = refy + (refh - height) / 2;
         else
             data->wd_Y = (scr->ViewPort.DHeight - height) / 2;
     }
