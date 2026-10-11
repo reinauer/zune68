@@ -48,14 +48,28 @@ struct MUI_ConfigdataData
     struct List                 pubscreens;
 };
 
+/* A Configdata is built for every application and reads about 80
+ * settings at creation; ask the dataspace, our superclass, for each
+ * without passing through our own dispatcher first, and take the
+ * defaults from the tables being walked (perfbench create+dispose) */
+static APTR cfg_find(struct IClass *cl, Object *obj, ULONG id)
+{
+    struct MUIP_Dataspace_Find msg = { MUIM_Dataspace_Find, id };
+
+    return (APTR) DoSuperMethodA(cl, obj, (Msg) &msg);
+}
+
+static ULONG cfg_ulong(struct IClass *cl, Object *obj, ULONG id);
+static CONST_STRPTR cfg_string(struct IClass *cl, Object *obj, ULONG id);
+
 static inline CONST_STRPTR GetConfigString(Object *obj, ULONG id)
 {
-    return (CONST_STRPTR) DoMethod(obj, MUIM_Configdata_GetString, id);
+    return cfg_string(OCLASS(obj), obj, id);
 }
 
 static inline ULONG GetConfigULong(Object *obj, ULONG id)
 {
-    return (ULONG) DoMethod(obj, MUIM_Configdata_GetULong, id);
+    return cfg_ulong(OCLASS(obj), obj, id);
 }
 
 
@@ -130,7 +144,9 @@ static void init_imspecs(Object *obj, struct MUI_ConfigdataData *data)
         CONST_STRPTR imspec;
         const struct spec_cfg *img = DefImspecValues + i;
 
-        imspec = GetConfigString(obj, img->cfgid);
+        imspec = cfg_find(OCLASS(obj), obj, img->cfgid);
+        if (!imspec)
+            imspec = img->defspec;
 /*          D(bug("init_imspecs: %ld %lx %s ...\n", img->muiv, img->cfgid, imspec)); */
         data->prefs.imagespecs[img->muiv] = imspec;
         if (!data->prefs.imagespecs[img->muiv])
@@ -175,7 +191,9 @@ static void init_framespecs(Object *obj, struct MUI_ConfigdataData *data)
         CONST_STRPTR framespec;
         const struct spec_cfg *fcfg = DefFramespecValues + i;
 
-        framespec = GetConfigString(obj, fcfg->cfgid);
+        framespec = cfg_find(OCLASS(obj), obj, fcfg->cfgid);
+        if (!framespec)
+            framespec = fcfg->defspec;
         zune_frame_spec_to_intern(framespec,
             &data->prefs.frames[fcfg->muiv]);
     }
@@ -933,37 +951,35 @@ static IPTR Configdata_SetWindowPos(struct IClass *cl, Object *obj,
  Check if string is found in dataspace, then if not found, search each
  builtin array
 **************************************************************************/
+static CONST_STRPTR cfg_string(struct IClass *cl, Object *obj, ULONG id)
+{
+    CONST_STRPTR s = cfg_find(cl, obj, id);
+    int i;
+
+    if (s)
+        return s;
+    for (i = 0; DefStrValues[i].id; i++)
+    {
+        if (DefStrValues[i].id == id)
+            return DefStrValues[i].val;
+    }
+    for (i = 0; DefImspecValues[i].defspec; i++)
+    {
+        if (DefImspecValues[i].cfgid == id)
+            return DefImspecValues[i].defspec;
+    }
+    for (i = 0; DefFramespecValues[i].defspec; i++)
+    {
+        if (DefFramespecValues[i].cfgid == id)
+            return DefFramespecValues[i].defspec;
+    }
+    return NULL;
+}
+
 IPTR Configdata__MUIM_GetString(struct IClass *cl, Object *obj,
     struct MUIP_Configdata_GetString *msg)
 {
-    CONST_STRPTR s;
-
-    s = (CONST_STRPTR) DoMethod(obj, MUIM_Dataspace_Find, msg->id);
-    if (!s)
-    {
-        int i;
-
-        for (i = 0; DefStrValues[i].id; i++)
-        {
-            if (DefStrValues[i].id == msg->id)
-                return (IPTR) DefStrValues[i].val;
-        }
-        for (i = 0; DefImspecValues[i].defspec; i++)
-        {
-            if (DefImspecValues[i].cfgid == msg->id)
-                return (IPTR) DefImspecValues[i].defspec;
-        }
-        for (i = 0; DefFramespecValues[i].defspec; i++)
-        {
-            if (DefFramespecValues[i].cfgid == msg->id)
-                return (IPTR) DefFramespecValues[i].defspec;
-        }
-        return (IPTR) 0;
-    }
-    else
-    {
-        return (IPTR) s;
-    }
+    return (IPTR) cfg_string(cl, obj, msg->id);
 }
 
 /**************************************************************************
@@ -1118,27 +1134,25 @@ IPTR Configdata__MUIM_SetString(struct IClass *cl, Object *obj,
 /**************************************************************************
  MUIM_Configdata_GetULong
 **************************************************************************/
+static ULONG cfg_ulong(struct IClass *cl, Object *obj, ULONG id)
+{
+    ULONG *vp = cfg_find(cl, obj, id);
+    int i;
+
+    if (vp)
+        return AROS_BE2LONG(*vp);
+    for (i = 0; DefULValues[i].id != 0; i++)
+    {
+        if (DefULValues[i].id == id)
+            return DefULValues[i].val;
+    }
+    return 0;
+}
+
 IPTR Configdata__MUIM_GetULong(struct IClass *cl, Object *obj,
     struct MUIP_Configdata_GetULong *msg)
 {
-    ULONG *vp;
-
-    vp = (ULONG *) DoMethod(obj, MUIM_Dataspace_Find, msg->id);
-    if (!vp)
-    {
-        int i;
-
-        for (i = 0; DefULValues[i].id != 0; i++)
-        {
-            if (DefULValues[i].id == msg->id)
-                return DefULValues[i].val;
-        }
-        return 0;
-    }
-    else
-    {
-        return AROS_BE2LONG(*vp);
-    }
+    return cfg_ulong(cl, obj, msg->id);
 }
 
 /**************************************************************************
