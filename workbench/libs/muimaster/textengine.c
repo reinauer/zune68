@@ -216,46 +216,72 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
 }
 
 /**************************************************************************
-Replace the string of a ZText that holds nothing but one plain string,
-which must be old, with new, a plain string, without parsing again; the
-caller measures it again with zune_text_get_bounds(). Returns FALSE if
-the text has another form, new needs parsing or there is no room, and
-leaves the ZText as it was then.
+If a ZText holds nothing but the plain string s (one line, one text
+chunk), return that chunk, so that zune_text_set_plain() can give it a
+new plain string without parsing; otherwise NULL.
 **************************************************************************/
-BOOL zune_text_replace_plain(ZText *text, CONST_STRPTR old, CONST_STRPTR new)
+ZTextChunk *zune_text_plain_chunk(ZText *text, CONST_STRPTR s)
 {
     ZTextLine *line;
     ZTextChunk *chunk;
-    CONST_STRPTR c;
-    ULONG len;
 
-    if (!text || !old || !new || !*new)
-        return FALSE;
+    if (!text || !s || !*s)
+        return NULL;
     line = (ZTextLine *)text->lines.mlh_Head;
     if (!line->node.mln_Succ || line->node.mln_Succ->mln_Succ)
-        return FALSE;
+        return NULL;
     chunk = (ZTextChunk *)line->chunklist.mlh_Head;
     if (!chunk->node.mln_Succ || chunk->node.mln_Succ->mln_Succ
-        || !chunk->str || chunk->spec || chunk->obj || chunk->alpha_data)
-        return FALSE;
-    for (c = new; *c; c++)
-        if (*c == '\33' || *c == '\n')
-            return FALSE;
-    len = c - new;
-    if (strcmp(chunk->str, old))
-        return FALSE;
-    if (len > strlen(chunk->str))
-    {
-        /* a longer string takes fresh inline space, never the heap */
-        UBYTE *mem = text->arena_next;
+        || !chunk->str || chunk->spec || chunk->obj || chunk->alpha_data
+        || strcmp(chunk->str, s))
+        return NULL;
+    return chunk;
+}
 
-        if (mem + ((len + 4) & ~3UL) > text->arena_end)
-            return FALSE;
-        text->arena_next += (len + 4) & ~3UL;
-        chunk->str = (char *)mem;
+/**************************************************************************
+Point the only chunk of a plain ZText (zune_text_plain_chunk) at s, a
+plain string of len bytes the caller keeps alive, and measure it: the
+same result as zune_text_get_bounds() for such a text, without the
+loops and the RastPort copy. The object must be set up.
+**************************************************************************/
+void zune_text_set_plain(ZText *text, ZTextChunk *chunk, STRPTR s,
+    LONG len, Object *obj)
+{
+    ZTextLine *line = (ZTextLine *)text->lines.mlh_Head;
+    struct TextFont *font = _font(obj);
+    struct RastPort *rp = _rp(obj);
+    struct RastPort copy;
+
+    chunk->str = s;
+    chunk->clen = len;
+    /* a bold or italic line has an overhang to measure */
+    if (chunk->style & (FSF_BOLD | FSF_ITALIC))
+    {
+        zune_text_get_bounds(text, obj);
+        return;
     }
-    memcpy(chunk->str, new, len + 1);
-    return TRUE;
+    /* TextLength only reads the RastPort; a copy is needed only when
+     * its font or soft style is not the object's plain one */
+    if (rp->Font != font || rp->AlgoStyle)
+    {
+        copy = *rp;
+        if (copy.Font != font)
+            SetFont(&copy, font);
+        if (copy.AlgoStyle)
+            SetSoftStyle(&copy, FS_NORMAL, AskSoftStyle(&copy));
+        rp = &copy;
+    }
+    chunk->cheight = font->tf_YSize;
+    chunk->cwidth = TextLength(rp, s, len);
+    line->lheight = font->tf_YSize;
+    line->lwidth = chunk->cwidth;
+    line->centreskip = 0;
+    text->width = chunk->cwidth;
+    text->height = font->tf_YSize;
+    text->styles = chunk->style;
+    text->nontext = 0;
+    if (text->styles & (FSF_BOLD | FSF_ITALIC))
+        text->width++;
 }
 
 /**************************************************************************
@@ -314,6 +340,7 @@ void zune_text_chunk_new(struct zune_context *zc)
         if (!(ztc = ztext_alloc(zc->ztext, sizeof(ZTextChunk) + len + 1)))
             return;
         ztc->str = (char *)(ztc + 1);
+        ztc->clen = len;
         memcpy(ztc->str, zc->text_start, len);
         ztc->str[len] = 0;
     }
@@ -642,7 +669,7 @@ static ZTextLine *zune_text_parse_line(CONST_STRPTR * s_ptr,
 
 void zune_text_get_bounds(ZText * text, Object * obj)
 {
-    struct RastPort rp;
+    struct RastPort copy, *rp = &copy;
     struct TextFont *font;
 
     ZTextLine *line_node;
@@ -657,23 +684,30 @@ void zune_text_get_bounds(ZText * text, Object * obj)
     text->nontext = 0;
 
     font = _font(obj);
-    /* Measuring needs a RastPort with the object's font. Copying the
-     * object's own RastPort avoids InitRastPort and usually SetFont; the
-     * copy is only used for TextLength and never draws. */
+    /* Measuring needs a RastPort with the object's font in the plain
+     * style. TextLength and TextExtent only read it, so the object's own
+     * RastPort serves as it is when its font and style are right; a
+     * copy (100 bytes) is made only to change them. Bold and italic
+     * chunks below set the style on it, so they take the copy too. */
     if ((_flags(obj) & MADF_SETUP) && muiRenderInfo(obj)
         && muiRenderInfo(obj)->mri_RastPort)
     {
-        rp = *_rp(obj);
-        if (rp.Font != font)
-            SetFont(&rp, font);
-        /* Measure with the plain style, as a fresh RastPort would */
-        if (rp.AlgoStyle)
-            SetSoftStyle(&rp, FS_NORMAL, AskSoftStyle(&rp));
+        if (_rp(obj)->Font == font && !_rp(obj)->AlgoStyle)
+            rp = _rp(obj);
+        else
+        {
+            copy = *_rp(obj);
+            if (copy.Font != font)
+                SetFont(&copy, font);
+            /* Measure with the plain style, as a fresh RastPort would */
+            if (copy.AlgoStyle)
+                SetSoftStyle(&copy, FS_NORMAL, AskSoftStyle(&copy));
+        }
     }
     else
     {
-        InitRastPort(&rp);
-        SetFont(&rp, font);
+        InitRastPort(&copy);
+        SetFont(&copy, font);
     }
 
     for (line_node = (ZTextLine *) text->lines.mlh_Head;
@@ -730,8 +764,7 @@ void zune_text_get_bounds(ZText * text, Object * obj)
             {
                 chunk_node->cheight = font->tf_YSize;
                 chunk_node->cwidth =
-                    TextLength(&rp, chunk_node->str,
-                    strlen(chunk_node->str));
+                    TextLength(rp, chunk_node->str, chunk_node->clen);
                 text->styles |= chunk_node->style;
                 D(bug("zune_text_get_bounds(%s,%x) => cwidth=%d\n",
                         chunk_node->str, obj, chunk_node->cwidth));
@@ -749,12 +782,17 @@ void zune_text_get_bounds(ZText * text, Object * obj)
             && (chunk_node->style & (FSF_BOLD | FSF_ITALIC)))
         {
             struct TextExtent te;
-            LONG len = strlen(chunk_node->str);
 
-            SetSoftStyle(&rp, chunk_node->style & ~ZTEXT_STYLE_HICHAR,
-                AskSoftStyle(&rp));
-            TextExtent(&rp, chunk_node->str, len, &te);
-            SetSoftStyle(&rp, FS_NORMAL, AskSoftStyle(&rp));
+            if (rp != &copy)
+            {
+                /* the style must not touch the object's RastPort */
+                copy = *rp;
+                rp = &copy;
+            }
+            SetSoftStyle(rp, chunk_node->style & ~ZTEXT_STYLE_HICHAR,
+                AskSoftStyle(rp));
+            TextExtent(rp, chunk_node->str, chunk_node->clen, &te);
+            SetSoftStyle(rp, FS_NORMAL, AskSoftStyle(rp));
             line_node->centreskip = te.te_Extent.MaxX - te.te_Extent.MinX
                 + 1 - te.te_Width;
             line_node->lwidth += line_node->centreskip;
@@ -908,7 +946,7 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
                     SetDrMd(rp, JAM1);
                 }
                 {
-                    LONG len = strlen(chunk_node->str);
+                    LONG len = chunk_node->clen;
 
                     if (text->truncate && x + chunk_node->cwidth > right + 1)
                     {

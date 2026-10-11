@@ -31,6 +31,7 @@ typedef struct ZTextChunk {
     UBYTE                 style; /* FSF_UNDERLINED, FSF_BOLD, ... */
     WORD                  cwidth;
     WORD                  cheight;
+    WORD                  clen;   /* strlen(str), kept for measuring and drawing */
 } ZTextChunk;
 
 typedef struct ZTextLine {
@@ -68,8 +69,9 @@ enum {
 ZText *zune_text_new (CONST_STRPTR preparse, CONST_STRPTR content,
     int argtype, TEXT arg);
 void zune_text_destroy (ZText *text);
-BOOL zune_text_replace_plain (ZText *text, CONST_STRPTR old,
-    CONST_STRPTR new);
+ZTextChunk *zune_text_plain_chunk (ZText *text, CONST_STRPTR s);
+void zune_text_set_plain (ZText *text, ZTextChunk *chunk, STRPTR s,
+    LONG len, Object *obj);
 void zune_text_get_bounds (ZText *text, Object *obj);
 void zune_text_draw (ZText *text, Object *obj, WORD left, WORD right,
     WORD top);

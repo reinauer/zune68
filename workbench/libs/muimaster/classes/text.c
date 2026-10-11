@@ -37,6 +37,7 @@ struct MUI_TextData
     CONST_STRPTR preparse;
     TEXT hichar;
     ZText *ztext;
+    ZTextChunk *plain_chunk; /* the one chunk of a ztext of plain contents */
 
     LONG update;        /* type of update: 1 - everything,
                          * 2 - insert char, no scroll */
@@ -53,17 +54,37 @@ struct MUI_TextData
 
 static void setup_text(struct MUI_TextData *data, Object *obj);
 
+/* The length of contents that parse to themselves alone (no escapes,
+ * one line), or -1 */
+static LONG plain_length(CONST_STRPTR s)
+{
+    CONST_STRPTR c = s;
+
+    for (; *c; c++)
+        if (*c == '\33' || *c == '\n')
+            return -1;
+    return c == s ? -1 : c - s;
+}
+
 /* Copy new contents, reusing the buffer when the text fits. Status
  * lines are set repeatedly with similar lengths, so round the size up.
  * The source may point into the current buffer. */
-static BOOL store_contents(struct MUI_TextData *data, CONST_STRPTR src)
+static BOOL store_contents_len(struct MUI_TextData *data, CONST_STRPTR src,
+    ULONG len)
 {
-    ULONG len = strlen(src) + 1, size;
+    ULONG size;
     STRPTR buf;
+
+    len++;
 
     if (data->contents && len <= data->contents_size)
     {
-        memmove(data->contents, src, len);
+        /* a byte loop beats memmove's CopyMem for status lengths; a
+         * source inside the buffer itself lies at or after it */
+        STRPTR d = data->contents;
+
+        while ((*d++ = *src++))
+            ;
         return TRUE;
     }
     size = (len + 31) & ~31UL;
@@ -74,6 +95,11 @@ static BOOL store_contents(struct MUI_TextData *data, CONST_STRPTR src)
     data->contents = buf;
     data->contents_size = size;
     return TRUE;
+}
+
+static BOOL store_contents(struct MUI_TextData *data, CONST_STRPTR src)
+{
+    return store_contents_len(data, src, strlen(src));
 }
 
 /**************************************************************************
@@ -175,17 +201,15 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             {
                 CONST_STRPTR src = ((char *)tag->ti_Data) ?
                     (char *)tag->ti_Data : "";
+                LONG len;
 
-                /* Plain status text changes the string of its single
-                 * chunk; nothing needs parsing again */
-                if (data->ztext && (_flags(obj) & MADF_SETUP)
-                    && !(data->mtd_Flags & (MTDF_HICHAR | MTDF_HICHARIDX))
-                    && data->contents
-                    && zune_text_replace_plain(data->ztext, data->contents,
-                        src)
-                    && store_contents(data, src))
+                /* Plain status text keeps its parsed form and gets the
+                 * new string, which needs no parsing either */
+                if (data->plain_chunk && (len = plain_length(src)) > 0
+                    && store_contents_len(data, src, len))
                 {
-                    zune_text_get_bounds(data->ztext, obj);
+                    zune_text_set_plain(data->ztext, data->plain_chunk,
+                        data->contents, len, obj);
                     data->update = 1;
                     MUI_Redraw(obj, MADF_DRAWUPDATE);
                 }
@@ -195,6 +219,7 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                     {
                         zune_text_destroy(data->ztext);
                         data->ztext = NULL;
+                        data->plain_chunk = NULL;
                     }
                     if (_flags(obj) & MADF_SETUP)
                         setup_text(data, obj);
@@ -224,6 +249,7 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                     {
                         zune_text_destroy(data->ztext);
                         data->ztext = NULL;
+                        data->plain_chunk = NULL;
                     }
                     FreeVec((APTR) data->preparse);
                     data->preparse = new_preparse;
@@ -299,6 +325,8 @@ static void setup_text(struct MUI_TextData *data, Object *obj)
             ZTEXT_ARG_NONE, 0);
     }
     zune_text_get_bounds(data->ztext, obj);
+    data->plain_chunk = (data->mtd_Flags & (MTDF_HICHAR | MTDF_HICHARIDX))
+        ? NULL : zune_text_plain_chunk(data->ztext, data->contents);
 
 /*      D(bug("muimaster.library/text.c: ZText of 0x%p at 0x%p\n", */
 /*          obj, data->ztext)); */
@@ -332,6 +360,7 @@ IPTR Text__MUIM_Cleanup(struct IClass *cl, Object *obj,
     {
         zune_text_destroy(data->ztext);
         data->ztext = NULL;
+        data->plain_chunk = NULL;
     }
 
     return (DoSuperMethodA(cl, obj, (Msg) msg));
@@ -432,7 +461,22 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
 /*        "0x%p %ldx%ldx%ldx%ld\n", obj, _left(obj), _top(obj), */
 /*        _right(obj), _bottom(obj))); */
 
-    DoSuperMethodA(cl, obj, (Msg) msg);
+    /* Area's Draw only moves the draw flags into the message when
+     * neither the object nor its frame is to be drawn; do that here and
+     * save the super call for the contents updates below */
+    {
+        ULONG flags = _flags(obj) & MADF_DRAWFLAGS;
+
+        if (flags & MADF_DRAWALL)
+            flags |= MADF_DRAWOBJECT;
+        if (flags & (MADF_DRAWOBJECT | MADF_DRAWFRAME))
+            DoSuperMethodA(cl, obj, (Msg) msg);
+        else
+        {
+            msg->flags = flags;
+            _flags(obj) &= ~MADF_DRAWFLAGS;
+        }
+    }
 
     if ((msg->flags & MADF_DRAWUPDATE) && !data->update)
         return 0;
