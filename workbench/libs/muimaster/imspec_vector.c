@@ -180,42 +180,93 @@ static LONG mx_pen(char c, BOOL selected)
     return -1;
 }
 
-void mx_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
-    LONG height, LONG state)
+/* The image as rectangles of one pen, rows with the same span of a pen
+ * merged, built once per state: about a dozen RectFill calls instead of
+ * one call per row run, most of them single pixels
+ * (tests/native/perfbench.c redraw) */
+struct mx_rect
 {
-    struct RastPort *rport = mri->mri_RastPort;
-    BOOL selected = state == IDS_SELECTED;
-    LONG x0 = left + (width - 17) / 2, y0 = top + (height - 9) / 2;
-    LONG x, y;
+    BYTE pen, x0, y0, x1, y1;
+};
 
-    /* Runs of four or more pixels are cheaper as RectFill than as
-     * WritePixel (tests/native/gfxprims.c) */
+static struct mx_rect mx_rects[2][40];
+static int mx_count[2] = { -1, -1 };
+
+static void mx_build(BOOL selected)
+{
+    struct mx_rect *r = mx_rects[selected];
+    int n = 0, x, y;
+
     for (y = 0; y < 9; y++)
     {
-        if (y0 + y < top || y0 + y >= top + height)
-            continue;
         for (x = 0; x < 17; x++)
         {
-            LONG pen = mx_pen(mx_map[y][x], selected), end;
+            LONG pen = mx_pen(mx_map[y][x], selected);
+            int end, i;
 
             if (pen < 0)
                 continue;
             for (end = x; end + 1 < 17
                 && mx_pen(mx_map[y][end + 1], selected) == pen;)
                 end++;
+            /* extend a rectangle that ends on the row above */
+            for (i = 0; i < n; i++)
+                if (r[i].pen == pen && r[i].x0 == x && r[i].x1 == end
+                    && r[i].y1 == y - 1)
+                    break;
+            if (i < n)
+                r[i].y1 = y;
+            else if (n < 40)
             {
-                LONG l = MAX(x0 + x, left);
-                LONG rt = MIN(x0 + end, left + width - 1);
-
-                SetAPen(rport, mri->mri_Pens[pen]);
-                if (rt - l >= 3)
-                    RectFill(rport, l, y0 + y, rt, y0 + y);
-                else
-                    for (; l <= rt; l++)
-                        WritePixel(rport, l, y0 + y);
+                r[n].pen = pen;
+                r[n].x0 = x;
+                r[n].x1 = end;
+                r[n].y0 = r[n].y1 = y;
+                n++;
             }
             x = end;
         }
+    }
+    /* the rectangles do not overlap: group them by pen */
+    for (x = 1; x < n; x++)
+    {
+        struct mx_rect t = r[x];
+
+        for (y = x; y > 0 && r[y - 1].pen > t.pen; y--)
+            r[y] = r[y - 1];
+        r[y] = t;
+    }
+    mx_count[selected] = n;
+}
+
+void mx_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
+    LONG height, LONG state)
+{
+    struct RastPort *rport = mri->mri_RastPort;
+    BOOL selected = state == IDS_SELECTED;
+    LONG x0 = left + (width - 17) / 2, y0 = top + (height - 9) / 2;
+    LONG pen = -1;
+    int i;
+
+    if (mx_count[selected] < 0)
+        mx_build(selected);
+    for (i = 0; i < mx_count[selected]; i++)
+    {
+        const struct mx_rect *r = &mx_rects[selected][i];
+        LONG l = MAX(x0 + r->x0, left), rt = MIN(x0 + r->x1, left + width - 1);
+        LONG t = MAX(y0 + r->y0, top), b = MIN(y0 + r->y1, top + height - 1);
+
+        if (l > rt || t > b)
+            continue;
+        if (r->pen != pen)
+        {
+            pen = r->pen;
+            SetAPen(rport, mri->mri_Pens[pen]);
+        }
+        if (l == rt && t == b)
+            WritePixel(rport, l, t);
+        else
+            RectFill(rport, l, t, rt, b);
     }
 }
 
