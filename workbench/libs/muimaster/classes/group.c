@@ -2880,8 +2880,9 @@ static void group_layout_vert(struct IClass *cl, Object *obj,
         if (IS_HIDDEN(child))
             continue;
 
-        width = MIN(_maxwidth(child), layout_width);
-        width = MAX(width, _minwidth(child));
+        /* the maximum wins over a larger minimum, as in MUI 3.9
+         * (tests/native/defclamp.c) */
+        width = MIN(MAX(layout_width, _minwidth(child)), _maxwidth(child));
         left = (layout_width - width) / 2;
 
 /*          D(bug("child %p -> layout %d x %d\n", */
@@ -2999,8 +3000,9 @@ static void group_layout_horiz(struct IClass *cl, Object *obj,
         if (IS_HIDDEN(child))
             continue;
 
-        height = MIN(_maxheight(child), layout_height);
-        height = MAX(height, _minheight(child));
+        /* the maximum wins over a larger minimum, as in MUI 3.9 */
+        height = MIN(MAX(layout_height, _minheight(child)),
+            _maxheight(child));
         top = (layout_height - height) / 2;
 
 /*          D(bug("child %p -> layout %d x %d\n", */

@@ -1010,6 +1010,15 @@ void __area_finish_minmax(Object *obj, struct MUI_MinMax *MinMaxInfo)
                                      MinMaxInfo->MinWidth, MinMaxInfo->MaxWidth);
     }
 
+    /* MUI 3.9 raises a default below the minimum to it, but leaves one
+     * above the maximum and a maximum below the minimum alone; classes
+     * such as Textinput.mcc only add to the minimum
+     * (tests/native/defclamp.c) */
+    if (MinMaxInfo->DefWidth < MinMaxInfo->MinWidth)
+        MinMaxInfo->DefWidth = MinMaxInfo->MinWidth;
+    if (MinMaxInfo->DefHeight < MinMaxInfo->MinHeight)
+        MinMaxInfo->DefHeight = MinMaxInfo->MinHeight;
+
     /* Set minmax */
     _minwidth(obj) = MinMaxInfo->MinWidth;
     _minheight(obj) = MinMaxInfo->MinHeight;
