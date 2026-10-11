@@ -1596,8 +1596,12 @@ static void group_minmax_horiz(struct IClass *cl, Object *obj,
     tmp.MaxHeight = MUI_MAXMAX;
     if (data->num_visible_children > 0)
     {
-        tmp.MinWidth = tmp.DefWidth = tmp.MaxWidth =
+        tmp.MinWidth = tmp.DefWidth =
             (data->num_visible_children - 1) * data->horiz_spacing;
+        /* MUI 3.9 adds spacing and each child's maximum, itself at most
+         * MUI_MAXMAX, until the sum reaches MUI_MAXMAX, without clamping
+         * the sum (tests/native/demolayout.c, widgetsizes.c) */
+        tmp.MaxWidth = -data->horiz_spacing;
     }
     else
     {
@@ -1636,8 +1640,9 @@ static void group_minmax_horiz(struct IClass *cl, Object *obj,
             minwidth = _minwidth(child);
         tmp.MinWidth += minwidth;
         tmp.DefWidth += w0_defwidth(child);
-        tmp.MaxWidth += w0_maxwidth(child);
-        tmp.MaxWidth = MIN(tmp.MaxWidth, MUI_MAXMAX);
+        if (tmp.MaxWidth < MUI_MAXMAX)
+            tmp.MaxWidth += data->horiz_spacing
+                + MIN(w0_maxwidth(child), MUI_MAXMAX);
         tmp.MinHeight = MAX(tmp.MinHeight, _minheight(child));
         tmp.DefHeight = MAX(tmp.DefHeight, _defheight(child));
         /*
@@ -1685,8 +1690,9 @@ static void group_minmax_vert(struct IClass *cl, Object *obj,
     tmp.MaxWidth = MUI_MAXMAX;
     if (data->num_visible_children > 0)
     {
-        tmp.MinHeight = tmp.DefHeight = tmp.MaxHeight =
+        tmp.MinHeight = tmp.DefHeight =
             (data->num_visible_children - 1) * data->vert_spacing;
+        tmp.MaxHeight = -data->vert_spacing;
     }
     else
     {
@@ -1717,8 +1723,9 @@ static void group_minmax_vert(struct IClass *cl, Object *obj,
             _minheight(child) = MIN(maxminheight, w0_maxheight(child));
         tmp.MinHeight += _minheight(child);
         tmp.DefHeight += w0_defheight(child);
-        tmp.MaxHeight += w0_maxheight(child);
-        tmp.MaxHeight = MIN(tmp.MaxHeight, MUI_MAXMAX);
+        if (tmp.MaxHeight < MUI_MAXMAX)
+            tmp.MaxHeight += data->vert_spacing
+                + MIN(w0_maxheight(child), MUI_MAXMAX);
         tmp.MinWidth = MAX(tmp.MinWidth, _minwidth(child));
         tmp.DefWidth = MAX(tmp.DefWidth, _defwidth(child));
         tmp.MaxWidth = MIN(tmp.MaxWidth, _maxwidth(child));
