@@ -373,24 +373,26 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             data->mad_HorizWeight = tag->ti_Data;
             break;
 
+        /* MUI 3.9 keeps inner spacings as bytes, without a limit
+         * (tests/native/winsize.c) */
         case MUIA_InnerBottom:
             data->mad_Flags |= MADF_INNERBOTTOM;
-            data->mad_InnerBottom = CLAMP((IPTR)tag->ti_Data, 0, 32);
+            data->mad_InnerBottom = (BYTE)tag->ti_Data;
             break;
 
         case MUIA_InnerLeft:
             data->mad_Flags |= MADF_INNERLEFT;
-            data->mad_InnerLeft = CLAMP((IPTR)tag->ti_Data, 0, 32);
+            data->mad_InnerLeft = (BYTE)tag->ti_Data;
             break;
 
         case MUIA_InnerRight:
             data->mad_Flags |= MADF_INNERRIGHT;
-            data->mad_InnerRight = CLAMP((IPTR)tag->ti_Data, 0, 32);
+            data->mad_InnerRight = (BYTE)tag->ti_Data;
             break;
 
         case MUIA_InnerTop:
             data->mad_Flags |= MADF_INNERTOP;
-            data->mad_InnerTop = CLAMP((IPTR)tag->ti_Data, 0, 32);
+            data->mad_InnerTop = (BYTE)tag->ti_Data;
             break;
 
         case MUIA_InputMode:
@@ -927,8 +929,10 @@ static IPTR Area__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 
     area_update_msizes(obj, data, frame, zframe);
 
-    msg->MinMaxInfo->MinWidth = _subwidth(obj);
-    msg->MinMaxInfo->MinHeight = _subheight(obj);
+    /* the byte sized frame and spacing sum can be negative; MUI 3.9
+     * starts from no size then */
+    msg->MinMaxInfo->MinWidth = MAX(_subwidth(obj), 0);
+    msg->MinMaxInfo->MinHeight = MAX(_subheight(obj), 0);
 
     msg->MinMaxInfo->MaxWidth = msg->MinMaxInfo->MinWidth;
     msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->MinHeight;
