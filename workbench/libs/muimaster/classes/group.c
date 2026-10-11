@@ -2514,8 +2514,7 @@ static void Layout1D_weight_constraint(WORD *total_sizep,
     ULONG *total_weightp, WORD *sizep, UWORD weight, WORD minsize)
 {
     if (*total_weightp > 0)
-        *sizep = (*total_sizep * weight + *total_weightp / 2)
-            / *total_weightp;
+        *sizep = (*total_sizep * weight) / *total_weightp;
     else
         *sizep = minsize;
 
