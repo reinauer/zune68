@@ -68,6 +68,10 @@ static struct MUIGfxFrame *Gfx_GetFrame(LONG nr __asm("d0"),
 {
     if (nr < 0 || nr >= FST_CUSTOM1)
         nr = FST_RECT;
+    /* MUI 3.9's muigfx 20.606 has no frame 10 (tests/native/
+     * muigfxprobe.c) */
+    if (nr == FST_SEMIROUND_BEVEL)
+        return NULL;
     return &Frames[nr];
 }
 
@@ -217,6 +221,10 @@ void MUIGfx_Install(struct Library *owner)
         Frames[i].bottom = zframe->ibottom;
         Frames[i].type = i;
     }
+    /* muigfx 20.606 gives the round thin border 3 pixels of spacing */
+    Frames[FST_ROUND_THIN_BORDER].left = Frames[FST_ROUND_THIN_BORDER].right =
+        Frames[FST_ROUND_THIN_BORDER].top =
+        Frames[FST_ROUND_THIN_BORDER].bottom = 3;
     for (i = 0; i < 4 + MUIGFX_SLOTS; ++i)
         Vectors[i] = (APTR)Gfx_Null;
     Vectors[4 + MUIGFX_SLOTS] = (APTR)-1;
