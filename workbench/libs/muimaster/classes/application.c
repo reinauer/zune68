@@ -2710,16 +2710,26 @@ static IPTR Application__MUIM_Load(struct IClass *cl, Object *obj,
     if (!dataspace)
         return 0;
 
+    /* MUI keeps the objects' state in ENV(ARC):MUI/<base>.cfg; earlier
+     * Zune68 versions used ENV(ARC):Zune, which is still read */
     if (message->name == MUIV_Application_Load_ENV)
-        snprintf(name, sizeof(name), "ENV:Zune/%s.cfg", data->app_Base);
+        snprintf(name, sizeof(name), "ENV:MUI/%s.cfg", data->app_Base);
     else if (message->name == MUIV_Application_Load_ENVARC)
-        snprintf(name, sizeof(name), "ENVARC:Zune/%s.cfg", data->app_Base);
+        snprintf(name, sizeof(name), "ENVARC:MUI/%s.cfg", data->app_Base);
     else
         strncpy(name, message->name, sizeof(name) - 1);
 
     bug("[MUI:App] %s: opening '%s'\n", __func__, name);
 
     fh = Open(name, MODE_OLDFILE);
+    if (!fh && (message->name == MUIV_Application_Load_ENV
+        || message->name == MUIV_Application_Load_ENVARC))
+    {
+        snprintf(name, sizeof(name), "%s:Zune/%s.cfg",
+            message->name == MUIV_Application_Load_ENV ? "ENV" : "ENVARC",
+            data->app_Base);
+        fh = Open(name, MODE_OLDFILE);
+    }
     if (fh)
     {
         if ((iff = AllocIFF()))
@@ -2785,13 +2795,26 @@ static IPTR Application__MUIM_Save(struct IClass *cl, Object *obj,
     }
 
     if (message->name == MUIV_Application_Save_ENV)
-        snprintf(name, sizeof(name), "ENV:Zune/%s.cfg", data->app_Base);
+        snprintf(name, sizeof(name), "ENV:MUI/%s.cfg", data->app_Base);
     else if (message->name == MUIV_Application_Save_ENVARC)
-        snprintf(name, sizeof(name), "ENVARC:Zune/%s.cfg", data->app_Base);
+        snprintf(name, sizeof(name), "ENVARC:MUI/%s.cfg", data->app_Base);
     else
         strncpy(name, message->name, sizeof(name) - 1);
 
     fh = Open(name, MODE_NEWFILE);
+    if (!fh && (message->name == MUIV_Application_Save_ENV
+        || message->name == MUIV_Application_Save_ENVARC))
+    {
+        /* like MUI, create the MUI drawer when it is missing */
+        BPTR dir = CreateDir(message->name == MUIV_Application_Save_ENV
+            ? "ENV:MUI" : "ENVARC:MUI");
+
+        if (dir)
+        {
+            UnLock(dir);
+            fh = Open(name, MODE_NEWFILE);
+        }
+    }
     if (fh)
     {
         if ((iff = AllocIFF()))
