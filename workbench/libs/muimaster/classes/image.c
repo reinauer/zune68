@@ -420,6 +420,13 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
     }
     else /* no imagespec specified */
     {
+        /* MUI 3.9 answers an unusable spec ("noimage", NList's) with
+         * nothing at minimum and maximum but an 8x8 default
+         * (tests/native/imgspec.c) */
+        msg->MinMaxInfo->MaxWidth = msg->MinMaxInfo->MinWidth;
+        msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->MinHeight;
+        msg->MinMaxInfo->DefWidth = msg->MinMaxInfo->MinWidth + 8;
+        msg->MinMaxInfo->DefHeight = msg->MinMaxInfo->MinHeight + 8;
 /*      D(bug("*** Image_AskMinMax : no img, no old_img\n")); */
 /*      msg->MinMaxInfo->MinWidth += 8; */
 /*      msg->MinMaxInfo->DefWidth = msg->MinMaxInfo->MinWidth; */
