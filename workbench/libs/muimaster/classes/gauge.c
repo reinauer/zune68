@@ -356,11 +356,13 @@ IPTR Gauge__MUIM_Draw(struct IClass *cl, Object *obj,
         if (data->info)
         {
             ZText *ztext =
-                zune_text_new("\33c\0338", data->buf, ZTEXT_ARG_NONE, 0);
+                zune_text_new("\33c", data->buf, ZTEXT_ARG_NONE, 0);
             if (ztext)
             {
                 zune_text_get_bounds(ztext, obj);
-                SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
+                /* MUI 3.9 draws the info text in the text pen over
+                 * the filled and the empty part (tests/native/gaugetext.c) */
+                SetAPen(_rp(obj), _pens(obj)[MPEN_TEXT]);
                 zune_text_draw(ztext, obj, _mleft(obj), _mright(obj),
                     _mtop(obj) + (_mheight(obj) - ztext->height) / 2);
                 zune_text_destroy(ztext);
@@ -381,11 +383,13 @@ IPTR Gauge__MUIM_Draw(struct IClass *cl, Object *obj,
         if (data->info)
         {
             ZText *ztext =
-                zune_text_new("\33c\0338", data->buf, ZTEXT_ARG_NONE, 0);
+                zune_text_new("\33c", data->buf, ZTEXT_ARG_NONE, 0);
             if (ztext)
             {
                 zune_text_get_bounds(ztext, obj);
-                SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
+                /* MUI 3.9 draws the info text in the text pen over
+                 * the filled and the empty part (tests/native/gaugetext.c) */
+                SetAPen(_rp(obj), _pens(obj)[MPEN_TEXT]);
                 zune_text_draw(ztext, obj, _mleft(obj), _mright(obj),
                     _mtop(obj) + (_mheight(obj) - ztext->height) / 2);
                 zune_text_destroy(ztext);
