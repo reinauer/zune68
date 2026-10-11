@@ -101,23 +101,26 @@ IPTR Balance__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 {
     struct Balance_DATA *data = INST_DATA(cl, obj);
 
+    /* MUI 3.9: at least 3x3, 3 pixels thick (balancebounds); a quiet
+     * balance draws no bars and is 2 pixels (baldraw) */
+    LONG size = data->quiet ? 2 : 3;
+
     DoSuperMethodA(cl, obj, (Msg) msg);
 
-    /* MUI 3.9: at least 3x3, 3 pixels thick (balancebounds) */
     if (data->horizgroup)
     {
-        msg->MinMaxInfo->MinHeight += 3;
-        msg->MinMaxInfo->DefHeight += 3;
-        msg->MinMaxInfo->MinWidth += 3;
+        msg->MinMaxInfo->MinHeight += size;
+        msg->MinMaxInfo->DefHeight += size;
+        msg->MinMaxInfo->MinWidth += size;
         msg->MinMaxInfo->DefWidth = msg->MinMaxInfo->MinWidth;
         msg->MinMaxInfo->MaxWidth = msg->MinMaxInfo->DefWidth;
         msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
     }
     else
     {
-        msg->MinMaxInfo->MinWidth += 3;
-        msg->MinMaxInfo->DefWidth += 3;
-        msg->MinMaxInfo->MinHeight += 3;
+        msg->MinMaxInfo->MinWidth += size;
+        msg->MinMaxInfo->DefWidth += size;
+        msg->MinMaxInfo->MinHeight += size;
         msg->MinMaxInfo->DefHeight = msg->MinMaxInfo->MinHeight;
         msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->DefHeight;
         msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
