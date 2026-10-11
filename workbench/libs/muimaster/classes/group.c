@@ -1782,6 +1782,9 @@ minmax_2d_rows_pass(struct MUI_GroupData *data, struct MinList *children,
             max_h = min_h;
         else
             max_h = MAX(max_h, min_h);
+        /* ... and a row by the average over its columns */
+        if (data->columns > 0)
+            data->row_infos[i].weight /= data->columns;
 /*          D(bug("row %d : min_h=%d max_h=%d\n", i, min_h, max_h)); */
 
         data->row_infos[i].min = min_h;
@@ -1846,6 +1849,9 @@ minmax_2d_columns_pass(struct MUI_GroupData *data, struct MinList *children,
             max_w = min_w;
         else
             max_w = MAX(max_w, min_w);
+        /* MUI 3.9 weighs a column by its children's average weight */
+        if (data->rows > 0)
+            data->col_infos[i].weight /= data->rows;
 /*          D(bug("col %d : min_w=%d max_w=%d\n", i, min_w, max_w)); */
 
         data->col_infos[i].min = min_w;
@@ -2217,7 +2223,8 @@ static void Layout1D_redistribution(WORD *sizep, WORD minsize,
     {
         LONG newsize;
 
-        newsize = (sizegrow * weight + weightgrow / 2) / weightgrow;
+        /* rounded down like MUI 3.9; the last child takes the rest */
+        newsize = (sizegrow * weight) / weightgrow;
 
 /*        D(bug("newsize=%ld == size_growa=%ld * w=%ld / weight_grow=%d\n", */
 /*                newsize, sizegrow, weight, weightgrow)); */
@@ -2244,7 +2251,7 @@ static void Layout1D_redistribution(WORD *sizep, WORD minsize,
     {
         LONG newsize;
 
-        newsize = (sizeshrink * weight + weightshrink / 2) / weightshrink;
+        newsize = (sizeshrink * weight) / weightshrink;
 
 /*        D(bug("newsize=%ld == size_shrinkables=%ld * w=%ld " */
 /*            "/ weight_shrinkables=%d\n", */
@@ -2755,8 +2762,8 @@ static void Layout2D_weight_constraint(struct MUI_GroupData *data,
     {
         if (total_weight_vert > 0)
             row_infos[i].dim =
-                (total_size_height * row_infos[i].weight +
-                total_weight_vert / 2) / total_weight_vert;
+                (total_size_height * row_infos[i].weight)
+                / total_weight_vert;
         else
             row_infos[i].dim = row_infos[i].min;
 
@@ -2774,8 +2781,8 @@ static void Layout2D_weight_constraint(struct MUI_GroupData *data,
     {
         if (total_weight_horiz)
             col_infos[i].dim =
-                (total_size_width * col_infos[i].weight +
-                total_weight_horiz / 2) / total_weight_horiz;
+                (total_size_width * col_infos[i].weight)
+                / total_weight_horiz;
         else
             col_infos[i].dim = col_infos[i].min;
 
