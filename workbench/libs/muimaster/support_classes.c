@@ -24,10 +24,10 @@
 #if !defined(__AROS__) && !defined(__amigaos4__) && !defined(__MAXON__)
 #include "classes/area.h"
 
-static IPTR builtinDispatcher(Class *cl __asm("a0"),
+IPTR builtinDispatcher(Class *cl __asm("a0"),
     Object *obj __asm("a2"), Msg msg __asm("a1"));
 
-static IPTR __attribute__((noinline)) builtinDraw(Class *cl __asm("a0"),
+static IPTR __attribute__((noinline, used)) builtinDraw(Class *cl __asm("a0"),
     Object *obj __asm("a2"), Msg msg __asm("a1"))
 {
     typedef IPTR (*Dispatcher)(Class * __asm("a0"),
@@ -54,20 +54,23 @@ static IPTR __attribute__((noinline)) builtinDraw(Class *cl __asm("a0"),
     return result;
 }
 
-static IPTR builtinDispatcher(Class *cl __asm("a0"),
-    Object *obj __asm("a2"), Msg msg __asm("a1"))
-{
-    /* Select before dispatch: methods such as Dispose can invalidate the
-     * message storage. Other methods retain the ordinary trampoline path. */
-    if (msg->MethodID == MUIM_Draw)
-        return builtinDraw(cl, obj, msg);
-    {
-        typedef IPTR (*Dispatcher)(Class * __asm("a0"),
-            Object * __asm("a2"), Msg __asm("a1"), APTR __asm("a6"));
-        Dispatcher dispatch = (Dispatcher)cl->cl_Dispatcher.h_SubEntry;
-        return dispatch(cl, obj, msg, cl->cl_Dispatcher.h_Data);
-    }
-}
+/* Every method of a built-in class enters here. Only MUIM_Draw needs the
+ * frame of builtinDraw; everything else continues into the class
+ * dispatcher (cl_Dispatcher.h_SubEntry) with the registers untouched,
+ * so the trampoline costs two instructions instead of saving and
+ * restoring four registers around a call (perfbench create+dispose,
+ * every method call). The dispatchers do not use a6. */
+asm(
+    "\t.text\n"
+    "\t.align 2\n"
+    "\t.globl _builtinDispatcher\n"
+    "_builtinDispatcher:\n"
+    "\tcmpi.l #0x80426f3f,(%a1)\n"      /* MUIM_Draw */
+    "\tbeq.s 1f\n"
+    "\tmove.l 12(%a0),-(%sp)\n"         /* cl_Dispatcher.h_SubEntry */
+    "\trts\n"
+    "1:\tjmp _builtinDraw\n"
+);
 #endif
 
 extern const struct __MUIBuiltinClass _MUI_Settings_desc;
