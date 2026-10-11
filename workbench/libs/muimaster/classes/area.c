@@ -1304,7 +1304,9 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
 
     if ((region = NewRegion())) {
         struct Rectangle rect;
-        int hspace = _font(obj)->tf_YSize / 8;
+        /* MUI 3.9 keeps the frame two pixels clear of the title (measured
+         * with its 9 pixel title font) */
+        int hspace = 2;
 
         rect.MinX = tx - hspace;
         rect.MinY = _top(obj);
@@ -1680,7 +1682,9 @@ static void set_title_sizes(Object *obj, struct MUI_AreaData *data)
             data->mad_TitleHeightAbove = _font(obj)->tf_Baseline;
             break;
         case GROUP_TITLE_POSITION_CENTERED:
-            data->mad_TitleHeightAbove = _font(obj)->tf_YSize / 2;
+            /* rounded up like MUI 3.9 (the 9 pixel title font of
+             * MUI-Demo's "Available Demos" puts the line on row 5) */
+            data->mad_TitleHeightAbove = (_font(obj)->tf_YSize + 1) / 2;
             break;
         }
 
