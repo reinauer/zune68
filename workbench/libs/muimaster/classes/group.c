@@ -2560,6 +2560,117 @@ static void Layout1D_minmax_constraints_and_redistrib(struct MinList
 
 }
 
+/* MUI 3.9's redistribution (tests/native/hdist.c): after the weighted
+ * first split, each pass clamps every child to its range and then adds
+ * to each child that can still move its weight's share of that pass's
+ * remainder, taken from the weight of all children and truncated, so
+ * clamped children keep their weight in the divisor. After eight
+ * passes the rest goes one pixel at a time to the movable children from
+ * the last one back. */
+static void Layout1D_mui_redistrib(struct MinList *children, WORD total_size,
+    ULONG total_weight, BOOL group_horiz)
+{
+    APTR cstate;
+    Object *child;
+    LONG remainder;
+    int pass;
+
+    for (pass = 0; pass <= 8; pass++)
+    {
+        LONG start;
+        BOOL moved;
+
+        remainder = total_size;
+        cstate = children->mlh_Head;
+        while ((child = NextObject(&cstate)))
+        {
+            WORD *size;
+
+            if (IS_HIDDEN(child))
+                continue;
+            size = group_horiz ? &_width(child) : &_height(child);
+            *size = CLAMP(*size,
+                group_horiz ? _minwidth(child) : _minheight(child),
+                group_horiz ? _maxwidth(child) : _maxheight(child));
+            remainder -= *size;
+        }
+        if (remainder == 0)
+            return;
+        if (pass == 8)
+            break;
+
+        start = remainder;
+        moved = FALSE;
+        cstate = children->mlh_Head;
+        while ((child = NextObject(&cstate)))
+        {
+            WORD *size, min, max;
+            LONG weight, delta;
+
+            if (IS_HIDDEN(child))
+                continue;
+            size = group_horiz ? &_width(child) : &_height(child);
+            min = group_horiz ? _minwidth(child) : _minheight(child);
+            max = group_horiz ? _maxwidth(child) : _maxheight(child);
+            weight = group_horiz ? _hweight(child) : _vweight(child);
+            if ((start > 0 && *size >= max) || (start < 0 && *size <= min))
+                continue;
+            delta = start * weight / (LONG)total_weight;
+            if (delta)
+            {
+                *size += delta;
+                moved = TRUE;
+            }
+        }
+        if (!moved)
+            break;
+    }
+
+    /* the rest, a pixel at a time from the last child back, weighted
+     * children first */
+    while (remainder != 0)
+    {
+        BOOL moved = FALSE;
+        int round;
+
+        for (round = 0; round < 2 && remainder != 0 && !moved; round++)
+        {
+            struct MinNode *node;
+
+            for (node = children->mlh_TailPred;
+                node->mln_Pred && remainder != 0; node = node->mln_Pred)
+            {
+                Object *kid = BASEOBJECT((struct _Object *)node);
+                WORD *size, min, max;
+                LONG weight;
+
+                if (IS_HIDDEN(kid))
+                    continue;
+                size = group_horiz ? &_width(kid) : &_height(kid);
+                min = group_horiz ? _minwidth(kid) : _minheight(kid);
+                max = group_horiz ? _maxwidth(kid) : _maxheight(kid);
+                weight = group_horiz ? _hweight(kid) : _vweight(kid);
+                if (round == 0 && weight == 0)
+                    continue;
+                if (remainder > 0 && *size < max)
+                {
+                    ++*size;
+                    --remainder;
+                    moved = TRUE;
+                }
+                else if (remainder < 0 && *size > min)
+                {
+                    --*size;
+                    ++remainder;
+                    moved = TRUE;
+                }
+            }
+        }
+        if (!moved)
+            return;
+    }
+}
+
 static void Layout1D_weight_constraint(WORD *total_sizep,
     WORD *total_init_sizep,
     ULONG *total_weightp, WORD *sizep, UWORD weight, WORD minsize)
@@ -2751,11 +2862,16 @@ static void group_layout_vert(struct IClass *cl, Object *obj,
             total_size = 0;
     }
 
-    Layout1D_minmax_constraints_and_redistrib(children,
-        total_size,
-        remainder,
-        (data->flags & GROUP_SAME_HEIGHT) ? data->samesize_maxmin_vert : 0,
-        FALSE);
+    if (!(data->flags & GROUP_SAME_HEIGHT) && data->vert_weight_sum > 0)
+        Layout1D_mui_redistrib(children, total_size,
+            data->vert_weight_sum, FALSE);
+    else
+        Layout1D_minmax_constraints_and_redistrib(children,
+            total_size,
+            remainder,
+            (data->flags & GROUP_SAME_HEIGHT) ?
+                data->samesize_maxmin_vert : 0,
+            FALSE);
 
     // do the layout
     cstate = children->mlh_Head;
@@ -2865,11 +2981,16 @@ static void group_layout_horiz(struct IClass *cl, Object *obj,
             total_size = 0;
     }
 
-    Layout1D_minmax_constraints_and_redistrib(children,
-        total_size,
-        remainder,
-        (data->flags & GROUP_SAME_WIDTH) ? data->samesize_maxmin_horiz : 0,
-        TRUE);
+    if (!(data->flags & GROUP_SAME_WIDTH) && data->horiz_weight_sum > 0)
+        Layout1D_mui_redistrib(children, total_size,
+            data->horiz_weight_sum, TRUE);
+    else
+        Layout1D_minmax_constraints_and_redistrib(children,
+            total_size,
+            remainder,
+            (data->flags & GROUP_SAME_WIDTH) ?
+                data->samesize_maxmin_horiz : 0,
+            TRUE);
 
     // do the layout
     cstate = children->mlh_Head;
