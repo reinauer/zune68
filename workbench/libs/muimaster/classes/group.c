@@ -1391,6 +1391,26 @@ IPTR Group__MUIM_Virtgroup_EndPaint(struct IClass *cl, Object *obj)
 /**************************************************************************
  MUIM_Draw - draw the group
 **************************************************************************/
+/* Paint the background of an object's box outside its inner box */
+static void group_clear_ring(Object *obj)
+{
+    LONG l = _left(obj), t = _top(obj), r = _right(obj), b = _bottom(obj);
+    LONG ml = _mleft(obj), mt = _mtop(obj), mr = _mright(obj),
+        mb = _mbottom(obj);
+
+    if (mt > t)
+        DoMethod(obj, MUIM_DrawBackground, l, t, r - l + 1, mt - t, l, t, 0);
+    if (mb < b)
+        DoMethod(obj, MUIM_DrawBackground, l, mb + 1, r - l + 1, b - mb,
+            l, mb + 1, 0);
+    if (ml > l && mb >= mt)
+        DoMethod(obj, MUIM_DrawBackground, l, mt, ml - l, mb - mt + 1,
+            l, mt, 0);
+    if (mr < r && mb >= mt)
+        DoMethod(obj, MUIM_DrawBackground, mr + 1, mt, r - mr, mb - mt + 1,
+            mr + 1, mt, 0);
+}
+
 IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
     struct MUIP_Draw *msg)
 {
@@ -1429,7 +1449,17 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
 
     /* Area draws the frame; virtual contents belong inside the paint pair. */
     if (virtual)
+    {
         _flags(obj) &= ~MADF_FILLAREA;
+        /* The spacing between the frame and the contents is not part of
+         * the paint pair, so clear it before Area puts the frame on top;
+         * a page switch otherwise left the previous page's pixels there
+         * (xSysInfo's Hardware page) */
+        /* Area moves the draw flags into the message only below */
+        if ((_flags(obj) & MADF_DRAWOBJECT)
+            && !(_flags(obj) & MADF_DRAWUPDATE))
+            group_clear_ring(obj);
+    }
 
     if (muiGlobalInfo(obj)->mgi_Prefs->window_redraw
         == WINDOW_REDRAW_WITHOUT_CLEAR)
