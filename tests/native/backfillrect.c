@@ -61,7 +61,7 @@ static ULONG dispatcher(struct IClass *cl __asm("a0"),
 int main(void)
 {
     struct MUI_CustomClass *mcc;
-    Object *app, *win, *plain, *virt;
+    Object *app, *win, *plain, *virt, *sg, *vg;
     ULONG open = FALSE;
     int rc = 20;
 
@@ -79,8 +79,8 @@ int main(void)
                     MUIA_Frame, MUIV_Frame_String, MUIA_FillArea, TRUE,
                     MUIA_CustomBackfill, TRUE, MUIA_UserData, "plain",
                     TAG_DONE),
-                Child, ScrollgroupObject, MUIA_Scrollgroup_Contents,
-                    VirtgroupObject,
+                Child, sg = ScrollgroupObject, MUIA_Scrollgroup_Contents,
+                    vg = VirtgroupObject,
                         Child, virt = NewObject(mcc->mcc_Class, NULL,
                             MUIA_Frame, MUIV_Frame_String,
                             MUIA_FillArea, TRUE, MUIA_CustomBackfill, TRUE,
@@ -97,6 +97,10 @@ int main(void)
     if (!open)
         goto done;
     DoMethod(app, MUIM_Application_InputBuffered);
+    printf("scrollgroup %d,%d %dx%d virtgroup %d,%d %dx%d min %d,%d def %d,%d max %d,%d\n",
+        _left(sg), _top(sg), _width(sg), _height(sg), _left(vg), _top(vg),
+        _width(vg), _height(vg), _minwidth(vg), _minheight(vg),
+        _defwidth(vg), _defheight(vg), _maxwidth(vg), _maxheight(vg));
     phase = "redraw";
     MUI_Redraw(plain, MADF_DRAWOBJECT);
     MUI_Redraw(virt, MADF_DRAWOBJECT);

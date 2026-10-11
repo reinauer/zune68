@@ -44,6 +44,16 @@ static void Scrollgroup_UpdateProps(struct Scrollgroup_DATA *data)
         MUIA_Prop_Visible, _mheight(data->contents), TAG_DONE);
 }
 
+/* MUI 3.9 keeps the contents within their maximum size and centres them
+ * in the room left by the scrollers (tests/native/backfillrect.c) */
+static void layout_contents(Object *contents, LONG width, LONG height)
+{
+    LONG w = MIN(width, _maxwidth(contents));
+    LONG h = MIN(height, _maxheight(contents));
+
+    MUI_Layout(contents, (width - w) / 2, (height - h) / 2, w, h, 0);
+}
+
 AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
     AROS_UFHA(struct Hook *, hook, A0),
     AROS_UFHA(Object *, obj, A2),
@@ -257,7 +267,7 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
 
             /* Layout the group a second time, note that setting _mwidth()
              * and _mheight() should be enough, or we invent a new flag */
-            MUI_Layout(data->contents, 0, 0, cont_width, cont_height, 0);
+            layout_contents(data->contents, cont_width, cont_height);
 
             /* A layout hook may report the virtual size only while laying
              * out (Voyager's page view reports a 1x1 minimum), so with
@@ -290,8 +300,7 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
                     if (nv && nh)
                         MUI_Layout(data->button, cont_width, cont_height,
                             vert_width, horiz_height, 0);
-                    MUI_Layout(data->contents, 0, 0, cont_width,
-                        cont_height, 0);
+                    layout_contents(data->contents, cont_width, cont_height);
                 }
             }
 
