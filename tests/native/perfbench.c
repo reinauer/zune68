@@ -149,6 +149,13 @@ static void profile_loop(const char *phase, int count)
         }
         else if (!strcmp(phase, "active"))
             set(list, MUIA_List_Active, (j * 7) % 200);
+        else if (!strcmp(phase, "create"))
+        {
+            Object *a = build();
+
+            if (a)
+                MUI_DisposeObject(a);
+        }
     }
 }
 
