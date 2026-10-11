@@ -927,11 +927,16 @@ void __area_finish_minmax(Object *obj, struct MUI_MinMax *MinMaxInfo)
 {
     struct MUI_AreaData *data = muiAreaData(obj);
 
+    /* MUI 3.9's MUIA_FixHeight/FixWidth set the minimum and maximum and
+     * raise a smaller default to them, but keep a larger default, which
+     * enclosing groups then clamp (tests/native/lvfix.c) */
     if ((_flags(obj) & MADF_FIXHEIGHT) && (data->mad_HardHeight > 0)) {
         int h = data->mad_HardHeight + data->mad_subheight;
 
-        MinMaxInfo->MinHeight = MinMaxInfo->DefHeight = MinMaxInfo->MaxHeight =
+        MinMaxInfo->MinHeight = MinMaxInfo->MaxHeight =
                                     CLAMP(h, MinMaxInfo->MinHeight, MinMaxInfo->MaxHeight);
+        if (MinMaxInfo->DefHeight < MinMaxInfo->MinHeight)
+            MinMaxInfo->DefHeight = MinMaxInfo->MinHeight;
     } else if (data->mad_HardHeightTxt) {
         ZText *text;
 
@@ -954,8 +959,10 @@ void __area_finish_minmax(Object *obj, struct MUI_MinMax *MinMaxInfo)
     if ((_flags(obj) & MADF_FIXWIDTH) && (data->mad_HardWidth > 0)) {
         int w = data->mad_HardWidth + data->mad_subwidth;
 
-        MinMaxInfo->MinWidth = MinMaxInfo->DefWidth = MinMaxInfo->MaxWidth =
+        MinMaxInfo->MinWidth = MinMaxInfo->MaxWidth =
                                    CLAMP(w, MinMaxInfo->MinWidth, MinMaxInfo->MaxWidth);
+        if (MinMaxInfo->DefWidth < MinMaxInfo->MinWidth)
+            MinMaxInfo->DefWidth = MinMaxInfo->MinWidth;
     } else if (data->mad_HardWidthTxt) {
         ZText *text;
 
