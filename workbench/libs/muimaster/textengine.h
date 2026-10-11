@@ -39,6 +39,7 @@ typedef struct ZTextLine {
     struct MinList chunklist;
     WORD   lwidth;
     WORD   lheight;
+    WORD   centreskip;         /* overhang not used for centring */
 } ZTextLine;
 
 struct ZText {

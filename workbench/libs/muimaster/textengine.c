@@ -639,6 +639,7 @@ void zune_text_get_bounds(ZText * text, Object * obj)
     {
         line_node->lheight = font->tf_YSize;
         line_node->lwidth = 0;
+        line_node->centreskip = 0;
 
         for (chunk_node = (ZTextChunk *) line_node->chunklist.mlh_Head;
             chunk_node->node.mln_Succ;
@@ -711,8 +712,14 @@ void zune_text_get_bounds(ZText * text, Object * obj)
                 AskSoftStyle(&rp));
             TextExtent(&rp, chunk_node->str, len, &te);
             SetSoftStyle(&rp, FS_NORMAL, AskSoftStyle(&rp));
-            line_node->lwidth += te.te_Extent.MaxX - te.te_Extent.MinX + 1
-                - te.te_Width;
+            line_node->centreskip = te.te_Extent.MaxX - te.te_Extent.MinX
+                + 1 - te.te_Width;
+            line_node->lwidth += line_node->centreskip;
+            /* a line in one style is centred on its advance alone, a
+             * line ending in another style with the overhang
+             * (tests/native/centrestyle.c) */
+            if (chunk_node->node.mln_Pred->mln_Pred)
+                line_node->centreskip = 0;
         }
 
         text->height += line_node->lheight;
@@ -759,7 +766,8 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
         LONG x;
 
         if (line_node->align == ZTL_CENTER)
-            x = (left + right + 1 - line_node->lwidth) / 2;
+            x = (left + right + 1 - (line_node->lwidth
+                - line_node->centreskip)) / 2;
         else if (line_node->align == ZTL_RIGHT)
             x = right - line_node->lwidth + 1;
         else
