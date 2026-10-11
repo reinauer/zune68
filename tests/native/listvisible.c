@@ -1,4 +1,5 @@
-/* MUIA_List_Visible of lists 40..58 pixels high, with their boxes; the
+/* MUIA_List_Visible and the first text row of lists 40..58 pixels high,
+ * with their boxes; the
  * window stays open 25 seconds for reading back the rows. Writes
  * listvisible.txt. Compare native and MUI 3.9.
  * Build: m68k-amigaos-gcc -m68000 -noixemul -Os \
@@ -8,6 +9,7 @@
 #include <libraries/mui.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <proto/graphics.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -41,6 +43,18 @@ int main(void)
         get(l[i], MUIA_List_First, &first);
         struct Window *w; get(win, MUIA_Window_Window, &w);
         if (!i) printf("window %d,%d\n", w->LeftEdge, w->TopEdge);
+        {
+            LONG x, y, first = -1;
+
+            for (y = _top(l[i]); first < 0 && y <= _bottom(l[i]); y++)
+                for (x = _left(l[i]) + 4; x < _left(l[i]) + 30; x++)
+                    if (ReadPixel(_rp(l[i]), x, y) == 1)
+                    {
+                        first = y - _top(l[i]);
+                        break;
+                    }
+            printf("first text row %ld ", (long)first);
+        }
         printf("lv h=%d list box %d,%d %dx%d inner %d,%d %dx%d visible=%ld\n", _height(lv[i]),
             _left(l[i]), _top(l[i]), _width(l[i]), _height(l[i]),
             _mleft(l[i]), _mtop(l[i]), _mwidth(l[i]), _mheight(l[i]), (long)vis);

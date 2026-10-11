@@ -205,8 +205,6 @@ struct MUI_ListData
     LONG seltype;
 
     struct Hook hook;
-    LONG rows_shown;            /* MUIA_List_Visible: like MUI 3.9, rows
-                                 * that are at least partly visible */
 };
 
 #define MOUSE_CLICK_ENTRY 1     /* on entry clicked */
@@ -896,27 +894,23 @@ static int CalcVertVisible(struct IClass *cl, Object *obj)
     int old_entries_visible = data->entries_visible;
     int old_entries_top_pixel = data->entries_top_pixel;
 
-    int old_rows_shown = data->rows_shown;
-
+    /* Like MUI 3.9, count, draw and scroll by the rows that are at least
+     * partly visible: the last one may be cut off at the bottom
+     * (tests/native/listvisible.c) */
     data->vertprop_visible = data->entries_visible =
-        (_mheight(data->area) - data->title_height)
-        / (data->entry_maxheight /* + data->prefs_linespacing */ );
-    data->rows_shown = (_mheight(data->area) - data->title_height
+        (_mheight(data->area) - data->title_height
         + data->entry_maxheight - 1) / data->entry_maxheight;
 
-    /* Distribute extra vertical space evenly between top and bottom of
-     * list */
+    /* Like MUI 3.9, entries start at the top; spare space stays below
+     * them (tests/native/listvisible.c) */
 
-    data->entries_top_pixel = _mtop(data->area) + data->title_height
-        + (_mheight(data->area) - data->title_height
-        -
-        data->entries_visible *
-        (data->entry_maxheight /* + data->prefs_linespacing */ )) / 2;
+    data->entries_top_pixel = _mtop(data->area) + data->title_height;
 
-    if (data->rows_shown != old_rows_shown)
-        superset(cl, obj, MUIA_List_Visible, data->rows_shown);
     if (data->entries_visible != old_entries_visible)
+    {
+        superset(cl, obj, MUIA_List_Visible, data->entries_visible);
         superset(cl, obj, MUIA_List_VertProp_Visible, data->entries_visible);
+    }
 
     return (old_entries_visible != data->entries_visible)
         || (old_entries_top_pixel != data->entries_top_pixel);
@@ -1146,7 +1140,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->area_connected = FALSE;
     data->vert_connected = FALSE;
 
-    data->entries_visible = data->vertprop_visible = data->rows_shown = -1;
+    data->entries_visible = data->vertprop_visible = -1;
     data->last_active = -1;
     data->drop_mark = 0;
 
@@ -1496,14 +1490,16 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                         new_entries_active = data->entries_active + 1;
                         break;
 
+                    /* MUI 3.9 pages by one row less than visible
+                     * (tests/native/listprop.c) */
                     case MUIV_List_Active_PageUp:
-                        new_entries_active =
-                            data->entries_active - data->entries_visible;
+                        new_entries_active = data->entries_active
+                            - MAX(data->entries_visible - 1, 1);
                         break;
 
                     case MUIV_List_Active_PageDown:
-                        new_entries_active =
-                            data->entries_active + data->entries_visible;
+                        new_entries_active = data->entries_active
+                            + MAX(data->entries_visible - 1, 1);
                         break;
                     }
 
@@ -1714,10 +1710,8 @@ IPTR List__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         STORE = data->vertprop_entries;
         return 1;
     case MUIA_List_VertProp_Visible:
-        STORE = data->vertprop_visible;
-        return 1;
     case MUIA_List_Visible:
-        STORE = data->rows_shown;
+        STORE = data->vertprop_visible;
         return 1;
     case MUIA_List_VertProp_First:
         STORE = data->vertprop_first;
@@ -2006,7 +2000,9 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
              * vertically align the entry.
              */
             zune_text_get_bounds(text, obj);
-            y_offset = y + (row_height - text->height) / 2;
+            /* centred, rounding down like MUI 3.9, which puts the
+             * leading above the text (tests/native/listvisible.c) */
+            y_offset = y + (row_height - text->height + 1) / 2;
             if (y_offset < y)
                 y_offset = y;
             /* Note, this was MPEN_SHADOW before */
@@ -2103,10 +2099,12 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
             scroll_caused_damage =
                 (_rp(obj)->Layer->Flags & LAYERREFRESH) ? FALSE : TRUE;
 
+            /* the last row may be cut off by the area */
             ScrollRaster(_rp(obj), 0, diffy * data->entry_maxheight,
                 _mleft(data->area), y,
                 _mright(data->area),
-                y + data->entry_maxheight * data->entries_visible);
+                MIN(y + data->entry_maxheight * data->entries_visible,
+                    _mbottom(data->area)));
 
             scroll_caused_damage =
                 scroll_caused_damage
@@ -2984,7 +2982,7 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     {
         SetAttrs(obj,
             MUIA_List_Entries, data->confirm_entries_num,
-            MUIA_List_Visible, data->rows_shown, TAG_DONE);
+            MUIA_List_Visible, data->entries_visible, TAG_DONE);
     }
 
     if (sort)
