@@ -1525,6 +1525,17 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 if (data->entries_active != new_entries_active)
                 {
                     LONG old = data->entries_active;
+                    /* An active entry outside the view is jumped to with
+                     * one redraw of the visible rows, as MUI 3.9 does,
+                     * instead of drawing the old and new rows, scrolling
+                     * and drawing the rows scrolled in */
+                    BOOL jump = new_entries_active != -1
+                        && (_flags(obj) & MADF_SETUP)
+                        && !(data->flags & LIST_QUIET) && !data->read_only
+                        && data->entries_visible > 0
+                        && (new_entries_active < data->entries_first
+                            || new_entries_active >= data->entries_first
+                                + data->entries_visible);
                     data->entries_active = new_entries_active;
 
                     /* SelectChange stuff */
@@ -1539,7 +1550,23 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                         DoMethod(obj, MUIM_List_SelectChange,
                             MUIV_List_Active_Off, MUIV_List_Select_Off, 0);
 
-                    if (!data->read_only)
+                    if (jump)
+                    {
+                        LONG first = new_entries_active;
+
+                        if (first >= data->entries_first)
+                            first = MAX(first - (data->entries_visible - 1), 0);
+                        /* notify MUIA_List_First without drawing */
+                        data->flags |= LIST_QUIET;
+                        set(obj, MUIA_List_First, first);
+                        data->flags &= ~(LIST_QUIET | LIST_CHANGED);
+                        set(obj, MUIA_List_VertProp_First, first);
+                        if (old >= 0)
+                            data->entries[old]->flags &= ~ENTRY_RENDER;
+                        data->update = UPDATEMODE_ALL;
+                        MUI_Redraw(obj, MADF_DRAWUPDATE);
+                    }
+                    else if (!data->read_only)
                     {
                         data->entries[old]->flags |= ENTRY_RENDER;
                         if (!(data->flags & LIST_QUIET))
