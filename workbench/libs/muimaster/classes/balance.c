@@ -102,8 +102,11 @@ IPTR Balance__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 
     DoSuperMethodA(cl, obj, (Msg) msg);
 
+    /* MUI 3.9: at least 3x3, 3 pixels thick (balancebounds) */
     if (data->horizgroup)
     {
+        msg->MinMaxInfo->MinHeight += 3;
+        msg->MinMaxInfo->DefHeight += 3;
         msg->MinMaxInfo->MinWidth += 3;
         msg->MinMaxInfo->DefWidth = msg->MinMaxInfo->MinWidth;
         msg->MinMaxInfo->MaxWidth = msg->MinMaxInfo->DefWidth;
@@ -111,6 +114,8 @@ IPTR Balance__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     }
     else
     {
+        msg->MinMaxInfo->MinWidth += 3;
+        msg->MinMaxInfo->DefWidth += 3;
         msg->MinMaxInfo->MinHeight += 3;
         msg->MinMaxInfo->DefHeight = msg->MinMaxInfo->MinHeight;
         msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->DefHeight;
