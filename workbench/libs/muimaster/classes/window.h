@@ -375,7 +375,9 @@ struct MUI_RenderInfo
 
     /* the following stuff is private */
     struct ColorMap *mri_Colormap;
-    UWORD mri_Reserved1;
+    UWORD mri_Fallback;         /* MUI 3.9's fallback stage for a window
+                                 * larger than the screen (smaller fonts
+                                 * and spacing), see WindowOpen() */
     UWORD mri_Reserved2;
     UWORD mri_PensStorage[MPEN_COUNT];  /* storage for pens, mri_Pens points
                                          * to here */

@@ -555,6 +555,7 @@ static BOOL SetupRenderInfo(Object *obj, struct MUI_WindowData *data,
     }
 
     mri->mri_Colormap = scr->ViewPort.ColorMap;
+    mri->mri_Fallback = 0;
 
     if (scr->Width / scr->Height < 2)
     {
@@ -645,10 +646,23 @@ static void CleanupRenderInfoPens(struct MUI_RenderInfo *mri,
     }
 }
 
+static void CloseRenderInfoFonts(struct MUI_RenderInfo *mri)
+{
+    int i;
+
+    for (i = 0; i < -MUIV_Font_NegCount; i++)
+    {
+        if (mri->mri_Fonts[i])
+        {
+            CloseFont(mri->mri_Fonts[i]);
+            mri->mri_Fonts[i] = NULL;
+        }
+    }
+}
+
 static void CleanupRenderInfo(Object *obj, struct MUI_WindowData *data,
     struct MUI_RenderInfo *mri)
 {
-    int i;
 
     DisposeCustomFrames(mri);
 
@@ -678,19 +692,7 @@ static void CleanupRenderInfo(Object *obj, struct MUI_WindowData *data,
         mri->mri_SizeImage = NULL;
     };
 
-    /*      bug("CleanupRenderInfo\n"); */
-    for (i = 0; i < -MUIV_Font_NegCount; i++)
-    {
-        if (mri->mri_Fonts[i])
-        {
-            /*  bug("CleanupRenderInfo: closing font %p (%s/%d)\n", */
-            /*          mri->mri_Fonts[i], */
-            /*          mri->mri_Fonts[i]->tf_Message.mn_Node.ln_Name, */
-            /*          mri->mri_Fonts[i]->tf_YSize); */
-            CloseFont(mri->mri_Fonts[i]);
-            mri->mri_Fonts[i] = NULL;
-        }
-    }
+    CloseRenderInfoFonts(mri);
     CleanupRenderInfoPens(mri, data);
     FreeScreenDrawInfo(mri->mri_Screen, mri->mri_DrawInfo);
     mri->mri_DrawInfo = NULL;
@@ -4079,7 +4081,10 @@ static void SetRootObjInnerSpacing(Object *obj,
 {
     UWORD wd_innerLeft, wd_innerRight, wd_innerTop, wd_innerBottom;
 
-    if (data->wd_CrtFlags & WFLG_BORDERLESS)
+    /* MUI 3.9 drops the window spacing in the last stage of fitting a
+     * window into the screen */
+    if ((data->wd_CrtFlags & WFLG_BORDERLESS)
+        || data->wd_RenderInfo.mri_Fallback >= 4)
     {
         wd_innerLeft = 0;
         wd_innerRight = 0;
@@ -4239,6 +4244,39 @@ static void CleanupWindowSetup(struct MUI_WindowData *data)
     }
 }
 
+/* Does the window at its minimum size fit the screen? */
+static BOOL WindowFits(struct MUI_WindowData *data)
+{
+    struct MUI_RenderInfo *mri = &data->wd_RenderInfo;
+    struct Screen *scr = mri->mri_Screen;
+
+    ULONG flags = data->wd_CrtFlags;
+    BOOL sizing;
+    LONG right, bottom;
+
+    if (!scr || scr->Width <= 0 || scr->Height <= 0)
+        return TRUE;
+    /* the borders the window will get (see DisplayWindow()): a window of
+     * fixed size has no size gadget */
+    sizing = (flags & WFLG_SIZEGADGET) && !(flags & WFLG_BORDERLESS)
+        && !(data->wd_MinMax.MinWidth == data->wd_MinMax.MaxWidth
+        && data->wd_MinMax.MinHeight == data->wd_MinMax.MaxHeight);
+    right = mri->mri_BorderRight;
+    bottom = (flags & WFLG_BORDERLESS) ? 0 : scr->WBorBottom;
+    if (sizing && !(flags & WFLG_SIZEBRIGHT))
+        bottom = mri->mri_BorderBottom;
+    if (sizing && (flags & WFLG_SIZEBRIGHT) && mri->mri_SizeImage)
+        right = MAX(right, IM(mri->mri_SizeImage)->Width);
+    if ((data->wd_Flags & MUIWF_USERIGHTSCROLLER) && mri->mri_UpImage)
+        right = MAX(right, IM(mri->mri_UpImage)->Width);
+    if ((data->wd_Flags & MUIWF_USEBOTTOMSCROLLER) && mri->mri_LeftImage)
+        bottom = MAX(bottom, IM(mri->mri_LeftImage)->Height);
+    return data->wd_MinMax.MinWidth + mri->mri_BorderLeft + right
+        <= scr->Width
+        && data->wd_MinMax.MinHeight + mri->mri_BorderTop + bottom
+        <= scr->Height;
+}
+
 static ULONG WindowOpen(struct IClass *cl, Object *obj)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
@@ -4268,6 +4306,27 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
 
     /* inquire about sizes */
     WindowMinMax(obj, data);
+
+    /* Like MUI 3.9, set a window larger than the screen up again with
+     * smaller fonts and spacing, stage by stage, and do not open it if it
+     * still does not fit (tests/native/fontfallback.c) */
+    while (!WindowFits(data))
+    {
+        struct MUI_RenderInfo *mri = &data->wd_RenderInfo;
+
+        DoMethod(data->wd_RootObject, MUIM_Cleanup);
+        CloseRenderInfoFonts(mri);
+        if (mri->mri_Fallback >= 4
+            || (++mri->mri_Fallback,
+                !DoSetupMethod(data->wd_RootObject, mri)))
+        {
+            DoMethod(obj, MUIM_Window_Cleanup);
+            CleanupWindowSetup(data);
+            CleanupRenderInfo(obj, data, mri);
+            return FALSE;
+        }
+        WindowMinMax(obj, data);
+    }
     WindowSelectDimensions(data);
 
     /* Decide which menustrip should be used */

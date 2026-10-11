@@ -1082,6 +1082,15 @@ IPTR Group__MUIM_Setup(struct IClass *cl, Object *obj,
         data->horiz_spacing = muiGlobalInfo(obj)->mgi_Prefs->group_hspacing;
     if (!(data->flags & GROUP_VSPACING))
         data->vert_spacing = muiGlobalInfo(obj)->mgi_Prefs->group_vspacing;
+    /* MUI 3.9 halves the spacing from the third stage of fitting a window
+     * into the screen (tests/native/fontfallback.c) */
+    if (muiRenderInfo(obj)->mri_Fallback >= 3)
+    {
+        if (!(data->flags & GROUP_HSPACING))
+            data->horiz_spacing = MIN(data->horiz_spacing, 2);
+        if (!(data->flags & GROUP_VSPACING))
+            data->vert_spacing = MIN(data->vert_spacing, 2);
+    }
     get(data->family, MUIA_Family_List, &(ChildList));
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))

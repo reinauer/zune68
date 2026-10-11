@@ -21,12 +21,12 @@ static void f(const char *n, Object *o)
 }
 int main(int argc, char **argv)
 {
-    Object *app, *win, *grp, *big, *norm, *tiny, *fixed;
+    Object *app, *win, *grp, *big, *norm, *tiny, *fixed, *list, *title, *button;
     ULONG open = FALSE; int i, n;
     struct Window *w;
     freopen("toobig.txt", "a", stdout);
     if (!(MUIMasterBase = OpenLibrary("muimaster.library", 19))) return 20;
-    for (n = 20; n <= 44; n += 2)
+    for (n = 24; n <= 70; n += 2)
     {
         app = ApplicationObject, SubWindow, win = WindowObject,
             WindowContents, grp = VGroup,
@@ -34,6 +34,9 @@ int main(int argc, char **argv)
                 Child, tiny = TextObject, MUIA_Font, MUIV_Font_Tiny, MUIA_Text_Contents, "tiny", End,
                 Child, fixed = TextObject, MUIA_Font, MUIV_Font_Fixed, MUIA_Text_Contents, "fixed", End,
                 Child, big = TextObject, MUIA_Font, MUIV_Font_Big, MUIA_Text_Contents, "big", End,
+                Child, list = TextObject, MUIA_Font, MUIV_Font_List, MUIA_Text_Contents, "list", End,
+                Child, title = TextObject, MUIA_Font, MUIV_Font_Title, MUIA_Text_Contents, "title", End,
+                Child, button = TextObject, MUIA_Font, MUIV_Font_Button, MUIA_Text_Contents, "button", End,
             End, End, End;
         if (!app) return 20;
         for (i = 1; i < n; i++)
@@ -44,8 +47,15 @@ int main(int argc, char **argv)
         if (open)
         {
             get(win, MUIA_Window_Window, &w);
-            printf("n=%d window %dx%d group h=%d min=%d\n", n, w->Width, w->Height, _height(grp), _minheight(grp));
+            printf("n=%d window %dx%d group h=%d min=%d at %d,%d gap %d\n", n, w->Width, w->Height,
+                _height(grp), _minheight(grp), _left(grp), _top(grp),
+                _top(tiny) - _bottom(norm) - 1);
+            printf("  insets top %d left %d right %d bottom %d screen %dx%d\n",
+                _top(norm) - _top(grp), _left(norm) - _left(grp),
+                _right(grp) - _right(norm), _bottom(grp) - _bottom(button),
+                _screen(grp)->Width, _screen(grp)->Height);
             f("normal", norm); f("tiny", tiny); f("fixed", fixed); f("big", big);
+            f("list", list); f("title", title); f("button", button);
         }
         else
             printf("n=%d not open\n", n);

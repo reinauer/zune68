@@ -23,6 +23,23 @@ extern struct Library *MUIMasterBase;
  * Must be called after Area's MUIM_Setup.
  */
 
+/* The fonts MUI 3.9 uses for a window that does not fit the screen,
+ * stage by stage (tests/native/fontfallback.c) */
+static CONST_STRPTR fallback_font_name(UWORD stage, SIPTR preset)
+{
+    if (!stage)
+        return NULL;
+    if (preset == (SIPTR) MUIV_Font_Fixed || stage >= 4)
+        return "topaz/8";
+    if (stage >= 2)
+        return "helvetica/9";
+    if (preset == (SIPTR) MUIV_Font_Big)
+        return "helvetica/13";
+    if (preset == (SIPTR) MUIV_Font_Tiny || preset == (SIPTR) MUIV_Font_Title)
+        return "helvetica/9";
+    return "helvetica/11";
+}
+
 struct TextFont *zune_font_get(Object *obj, IPTR font)
 {
     struct MUI_GlobalInfo *mgi;
@@ -49,7 +66,9 @@ struct TextFont *zune_font_get(Object *obj, IPTR font)
 
         mgi = muiGlobalInfo(obj);
         /* font name given, load it */
-        name = mgi->mgi_Prefs->fonts[-preset];
+        name = fallback_font_name(mri->mri_Fallback, preset);
+        if (!name)
+            name = mgi->mgi_Prefs->fonts[-preset];
         D(bug("zune_font_get : preset=%d, name=%s\n", preset, name));
         if (name != NULL && name[0] != 0)
         {
