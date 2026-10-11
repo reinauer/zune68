@@ -85,8 +85,8 @@ static void SetText(struct IClass *cl, Object *obj,
     struct Window *window;
     struct RastPort rp;
     ULONG i, count, pos, line_size = 0, space_count = 0, extra_space_count,
-        space_width, space_multiple = 0, bonus_space_count = 0, line_len,
-        bonus_space_mod = 1, space_no_in = 0, space_no_out, stripped_pos,
+        space_width, full_passes = 0, partial_left = 0, line_len,
+        stripped_pos,
         stripped_count, stripped_size = 0, control_count, old_control_count,
         tab_count, consumed;
     UBYTE *text, *p, *q, *r, c, *line = NULL, *old_line,
@@ -247,10 +247,10 @@ static void SetText(struct IClass *cl, Object *obj,
                         count++;
                     }
 
-                    /* Default to justified text if it's enabled and this
-                     * isn't the last line of the paragraph */
+                    /* Like MUI 3.9, justify every line of a paragraph but
+                     * its last */
 
-                    justify = data->justify;
+                    justify = data->justify && pos + count < len;
                     if (justify)
                     {
                         /* Count number of spaces in stripped line */
@@ -270,10 +270,12 @@ static void SetText(struct IClass *cl, Object *obj,
                             justify = FALSE;
                     }
 
-                    extra_space_count = 0;
+                    extra_space_count = full_passes = partial_left = 0;
                     if (justify)
                     {
+                        ULONG spaces = space_count;
                         LONG spare;
+
                         /* Find out how many extra spaces to insert for fully
                          * justified text */
 
@@ -282,25 +284,19 @@ static void SetText(struct IClass *cl, Object *obj,
                         if (spare > 0)
                             extra_space_count = spare / space_width;
 
-                        space_multiple = (space_count + extra_space_count)
-                            / space_count;
-                        bonus_space_count = (space_count + extra_space_count)
-                            - space_count * space_multiple;
-                        if (bonus_space_count > 0)
-                            bonus_space_mod =
-                                (space_count + 3) / bonus_space_count;
-                        else
-                            bonus_space_mod = space_count;
-
-                        /* Don't justify on last line if it will be too
-                         * stretched */
-
-                        if (space_multiple > 5
-                            && pos + count == len)
-                            justify = FALSE;
+                        /* MUI 3.9 adds a space after every space of the
+                         * line, left to right, in passes until the extra
+                         * spaces run out: full passes double each gap and
+                         * the last pass widens the leftmost ones
+                         * (tests/native/ftwidth.c) */
+                        partial_left = extra_space_count;
+                        while (partial_left >= spaces)
+                        {
+                            partial_left -= spaces;
+                            spaces <<= 1;
+                            full_passes++;
+                        }
                     }
-                    else
-                        extra_space_count = 0;
 
                     /* Count number of characters in line that will be
                      * inserted into List object */
@@ -352,36 +348,21 @@ static void SetText(struct IClass *cl, Object *obj,
                     p = text + pos;
                     c = p[count];
                     p[count] = '\0';
-                    space_no_in = space_no_out = 0;
                     while (*p != '\0')
                     {
                         if (*p == ' ' && justify)
                         {
-                            /* Add extra spaces to justify text */
+                            /* Widen this run of spaces to justify the text */
 
-                            for (i = 0; i < space_multiple; i++)
+                            ULONG run, size, add;
+
+                            for (run = 0; p[run] == ' '; run++);
+                            size = run << full_passes;
+                            add = MIN(size, partial_left);
+                            partial_left -= add;
+                            for (i = 0; i < size + add; i++)
                                 *q++ = ' ';
-                            space_no_out += space_multiple;
-
-                            if (bonus_space_count > 0
-                                && (space_no_in % bonus_space_mod == 0))
-                            {
-                                *q++ = ' ';
-                                bonus_space_count--;
-                            }
-                            space_no_out++;
-
-                            p++;
-                            space_no_in++;
-
-                            /* Last input space? Make it as wide as
-                             * necessary for line to reach right border */
-
-                            if (space_no_in == space_count)
-                            {
-                                while (bonus_space_count-- > 0)
-                                    *q++ = ' ';
-                            }
+                            p += run;
                         }
                         else if (*p == '\t')
                         {
