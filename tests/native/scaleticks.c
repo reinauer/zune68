@@ -83,6 +83,20 @@ int main(void)
     if (!open)
         goto done;
     DoMethod(app, MUIM_Application_InputBuffered);
+    {
+        struct Window *w = NULL;
+
+        get(win, MUIA_Window_Window, &w);
+        printf("window %d,%d %dx%d last scale %d,%d %dx%d\n", w->LeftEdge,
+            w->TopEdge, w->Width, w->Height, _left(s[COUNT - 1]),
+            _top(s[COUNT - 1]), _width(s[COUNT - 1]), _height(s[COUNT - 1]));
+        for (i = 0; i < (int)COUNT; i++)
+            printf("scale %2d top %3d h %2d  big top %3d h %2d\n", i,
+                _top(s[i]), _height(s[i]), _top(s[COUNT + i]),
+                _height(s[COUNT + i]));
+        printf("group %d,%d %dx%d min %d,%d\n", _left(grp), _top(grp),
+            _width(grp), _height(grp), _minwidth(grp), _minheight(grp));
+    }
     for (i = 0; i < 2; i++)
     {
         int j;
