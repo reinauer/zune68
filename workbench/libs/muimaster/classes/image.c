@@ -363,8 +363,23 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
     if (data->img)
     {
         struct MUI_MinMax minmax;
+        /* MUI 3.9 gives a fixed-size background image (pattern, pen,
+         * gradient) nothing at minimum and maximum but its 8x8 default,
+         * like an unusable spec (tests/native/imgsizes.c) */
+        WORD fixed = 1;
 
         zune_imspec_askminmax(data->img, &minmax);
+        switch (data->img->type)
+        {
+        case IST_PATTERN:
+        case IST_COLOR:
+        case IST_SCALED_GRADIENT:
+        case IST_TILED_GRADIENT:
+            fixed = 0;
+            break;
+        default:
+            break;
+        }
 
         if (data->flags & MIF_FREEHORIZ)
         {
@@ -374,8 +389,8 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
         }
         else
         {
-            msg->MinMaxInfo->MinWidth += minmax.DefWidth;
-            msg->MinMaxInfo->MaxWidth += minmax.DefWidth;
+            msg->MinMaxInfo->MinWidth += fixed * minmax.DefWidth;
+            msg->MinMaxInfo->MaxWidth += fixed * minmax.DefWidth;
             msg->MinMaxInfo->DefWidth += minmax.DefWidth;
         }
 
@@ -396,8 +411,8 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
         }
         else
         {
-            msg->MinMaxInfo->MinHeight += minmax.DefHeight;
-            msg->MinMaxInfo->MaxHeight += minmax.DefHeight;
+            msg->MinMaxInfo->MinHeight += fixed * minmax.DefHeight;
+            msg->MinMaxInfo->MaxHeight += fixed * minmax.DefHeight;
             msg->MinMaxInfo->DefHeight += minmax.DefHeight;
         }
 

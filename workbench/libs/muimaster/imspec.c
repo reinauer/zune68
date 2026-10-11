@@ -257,7 +257,7 @@ static struct MUI_ImageSpec_intern *get_bitmap_imspec(CONST_STRPTR filename)
 
 static struct MUI_ImageSpec_intern *get_config_imspec(LONG img)
 {
-    if ((img >= MUII_WindowBack) && (img <= MUII_ReadListBack))
+    if ((img >= MUII_WindowBack) && (img < MUII_Count))
     {
         struct MUI_ImageSpec_intern *spec;
         if ((spec = mui_alloc_struct(struct MUI_ImageSpec_intern)))
@@ -335,7 +335,7 @@ static struct MUI_ImageSpec_intern *zune_image_spec_to_structure(IPTR in)
     struct MUI_ImageSpec_intern *spec = NULL;
     CONST_STRPTR s;
 
-    if (in >= MUII_WindowBack && in <= MUII_ReadListBack)
+    if (in >= MUII_WindowBack && in < MUII_Count)
     {
         D(bug("zune_image_spec_to_structure [config] : in=%ld\n", in));
         spec = get_config_imspec(in);
@@ -399,7 +399,7 @@ static struct MUI_ImageSpec_intern *zune_image_spec_to_structure(IPTR in)
                 LONG img = -1;
                 StrToLong(s + 2, &img);
 
-                if (img >= MUII_WindowBack && img <= MUII_ReadListBack)
+                if (img >= MUII_WindowBack && img < MUII_Count)
                     spec = get_config_imspec(img);
                 break;
             }

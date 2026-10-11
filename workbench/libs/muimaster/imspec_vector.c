@@ -445,13 +445,13 @@ void ram_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
     RectFill(rport, left, top, right, bottom);
 
     SetAPen(rport, mri->mri_Pens[MPEN_SHINE]);
-    Move(rport, XX(33), YY(20));
-    Draw(rport, XX(33), YY(80));
+    Move(rport, XX(33), YY(25));
+    Draw(rport, XX(33), YY(75));
 
-    Move(rport, XX(71), YY(20));
-    Draw(rport, XX(61), YY(20));
-    Draw(rport, XX(61), YY(80));
-    Draw(rport, XX(71), YY(80));
+    Move(rport, XX(71), YY(25));
+    Draw(rport, XX(61), YY(25));
+    Draw(rport, XX(61), YY(75));
+    Draw(rport, XX(71), YY(75));
 
 #undef XX
 #undef YY
@@ -473,21 +473,21 @@ void volume_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     RectFill(rport, left, top, right, bottom);
 
     SetAPen(rport, mri->mri_Pens[MPEN_SHINE]);
-    Move(rport, XX(8), YY(20));
-    Draw(rport, XX(8), YY(60));
-    Draw(rport, XX(16), YY(80));
-    Draw(rport, XX(24), YY(60));
-    Draw(rport, XX(24), YY(20));
+    Move(rport, XX(10), YY(25));
+    Draw(rport, XX(10), YY(50));
+    Draw(rport, XX(19), YY(75));
+    Draw(rport, XX(28), YY(50));
+    Draw(rport, XX(28), YY(25));
 
-    Move(rport, XX(40), YY(20));
-    Draw(rport, XX(60), YY(20));
-    Draw(rport, XX(60), YY(80));
-    Draw(rport, XX(40), YY(80));
-    Draw(rport, XX(40), YY(20));
+    Move(rport, XX(46), YY(25));
+    Draw(rport, XX(64), YY(25));
+    Draw(rport, XX(64), YY(75));
+    Draw(rport, XX(46), YY(75));
+    Draw(rport, XX(46), YY(25));
 
-    Move(rport, XX(80), YY(20));
-    Draw(rport, XX(80), YY(80));
-    Draw(rport, XX(92), YY(80));
+    Move(rport, XX(80), YY(25));
+    Draw(rport, XX(80), YY(75));
+    Draw(rport, XX(92), YY(75));
 
 #undef XX
 #undef YY
@@ -692,6 +692,8 @@ struct vector_image
     VECTOR_DRAW_FUNC draw_func;
 };
 
+/* Sizes as MUI 3.9 reports them for the built-in images
+ * (tests/native/imgsizes.c) */
 static const struct vector_image vector_table[] = {
     {10, 5, arrowup_draw},
     {10, 5, arrowdown_draw},
@@ -707,14 +709,14 @@ static const struct vector_image vector_table[] = {
     {13, 8, drawer_draw},
     {13, 8, harddisk_draw},
     {12, 8, disk_draw},
-    {14, 6, ram_draw},
-    {14, 6, volume_draw},
+    {12, 5, ram_draw},
+    {12, 5, volume_draw},
     {13, 8, network_draw},
     {13, 8, assign_draw},
 
     {4, 7, tape_play_draw},
     {4, 7, tape_playback_draw},
-    {6, 7, tape_pause_draw},
+    {2, 7, tape_pause_draw},
     {6, 7, tape_stop_draw},
     {7, 7, tape_record_draw},
     {7, 4, tape_up_draw},

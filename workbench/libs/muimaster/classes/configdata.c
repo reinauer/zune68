@@ -114,6 +114,9 @@ const static struct spec_cfg DefImspecValues[] =
     { MUII_TapeDown,      MUICFG_Image_TapeDown,        "1:23" },
     { MUII_PageBack,      MUICFG_Background_Page,       "0:128" },
     { MUII_ReadListBack,  MUICFG_Background_ReadList,   "0:128" },
+    /* MUI 3.9 draws the font popup like the popup arrow and has no
+     * setting of its own for it (tests/native/imgspec.c) */
+    { MUII_PopFont,       MUICFG_Image_PopUp,           "1:7" },
     { 0,                  0,                            NULL },
 };
 

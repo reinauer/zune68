@@ -627,7 +627,8 @@ struct MUI_AlphaData
 #define MUII_TapeDown          39UL
 #define MUII_PageBack          40UL
 #define MUII_ReadListBack      41UL
-#define MUII_Count             42UL
+#define MUII_PopFont           42UL
+#define MUII_Count             43UL
 
 /* direct colors and combinations */
 #define MUII_BACKGROUND        128UL
