@@ -812,7 +812,9 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
             x = (left + right + 1 - (line_node->lwidth
                 - line_node->centreskip)) / 2;
         else if (line_node->align == ZTL_RIGHT)
-            x = right - line_node->lwidth + 1;
+            /* right-aligned the same way: the overhang may stick out
+             * (tests/native/textset.c) */
+            x = right - (line_node->lwidth - line_node->centreskip) + 1;
         else
             x = left;
 
