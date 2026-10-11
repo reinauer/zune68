@@ -1397,7 +1397,7 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
     const struct ZuneFrameGfx *zframe;
     struct TextFont *obj_font = NULL;
     ULONG flags = data->mad_Flags & MADF_DRAWFLAGS;
-    BOOL drawframe;
+    BOOL drawframe, frameonly = FALSE;
 
     // APTR areaclip;
 
@@ -1413,9 +1413,13 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
     data->mad_Flags &= ~MADF_DRAWFLAGS;
 
     if (!(flags & MADF_DRAWOBJECT)) {
-        /* dont draw bg/frame, let subclass redraw content only
-         **/
-        return 0;
+        /* MUI 3.9 subclasses such as NList clear the object bit in
+         * mad_Flags to keep Area from drawing inside them; a frame that
+         * was asked for is still drawn (YAM's folder and message lists).
+         * Otherwise let the subclass redraw its content only. */
+        if (!(flags & MADF_DRAWFRAME))
+            return 0;
+        frameonly = TRUE;
     }
 
     /* Background can't be drawn without knowing anything about frame, thus
@@ -1450,7 +1454,10 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
         (data->mad_Flags & MADF_FRAMEPHANTOM) || data->mad_FrameTitle;
 
     /* Background drawing */
-    Area_Draw_handle_background(obj, data, msg->flags, zframe, drawframe);
+    if (frameonly)
+        drawframe = TRUE;
+    else
+        Area_Draw_handle_background(obj, data, msg->flags, zframe, drawframe);
 
     /* Frame and frametitle drawing; only a title needs the title font */
     if (drawframe && !(data->mad_Flags & MADF_FRAMEPHANTOM)) {
