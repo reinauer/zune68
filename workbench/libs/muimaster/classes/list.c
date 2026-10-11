@@ -205,6 +205,8 @@ struct MUI_ListData
     LONG seltype;
 
     struct Hook hook;
+    LONG rows_shown;            /* MUIA_List_Visible: like MUI 3.9, rows
+                                 * that are at least partly visible */
 };
 
 #define MOUSE_CLICK_ENTRY 1     /* on entry clicked */
@@ -894,9 +896,13 @@ static int CalcVertVisible(struct IClass *cl, Object *obj)
     int old_entries_visible = data->entries_visible;
     int old_entries_top_pixel = data->entries_top_pixel;
 
+    int old_rows_shown = data->rows_shown;
+
     data->vertprop_visible = data->entries_visible =
         (_mheight(data->area) - data->title_height)
         / (data->entry_maxheight /* + data->prefs_linespacing */ );
+    data->rows_shown = (_mheight(data->area) - data->title_height
+        + data->entry_maxheight - 1) / data->entry_maxheight;
 
     /* Distribute extra vertical space evenly between top and bottom of
      * list */
@@ -907,11 +913,10 @@ static int CalcVertVisible(struct IClass *cl, Object *obj)
         data->entries_visible *
         (data->entry_maxheight /* + data->prefs_linespacing */ )) / 2;
 
+    if (data->rows_shown != old_rows_shown)
+        superset(cl, obj, MUIA_List_Visible, data->rows_shown);
     if (data->entries_visible != old_entries_visible)
-    {
-        superset(cl, obj, MUIA_List_Visible, data->entries_visible);
         superset(cl, obj, MUIA_List_VertProp_Visible, data->entries_visible);
-    }
 
     return (old_entries_visible != data->entries_visible)
         || (old_entries_top_pixel != data->entries_top_pixel);
@@ -1141,7 +1146,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->area_connected = FALSE;
     data->vert_connected = FALSE;
 
-    data->entries_visible = data->vertprop_visible = -1;
+    data->entries_visible = data->vertprop_visible = data->rows_shown = -1;
     data->last_active = -1;
     data->drop_mark = 0;
 
@@ -1581,9 +1586,7 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             }
             break;
 
-        case MUIA_List_Visible:    /* Shouldn't be settable? */
-            if (data->vertprop_visible != tag->ti_Data)
-                set(obj, MUIA_List_VertProp_Visible, tag->ti_Data);
+        case MUIA_List_Visible:    /* get-only; set only to notify */
             break;
 
         case MUIA_List_Entries:
@@ -1711,8 +1714,10 @@ IPTR List__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         STORE = data->vertprop_entries;
         return 1;
     case MUIA_List_VertProp_Visible:
-    case MUIA_List_Visible:
         STORE = data->vertprop_visible;
+        return 1;
+    case MUIA_List_Visible:
+        STORE = data->rows_shown;
         return 1;
     case MUIA_List_VertProp_First:
         STORE = data->vertprop_first;
@@ -2979,7 +2984,7 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     {
         SetAttrs(obj,
             MUIA_List_Entries, data->confirm_entries_num,
-            MUIA_List_Visible, data->entries_visible, TAG_DONE);
+            MUIA_List_Visible, data->rows_shown, TAG_DONE);
     }
 
     if (sort)
@@ -4051,7 +4056,7 @@ static void DoWheelMove(struct IClass *cl, Object *obj, LONG wheely)
 
     new = first = XGET(obj, MUIA_List_First);
     entries = XGET(obj, MUIA_List_Entries);
-    visible = XGET(obj, MUIA_List_Visible);
+    visible = ((struct MUI_ListData *)INST_DATA(cl, obj))->entries_visible;
 
     new += wheely;
 
@@ -4087,7 +4092,7 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     typeof(msg->muikey) muikey = msg->muikey;
 
     new_active = old_active = XGET(obj, MUIA_List_Active);
-    visible = XGET(obj, MUIA_List_Visible);
+    visible = data->entries_visible;
 
     if (muikey != MUIKEY_NONE)
     {
