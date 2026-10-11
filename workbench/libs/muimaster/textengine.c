@@ -216,6 +216,49 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
 }
 
 /**************************************************************************
+Replace the string of a ZText that holds nothing but one plain string,
+which must be old, with new, a plain string, without parsing again; the
+caller measures it again with zune_text_get_bounds(). Returns FALSE if
+the text has another form, new needs parsing or there is no room, and
+leaves the ZText as it was then.
+**************************************************************************/
+BOOL zune_text_replace_plain(ZText *text, CONST_STRPTR old, CONST_STRPTR new)
+{
+    ZTextLine *line;
+    ZTextChunk *chunk;
+    CONST_STRPTR c;
+    ULONG len;
+
+    if (!text || !old || !new || !*new)
+        return FALSE;
+    line = (ZTextLine *)text->lines.mlh_Head;
+    if (!line->node.mln_Succ || line->node.mln_Succ->mln_Succ)
+        return FALSE;
+    chunk = (ZTextChunk *)line->chunklist.mlh_Head;
+    if (!chunk->node.mln_Succ || chunk->node.mln_Succ->mln_Succ
+        || !chunk->str || chunk->spec || chunk->obj || chunk->alpha_data)
+        return FALSE;
+    for (c = new; *c; c++)
+        if (*c == '\33' || *c == '\n')
+            return FALSE;
+    len = c - new;
+    if (strcmp(chunk->str, old))
+        return FALSE;
+    if (len > strlen(chunk->str))
+    {
+        /* a longer string takes fresh inline space, never the heap */
+        UBYTE *mem = text->arena_next;
+
+        if (mem + ((len + 4) & ~3UL) > text->arena_end)
+            return FALSE;
+        text->arena_next += (len + 4) & ~3UL;
+        chunk->str = (char *)mem;
+    }
+    memcpy(chunk->str, new, len + 1);
+    return TRUE;
+}
+
+/**************************************************************************
 Completely frees a ZText
 **************************************************************************/
 void zune_text_destroy(ZText * text)

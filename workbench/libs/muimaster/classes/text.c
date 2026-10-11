@@ -173,8 +173,23 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         {
         case MUIA_Text_Contents:
             {
-                if (store_contents(data, ((char *)tag->ti_Data) ?
-                    (char *)tag->ti_Data : ""))
+                CONST_STRPTR src = ((char *)tag->ti_Data) ?
+                    (char *)tag->ti_Data : "";
+
+                /* Plain status text changes the string of its single
+                 * chunk; nothing needs parsing again */
+                if (data->ztext && (_flags(obj) & MADF_SETUP)
+                    && !(data->mtd_Flags & (MTDF_HICHAR | MTDF_HICHARIDX))
+                    && data->contents
+                    && zune_text_replace_plain(data->ztext, data->contents,
+                        src)
+                    && store_contents(data, src))
+                {
+                    zune_text_get_bounds(data->ztext, obj);
+                    data->update = 1;
+                    MUI_Redraw(obj, MADF_DRAWUPDATE);
+                }
+                else if (store_contents(data, src))
                 {
                     if (data->ztext)
                     {

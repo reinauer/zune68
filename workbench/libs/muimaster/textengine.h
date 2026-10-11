@@ -68,6 +68,8 @@ enum {
 ZText *zune_text_new (CONST_STRPTR preparse, CONST_STRPTR content,
     int argtype, TEXT arg);
 void zune_text_destroy (ZText *text);
+BOOL zune_text_replace_plain (ZText *text, CONST_STRPTR old,
+    CONST_STRPTR new);
 void zune_text_get_bounds (ZText *text, Object *obj);
 void zune_text_draw (ZText *text, Object *obj, WORD left, WORD right,
     WORD top);
