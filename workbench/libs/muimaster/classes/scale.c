@@ -20,6 +20,7 @@
 #include "mui.h"
 #include "muimaster_intern.h"
 #include "textengine.h"
+#include "font.h"
 #include "support.h"
 #include "support_classes.h"
 #include "scale_private.h"
@@ -54,6 +55,10 @@ IPTR Scale__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
         }
     }
+
+    /* MUI 3.9 labels a scale in the tiny font unless told otherwise */
+    if (!FindTagItem(MUIA_Font, msg->ops_AttrList))
+        set(obj, MUIA_Font, MUIV_Font_Tiny);
 
     D(bug("muimaster.library/scale.c: Scale Object created at 0x%p\n",
             obj));
@@ -143,123 +148,93 @@ IPTR Scale__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     }
     else
     {
+        /* MUI 3.9 reserves this much for a vertical scale and draws
+         * nothing into it (tests/native/widgetsizes.c, scaleview.c) */
+        msg->MinMaxInfo->MinWidth += data->label_minwidth + 4;
+        msg->MinMaxInfo->MinHeight += data->label_height * 2 + 2;
+        msg->MinMaxInfo->DefWidth += data->label_minwidth + 4;
+        msg->MinMaxInfo->DefHeight += data->label_height * 2 + 2;
+        msg->MinMaxInfo->MaxWidth += data->label_minwidth + 4;
+        msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
     }
     return 0;
 }
 
+/* Sum of the label widths for 2^k intervals, in the tiny font MUI 3.9
+ * uses for the decision whatever the scale's own font is */
+static LONG scale_labels_width(struct RastPort *rp, int intervals)
+{
+    char buf[16];
+    LONG total = 0;
+    int k;
+
+    for (k = 0; k <= intervals; k++)
+    {
+        snprintf(buf, sizeof(buf), "%d%%", k * 100 / intervals);
+        total += TextLength(rp, buf, strlen(buf));
+    }
+    return total;
+}
+
+static void scale_label(Object *obj, CONST_STRPTR preparse, STRPTR text,
+    LONG left)
+{
+    ZText *ztext = zune_text_new(preparse, text, ZTEXT_ARG_NONE, 0);
+
+    if (ztext)
+    {
+        zune_text_get_bounds(ztext, obj);
+        zune_text_draw(ztext, obj, left, _mright(obj), _mtop(obj) + 4);
+        zune_text_destroy(ztext);
+    }
+}
+
+/* MUI 3.9's horizontal scale (tests/native/scaleticks.c): a bar on the
+ * fourth row, labelled major ticks three pixels high at n equal
+ * intervals and two pixel minor ticks halfway between. n doubles while
+ * the labels for the next n fit into 9/16 of the width. A vertical scale
+ * only reserves its space. */
 IPTR Scale__MUIM_Draw(struct IClass *cl, Object *obj,
     struct MUIP_Draw *msg)
 {
     struct Scale_DATA *data = INST_DATA(cl, obj);
+    struct RastPort *rp = _rp(obj), measure;
+    struct TextFont *tiny;
+    LONG width = _mwidth(obj), n = 1, k;
+    char buf[16];
 
     DoSuperMethodA(cl, obj, (Msg) msg);
-    D(bug("muimaster.library/scale.c: Draw Scale Object "
-        "at 0x%p %ldx%ldx%ldx%ld\n",
-        obj, _left(obj), _top(obj), _right(obj), _bottom(obj)));
+    if (!data->horiz || !(msg->flags & MADF_DRAWOBJECT) || width <= 0)
+        return 0;
 
-    if (data->horiz)
+    InitRastPort(&measure);
+    tiny = zune_font_get(obj, MUIV_Font_Tiny);
+    SetFont(&measure, tiny ? tiny : _font(obj));
+    while (2 * n < width
+        && scale_labels_width(&measure, 2 * n) * 16 <= width * 9)
+        n *= 2;
+
+    SetAPen(rp, _pens(obj)[MPEN_TEXT]);
+    Move(rp, _mleft(obj), _mtop(obj) + 3);
+    Draw(rp, _mright(obj), _mtop(obj) + 3);
+    for (k = 0; k <= 2 * n; k++)
     {
-        int i;
-        //int  subdiv;
-        char buf[255];
-        int k;
-        BOOL drawpct;
+        LONG x = k == 2 * n ? _mright(obj) : _mleft(obj) + width * k / (2 * n);
 
-        /* main horizontal bar */
-        SetAPen(_rp(obj), _pens(obj)[MPEN_TEXT]);
-        Move(_rp(obj), _mleft(obj), _mtop(obj) + 3);
-        Draw(_rp(obj), _mright(obj), _mtop(obj) + 3);
-
-        /* testing possible layouts: 1 = 0...100 ; 2 = 0...50..100 ; etc ... */
-        for (i = 2; i < _mwidth(obj); i *= 2)
-        {
-            int j;
-            int total_width = 0;
-            int too_big = 0;
-
-            for (j = 0; j <= i; j++)
-            {
-                //int pct = j * 100 / i;
-
-                snprintf(buf, 255, "%d%%", (int)j);
-                total_width += TextLength(_rp(obj), buf, strlen(buf));
-                if (total_width > (3 * _mwidth(obj) / 8))
-                {
-                    too_big = 1;
-                    break;
-                }
-            }
-            if (too_big)
-                break;
-        }
-
-        for (k = 0, drawpct = TRUE; k <= i; k++)
-        {
-            /* draw 0% */
-            if (k == 0)
-            {
-                ZText *ztext = zune_text_new(NULL, "0%", ZTEXT_ARG_NONE, 0);
-                if (ztext)
-                {
-                    zune_text_get_bounds(ztext, obj);
-                    zune_text_draw(ztext, obj, _mleft(obj), _mright(obj),
-                        _mtop(obj) + 4);
-                    zune_text_destroy(ztext);
-                }
-                Move(_rp(obj), _mleft(obj), _mtop(obj));
-                Draw(_rp(obj), _mleft(obj), _mtop(obj) + 3);
-                drawpct = FALSE;
-            }
-            else if (k == i)    /* draw 100% */
-            {
-                ZText *ztext =
-                    zune_text_new("\33r", "100%", ZTEXT_ARG_NONE, 0);
-                if (ztext)
-                {
-                    zune_text_get_bounds(ztext, obj);
-                    zune_text_draw(ztext, obj, _mleft(obj), _mright(obj),
-                        _mtop(obj) + 4);
-                    zune_text_destroy(ztext);
-                }
-                Move(_rp(obj), _mright(obj), _mtop(obj));
-                Draw(_rp(obj), _mright(obj), _mtop(obj) + 3);
-                drawpct = FALSE;
-            }
-            else if (drawpct)   /* draw intermediate values and lines */
-            {
-                ZText *ztext;
-                int val = k * 100 / i;
-
-                snprintf(buf, 255, "%d%%", (int)val);
-                ztext = zune_text_new(NULL, buf, ZTEXT_ARG_NONE, 0);
-                if (ztext)
-                {
-                    int width;
-                    zune_text_get_bounds(ztext, obj);
-                    width = TextLength(_rp(obj), buf, strlen(buf));
-                    zune_text_draw(ztext, obj,
-                        _mleft(obj) + _mwidth(obj) * k / i - width / 2,
-                        _mright(obj), _mtop(obj) + 4);
-                    zune_text_destroy(ztext);
-                }
-                Move(_rp(obj), _mleft(obj) + _mwidth(obj) * k / i,
-                    _mtop(obj));
-                Draw(_rp(obj), _mleft(obj) + _mwidth(obj) * k / i,
-                    _mtop(obj) + 3);
-                drawpct = FALSE;
-            }
-            else                /* draw intermediate lines */
-            {
-                Move(_rp(obj), _mleft(obj) + _mwidth(obj) * k / i,
-                    _mtop(obj) + 1);
-                Draw(_rp(obj), _mleft(obj) + _mwidth(obj) * k / i,
-                    _mtop(obj) + 3);
-                drawpct = TRUE;
-            }
-        }
+        Move(rp, x, _mtop(obj) + (k & 1 ? 1 : 0));
+        Draw(rp, x, _mtop(obj) + 2);
     }
-    else
+    for (k = 0; k <= n; k++)
     {
+        snprintf(buf, sizeof(buf), "%ld%%", (long)(k * 100 / n));
+        if (k == 0)
+            scale_label(obj, NULL, buf, _mleft(obj));
+        else if (k == n)
+            scale_label(obj, "\33r", buf, _mleft(obj));
+        else
+            scale_label(obj, NULL, buf, _mleft(obj) + width * k / n
+                - TextLength(rp, buf, strlen(buf)) / 2);
+        SetAPen(rp, _pens(obj)[MPEN_TEXT]);
     }
     return 0;
 }
