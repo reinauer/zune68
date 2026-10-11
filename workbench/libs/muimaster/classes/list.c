@@ -2067,11 +2067,10 @@ static void List_DrawTitleStrip(struct IClass *cl, Object *obj)
         LONG end;
 
         x1 += data->ci[col].entries_width + halfdelta;
-        end = (col + 1 == data->columns || !data->ci[col].bar
-            || x1 + BAR_WIDTH > right) ? right : x1;
-        if (col + 1 < data->columns && !data->ci[col].bar)
-            end = x1 + data->ci[col].delta - halfdelta - 1;
-        if (end > right)
+        /* a column ends where its bar is or would be; an empty button
+         * fills the row after the last column */
+        end = x1;
+        if (end > right || (col + 1 == data->columns && end + 2 > right))
             end = right;
         SetAPen(rp, _pens(obj)[MPEN_SHINE]);
         Move(rp, x0, bottom - 1);
@@ -2084,6 +2083,17 @@ static void List_DrawTitleStrip(struct IClass *cl, Object *obj)
         x0 = end + 1;
         x1 += (data->ci[col].bar ? BAR_WIDTH : 0)
             + data->ci[col].delta - halfdelta;
+    }
+    if (x0 + 1 < right)
+    {
+        SetAPen(rp, _pens(obj)[MPEN_SHINE]);
+        Move(rp, x0, bottom - 1);
+        Draw(rp, x0, top);
+        Draw(rp, right - 1, top);
+        SetAPen(rp, _pens(obj)[MPEN_SHADOW]);
+        Move(rp, x0 + 1, bottom);
+        Draw(rp, right, bottom);
+        Draw(rp, right, top + 1);
     }
     List_DrawEntry(cl, obj, ENTRY_TITLE, top + 2);
 }
