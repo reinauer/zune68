@@ -4554,7 +4554,11 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
             /* An object that does not fill its area keeps the old child
              * pixels after relayout; clear them with the inherited
              * background, as MUI 3.8/3.9 do for hidden/removed children */
-            if (!(_flags(current_obj) & MADF_FILLAREA))
+            /* A virtual group paints its background itself, inside its
+             * BeginPaint/EndPaint pair: Voyager restricts its page there
+             * to the part it is updating, and a clear outside the pair
+             * erased the links above that part */
+            if (!(_flags(current_obj) & (MADF_FILLAREA | MADF_ISVIRTUALGROUP)))
                 DoMethod(current_obj, MUIM_DrawBackground,
                     _left(current_obj), _top(current_obj),
                     _width(current_obj), _height(current_obj),
