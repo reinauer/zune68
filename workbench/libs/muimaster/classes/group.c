@@ -1659,8 +1659,10 @@ static void group_minmax_horiz(struct IClass *cl, Object *obj,
         }
         else
         {
-            tmp.MinWidth += minwidth;
-            tmp.DefWidth += w0_defwidth(child);
+            /* a child whose own children may all disappear has a
+             * negative minimum; MUI 3.9 counts it as 0 here */
+            tmp.MinWidth += MAX(minwidth, 0);
+            tmp.DefWidth += MAX(w0_defwidth(child), 0);
         }
         if (tmp.MaxWidth < MUI_MAXMAX)
             tmp.MaxWidth += data->horiz_spacing
@@ -1750,8 +1752,8 @@ static void group_minmax_vert(struct IClass *cl, Object *obj,
         }
         else
         {
-            tmp.MinHeight += _minheight(child);
-            tmp.DefHeight += w0_defheight(child);
+            tmp.MinHeight += MAX(_minheight(child), 0);
+            tmp.DefHeight += MAX(w0_defheight(child), 0);
         }
         if (tmp.MaxHeight < MUI_MAXMAX)
             tmp.MaxHeight += data->vert_spacing
