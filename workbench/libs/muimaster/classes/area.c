@@ -1582,9 +1582,12 @@ static IPTR Area__MUIM_DrawBackground(struct IClass *cl, Object *obj,
     if (!bg) {
         D(bug("Area_DrawBackground(%p) : MUIM_DrawParentBackground\n", obj));
 
-        return DoMethod(obj, MUIM_DrawParentBackground, msg->left, msg->top,
-                        msg->width, msg->height, msg->xoffset, msg->yoffset,
-                        msg->flags);
+        /* MUIM_DrawParentBackground is Zune's own method, which no MUI
+         * class overrides: the parent walk directly, without a dispatch
+         * through every class of the object (inherited backgrounds are
+         * painted under each text update) */
+        return Area__MUIM_DrawParentBackground(cl, obj,
+            (struct MUIP_DrawParentBackground *)msg);
     }
     frame = get_intframe(obj, data, &tempframe);
 
