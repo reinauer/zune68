@@ -26,7 +26,7 @@ extern struct Library *MUIMasterBase;
 
 #define ROUND(x) ((int)(x + 0.5))
 #define IS_HIDDEN(obj) (! (_flags(obj) & MADF_SHOWME) \
- || (_flags(obj) & MADF_BORDERGADGET))
+ || (_flags(obj) & (MADF_BORDERGADGET | MADF_DISAPPEARED)))
 
 /* Attributes filtered out in OM_SET, before OM_SET gets passed to children.
    Tested with MUI under UAE/AOS.
@@ -1534,6 +1534,9 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
         if (child != data->titlegroup)
             ++page;
 
+        if (_flags(child) & MADF_DISAPPEARED)
+            continue;
+
         if ((data->flags & GROUP_PAGEMODE) && ((page != data->active_page)
             && (child != data->titlegroup)))
         {
@@ -1647,8 +1650,18 @@ static void group_minmax_horiz(struct IClass *cl, Object *obj,
         }
         else
             minwidth = _minwidth(child);
-        tmp.MinWidth += minwidth;
-        tmp.DefWidth += w0_defwidth(child);
+        /* MUI 3.9 leaves children that may disappear, and their spacing,
+         * out of the minimum and default (tests/native/disappear.c) */
+        if (muiAreaData(child)->mad_HorizDisappear > 0)
+        {
+            tmp.MinWidth -= data->horiz_spacing;
+            tmp.DefWidth -= data->horiz_spacing;
+        }
+        else
+        {
+            tmp.MinWidth += minwidth;
+            tmp.DefWidth += w0_defwidth(child);
+        }
         if (tmp.MaxWidth < MUI_MAXMAX)
             tmp.MaxWidth += data->horiz_spacing
                 + MIN(w0_maxwidth(child), MUI_MAXMAX);
@@ -1730,8 +1743,16 @@ static void group_minmax_vert(struct IClass *cl, Object *obj,
 
         if (data->flags & GROUP_SAME_HEIGHT)
             _minheight(child) = MIN(maxminheight, w0_maxheight(child));
-        tmp.MinHeight += _minheight(child);
-        tmp.DefHeight += w0_defheight(child);
+        if (muiAreaData(child)->mad_VertDisappear > 0)
+        {
+            tmp.MinHeight -= data->vert_spacing;
+            tmp.DefHeight -= data->vert_spacing;
+        }
+        else
+        {
+            tmp.MinHeight += _minheight(child);
+            tmp.DefHeight += w0_defheight(child);
+        }
         if (tmp.MaxHeight < MUI_MAXMAX)
             tmp.MaxHeight += data->vert_spacing
                 + MIN(w0_maxheight(child), MUI_MAXMAX);
@@ -2058,6 +2079,11 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     childMsg.MethodID = msg->MethodID;
     childMsg.MinMaxInfo = &childMinMax;
     get(data->family, MUIA_Family_List, &(lm.lm_Children));
+
+    /* every child counts again; the layout decides which disappear */
+    cstate = lm.lm_Children->mlh_Head;
+    while ((child = NextObject(&cstate)))
+        _flags(child) &= ~MADF_DISAPPEARED;
 
     cstate = lm.lm_Children->mlh_Head;
     while ((child = NextObject(&cstate)))
@@ -2547,6 +2573,106 @@ static void Layout1D_weight_constraint(WORD *total_sizep,
 }
 
 
+/* MUIA_Horiz/VertDisappear, like MUI 3.9 (tests/native/disappear.c):
+ * while the minimum sizes of the remaining children do not fit, all
+ * children of the lowest disappear level still present disappear. They
+ * get their minimum size and are hidden; the others are laid out. */
+static void group_disappear(Object *obj, struct MUI_GroupData *data,
+    struct MinList *children, BOOL horiz, WORD available)
+{
+    WORD spacing = horiz ? data->horiz_spacing : data->vert_spacing;
+    BOOL any = FALSE;
+    APTR cstate;
+    Object *child;
+
+    cstate = children->mlh_Head;
+    while ((child = NextObject(&cstate)))
+    {
+        _flags(child) &= ~MADF_DISAPPEARED;
+        if ((horiz ? muiAreaData(child)->mad_HorizDisappear
+            : muiAreaData(child)->mad_VertDisappear) > 0)
+            any = TRUE;
+    }
+    if (!any)
+        return;
+
+    for (;;)
+    {
+        LONG need = 0, level = 0, pos;
+        WORD count = 0;
+
+        cstate = children->mlh_Head;
+        while ((child = NextObject(&cstate)))
+        {
+            LONG l;
+
+            if (IS_HIDDEN(child))
+                continue;
+            need += horiz ? _minwidth(child) : _minheight(child);
+            count++;
+            l = horiz ? muiAreaData(child)->mad_HorizDisappear
+                : muiAreaData(child)->mad_VertDisappear;
+            if (l > 0 && (level == 0 || l < level))
+                level = l;
+        }
+        if (count > 0)
+            need += (count - 1) * spacing;
+        if (need <= available || level == 0)
+            break;
+        /* like MUI 3.9, the batch keeps boxes at its minimum size, one
+         * after the other behind the children still present */
+        pos = 0;
+        cstate = children->mlh_Head;
+        while ((child = NextObject(&cstate)))
+        {
+            if (IS_HIDDEN(child))
+                continue;
+            if ((horiz ? muiAreaData(child)->mad_HorizDisappear
+                : muiAreaData(child)->mad_VertDisappear) == level)
+            {
+                _flags(child) |= MADF_DISAPPEARED;
+                if (_flags(child) & MADF_CANDRAW)
+                    DoHideMethod(child);
+                MUI_Layout(child, horiz ? pos : 0, horiz ? 0 : pos,
+                    _minwidth(child), _minheight(child), 0);
+            }
+            pos += (horiz ? _minwidth(child) : _minheight(child)) + spacing;
+        }
+    }
+
+    /* the layout counts and weighs only what is left */
+    data->num_visible_children = 0;
+    if (horiz)
+        data->horiz_weight_sum = 0;
+    else
+        data->vert_weight_sum = 0;
+    cstate = children->mlh_Head;
+    while ((child = NextObject(&cstate)))
+    {
+        if (IS_HIDDEN(child))
+            continue;
+        data->num_visible_children++;
+        if (horiz)
+            data->horiz_weight_sum += _hweight(child);
+        else
+            data->vert_weight_sum += _vweight(child);
+    }
+}
+
+/* Show children that reappeared in a shown group, after their layout */
+static void group_reappear(Object *obj, struct MinList *children)
+{
+    APTR cstate;
+    Object *child;
+
+    if (!(_flags(obj) & MADF_CANDRAW))
+        return;
+    cstate = children->mlh_Head;
+    while ((child = NextObject(&cstate)))
+        if (!IS_HIDDEN(child) && !(_flags(child) & MADF_CANDRAW))
+            DoShowMethod(child);
+}
+
 static void group_layout_vert(struct IClass *cl, Object *obj,
     struct MinList *children)
 {
@@ -2585,6 +2711,7 @@ static void group_layout_vert(struct IClass *cl, Object *obj,
         layout_height = _mheight(obj);
     }
 
+    group_disappear(obj, data, children, FALSE, layout_height);
     total_weight = data->vert_weight_sum;
     total_init_size = 0;
     total_size =
@@ -2646,6 +2773,8 @@ static void group_layout_vert(struct IClass *cl, Object *obj,
         top += data->vert_spacing + _height(child);
     }
 
+    if (!(data->flags & GROUP_VIRTUAL))
+        group_reappear(obj, children);
 }
 
 
@@ -2693,6 +2822,7 @@ static void group_layout_horiz(struct IClass *cl, Object *obj,
         layout_height = _mheight(obj);
     }
 
+    group_disappear(obj, data, children, TRUE, layout_width);
     total_weight = data->horiz_weight_sum;
     total_init_size = 0;
     total_size =
@@ -2757,6 +2887,8 @@ static void group_layout_horiz(struct IClass *cl, Object *obj,
         left += data->horiz_spacing + _width(child);
     }
 
+    if (!(data->flags & GROUP_VIRTUAL))
+        group_reappear(obj, children);
 }
 
 
@@ -3231,7 +3363,8 @@ IPTR Group__MUIM_Show(struct IClass *cl, Object *obj,
             if (!(data->flags & GROUP_VIRTUAL) ||
                 IsObjectVisible(child, MUIMasterBase))
             {
-                if (_flags(child) & MADF_SHOWME)
+                if ((_flags(child) & MADF_SHOWME)
+                    && !(_flags(child) & MADF_DISAPPEARED))
                     DoShowMethod(child);
             }
         }

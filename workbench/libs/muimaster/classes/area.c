@@ -59,7 +59,7 @@ Area.mui/MUIA_Frame                 done
 Area.mui/MUIA_FramePhantomHoriz     done
 Area.mui/MUIA_FrameTitle            done
 Area.mui/MUIA_Height                done
-Area.mui/MUIA_HorizDisappear
+Area.mui/MUIA_HorizDisappear       done
 Area.mui/MUIA_HorizWeight           done
 Area.mui/MUIA_InnerBottom           done
 Area.mui/MUIA_InnerLeft             done
@@ -77,7 +77,7 @@ Area.mui/MUIA_ShowMe                done
 Area.mui/MUIA_ShowSelState          done (I only)
 Area.mui/MUIA_Timer                 done
 Area.mui/MUIA_TopEdge               done
-Area.mui/MUIA_VertDisappear
+Area.mui/MUIA_VertDisappear        done
 Area.mui/MUIA_VertWeight            done
 Area.mui/MUIA_Weight                done
 Area.mui/MUIA_Width                 done
@@ -361,6 +361,14 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             data->mad_FrameTitle = (STRPTR)tag->ti_Data;
             break;
 
+        case MUIA_HorizDisappear:
+            data->mad_HorizDisappear = tag->ti_Data;
+            break;
+
+        case MUIA_VertDisappear:
+            data->mad_VertDisappear = tag->ti_Data;
+            break;
+
         case MUIA_HorizWeight:
             data->mad_HorizWeight = tag->ti_Data;
             break;
@@ -609,6 +617,14 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             data->mad_HorizWeight = tag->ti_Data;
             break;
 
+        case MUIA_HorizDisappear:
+            data->mad_HorizDisappear = tag->ti_Data;
+            break;
+
+        case MUIA_VertDisappear:
+            data->mad_VertDisappear = tag->ti_Data;
+            break;
+
         case MUIA_Weight:
             /* MUI also accepts this after creation (Voyager's buttons). */
             data->mad_HorizWeight = data->mad_VertWeight = tag->ti_Data;
@@ -787,6 +803,14 @@ static IPTR Area__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_HorizWeight:
         STORE = (IPTR)data->mad_HorizWeight;
+        return TRUE;
+
+    case MUIA_HorizDisappear:
+        STORE = (IPTR)data->mad_HorizDisappear;
+        return TRUE;
+
+    case MUIA_VertDisappear:
+        STORE = (IPTR)data->mad_VertDisappear;
         return TRUE;
 
     case MUIA_InnerBottom:
