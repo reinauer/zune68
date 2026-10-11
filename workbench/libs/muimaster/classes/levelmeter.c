@@ -24,6 +24,7 @@
 #include "prefs.h"
 #include "debug.h"
 #include "levelmeter_private.h"
+#include "smallfont.h"
 
 extern struct Library *MUIMasterBase;
 
@@ -45,13 +46,15 @@ extern struct Library *MUIMasterBase;
 #define LEVEL_LABEL_SPACING 2
 
 #define LEVEL_WIDTH 39
-#define LEVEL_HEIGHT 20
+#define LEVEL_HEIGHT 22
 
-#define LABEL_HEIGHT 8
+/* label display: 1-pixel frame around a line of the small font */
+#define LABEL_HEIGHT (SMALLFONT_HEIGHT + 2)
 
-#define TOTAL_WIDTH OUTERFRAME_W + BORDERSIZE_W + INNERFRAME_W + LEVEL_WIDTH
-#define TOTAL_HEIGHT OUTERFRAME_H + BORDERSIZE_H + INNERFRAME_H * 2 \
-+ LEVEL_HEIGHT + LEVEL_LABEL_SPACING + LABEL_HEIGHT
+/* 53x43 like MUI 3.9 */
+#define TOTAL_WIDTH (OUTERFRAME_W + BORDERSIZE_W + INNERFRAME_W + LEVEL_WIDTH)
+#define TOTAL_HEIGHT (OUTERFRAME_H + BORDERSIZE_H + INNERFRAME_H \
+    + LEVEL_HEIGHT + LEVEL_LABEL_SPACING + LABEL_HEIGHT)
 
 IPTR Levelmeter__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -64,9 +67,45 @@ IPTR Levelmeter__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         struct Levelmeter_DATA *data = INST_DATA(cl, obj);
 
         data->levelbgpen = -1;
+        data->label = (STRPTR) GetTagData(MUIA_Levelmeter_Label, 0,
+            msg->ops_AttrList);
     }
 
     return (IPTR) obj;
+}
+
+IPTR Levelmeter__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
+{
+    struct Levelmeter_DATA *data = INST_DATA(cl, obj);
+    struct TagItem *tag;
+    struct TagItem *tags;
+
+    for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
+    {
+        switch (tag->ti_Tag)
+        {
+        case MUIA_Levelmeter_Label:
+            data->label = (STRPTR) tag->ti_Data;
+            MUI_Redraw(obj, MADF_DRAWOBJECT);
+            break;
+        }
+    }
+
+    return DoSuperMethodA(cl, obj, (Msg) msg);
+}
+
+IPTR Levelmeter__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
+{
+    struct Levelmeter_DATA *data = INST_DATA(cl, obj);
+
+    switch (msg->opg_AttrID)
+    {
+    case MUIA_Levelmeter_Label:
+        *msg->opg_Storage = (IPTR) data->label;
+        return TRUE;
+    }
+
+    return DoSuperMethodA(cl, obj, (Msg) msg);
 }
 
 IPTR Levelmeter__MUIM_Setup(struct IClass *cl, Object *obj,
@@ -357,49 +396,29 @@ IPTR Levelmeter__MUIM_Draw(struct IClass *cl, Object *obj,
         SetAPen(rp, _pens(obj)[MPEN_HALFSHINE]);
         RectFill(rp, x1, y1, x2, y1 + LEVEL_LABEL_SPACING - 1);
 
-        /* Label Frame */
+        /* Label display */
 
         y1 += LEVEL_LABEL_SPACING;
         y2 = _mbottom(obj) - OUTERFRAME_Y - BORDERSIZE_Y;
 
-        SetAPen(rp, _pens(obj)[MPEN_HALFSHINE]);
-        Move(rp, x1, y1);
-        Draw(rp, x1 + 1, y1);
-        Draw(rp, x1, y1 + 1);
-        Move(rp, x2, y1);
-        Draw(rp, x2 - 1, y1);
-        Draw(rp, x2, y1 + 1);
-        Move(rp, x1, y2);
-        Draw(rp, x1 + 1, y2);
-        Draw(rp, x1, y2 - 1);
-        Move(rp, x2, y2);
-        Draw(rp, x2 - 1, y2);
-        Draw(rp, x2, y2 - 1);
-
         SetAPen(rp, _pens(obj)[MPEN_HALFSHADOW]);
-        Move(rp, x1 + 1, y2 - 1);
-        Draw(rp, x1, y2 - 2);
-        Draw(rp, x1, y1 + 2);
-        Draw(rp, x1 + 2, y1);
-        Draw(rp, x2 - 2, y1);
-        Draw(rp, x2 - 1, y1 + 1);
+        Move(rp, x1, y2);
+        Draw(rp, x1, y1);
+        Draw(rp, x2, y1);
 
         SetAPen(rp, _pens(obj)[MPEN_SHINE]);
-        Move(rp, x2, y1 + 2);
-        Draw(rp, x2, y2 - 2);
-        Draw(rp, x2 - 2, y2);
-        Draw(rp, x1 + 2, y2);
+        Move(rp, x2, y1 + 1);
+        Draw(rp, x2, y2);
+        Draw(rp, x1 + 1, y2);
 
         SetAPen(rp, _pens(obj)[MPEN_SHADOW]);
-        RectFill(rp, x1 + 1, y1 + 2, x1 + 1, y2 - 2);
-        RectFill(rp, x2 - 1, y1 + 2, x2 - 1, y2 - 2);
-        RectFill(rp, x1 + 2, y1 + 1, x2 - 2, y1 + 1);
-        RectFill(rp, x1 + 2, y2 - 1, x2 - 2, y2 - 1);
+        RectFill(rp, x1 + 1, y1 + 1, x2 - 1, y2 - 1);
 
-        /* Label Bg */
-
-        RectFill(rp, x1 + 2, y1 + 2, x2 - 2, y2 - 2);
-
+        if (data->label)
+        {
+            SetAPen(rp, _pens(obj)[MPEN_SHINE]);
+            SmallFont_Centre(rp, x1 + 1, y1 + 1, x2 - 1, data->label);
+        }
     }
 
     x1 = _mleft(obj) + OUTERFRAME_X + BORDERSIZE_X + INNERFRAME_X;
@@ -427,6 +446,10 @@ BOOPSI_DISPATCHER(IPTR, Levelmeter_Dispatcher, cl, obj, msg)
     {
     case OM_NEW:
         return Levelmeter__OM_NEW(cl, obj, (struct opSet *)msg);
+    case OM_SET:
+        return Levelmeter__OM_SET(cl, obj, (struct opSet *)msg);
+    case OM_GET:
+        return Levelmeter__OM_GET(cl, obj, (struct opGet *)msg);
     case MUIM_Setup:
         return Levelmeter__MUIM_Setup(cl, obj, (struct MUIP_Setup *)msg);
     case MUIM_Cleanup:

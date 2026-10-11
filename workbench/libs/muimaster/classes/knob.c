@@ -24,6 +24,7 @@
 #include "prefs.h"
 #include "debug.h"
 #include "knob_private.h"
+#include "smallfont.h"
 
 extern struct Library *MUIMasterBase;
 
@@ -32,26 +33,19 @@ extern struct Library *MUIMasterBase;
 #define OUTERFRAME_W (OUTERFRAME_X * 2)
 #define OUTERFRAME_H (OUTERFRAME_Y * 2)
 
-#define INNERFRAME_X 2
-#define INNERFRAME_Y 2
-#define INNERFRAME_W (INNERFRAME_X * 2)
-#define INNERFRAME_H (INNERFRAME_Y * 2)
-
-#define BORDERSIZE_X 2
-#define BORDERSIZE_Y 2
+#define BORDERSIZE_X 1
 #define BORDERSIZE_W (BORDERSIZE_X * 2)
-#define BORDERSIZE_H (BORDERSIZE_Y * 2)
-
-#define KNOB_LABEL_SPACING 2
 
 #define KNOB_WIDTH 25
 #define KNOB_HEIGHT 25
 
-#define LABEL_HEIGHT 8
+/* value display below the knob: 1-pixel frame around a line of the
+ * small font */
+#define LABEL_HEIGHT (SMALLFONT_HEIGHT + 2)
 
-#define TOTAL_WIDTH OUTERFRAME_W + BORDERSIZE_W + KNOB_WIDTH
-#define TOTAL_HEIGHT OUTERFRAME_H + BORDERSIZE_H + INNERFRAME_H \
-+ KNOB_HEIGHT + KNOB_LABEL_SPACING + LABEL_HEIGHT
+/* 31x36 like MUI 3.9 */
+#define TOTAL_WIDTH (OUTERFRAME_W + BORDERSIZE_W + KNOB_WIDTH)
+#define TOTAL_HEIGHT (OUTERFRAME_H + KNOB_HEIGHT + LABEL_HEIGHT)
 
 
 /* 0 halfshine */
@@ -285,21 +279,15 @@ IPTR Knob__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
         x1 += OUTERFRAME_X;
         x2 -= OUTERFRAME_X;
-        y1 += OUTERFRAME_X;
+        y1 += OUTERFRAME_Y;
         y2 -= OUTERFRAME_Y;
 
         SetAPen(rp, _pens(obj)[MPEN_HALFSHINE]);
-        RectFill(rp, x1, y1, x2, y1 + BORDERSIZE_Y - 1);
-        RectFill(rp, x1, y1 + BORDERSIZE_Y, x1 + BORDERSIZE_X - 1, y2);
-        RectFill(rp, x1 + BORDERSIZE_X - 1, y2 - BORDERSIZE_Y + 1, x2, y2);
-        RectFill(rp, x2 - BORDERSIZE_X + 1, y1 + BORDERSIZE_Y, x2,
-            y2 - BORDERSIZE_Y);
-
-        /* Inner Frame */
+        RectFill(rp, x1, y1, x1 + BORDERSIZE_X - 1, y2);
+        RectFill(rp, x2 - BORDERSIZE_X + 1, y1, x2, y2);
 
         x1 += BORDERSIZE_X;
         x2 -= BORDERSIZE_X;
-        y1 += BORDERSIZE_Y;
         y2 = y1 + KNOB_HEIGHT - 1;
 
         /* Knob bg */
@@ -330,61 +318,37 @@ IPTR Knob__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
             }
         }
 
-        /* Knob-Label spacing */
+        /* Value display frame */
 
         y1 = y2 + 1;
-
-        SetAPen(rp, _pens(obj)[MPEN_HALFSHINE]);
-        RectFill(rp, x1, y1, x2, y1 + KNOB_LABEL_SPACING - 1);
-
-        /* Label Frame */
-
-        y1 += KNOB_LABEL_SPACING;
-        y2 = _mbottom(obj) - OUTERFRAME_Y - BORDERSIZE_Y;
-
-        SetAPen(rp, _pens(obj)[MPEN_HALFSHINE]);
-        Move(rp, x1, y1);
-        Draw(rp, x1 + 1, y1);
-        Draw(rp, x1, y1 + 1);
-        Move(rp, x2, y1);
-        Draw(rp, x2 - 1, y1);
-        Draw(rp, x2, y1 + 1);
-        Move(rp, x1, y2);
-        Draw(rp, x1 + 1, y2);
-        Draw(rp, x1, y2 - 1);
-        Move(rp, x2, y2);
-        Draw(rp, x2 - 1, y2);
-        Draw(rp, x2, y2 - 1);
+        y2 = _mbottom(obj) - OUTERFRAME_Y;
 
         SetAPen(rp, _pens(obj)[MPEN_HALFSHADOW]);
-        Move(rp, x1 + 1, y2 - 1);
-        Draw(rp, x1, y2 - 2);
-        Draw(rp, x1, y1 + 2);
-        Draw(rp, x1 + 2, y1);
-        Draw(rp, x2 - 2, y1);
-        Draw(rp, x2 - 1, y1 + 1);
+        Move(rp, x1, y2);
+        Draw(rp, x1, y1);
+        Draw(rp, x2, y1);
 
         SetAPen(rp, _pens(obj)[MPEN_SHINE]);
-        Move(rp, x2, y1 + 2);
-        Draw(rp, x2, y2 - 2);
-        Draw(rp, x2 - 2, y2);
-        Draw(rp, x1 + 2, y2);
-
-        SetAPen(rp, _pens(obj)[MPEN_SHADOW]);
-        RectFill(rp, x1 + 1, y1 + 2, x1 + 1, y2 - 2);
-        RectFill(rp, x2 - 1, y1 + 2, x2 - 1, y2 - 2);
-        RectFill(rp, x1 + 2, y1 + 1, x2 - 2, y1 + 1);
-        RectFill(rp, x1 + 2, y2 - 1, x2 - 2, y2 - 1);
-
-        /* Label Bg */
-
-        RectFill(rp, x1 + 2, y1 + 2, x2 - 2, y2 - 2);
-
+        Move(rp, x2, y1 + 1);
+        Draw(rp, x2, y2);
+        Draw(rp, x1 + 1, y2);
     }
+
+    /* Value display */
+
+    x1 = _mleft(obj) + OUTERFRAME_X + BORDERSIZE_X + 1;
+    x2 = _mright(obj) - OUTERFRAME_X - BORDERSIZE_X - 1;
+    y1 = _mtop(obj) + OUTERFRAME_Y + KNOB_HEIGHT + 1;
+
+    SetABPenDrMd(rp, _pens(obj)[MPEN_SHADOW], 0, JAM1);
+    RectFill(rp, x1, y1, x2, y1 + SMALLFONT_HEIGHT - 1);
+    SetAPen(rp, _pens(obj)[MPEN_SHINE]);
+    SmallFont_Centre(rp, x1, y1, x2, (CONST_STRPTR)DoMethod(obj,
+        MUIM_Numeric_Stringify, XGET(obj, MUIA_Numeric_Value)));
 
     x1 = _mleft(obj) + OUTERFRAME_X + BORDERSIZE_X;
     x2 = _mright(obj) - OUTERFRAME_X - BORDERSIZE_X;
-    y1 = _mtop(obj) + OUTERFRAME_Y + BORDERSIZE_Y;
+    y1 = _mtop(obj) + OUTERFRAME_Y;
     y2 = y1 + KNOB_HEIGHT - 1;
 
     if (msg->flags & MADF_DRAWUPDATE)
@@ -454,7 +418,7 @@ IPTR Knob__MUIM_HandleEvent(struct IClass *cl, Object *obj,
 
             x1 = _mleft(obj) + OUTERFRAME_X + BORDERSIZE_X;
             x2 = _mright(obj) - OUTERFRAME_X - BORDERSIZE_X;
-            y1 = _mtop(obj) + OUTERFRAME_Y + BORDERSIZE_Y;
+            y1 = _mtop(obj) + OUTERFRAME_Y;
             y2 = y1 + KNOB_HEIGHT - 1;
             cx = (x1 + x2) / 2;
             cy = (y1 + y2) / 2;

@@ -5,6 +5,7 @@ struct Levelmeter_DATA
 {
     LONG levelbgpen;
     DOUBLE prevangle;
+    STRPTR label;
 };
 
 #endif /* _LEVELMETER_PRIVATE_H_ */
