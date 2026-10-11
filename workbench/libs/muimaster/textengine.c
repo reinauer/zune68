@@ -693,9 +693,31 @@ void zune_text_get_bounds(ZText * text, Object * obj)
             line_node->lwidth += chunk_node->cwidth;
         }
 
+        /* MUI 3.9 adds the overhang of a bold or italic line end, the
+         * part of its TextExtent beyond the advance (tests/native/
+         * textstyles.c) */
+        chunk_node = (ZTextChunk *) line_node->chunklist.mlh_TailPred;
+        while (chunk_node->node.mln_Pred && !chunk_node->str)
+            chunk_node = (ZTextChunk *) chunk_node->node.mln_Pred;
+        if (chunk_node->node.mln_Pred && chunk_node->str
+            && (chunk_node->style & (FSF_BOLD | FSF_ITALIC)))
+        {
+            struct TextExtent te;
+            LONG len = strlen(chunk_node->str);
+
+            SetSoftStyle(&rp, chunk_node->style, AskSoftStyle(&rp));
+            TextExtent(&rp, chunk_node->str, len, &te);
+            SetSoftStyle(&rp, FS_NORMAL, AskSoftStyle(&rp));
+            line_node->lwidth += te.te_Extent.MaxX - te.te_Extent.MinX + 1
+                - te.te_Width;
+        }
+
         text->height += line_node->lheight;
         text->width = MAX(text->width, line_node->lwidth);
     }
+    /* ... and one pixel to a text using bold or italic anywhere */
+    if (text->styles & (FSF_BOLD | FSF_ITALIC))
+        text->width++;
 }
 
 /************************************************************/
