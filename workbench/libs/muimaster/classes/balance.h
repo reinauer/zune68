@@ -13,7 +13,7 @@
 
 /*** Attributes *************************************************************/
 #define MUIA_Balance_Quiet \
-    (MUIB_Balance | 0x00000000) /* (zune) V20 i   LONG */
+    (MUIB_MUI | 0x00427486) /* V20 i   LONG */
 
 
 extern const struct __MUIBuiltinClass _MUI_Balance_desc; /* PRIV */

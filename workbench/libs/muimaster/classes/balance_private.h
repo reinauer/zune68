@@ -35,6 +35,7 @@ struct Balance_DATA
     WORD lsiblings;
     WORD rsiblings;
     WORD lazy;
+    BOOL quiet;                 /* MUIA_Balance_Quiet: draw no bars */
 };
 
 #endif /* _BALANCE_PRIVATE_H_ */

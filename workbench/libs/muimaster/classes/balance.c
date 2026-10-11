@@ -51,6 +51,7 @@ IPTR Balance__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         switch (tag->ti_Tag)
         {
         case MUIA_Balance_Quiet:
+            data->quiet = tag->ti_Data != 0;
             break;
         }
     }
@@ -137,7 +138,9 @@ IPTR Balance__MUIM_Draw(struct IClass *cl, Object *obj,
     if (!(msg->flags & MADF_DRAWOBJECT))
         return 0;
 
-    if (_mwidth(obj) < 1 || _mheight(obj) < 1)
+    /* a quiet balance is only the space between its neighbours (YAM's
+     * panes on MUI 3.9) */
+    if (data->quiet || _mwidth(obj) < 1 || _mheight(obj) < 1)
         return TRUE;
 
     if (data->state == NOT_CLICKED)
@@ -151,28 +154,32 @@ IPTR Balance__MUIM_Draw(struct IClass *cl, Object *obj,
         col1 = MPEN_SHINE;
     }
 
+    /* like MUI 3.9, the first line turns the corner and the other two
+     * start one pixel later (tests/native/baldraw.c) */
     if (data->horizgroup)
     {
         SetAPen(_rp(obj), _pens(obj)[col1]);
-        Move(_rp(obj), _mleft(obj), _mtop(obj));
-        Draw(_rp(obj), _mleft(obj), _mbottom(obj));
+        Move(_rp(obj), _mleft(obj), _mbottom(obj));
+        Draw(_rp(obj), _mleft(obj), _mtop(obj));
+        Draw(_rp(obj), _mleft(obj) + 1, _mtop(obj));
         SetAPen(_rp(obj), _pens(obj)[MPEN_FILL]);
-        Move(_rp(obj), _mleft(obj) + 1, _mtop(obj));
+        Move(_rp(obj), _mleft(obj) + 1, _mtop(obj) + 1);
         Draw(_rp(obj), _mleft(obj) + 1, _mbottom(obj));
         SetAPen(_rp(obj), _pens(obj)[col2]);
-        Move(_rp(obj), _mleft(obj) + 2, _mtop(obj));
+        Move(_rp(obj), _mleft(obj) + 2, _mtop(obj) + 1);
         Draw(_rp(obj), _mleft(obj) + 2, _mbottom(obj));
     }
     else
     {
         SetAPen(_rp(obj), _pens(obj)[col1]);
-        Move(_rp(obj), _mleft(obj), _mtop(obj));
-        Draw(_rp(obj), _mright(obj), _mtop(obj));
+        Move(_rp(obj), _mright(obj), _mtop(obj));
+        Draw(_rp(obj), _mleft(obj), _mtop(obj));
+        Draw(_rp(obj), _mleft(obj), _mtop(obj) + 1);
         SetAPen(_rp(obj), _pens(obj)[MPEN_FILL]);
-        Move(_rp(obj), _mleft(obj), _mtop(obj) + 1);
+        Move(_rp(obj), _mleft(obj) + 1, _mtop(obj) + 1);
         Draw(_rp(obj), _mright(obj), _mtop(obj) + 1);
         SetAPen(_rp(obj), _pens(obj)[col2]);
-        Move(_rp(obj), _mleft(obj), _mtop(obj) + 2);
+        Move(_rp(obj), _mleft(obj) + 1, _mtop(obj) + 2);
         Draw(_rp(obj), _mright(obj), _mtop(obj) + 2);
     }
 
