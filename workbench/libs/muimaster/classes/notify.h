@@ -175,6 +175,17 @@ struct MUIP_ConnectParent
     STACKED Object *parent;
 };
 
+/* MUI's private method that hands an object the global info: MUI 3.9
+ * applications (Voyager) use it on a temporary object before MUIM_Setup
+ * and MUIM_AskMinMax to measure it; groups pass it on to their children */
+#define MUIM_GlobalSetup         (MUIB_MUI | 0x0042d532)        /* MUI: private */
+
+struct MUIP_GlobalSetup
+{
+    STACKED ULONG MethodID;
+    STACKED struct MUI_GlobalInfo *gi;
+};
+
 struct MUIP_DisconnectParent
 {
     STACKED ULONG MethodID;

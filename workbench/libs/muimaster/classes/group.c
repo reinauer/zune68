@@ -867,6 +867,33 @@ IPTR Group__MUIM_ConnectParent(struct IClass *cl, Object *obj,
 }
 
 /**************************************************************************
+ MUIM_GlobalSetup (MUI private): the children become ours and get the
+ global info too, as they do through MUIM_ConnectParent
+**************************************************************************/
+static IPTR Group__MUIM_GlobalSetup(struct IClass *cl, Object *obj,
+    struct MUIP_GlobalSetup *msg)
+{
+    struct MUI_GroupData *data = INST_DATA(cl, obj);
+    APTR cstate;
+    Object *child;
+    struct MinList *ChildList = NULL;
+
+    DoSuperMethodA(cl, obj, (Msg) msg);
+
+    get(data->family, MUIA_Family_List, &(ChildList));
+    cstate = ChildList->mlh_Head;
+    while ((child = NextObject(&cstate)))
+    {
+        if ((_flags(obj) & MADF_INVIRTUALGROUP)
+            || (data->flags & GROUP_VIRTUAL))
+            _flags(child) |= MADF_INVIRTUALGROUP;
+        muiNotifyData(child)->mnd_ParentObject = obj;
+        DoMethodA(child, (Msg) msg);
+    }
+    return TRUE;
+}
+
+/**************************************************************************
  MUIM_DisconnectParent
 **************************************************************************/
 IPTR Group__MUIM_DisconnectParent(struct IClass *cl, Object *obj,
@@ -4047,6 +4074,8 @@ BOOPSI_DISPATCHER(IPTR, Group_Dispatcher, cl, obj, msg)
         return Group__MUIM_DoMethodNoForward(cl, obj, (APTR) msg);
     case MUIM_ConnectParent:
         return Group__MUIM_ConnectParent(cl, obj, (APTR) msg);
+    case MUIM_GlobalSetup:
+        return Group__MUIM_GlobalSetup(cl, obj, (APTR) msg);
     case MUIM_DisconnectParent:
         return Group__MUIM_DisconnectParent(cl, obj, (APTR) msg);
     case MUIM_Layout:

@@ -861,6 +861,16 @@ IPTR Notify__MUIM_WriteString(struct IClass *cl, Object *obj,
 /**************************************************************************
  MUIM_ConnectParent
 **************************************************************************/
+/**************************************************************************
+ MUIM_GlobalSetup (MUI private): take the global info the caller passes
+**************************************************************************/
+static IPTR Notify__MUIM_GlobalSetup(struct IClass *cl, Object *obj,
+    struct MUIP_GlobalSetup *msg)
+{
+    muiGlobalInfo(obj) = msg->gi;
+    return TRUE;
+}
+
 IPTR Notify__MUIM_ConnectParent(struct IClass *cl, Object *obj,
     struct MUIP_ConnectParent *msg)
 {
@@ -952,6 +962,8 @@ BOOPSI_DISPATCHER(IPTR, Notify_Dispatcher, cl, obj, msg)
         return Notify__MUIM_WriteString(cl, obj, (APTR) msg);
     case MUIM_ConnectParent:
         return Notify__MUIM_ConnectParent(cl, obj, (APTR) msg);
+    case MUIM_GlobalSetup:
+        return Notify__MUIM_GlobalSetup(cl, obj, (APTR) msg);
     case MUIM_DisconnectParent:
         return Notify__MUIM_DisconnectParent(cl, obj, (APTR) msg);
     case MUIM_GetConfigItem:
