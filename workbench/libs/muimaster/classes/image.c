@@ -367,6 +367,9 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
          * gradient) nothing at minimum and maximum but its 8x8 default,
          * like an unusable spec (tests/native/imgsizes.c) */
         WORD fixed = 1;
+        /* the frame and spacing the superclass already counted */
+        WORD base_w = msg->MinMaxInfo->MinWidth;
+        WORD base_h = msg->MinMaxInfo->MinHeight;
 
         zune_imspec_askminmax(data->img, &minmax);
         switch (data->img->type)
@@ -394,12 +397,15 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
             msg->MinMaxInfo->DefWidth += minmax.DefWidth;
         }
 
-        /* Scale before dividing; integer XSize/8 was zero for small fonts */
+        /* MUI 3.9: a font-matched image is fixed at its size scaled by
+         * the font's size over 8 (tests/native/imgdef.c: a 7-pixel check
+         * mark is 13 pixels high under a 15-pixel font) */
         if (data->flags & MIF_FONTMATCHWIDTH)
         {
-            msg->MinMaxInfo->DefWidth = CLAMP(
-                msg->MinMaxInfo->DefWidth * _font(obj)->tf_XSize / 8,
-                msg->MinMaxInfo->MinWidth, msg->MinMaxInfo->MaxWidth);
+            msg->MinMaxInfo->MinWidth = base_w
+                + minmax.DefWidth * _font(obj)->tf_XSize / 8;
+            msg->MinMaxInfo->DefWidth = msg->MinMaxInfo->MinWidth;
+            msg->MinMaxInfo->MaxWidth = msg->MinMaxInfo->MinWidth;
         }
 
 
@@ -418,9 +424,10 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
 
         if (data->flags & MIF_FONTMATCHHEIGHT)
         {
-            msg->MinMaxInfo->DefHeight = CLAMP(
-                msg->MinMaxInfo->DefHeight * _font(obj)->tf_YSize / 8,
-                msg->MinMaxInfo->MinHeight, msg->MinMaxInfo->MaxHeight);
+            msg->MinMaxInfo->MinHeight = base_h
+                + minmax.DefHeight * _font(obj)->tf_YSize / 8;
+            msg->MinMaxInfo->DefHeight = msg->MinMaxInfo->MinHeight;
+            msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->MinHeight;
         }
     }
     else if (data->old_image)
