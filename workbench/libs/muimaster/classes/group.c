@@ -626,6 +626,7 @@ IPTR Group__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             case MUIA_Draggable:
             case MUIA_FillArea:
             case MUIA_Group_ActivePage:
+            case MUIA_Group_LayoutHook:
             case MUIA_Frame:
             case MUIA_FrameTitle:
             case MUIA_HorizWeight:
