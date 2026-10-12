@@ -43,6 +43,7 @@ class WindowHarness(PenHarness):
         self.trap(self.symbols['_DoSuperMethodA'], lambda: self.cpu.w_reg(0, 1))
         self.trap(self.symbols['_DoMethod'], self.method)
         self.trap(self.symbols['_DoSetupMethod'], self.root_setup)
+        self.trap(self.symbols['_DoLayoutMethod'], lambda: self.cpu.w_reg(0, 1))
         self.trap(self.symbols['_DoShowMethod'], lambda: self.events.append('show'))
         self.trap(self.symbols['_DoHideMethod'], lambda: self.events.append('hide'))
         self.trap(self.symbols['___area_finish_minmax'], lambda: None)

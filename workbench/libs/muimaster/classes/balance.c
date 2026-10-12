@@ -688,7 +688,7 @@ static void handle_move(struct IClass *cl, Object *obj, WORD mouse)
         DoMethod(_parent(obj), MUIM_Hide);
 
         /* relayout with new weights */
-        DoMethod(_parent(obj), MUIM_Layout);
+        DoLayoutMethod(_parent(obj));
 
         DoMethod(_parent(obj), MUIM_Show);
 
@@ -704,7 +704,7 @@ static void handle_move(struct IClass *cl, Object *obj, WORD mouse)
             _mheight(_parent(obj)), 0, 0, 0);
 
         /* relayout with new weights */
-        DoMethod(_parent(obj), MUIM_Layout);
+        DoLayoutMethod(_parent(obj));
 
         DoMethod(obj, MADF_DRAWOBJECT);
 
@@ -785,7 +785,7 @@ IPTR Balance__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                         DoMethod(_parent(obj), MUIM_Hide);
 
                         /* relayout with new weights */
-                        DoMethod(_parent(obj), MUIM_Layout);
+                        DoLayoutMethod(_parent(obj));
 
                         DoMethod(_parent(obj), MUIM_Show);
                         MUI_Redraw(_parent(obj), MADF_DRAWOBJECT);

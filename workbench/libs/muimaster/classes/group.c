@@ -205,7 +205,7 @@ static void change_active_page(struct IClass *cl, Object *obj, LONG page)
 
         if (_flags(obj) & MADF_CANDRAW)
         {
-            DoMethod(obj, MUIM_Layout);
+            DoLayoutMethod(obj);
             Group__MUIM_Show(cl, obj, NULL);
             data->update = 1;
             MUI_Redraw(obj, MADF_DRAWUPDATE);
@@ -315,6 +315,8 @@ IPTR Group__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     obj = (Object *) DoSuperMethodA(cl, obj, (Msg) msg);
     if (!obj)
         return 0;
+
+    muiAreaData(obj)->mad_Flags2 |= MADF2_ISGROUP;
 
     /* Initial local instance data */
     data = INST_DATA(cl, obj);
@@ -3416,11 +3418,11 @@ static void group_layout_pagemode(struct IClass *cl, Object *obj,
 
 
 /**************************************************************************
- MUIM_Layout
+ MUIM_Zune_Layout
  Either use a given layout hook, or the builtin method.
 **************************************************************************/
 IPTR Group__MUIM_Layout(struct IClass *cl, Object *obj,
-    struct MUIP_Layout *msg)
+    struct MUIP_Zune_Layout *msg)
 {
     struct MUI_GroupData *data = INST_DATA(cl, obj);
     struct MUI_LayoutMsg lm = { 0 };
@@ -4080,7 +4082,7 @@ BOOPSI_DISPATCHER(IPTR, Group_Dispatcher, cl, obj, msg)
         return Group__MUIM_GlobalSetup(cl, obj, (APTR) msg);
     case MUIM_DisconnectParent:
         return Group__MUIM_DisconnectParent(cl, obj, (APTR) msg);
-    case MUIM_Layout:
+    case MUIM_Zune_Layout:
         return Group__MUIM_Layout(cl, obj, (APTR) msg);
     case MUIM_Setup:
         return Group__MUIM_Setup(cl, obj, (APTR) msg);
@@ -4124,6 +4126,8 @@ BOOPSI_DISPATCHER(IPTR, Group_Dispatcher, cl, obj, msg)
     case MUIM_Notify:
         return Group_Notify(cl, obj, (APTR) msg);
 #endif
+    /* Geometry belongs to this group, not to every child. */
+    case MUIM_Layout:
     case MUIM_Set:
     case MUIM_MultiSet:
     case MUIM_CallHook:

@@ -70,7 +70,7 @@ DISPATCHER(_Dispatcher)
     case MUIM_Cleanup: return Pixmap__MUIM_Cleanup(cl, obj, msg);
     case MUIM_Draw: return Pixmap__MUIM_Draw(cl, obj, (APTR)msg);
     case MUIM_AskMinMax: return Pixmap__MUIM_AskMinMax(cl, obj, (APTR)msg);
-    case MUIM_Layout: return Pixmap__MUIM_Layout(cl, obj, msg);
+    case MUIM_Zune_Layout: return Pixmap__MUIM_Layout(cl, obj, msg);
     case MUIM_Pixmap_DrawSection:
         return Pixmap__MUIM_Pixmap_DrawSection(cl, obj, (APTR)msg);
 #endif

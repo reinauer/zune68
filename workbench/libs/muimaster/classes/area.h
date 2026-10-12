@@ -279,7 +279,23 @@ struct MUIP_Show
     STACKED ULONG MethodID;
 };
 
+/* Public MUI layout carries absolute window coordinates. */
 #define MUIM_Layout \
+    (MUIB_MUI | 0x0042845b) /* MUI: V4 */
+
+struct MUIP_Layout
+{
+    STACKED ULONG MethodID;
+    STACKED LONG left;
+    STACKED LONG top;
+    STACKED LONG width;
+    STACKED LONG height;
+    STACKED ULONG flags;
+};
+
+/* Zune's existing callback uses geometry already stored in the object.
+ * Keep its ID and one-word message compatible with existing MCCs. */
+#define MUIM_Zune_Layout \
     (MUIB_Area | 0x00000000)
 #define MUIM_DrawParentBackground \
     (MUIB_Area | 0x00000001)
@@ -298,7 +314,7 @@ struct MUIP_Show
 #define MUIM_QueryFrameCharacteristics \
     (MUIB_Area | 0x00000008)
 
-struct MUIP_Layout
+struct MUIP_Zune_Layout
 {
     STACKED ULONG MethodID;
 };
@@ -549,6 +565,7 @@ struct MUI_AreaData
 /* Internal flags stored in mad_Flags2; the public prefix stays fixed. */
 #define MADF2_CUSTOMBACKFILL   (1UL << 0)
 #define MADF2_BACKFILL_ACTIVE  (1UL << 1)
+#define MADF2_ISGROUP          (1UL << 2)
 
 #define MADF_DRAWOBJECT        (1<< 0)  /* draw object completely */
 #define MADF_DRAWUPDATE        (1<< 1)  /* update object */

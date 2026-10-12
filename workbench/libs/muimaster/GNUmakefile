@@ -95,7 +95,11 @@ $(BUILD)/compatcheck: ../../../tests/native/compatcheck.c \
 
 check: all check-core
 
-check-core: core $(BUILD)/compatcheck
+$(BUILD)/mui5-layout-probe: ../../../tests/native/mui5_layout_probe.c $(GENERATED)
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
+	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+
+check-core: core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe
 	$(PYTHON) ../../../tests/check_native_init.py $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_gcc_library.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library

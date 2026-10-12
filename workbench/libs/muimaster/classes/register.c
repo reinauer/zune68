@@ -584,7 +584,7 @@ IPTR Register__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 }
 
 IPTR Register__MUIM_Layout(struct IClass *cl, Object *obj,
-    struct MUIP_Layout *msg)
+    struct MUIP_Zune_Layout *msg)
 {
     struct Register_DATA *data = INST_DATA(cl, obj);
     ULONG retval = 1;
@@ -770,8 +770,8 @@ BOOPSI_DISPATCHER(IPTR, Register_Dispatcher, cl, obj, msg)
     case MUIM_AskMinMax:
         return Register__MUIM_AskMinMax(cl, obj,
             (struct MUIP_AskMinMax *)msg);
-    case MUIM_Layout:
-        return Register__MUIM_Layout(cl, obj, (struct MUIP_Layout *)msg);
+    case MUIM_Zune_Layout:
+        return Register__MUIM_Layout(cl, obj, (struct MUIP_Zune_Layout *)msg);
     case MUIM_Show:
         return Register__MUIM_Show(cl, obj, (struct MUIP_Show *)msg);
     case MUIM_Draw:

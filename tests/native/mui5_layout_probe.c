@@ -6,12 +6,23 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <libraries/mui.h>
 #include <proto/exec.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
 
+_Static_assert(MUIM_Layout == 0x8042845bUL, "public layout method ID");
+_Static_assert(sizeof(struct MUIP_Layout) == 24, "layout message size");
+_Static_assert(offsetof(struct MUIP_Layout, left) == 4, "layout left");
+_Static_assert(offsetof(struct MUIP_Layout, top) == 8, "layout top");
+_Static_assert(offsetof(struct MUIP_Layout, width) == 12, "layout width");
+_Static_assert(offsetof(struct MUIP_Layout, height) == 16, "layout height");
+_Static_assert(offsetof(struct MUIP_Layout, flags) == 20, "layout flags");
+
+/* Literal retained to model a client built with the old Zune headers. */
+#define LEGACY_ZUNE_LAYOUT 0x90420200UL
 #define PROBE_LAYOUT 0x80001001UL
 struct ProbeLayout {
     ULONG MethodID;
@@ -24,6 +35,9 @@ struct Library *MUIMasterBase;
 ULONG __stack = 65536;
 static ULONG layout_calls;
 static ULONG hook_calls, hook_result = 1;
+static ULONG group_layout_calls;
+static ULONG legacy_calls, override_result;
+static BOOL override_layout;
 static int failed;
 
 static ULONG controller(struct IClass *cl __asm("a0"),
@@ -31,10 +45,23 @@ static ULONG controller(struct IClass *cl __asm("a0"),
 {
     if (msg->MethodID == PROBE_LAYOUT) {
         struct ProbeLayout *p = (APTR)msg;
+        if (p->absolute == 2) {
+            struct MUIP_Layout layout = {
+                MUIM_Layout, 53, 67, p->width, p->height, 0
+            };
+            return DoMethodA(p->child, (Msg)&layout);
+        }
         if (p->absolute)
             return MUI_LayoutObj(p->child, 31, 47, p->width, p->height, 0);
         return MUI_Layout(p->child, 31, 47, p->width, p->height, 0);
     }
+    if (msg->MethodID == MUIM_Layout) {
+        group_layout_calls++;
+        if (override_layout)
+            return override_result;
+    }
+    if (msg->MethodID == LEGACY_ZUNE_LAYOUT)
+        legacy_calls++;
     return DoSuperMethodA(cl, obj, msg);
 }
 
@@ -56,8 +83,13 @@ static ULONG area(struct IClass *cl __asm("a0"),
 {
     if (msg->MethodID == MUIM_AskMinMax)
         return ask_minmax(cl, obj, (APTR)msg);
-    if (msg->MethodID == MUIM_Layout)
+    if (msg->MethodID == MUIM_Layout) {
         layout_calls++;
+        if (override_layout)
+            return override_result;
+    }
+    if (msg->MethodID == LEGACY_ZUNE_LAYOUT)
+        legacy_calls++;
     return DoSuperMethodA(cl, obj, msg);
 }
 
@@ -79,22 +111,43 @@ static ULONG layout_hook(struct Hook *hook __asm("a0"),
 }
 
 static void report(const char *kind, const char *stage, Object *parent,
-    Object *child, Object *leaf, BOOL ready)
+    Object *child, Object *leaf, BOOL ready, int custom)
 {
+    const char *modes[] = {"relative", "absolute", "method"};
     ULONG mode, rc;
-    for (mode = 0; mode < 2; mode++) {
+    for (mode = 0; mode < 3; mode++) {
+        LONG leafleft = leaf ? _left(leaf) : 0;
+        LONG leaftop = leaf ? _top(leaf) : 0;
+        LONG leafwidth = leaf ? _width(leaf) : 0;
+        LONG leafheight = leaf ? _height(leaf) : 0;
         layout_calls = 0;
+        group_layout_calls = 0;
+        legacy_calls = 0;
         rc = DoMethod(parent, PROBE_LAYOUT, child, mode, 100, 70);
         failed += rc != (ULONG)ready || _width(child) != 100 ||
             _height(child) != 70 ||
-            _left(child) != 31 + (mode ? 0 : _mleft(parent)) ||
-            _top(child) != 47 + (mode ? 0 : _mtop(parent));
+            _left(child) != (mode == 2 ? 53 : 31) +
+                (mode ? 0 : _mleft(parent)) ||
+            _top(child) != (mode == 2 ? 67 : 47) +
+                (mode ? 0 : _mtop(parent));
+        failed += layout_calls + group_layout_calls !=
+            (ULONG)(custom == 2 || (mode == 2 && custom));
+        if (MUIMasterBase->lib_Version == 19)
+            failed += legacy_calls != (ULONG)(ready && custom);
         printf("%s %s %s rc=%lu parent=%d,%d inner=%d,%d "
             "child=%d,%d,%d,%d calls=%lu",
-            kind, stage, mode ? "absolute" : "relative", rc,
+            kind, stage, modes[mode], rc,
             _left(parent), _top(parent), _mleft(parent), _mtop(parent),
             _left(child), _top(child), _width(child), _height(child),
-            layout_calls);
+            layout_calls + group_layout_calls);
+        if (leaf && !ready)
+            failed += _left(leaf) != leafleft || _top(leaf) != leaftop ||
+                _width(leaf) != leafwidth || _height(leaf) != leafheight;
+        if (leaf && ready)
+            failed += _left(leaf) != _mleft(child) ||
+                _top(leaf) != _mtop(child) ||
+                _width(leaf) != _mwidth(child) ||
+                _height(leaf) != _mheight(child);
         if (leaf)
             printf(" leaf=%d,%d,%d,%d", _left(leaf), _top(leaf),
                 _width(leaf), _height(leaf));
@@ -142,15 +195,16 @@ int main(int argc, char **argv)
         else if (i == 2 || i == 3) {
             leaf = MUI_NewObjectA(MUIC_Rectangle, empty);
             children[0].ti_Data = (ULONG)leaf;
-            child = MUI_NewObjectA(i == 2 ? MUIC_Group : MUIC_Virtgroup,
-                children);
+            child = i == 2 ? NewObjectA(pc->mcc_Class, NULL, children) :
+                MUI_NewObjectA(MUIC_Virtgroup, children);
         } else
             child = MUI_NewObjectA(MUIC_Rectangle, empty);
         tags[1].ti_Data = (ULONG)child;
         parent = NewObjectA((i == 4 ? vc : pc)->mcc_Class, NULL, tags);
         if (!child || !parent) return 20;
         MUI_Offset(parent, 13, 19);
-        report(names[i], "unopened", parent, child, leaf, FALSE);
+        report(names[i], "unopened", parent, child, leaf, FALSE,
+            i == 1 ? 1 : i == 2 ? 2 : 0);
         wt[1].ti_Data = (ULONG)parent;
         win = MUI_NewObjectA(MUIC_Window, wt);
         if (!win) return 20;
@@ -171,25 +225,65 @@ int main(int argc, char **argv)
                 continue;
             }
         }
-        report(names[i], "opened", parent, child, leaf, TRUE);
+        report(names[i], "opened", parent, child, leaf, TRUE,
+            i == 1 ? 1 : i == 2 ? 2 : 0);
         {
-            ULONG rc;
-            rc = DoMethod(parent, PROBE_LAYOUT, child, 1, 10001, 70);
-            failed += rc != 0 || _width(child) != 10001;
-            printf("%s oversize rc=%lu box=%d,%d,%d,%d\n", names[i], rc,
-                _left(child), _top(child), _width(child), _height(child));
-            rc = DoMethod(parent, PROBE_LAYOUT, child, 1, 0, 0);
-            failed += rc != (ULONG)(_minwidth(child) == 0 &&
-                _minheight(child) == 0) || _width(child) != 0 ||
-                _height(child) != 0;
-            printf("%s zero rc=%lu box=%d,%d,%d,%d\n", names[i], rc,
-                _left(child), _top(child), _width(child), _height(child));
-            if (i == 5) {
-                hook_calls = 0;
-                hook_result = 0;
+            ULONG rc, mode;
+            for (mode = 1; mode <= 2; mode++) {
+                LONG leafwidth = leaf ? _width(leaf) : 0;
+                LONG leafheight = leaf ? _height(leaf) : 0;
+                rc = DoMethod(parent, PROBE_LAYOUT, child, mode, 10001, 70);
+                failed += rc != 0 || _width(child) != 10001;
+                if (leaf)
+                    failed += _width(leaf) != leafwidth ||
+                        _height(leaf) != leafheight;
+                printf("%s mode=%lu oversize rc=%lu box=%d,%d,%d,%d\n",
+                    names[i], mode, rc,
+                    _left(child), _top(child), _width(child), _height(child));
+                rc = DoMethod(parent, PROBE_LAYOUT, child, mode, 0, 0);
+                failed += rc != (ULONG)(_minwidth(child) == 0 &&
+                    _minheight(child) == 0) || _width(child) != 0 ||
+                    _height(child) != 0;
+                printf("%s mode=%lu zero rc=%lu box=%d,%d,%d,%d\n",
+                    names[i], mode, rc,
+                    _left(child), _top(child), _width(child), _height(child));
+                if (i == 5) {
+                    hook_calls = 0;
+                    hook_result = 0;
+                    rc = DoMethod(parent, PROBE_LAYOUT, child, mode, 100, 70);
+                    failed += rc != 0 || hook_calls != 1;
+                    printf("hook mode=%lu failure rc=%lu calls=%lu\n",
+                        mode, rc, hook_calls);
+                }
+            }
+            if (i == 1 || i == 2) {
+                LONG oldleft = _left(child), oldtop = _top(child);
+                override_layout = TRUE;
+                override_result = 0;
+                layout_calls = group_layout_calls = legacy_calls = 0;
+                rc = DoMethod(parent, PROBE_LAYOUT, child, 2, 100, 70);
+                failed += rc != 0 || _left(child) != oldleft ||
+                    _top(child) != oldtop || legacy_calls != 0 ||
+                    layout_calls + group_layout_calls != 1;
+                layout_calls = group_layout_calls = 0;
                 rc = DoMethod(parent, PROBE_LAYOUT, child, 1, 100, 70);
-                failed += rc != 0 || hook_calls != 1;
-                printf("hook failure rc=%lu calls=%lu\n", rc, hook_calls);
+                failed += rc != (ULONG)(i == 1) ||
+                    layout_calls + group_layout_calls != (ULONG)(i == 2);
+                if (i == 2)
+                    failed += _left(child) != oldleft || _top(child) != oldtop;
+                override_result = 0x12345678UL;
+                rc = DoMethod(parent, PROBE_LAYOUT, child, 2, 100, 70);
+                failed += rc != override_result;
+                layout_calls = group_layout_calls = 0;
+                rc = DoMethod(parent, PROBE_LAYOUT, child, 1, 100, 70);
+                printf("%s library override rc=%lx calls=%lu "
+                    "box=%d,%d,%d,%d\n",
+                    names[i], rc, layout_calls + group_layout_calls,
+                    _left(child), _top(child), _width(child), _height(child));
+                failed += rc != 1 ||
+                    layout_calls + group_layout_calls != (ULONG)(i == 2);
+                override_layout = FALSE;
+                printf("%s override failures=%d\n", names[i], failed);
             }
             fflush(stdout);
         }

@@ -1350,7 +1350,7 @@ static VOID RefreshWindow(Object *oWin, struct MUI_WindowData *data)
         data->wd_Flags &= ~MUIWF_RESIZING;
         _width(data->wd_RootObject) = data->wd_Width;
         _height(data->wd_RootObject) = data->wd_Height;
-        DoMethod(data->wd_RootObject, MUIM_Layout);
+        DoLayoutMethod(data->wd_RootObject);
         DoShowMethod(data->wd_RootObject);
 
         if (muiGlobalInfo(oWin)->mgi_Prefs->window_redraw ==
@@ -4267,7 +4267,7 @@ static void WindowShow(struct IClass *cl, Object *obj)
     _width(data->wd_RootObject) = data->wd_Width;
     _height(data->wd_RootObject) = data->wd_Height;
 
-    DoMethod(data->wd_RootObject, MUIM_Layout);
+    DoLayoutMethod(data->wd_RootObject);
 
     ShowRenderInfo(&data->wd_RenderInfo);
 /*      D(bug("zune_imspec_show %s %d\n", __FILE__, __LINE__)); */
@@ -4541,7 +4541,7 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
         _width(data->wd_RootObject) = data->wd_Width;
         _height(data->wd_RootObject) = data->wd_Height;
     }
-    DoMethod(current_obj, MUIM_Layout);
+    DoLayoutMethod(current_obj);
 
     if (reshow)
         DoShowMethod(current_obj);

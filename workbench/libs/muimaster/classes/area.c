@@ -2659,6 +2659,13 @@ static IPTR Area__MUIM_CreateFrameClippingRegion(
     return TRUE;
 }
 
+IPTR Area__MUIM_Layout(struct IClass *cl, Object *obj,
+    struct MUIP_Layout *msg)
+{
+    return ZuneLayout(obj, msg->left, msg->top, msg->width,
+        msg->height, msg->flags);
+}
+
 BOOPSI_DISPATCHER(IPTR, Area_Dispatcher, cl, obj, msg)
 {
     switch (msg->MethodID) {
@@ -2695,6 +2702,8 @@ BOOPSI_DISPATCHER(IPTR, Area_Dispatcher, cl, obj, msg)
     case MUIM_GoInactive:
         return Area__MUIM_GoInactive(cl, obj, (APTR)msg);
     case MUIM_Layout:
+        return Area__MUIM_Layout(cl, obj, (APTR)msg);
+    case MUIM_Zune_Layout:
         return 1;
     case MUIM_CreateShortHelp:
         return Area__MUIM_CreateShortHelp(cl, obj, (APTR)msg);

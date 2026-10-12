@@ -108,7 +108,7 @@ struct MUI_ListData
 
     LONG entries_first;         /* first visible entry */
     LONG entries_visible;       /* number of visible entries,
-                                 * determined at MUIM_Layout */
+                                 * determined at MUIM_Zune_Layout */
     LONG entries_active;
     LONG insert_position;       /* pos of the last insertion */
 
@@ -2129,10 +2129,10 @@ IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     return TRUE;
 }
 
-/****i* List.mui/MUIM_Layout *************************************************
+/****i* List.mui/MUIM_Zune_Layout *************************************************
 *
 *   NAME
-*       MUIM_Layout
+*       MUIM_Zune_Layout
 *
 ******************************************************************************
 *
@@ -2146,7 +2146,7 @@ WORD List_EntryAreaWidth(struct IClass *cl, Object *obj)
 }
 
 IPTR List__MUIM_Layout(struct IClass *cl, Object *obj,
-    struct MUIP_Layout *msg)
+    struct MUIP_Zune_Layout *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
     ULONG rc = DoSuperMethodA(cl, obj, (Msg) msg);
@@ -4742,8 +4742,8 @@ BOOPSI_DISPATCHER(IPTR, List_Dispatcher, cl, obj, msg)
         return List__MUIM_Hide(cl, obj, (struct MUIP_Hide *)msg);
     case MUIM_Draw:
         return List__MUIM_Draw(cl, obj, (struct MUIP_Draw *)msg);
-    case MUIM_Layout:
-        return List__MUIM_Layout(cl, obj, (struct MUIP_Layout *)msg);
+    case MUIM_Zune_Layout:
+        return List__MUIM_Layout(cl, obj, (struct MUIP_Zune_Layout *)msg);
     case MUIM_List_Clear:
         return List__MUIM_Clear(cl, obj, (struct MUIP_List_Clear *)msg);
     case MUIM_List_Sort:

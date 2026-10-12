@@ -99,7 +99,7 @@ BOOPSI_DISPATCHER(IPTR, Virtgroup_Dispatcher, cl, obj, msg)
         return Virtgroup__OM_NEW(cl, obj, (struct opSet *)msg);
     case OM_SET:
         return Virtgroup_Set(cl, obj, (struct opSet *)msg);
-    case MUIM_Layout:
+    case MUIM_Zune_Layout:
         return Virtgroup_Layout(cl, obj, msg);
     default:
         return DoSuperMethodA(cl, obj, msg);

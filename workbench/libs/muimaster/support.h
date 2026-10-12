@@ -63,6 +63,9 @@ IPTR XGET(Object * obj, Tag attr);
 IPTR DoSetupMethod(Object * obj, struct MUI_RenderInfo *info);
 IPTR DoShowMethod(Object * obj);
 IPTR DoHideMethod(Object * obj);
+IPTR DoLayoutMethod(Object *obj);
+IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
+    ULONG flags);
 
 /* returns next node of this node */
 void *Node_Next(APTR node);

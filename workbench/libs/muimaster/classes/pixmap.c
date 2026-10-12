@@ -782,7 +782,7 @@ BOOPSI_DISPATCHER(IPTR, Pixmap_Dispatcher, cl, obj, msg)
         return Pixmap__MUIM_Cleanup(cl, obj, (APTR) msg);
     case MUIM_AskMinMax:
         return Pixmap__MUIM_AskMinMax(cl, obj, (APTR) msg);
-    case MUIM_Layout:
+    case MUIM_Zune_Layout:
         return Pixmap__MUIM_Layout(cl, obj, (APTR) msg);
     case MUIM_Pixmap_DrawSection:
         return Pixmap__MUIM_Pixmap_DrawSection(cl, obj, (APTR) msg);
