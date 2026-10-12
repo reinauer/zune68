@@ -277,6 +277,7 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         MADF_FILLAREA | MADF_SHOWME | MADF_SHOWSELSTATE | MADF_DROPABLE;
     data->mad_HorizWeight = data->mad_VertWeight = 100;
     data->mad_InputMode = MUIV_InputMode_None;
+    data->mad_PointerType = MUIV_PointerType_Parent;
 
     /* parse initial taglist */
 
@@ -411,6 +412,10 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_Selected:
             _handle_bool_tag(data->mad_Flags, tag->ti_Data, MADF_SELECTED);
+            break;
+
+        case MUIA_PointerType:
+            data->mad_PointerType = tag->ti_Data;
             break;
 
         case MUIA_ShortHelp:
@@ -639,6 +644,10 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 data->mad_Flags &= ~MADF_PRESSED;
             break;
 
+        case MUIA_PointerType:
+            data->mad_PointerType = tag->ti_Data;
+            break;
+
         case MUIA_ShortHelp:
             data->mad_ShortHelp = (STRPTR)tag->ti_Data;
             break;
@@ -845,6 +854,10 @@ static IPTR Area__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_Selected:
         STORE = !!(data->mad_Flags & MADF_SELECTED);
+        return TRUE;
+
+    case MUIA_PointerType:
+        STORE = data->mad_PointerType;
         return TRUE;
 
     case MUIA_ShortHelp:
@@ -1907,6 +1920,10 @@ static IPTR Area__MUIM_Hide(struct IClass *cl, Object *obj,
 {
     struct MUI_AreaData *data = INST_DATA(cl, obj);
 
+    /* A subclass can dispose its borrowed pointer after Hide returns. */
+    if ((data->mad_Flags & MADF_CANDRAW) && data->mad_RenderInfo)
+        ZuneResetWindowPointer(_win(obj));
+
     zune_imspec_hide(data->mad_Background);
     if (data->mad_Flags & MADF_SHOWSELSTATE &&
             data->mad_InputMode != MUIV_InputMode_None) {
@@ -2701,6 +2718,8 @@ BOOPSI_DISPATCHER(IPTR, Area_Dispatcher, cl, obj, msg)
         return Area__MUIM_GoActive(cl, obj, (APTR)msg);
     case MUIM_GoInactive:
         return Area__MUIM_GoInactive(cl, obj, (APTR)msg);
+    case MUIM_WhichPointerType:
+        return muiAreaData(obj)->mad_PointerType;
     case MUIM_Layout:
         return Area__MUIM_Layout(cl, obj, (APTR)msg);
     case MUIM_Zune_Layout:

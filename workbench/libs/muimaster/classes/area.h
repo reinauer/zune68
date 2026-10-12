@@ -279,6 +279,59 @@ struct MUIP_Show
     STACKED ULONG MethodID;
 };
 
+#define MUIA_PointerType (MUIB_MUI | 0x0042b467) /* V20 isg LONG */
+#define MUIM_WhichPointerType (MUIB_MUI | 0x0042e212) /* V20 */
+struct MUIP_WhichPointerType
+{
+    STACKED ULONG MethodID;
+    STACKED LONG mx;
+    STACKED LONG my;
+};
+
+#define MUIV_PointerType_Parent (-1)
+#define MUIV_PointerType_Normal 0
+#define MUIV_PointerType_Busy 1
+#define MUIV_PointerType_Alias 2
+#define MUIV_PointerType_Cell 3
+#define MUIV_PointerType_ColumnResize 4
+#define MUIV_PointerType_ContextMenu 5
+#define MUIV_PointerType_Copy 6
+#define MUIV_PointerType_Cross 7
+#define MUIV_PointerType_DragAndDrop 8
+#define MUIV_PointerType_EastResize 9
+#define MUIV_PointerType_EastWestResize 10
+#define MUIV_PointerType_Hand 11
+#define MUIV_PointerType_Help 12
+#define MUIV_PointerType_Link 13
+#define MUIV_PointerType_Menu 14
+#define MUIV_PointerType_NoDrop 15
+#define MUIV_PointerType_None 16
+#define MUIV_PointerType_NorthEastResize 17
+#define MUIV_PointerType_NorthEastSouthWestResize 18
+#define MUIV_PointerType_NorthResize 19
+#define MUIV_PointerType_NorthSouthResize 20
+#define MUIV_PointerType_NorthWestResize 21
+#define MUIV_PointerType_NorthWestSouthEastResize 22
+#define MUIV_PointerType_NotAllowed 23
+#define MUIV_PointerType_Progress 24
+#define MUIV_PointerType_RowResize 25
+#define MUIV_PointerType_ScrollAll 26
+#define MUIV_PointerType_SouthEastResize 27
+#define MUIV_PointerType_SouthResize 28
+#define MUIV_PointerType_SouthWestResize 29
+#define MUIV_PointerType_Text 30
+#define MUIV_PointerType_VerticalText 31
+#define MUIV_PointerType_WestResize 32
+#define MUIV_PointerType_ZoomIn 33
+#define MUIV_PointerType_ZoomOut 34
+#define MUIV_PointerType_Pen 35
+#define MUIV_PointerType_Rotate 36
+#define MUIV_PointerType_Rubber 37
+#define MUIV_PointerType_Select 38
+#define MUIV_PointerType_Smudge 39
+#define MUIV_PointerType_Rotation MUIV_PointerType_Rotate
+#define MUIV_PointerType_Count 40
+
 /* Public MUI layout carries absolute window coordinates. */
 #define MUIM_Layout \
     (MUIB_MUI | 0x0042845b) /* MUI: V4 */
@@ -557,6 +610,7 @@ struct MUI_AreaData
     struct MUI_EventHandlerNode mad_hiehn;      /* Eventhandler to simulate MUIM_HandleInput */
 
     LONG mad_DisableCount;      /* counts number of disables */
+    IPTR mad_PointerType;       /* built-in type or borrowed pointerclass */
     /* END PRIV */
 // only 148 bytes for the struct in MUI !
 };

@@ -32,7 +32,7 @@ LIB_CFLAGS = $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) \
   -fno-common -fno-builtin -fno-strict-aliasing
 SOURCES = \
   gcc/format.c gcc/runtime.c muimaster_init.c datatypescache.c dragndrop.c font.c \
-  frame.c imspec.c imspec_vector.c imspec_gradient.c muigfx.c \
+  frame.c pointer.c imspec.c imspec_vector.c imspec_gradient.c muigfx.c \
   imspec_gradientdraw.c menu.c penspec.c support.c support_amigaos.c \
   support_classes.c textengine.c bubbleengine.c clipboard.c locale.c \
   mui_addclipping.c mui_addclipregion.c mui_allocaslrequest.c \
@@ -99,7 +99,11 @@ $(BUILD)/mui5-layout-probe: ../../../tests/native/mui5_layout_probe.c $(GENERATE
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
-check-core: core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe
+$(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERATED)
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
+	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+
+check-core: core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe $(BUILD)/mui5-pointer-probe
 	$(PYTHON) ../../../tests/check_native_init.py $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_gcc_library.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
@@ -138,6 +142,8 @@ check-core: core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe
 	$(PYTHON) ../../../tests/check_inputhandler.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_dynamic_layout.py \
+	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
+	$(PYTHON) ../../../tests/check_pointer.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_layout_vectors.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library

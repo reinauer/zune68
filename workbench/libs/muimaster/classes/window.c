@@ -35,6 +35,7 @@
 
 #include "mui.h"
 #include "support.h"
+#include "pointer.h"
 #include "classes/window.h"
 #include "classes/area.h"
 #include "imspec.h"
@@ -181,6 +182,8 @@ struct MUI_WindowData
     WORD wd_TitleMinWidth;
 #endif
     struct WindowEventCursor *wd_EventCursors;
+    struct ZunePointer *wd_Pointer;
+    IPTR wd_PointerType;
 };
 
 #ifndef WFLG_SIZEGADGET
@@ -1766,7 +1769,7 @@ static Object *ObjectUnderPointer(struct MUI_WindowData *data, Object *obj,
     Object *child;
     struct MinList *ChildList = NULL;
 
-    if (!(muiAreaData(obj)->mad_Flags & MADF_CANDRAW))
+    if (!obj || !(muiAreaData(obj)->mad_Flags & MADF_CANDRAW))
         return NULL;
 
     if (!(x >= _left(obj) && x <= _right(obj)
@@ -1797,6 +1800,53 @@ static Object *ObjectUnderPointer(struct MUI_WindowData *data, Object *obj,
         return NULL;
 
     return obj;
+}
+
+void ZuneResetWindowPointer(Object *window)
+{
+    struct MUI_WindowData *data = muiWindowData(window);
+
+    if (data->wd_RenderInfo.mri_Window && !data->wd_SleepCount &&
+        data->wd_PointerType != MUIV_PointerType_Normal)
+    {
+        SetWindowPointerA(data->wd_RenderInfo.mri_Window, NULL);
+        data->wd_PointerType = MUIV_PointerType_Normal;
+    }
+}
+
+static BOOL PointerUnderCheck(Object *obj)
+{
+    return TRUE;
+}
+
+static BOOL UpdatePointer(Object *oWin, struct MUI_WindowData *data,
+    LONG x, LONG y, struct WindowEventCursor *cursor)
+{
+    Object *under;
+    IPTR type = MUIV_PointerType_Parent;
+
+    if (!data->wd_RenderInfo.mri_Window || data->wd_SleepCount ||
+        data->wd_DragObject)
+        return TRUE;
+
+    under = ObjectUnderPointer(data, data->wd_RootObject, x, y,
+        PointerUnderCheck);
+    while (under && under != oWin)
+    {
+        type = DoMethod(under, MUIM_WhichPointerType, x, y);
+        /* Closing or disposing the window cancels this event. */
+        if (!cursor->next || !data->wd_RenderInfo.mri_Window)
+            return FALSE;
+        if (type != (IPTR)MUIV_PointerType_Parent)
+            break;
+        under = _parent(under);
+    }
+    if (type == (IPTR)MUIV_PointerType_Parent)
+        type = MUIV_PointerType_Normal;
+    if (type != data->wd_PointerType)
+        data->wd_PointerType = ZuneSetPointer(data->wd_RenderInfo.mri_Window,
+            type, &data->wd_Pointer);
+    return TRUE;
 }
 
 static BOOL ContextMenuUnderPointer(struct MUI_WindowData *data,
@@ -2826,10 +2876,13 @@ static void HandleInputEvent(Object *win, struct MUI_WindowData *data,
         event = &imsg_copy;
     }
 
+    BeginEventDispatch(data, &cursor);
     if (mask == IDCMP_MOUSEMOVE)
     {
         struct Window *iWin;
         iWin = event->IDCMPWindow;
+        if (!UpdatePointer(win, data, event->MouseX, event->MouseY, &cursor))
+            goto finished;
 
         if (ContextMenuUnderPointer(data, data->wd_RootObject,
                 event->MouseX, event->MouseY))
@@ -2842,7 +2895,6 @@ static void HandleInputEvent(Object *win, struct MUI_WindowData *data,
         }
     }
 
-    BeginEventDispatch(data, &cursor);
     for (cursor.next = data->wd_EHList.mlh_Head;
         (mn = NextEventHandler(&cursor)); )
     {
@@ -3815,6 +3867,7 @@ IPTR Window__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                     && (data->wd_SleepCount == 0))
                 {
                     SetWindowPointerA(data->wd_RenderInfo.mri_Window, NULL);
+                    data->wd_PointerType = MUIV_PointerType_Normal;
 
                     /* Only restore settings, if they have been saved
                      * during (MUIA_Window_Sleep, TRUE) call */
@@ -4436,6 +4489,11 @@ static ULONG WindowClose(struct IClass *cl, Object *obj)
     }
 
     KillHelpBubble(data, obj, BUBBLEHELP_TICKER_FIRST);
+
+    /* Reset before classes dispose any borrowed pointer images. */
+    if (data->wd_PointerType != MUIV_PointerType_Normal || data->wd_Pointer)
+        ZuneFreePointer(data->wd_RenderInfo.mri_Window, &data->wd_Pointer);
+    data->wd_PointerType = MUIV_PointerType_Normal;
 
     /* remove from window */
     if (data->wd_RootObject) DoHideMethod(data->wd_RootObject);
