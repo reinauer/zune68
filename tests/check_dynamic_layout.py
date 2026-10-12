@@ -137,11 +137,14 @@ def check(path):
         assert h.mem.r32(msg) == 2 and h.mem.r32(msg + 4) == children
         assert (h.mem.r32(msg + 20), h.mem.r32(msg + 24)) == (92, 44)
         h.events.append('layout hook')
+        h.cpu.w_reg(0, 1)
     h.trap(INTUITION - 654, get_children)
     h.mem.w_block(0x72000 - 102, b'\x2f\x28\x00\x08\x4e\x75')
     h.trap(entry, layout)
-    h.call('Group__MUIM_Layout', CLASS, OBJECT, h.words(0))
+    assert h.call('Group__MUIM_Layout', CLASS, OBJECT, h.words(0)) == 1
     assert h.events[-1] == 'layout hook'
+    h.trap(entry, lambda: h.cpu.w_reg(0, 0))
+    assert h.call('Group__MUIM_Layout', CLASS, OBJECT, h.words(0)) == 0
 
     # A custom virtual layout may shrink its requested content extent,
     # but its public virtual dimensions must still cover the viewport.

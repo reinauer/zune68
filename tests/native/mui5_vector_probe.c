@@ -11,12 +11,18 @@
 struct Library *MUIMasterBase;
 ULONG __stack = 65536;
 static ULONG show_calls, hide_calls, layout_calls;
+#define PROBE_LAYOUT 0x80001001UL
+#define PROBE_LEGACY_LAYOUT 0x80001002UL
 
 static ULONG dispatch(struct IClass *cl __asm("a0"),
     Object *obj __asm("a2"), Msg msg __asm("a1"))
 {
     switch (msg->MethodID)
     {
+    case PROBE_LAYOUT:
+        return MUI_LayoutObj(obj, 10, 20, 50, 30, 0);
+    case PROBE_LEGACY_LAYOUT:
+        return MUI_Layout(obj, 10, 20, 50, 30, 0);
     case MUIM_Show:
         show_calls++;
         return 42;
@@ -86,8 +92,8 @@ int main(int argc, char **argv)
         return 20;
     }
 
-    layout = MUI_LayoutObj(child, 10, 20, 50, 30, 0);
-    legacy_layout = MUI_Layout(child, 10, 20, 50, 30, 0);
+    layout = DoMethod(child, PROBE_LAYOUT);
+    legacy_layout = DoMethod(child, PROBE_LEGACY_LAYOUT);
     printf("layout=%lu legacy=%lu calls=%lu child=%ld,%ld,%ld,%ld\n",
         (ULONG)layout, (ULONG)legacy_layout, layout_calls,
         attr(child, MUIA_LeftEdge), attr(child, MUIA_TopEdge),
@@ -115,7 +121,7 @@ int main(int argc, char **argv)
         {
             opened_hidden = MUI_Hide(child);
             opened_shown = MUI_Show(child);
-            opened_layout = MUI_LayoutObj(child, 10, 20, 50, 30, 0);
+            opened_layout = DoMethod(child, PROBE_LAYOUT);
             printf("opened hide=%lu show=%lu layout=%lu calls=%lu,%lu,%lu child=%ld,%ld\n",
                 opened_hidden, opened_shown, (ULONG)opened_layout,
                 show_calls, hide_calls, layout_calls,

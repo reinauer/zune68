@@ -3424,6 +3424,7 @@ IPTR Group__MUIM_Layout(struct IClass *cl, Object *obj,
 {
     struct MUI_GroupData *data = INST_DATA(cl, obj);
     struct MUI_LayoutMsg lm = { 0 };
+    IPTR result = TRUE;
 
     get(data->family, MUIA_Family_List, &(lm.lm_Children));
     if (data->flags & GROUP_PAGEMODE)
@@ -3436,7 +3437,7 @@ IPTR Group__MUIM_Layout(struct IClass *cl, Object *obj,
         lm.lm_Layout.Width = _mwidth(obj);
         lm.lm_Layout.Height = _mheight(obj);
 
-        CallHookPkt(data->layout_hook, obj, &lm);
+        result = CallHookPkt(data->layout_hook, obj, &lm);
 
         if (data->flags & GROUP_VIRTUAL)
         {
@@ -3503,7 +3504,7 @@ IPTR Group__MUIM_Layout(struct IClass *cl, Object *obj,
         }
     }
 
-    return 0;
+    return result;
 }
 
 /**************************************************************************

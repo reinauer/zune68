@@ -49,7 +49,6 @@
 {
     AROS_LIBFUNC_INIT
 
-    static const struct MUIP_Layout method = { MUIM_Layout };
     Object *parent = _parent(obj);
 
 /*
@@ -68,16 +67,8 @@
         top -= val;
     }
 
-    _left(obj) = left + _mleft(parent);
-    _top(obj) = top + _mtop(parent);
-    muiAreaData(obj)->mad_VirtualTop = top + _mtop(parent);
-    _width(obj) = width;
-    _height(obj) = height;
-
-    D(bug("muimaster.library/mui_layout.c: 0x%p %ldx%ldx%ldx%ld\n",obj,_left(obj),_top(obj),_right(obj),_bottom(obj)));
-
-    DoMethodA(obj, (Msg)&method);
-    return TRUE;
+    return MUI_LayoutObj(obj, left + _mleft(parent), top + _mtop(parent),
+        width, height, flags);
 
     AROS_LIBFUNC_EXIT
 
