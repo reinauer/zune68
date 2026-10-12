@@ -293,4 +293,45 @@
 })
 
 
+#define MUI_Show(obj)    \
+({  \
+	register void *b __asm("a6") = MUIMasterBase;  \
+	register Object *p0 __asm("a0") = (obj);   \
+	register ULONG r __asm("d0");   \
+	__asm volatile ("jsr a6@(-216:W);" : "+r"(b), "=r"(r) : "r"(p0) : "d0", "d1", "a0", "a1", "fp0", "fp1", "cc", "memory");    \
+	r;   \
+})
+
+#define MUI_Hide(obj)    \
+({  \
+	register void *b __asm("a6") = MUIMasterBase;  \
+	register Object *p0 __asm("a0") = (obj);   \
+	register ULONG r __asm("d0");   \
+	__asm volatile ("jsr a6@(-222:W);" : "+r"(b), "=r"(r) : "r"(p0) : "d0", "d1", "a0", "a1", "fp0", "fp1", "cc", "memory");    \
+	r;   \
+})
+
+#define MUI_LayoutObj(obj, left, top, width, height, flags)    \
+({  \
+	register void *b __asm("a6") = MUIMasterBase;  \
+	register Object *p0 __asm("a0") = (obj);   \
+	register LONG p1 __asm("d0") = (left);   \
+	register LONG p2 __asm("d1") = (top);   \
+	register LONG p3 __asm("d2") = (width);   \
+	register LONG p4 __asm("d3") = (height);   \
+	register ULONG p5 __asm("d4") = (flags);   \
+	register BOOL r __asm("d0");   \
+	__asm volatile ("jsr a6@(-228:W);" : "+r"(b), "=r"(r) : "r"(p0), "r"(p1), "r"(p2), "r"(p3), "r"(p4), "r"(p5) : "d0", "d1", "a0", "a1", "fp0", "fp1", "cc", "memory");    \
+	r;   \
+})
+
+#define MUI_Offset(obj, x, y)    \
+({  \
+	register void *b __asm("a6") = MUIMasterBase;  \
+	register Object *p0 __asm("a0") = (obj);   \
+	register LONG p1 __asm("d0") = (x);   \
+	register LONG p2 __asm("d1") = (y);   \
+	__asm volatile ("jsr a6@(-234:W);" : "+r"(b) : "r"(p0), "r"(p1), "r"(p2) : "d0", "d1", "a0", "a1", "fp0", "fp1", "cc", "memory");    \
+})
+
 #endif /* INLINE_MUIMASTER_H */

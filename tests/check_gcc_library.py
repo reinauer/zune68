@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FD = ROOT / 'workbench/libs/muimaster/include/fd/muimaster_lib.fd'
 ENTRIES = re.findall(r'^(MUI_\w+)\([^\n]*\)\(([^)]*)\)$',
                      FD.read_text(), re.MULTILINE)
-assert len(ENTRIES) == 29, 'expected 25 public and four private FD entries'
+assert len(ENTRIES) == 35, 'expected 29 public and six private FD entries'
 BASE, STACK, STUB, RESULT = 0x10000, 0xf0000, 0x70000, 0x71000
 
 
@@ -152,7 +152,7 @@ def check(path):
         assert cpu.r_reg(0) == 42, 'SetSuperAttrs return value'
     finally:
         machine.cleanup()
-    print(f'{path.name}: Resident, 33 vectors, 25 gates, CLI, MCC ABI and '
+    print(f'{path.name}: Resident, 39 vectors, 29 gates, CLI, MCC ABI and '
           f'object iterator and superclass attributes OK; '
           f'{path.stat().st_size} file bytes, {len(data)} segment bytes')
 

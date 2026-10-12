@@ -109,5 +109,17 @@ BOOL __MUI_BeginRefresh(__reg("a6") void *, __reg("a0") struct MUI_RenderInfo *m
 void __MUI_EndRefresh(__reg("a6") void *, __reg("a0") struct MUI_RenderInfo *mri, __reg("d0") ULONG flags)="\tjsr\t-198(a6)";
 #define MUI_EndRefresh(mri, flags) __MUI_EndRefresh(MUIMasterBase, (mri), (flags))
 
+ULONG __MUI_Show(__reg("a6") void *, __reg("a0") Object *obj)="\tjsr\t-216(a6)";
+#define MUI_Show(obj) __MUI_Show(MUIMasterBase, (obj))
+
+ULONG __MUI_Hide(__reg("a6") void *, __reg("a0") Object *obj)="\tjsr\t-222(a6)";
+#define MUI_Hide(obj) __MUI_Hide(MUIMasterBase, (obj))
+
+BOOL __MUI_LayoutObj(__reg("a6") void *, __reg("a0") Object *obj, __reg("d0") LONG left, __reg("d1") LONG top, __reg("d2") LONG width, __reg("d3") LONG height, __reg("d4") ULONG flags)="\tjsr\t-228(a6)";
+#define MUI_LayoutObj(obj, left, top, width, height, flags) __MUI_LayoutObj(MUIMasterBase, (obj), (left), (top), (width), (height), (flags))
+
+void __MUI_Offset(__reg("a6") void *, __reg("a0") Object *obj, __reg("d0") LONG x, __reg("d1") LONG y)="\tjsr\t-234(a6)";
+#define MUI_Offset(obj, x, y) __MUI_Offset(MUIMasterBase, (obj), (x), (y))
+
 
 #endif /* INLINE_MUIMASTER_PROTOS_H */

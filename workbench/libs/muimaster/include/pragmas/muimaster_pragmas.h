@@ -53,5 +53,9 @@
 #pragma libcall MUIMasterBase MUI_RemoveClipRegion BA 9802
 #pragma libcall MUIMasterBase MUI_BeginRefresh C0 0802
 #pragma libcall MUIMasterBase MUI_EndRefresh C6 0802
+#pragma libcall MUIMasterBase MUI_Show D8 801
+#pragma libcall MUIMasterBase MUI_Hide DE 801
+#pragma libcall MUIMasterBase MUI_LayoutObj E4 43210806
+#pragma libcall MUIMasterBase MUI_Offset EA 10803
 
 #endif /* PRAGMAS_MUIMASTER_PRAGMAS_H */

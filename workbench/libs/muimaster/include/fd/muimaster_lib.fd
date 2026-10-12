@@ -30,4 +30,12 @@ MUI_AddClipRegion(mri,region)(a0,a1)
 MUI_RemoveClipRegion(mri,region)(a0,a1)
 MUI_BeginRefresh(mri,flags)(a0,d0)
 MUI_EndRefresh(mri,flags)(a0,d0)
+##private
+MUI_Priv5()()
+MUI_Priv6()()
+##public
+MUI_Show(obj)(a0)
+MUI_Hide(obj)(a0)
+MUI_LayoutObj(obj,left,top,width,height,flags)(a0,d0,d1,d2,d3,d4)
+MUI_Offset(obj,x,y)(a0,d0,d1)
 ##end

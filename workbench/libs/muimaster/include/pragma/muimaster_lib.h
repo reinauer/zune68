@@ -53,5 +53,9 @@
 #pragma amicall(MUIMasterBase, 0xBA, MUI_RemoveClipRegion(a0,a1))
 #pragma amicall(MUIMasterBase, 0xC0, MUI_BeginRefresh(a0,d0))
 #pragma amicall(MUIMasterBase, 0xC6, MUI_EndRefresh(a0,d0))
+#pragma amicall(MUIMasterBase, 0xD8, MUI_Show(a0))
+#pragma amicall(MUIMasterBase, 0xDE, MUI_Hide(a0))
+#pragma amicall(MUIMasterBase, 0xE4, MUI_LayoutObj(a0,d0,d1,d2,d3,d4))
+#pragma amicall(MUIMasterBase, 0xEA, MUI_Offset(a0,d0,d1))
 
 #endif /* PRAGMA_MUIMASTER_LIB_H */

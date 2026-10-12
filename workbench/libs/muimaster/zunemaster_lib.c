@@ -23,6 +23,8 @@ void MUI_Priv1(void) { }
 void MUI_Priv2(void) { }
 void MUI_Priv3(void) { }
 void MUI_Priv4(void) { }
+void MUI_Priv5(void) { }
+void MUI_Priv6(void) { }
 struct Library *LibOpen(struct MUIMasterBase_intern *base __asm("a6"))
 {
     base->library.lib_Flags &= ~LIBF_DELEXP;
@@ -103,6 +105,12 @@ static const APTR LibVectors[] = {
   MUI_VECTOR(MUI_RemoveClipRegion),
   MUI_VECTOR(MUI_BeginRefresh),
   MUI_VECTOR(MUI_EndRefresh),
+  (APTR) MUI_Priv5,
+  (APTR) MUI_Priv6,
+  MUI_VECTOR(MUI_Show),
+  MUI_VECTOR(MUI_Hide),
+  MUI_VECTOR(MUI_LayoutObj),
+  MUI_VECTOR(MUI_Offset),
   (APTR) -1
 };
 

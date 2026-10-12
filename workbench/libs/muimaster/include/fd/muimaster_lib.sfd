@@ -51,4 +51,12 @@ APTR MUI_AddClipRegion(struct MUI_RenderInfo * mri, struct Region * r) (a0,a1)
 VOID MUI_RemoveClipRegion(struct MUI_RenderInfo * mri, APTR handle) (a0,a1)
 BOOL MUI_BeginRefresh(struct MUI_RenderInfo * mri, ULONG flags) (a0,d0)
 VOID MUI_EndRefresh(struct MUI_RenderInfo * mri, ULONG flags) (a0,d0)
+==private
+VOID MUI_Priv5() ()
+VOID MUI_Priv6() ()
+==public
+ULONG MUI_Show(Object * obj) (a0)
+ULONG MUI_Hide(Object * obj) (a0)
+BOOL MUI_LayoutObj(Object * obj, LONG left, LONG top, LONG width, LONG height, ULONG flags) (a0,d0,d1,d2,d3,d4)
+VOID MUI_Offset(Object * obj, LONG x, LONG y) (a0,d0,d1)
 ==end

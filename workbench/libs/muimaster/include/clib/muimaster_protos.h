@@ -80,6 +80,10 @@ APTR MUI_AddClipRegion(struct MUI_RenderInfo *mri, struct Region *r);
 void MUI_RemoveClipRegion(struct MUI_RenderInfo *mri, APTR handle);
 BOOL MUI_BeginRefresh(struct MUI_RenderInfo *mri, ULONG flags);
 void MUI_EndRefresh(struct MUI_RenderInfo *mri, ULONG flags);
+ULONG MUI_Show(Object *obj);
+ULONG MUI_Hide(Object *obj);
+BOOL MUI_LayoutObj(Object *obj, LONG left, LONG top, LONG width, LONG height, ULONG flags);
+void MUI_Offset(Object *obj, LONG x, LONG y);
 
 #ifdef __cplusplus
 }
