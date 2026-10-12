@@ -57,8 +57,8 @@ python3 tools/prepare_aminet.py --tag v2026.10.12
   not a commitment to maintain a SAS/C build.
 
 The source revision is
-`b01e5dbafee017684634e78d15e12668fff96829` (6 October 2026).
-The last retained component change is from 5 October 2026. Unrelated AROS
+`d7b4f80e7ba1a68a5b20a0c9968f923eac068a08` (11 October 2026).
+The last retained component change is from 11 October 2026. Unrelated AROS
 commits are pruned, so the filtered tip represents the selected tree at
 the source revision rather than a one-to-one copy of the AROS tip commit.
 
@@ -101,7 +101,7 @@ python3 -m venv /tmp/zune68-filter-env
 /tmp/zune68-filter-env/bin/pip install git-filter-repo==2.47.0
 /tmp/zune68-filter-env/bin/python tools/upstream/import-aros.py \
     --source "$HOME/git/AROS" \
-    --revision b01e5dbafee017684634e78d15e12668fff96829 \
+    --revision d7b4f80e7ba1a68a5b20a0c9968f923eac068a08 \
     --output /tmp/zune68-upstream-import
 ```
 
