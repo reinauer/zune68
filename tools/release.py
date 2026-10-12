@@ -17,7 +17,8 @@ from components import CLASS_FILES, EXAMPLES, LANGUAGES, catalog_paths
 LIBRARIES = ('zunemaster.library', 'muimaster.library')
 
 
-def library_version(path):
+def component_version(path):
+    """The version a bundled component's $VER string reports for its name."""
     data = path.read_bytes()
     if data[:4] != struct.pack('>I', 1011):
         raise ValueError(f'{path}: expected an Amiga Hunk load file')
@@ -26,6 +27,38 @@ def library_version(path):
     if len(versions) != 1:
         raise ValueError(f'{path}: missing or ambiguous matching $VER string')
     return '.'.join(part.decode() for part in versions.pop())
+
+
+def library_version(path):
+    """Return (library version, release date as YYYY.MM.DD, stage) from $VER.
+
+    The library version follows the AROS source baseline; Zune68 releases
+    are identified by the $VER date, and the stage names the release line.
+    """
+    data = path.read_bytes()
+    if data[:4] != struct.pack('>I', 1011):
+        raise ValueError(f'{path}: expected an Amiga Hunk load file')
+    pattern = (rb'\$VER: ' + re.escape(path.name.encode()) +
+               rb' (\d+\.\d+) \((\d\d)\.(\d\d)\.(\d{4})\)(?: Zune68 ([A-Za-z0-9 ]+?))?[\r\n\0]')
+    versions = set(re.findall(pattern, data))
+    if len(versions) != 1:
+        raise ValueError(f'{path}: missing or ambiguous matching $VER string')
+    version, day, month, year, stage = versions.pop()
+    return (version.decode(), f'{year.decode()}.{month.decode()}.{day.decode()}',
+            stage.decode())
+
+
+def identity(build_dir):
+    """The shared identity of both library names, used for release naming."""
+    versions = [library_version(build_dir / name) for name in LIBRARIES]
+    if versions[0] != versions[1]:
+        raise ValueError('library versions differ; rebuild both variants')
+    return versions[0]
+
+
+def substitute(text, version, date, stage):
+    return (text.replace('[VERSION]', version).replace('[RELEASE]', date)
+            .replace('[STAGE]', stage))
 
 
 def component_files(build_dir):
@@ -43,7 +76,7 @@ def component_files(build_dir):
         if not (build_dir / name).is_file():
             raise ValueError(f'{build_dir}: missing {name}')
     for name in ['Prefs/Zune', *['Libs/MUI/' + n for n in CLASS_FILES]]:
-        library_version(build_dir / name)
+        component_version(build_dir / name)
     return files
 
 
@@ -98,9 +131,7 @@ def strip_binaries(package, strip):
 
 def release(build_dir, output_dir, lha, full=True, strip='m68k-amigaos-strip'):
     build_dir, output_dir = build_dir.resolve(), output_dir.resolve()
-    versions = [library_version(build_dir / name) for name in LIBRARIES]
-    if versions[0] != versions[1]:
-        raise ValueError('library versions differ; rebuild both variants')
+    version, date, line = identity(build_dir)
     if not (build_dir / 'opentest').is_file():
         raise ValueError(f'{build_dir}: missing opentest')
     files = component_files(build_dir) if full else []
@@ -113,9 +144,9 @@ def release(build_dir, output_dir, lha, full=True, strip='m68k-amigaos-strip'):
     if strip and not stripper:
         raise ValueError(f'{strip}: Amiga strip tool not found; set STRIP or --strip')
     output_dir.mkdir(parents=True, exist_ok=True)
-    archive = output_dir / f'Zune68-{versions[0]}-amigaos3-m68k.lha'
-    readme = (ROOT / 'Zune68.readme').read_text(encoding='ascii').replace(
-        '[VERSION]', versions[0])
+    archive = output_dir / f'Zune68-{date}-amigaos3-m68k.lha'
+    readme = substitute((ROOT / 'Zune68.readme').read_text(encoding='ascii'),
+                        version, date, line)
     # Always assemble a fresh tree: removed files must not survive a release.
     # Publish only after archiving and CRC checking complete successfully.
     with tempfile.TemporaryDirectory(prefix='.zune68-', dir=output_dir) as temp:
@@ -133,8 +164,12 @@ def release(build_dir, output_dir, lha, full=True, strip='m68k-amigaos-strip'):
             (package / 'Tests/compatcheck').chmod(0o755)
         shutil.copyfile(ROOT / 'LICENSE', package / 'LICENSE')
         (package / 'Zune68.readme').write_text(readme, encoding='ascii')
-        for name in ('ReadMe', 'ReadMe.info', 'Install.info', 'Compatibility'):
+        for name in ('ReadMe.info', 'Install.info'):
             shutil.copyfile(ROOT / 'dist' / name, package / name)
+        for name in ('ReadMe', 'Compatibility'):
+            (package / name).write_text(substitute(
+                (ROOT / 'dist' / name).read_text(encoding='ascii'),
+                version, date, line), encoding='ascii')
         (package / 'Install').write_bytes(install_script(files).encode('latin1'))
         for name in files:
             target = package / name

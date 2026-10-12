@@ -16,7 +16,7 @@ void L_ExpungeLib(struct Library *base);
 #define LIBNAME "zunemaster.library"
 #endif
 #define IDSTRING "$VER: " LIBNAME " " ZUNE68_LIBRARY_VERSION_STRING \
-    " (" ZUNE68_LIBRARY_DATE ") Zune68 Alpha 1\r\n"
+    " (" ZUNE68_LIBRARY_DATE ") Zune68 " ZUNE68_RELEASE_STAGE "\r\n"
 
 ULONG LibReserved(void) { return 0; }
 void MUI_Priv1(void) { }

@@ -5,7 +5,8 @@ Zune for classic AmigaOS 3, starting from current AROS source.
 The native GCC port builds both library names, Zune Prefs, 18 optional
 MCC/MCP plugins, Rawimage/Pixmap image classes, catalogs, SDK headers,
 examples and an Installer package.
-It uses library version 19.81 from the source baseline and remains an alpha.
+The library keeps the version number of the AROS source baseline (19.81);
+releases are identified by date and the current line is a beta.
 
 The native runtime supplies register gates, explicit resource ownership,
 safe class and notification lifetimes, classic application services, and
@@ -37,13 +38,13 @@ These MUI applications have been run with Zune68 on AmigaOS 3:
 
 ## CI and releases
 
-GitHub Actions builds and checks branch pushes and pull requests. A version
-tag such as `v19.81` creates a draft alpha release with an LHA and Aminet
-readme. Publishing the release uploads those same assets to Aminet as
+GitHub Actions builds and checks branch pushes and pull requests. A release
+date tag such as `v2026.10.12`, matching the date in the library's version
+string, creates a draft pre-release with an LHA and Aminet readme. Publishing the release uploads those same assets to Aminet as
 `Zune68.lha` and `Zune68.readme`. Local preparation without uploading:
 
 ```sh
-python3 tools/prepare_aminet.py --tag v19.81
+python3 tools/prepare_aminet.py --tag v2026.10.12
 ```
 
 ## Branches

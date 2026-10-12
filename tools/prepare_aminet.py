@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare fixed-name Aminet files from a versioned release, without uploading."""
+"""Prepare fixed-name Aminet files from a dated release, without uploading."""
 import argparse
 import re
 import shutil
@@ -7,15 +7,15 @@ from pathlib import Path
 
 
 def prepare(release_dir, output_dir, tag):
-    if not re.fullmatch(r'v[0-9]+\.[0-9]+', tag):
-        raise ValueError('expected a library version tag such as v19.81')
+    if not re.fullmatch(r'v[0-9]{4}\.[0-9]{2}\.[0-9]{2}', tag):
+        raise ValueError('expected a release date tag such as v2026.10.12')
     version = tag[1:]
     archive = release_dir / f'Zune68-{version}-amigaos3-m68k.lha'
     readme = archive.with_suffix('.readme')
     text = readme.read_text(encoding='ascii')
     fields = dict(re.findall(r'^([A-Za-z-]+):\s*([^\n]*)$',
                              text.split('\n\n', 1)[0], re.MULTILINE))
-    readme_version = re.fullmatch(r'([0-9]+\.[0-9]+)(?: - .+)?',
+    readme_version = re.fullmatch(r'([0-9]{4}\.[0-9]{2}\.[0-9]{2})(?: - .+)?',
                                   fields.get('Version', ''))
     if not readme_version or readme_version.group(1) != version:
         raise ValueError('release tag and Aminet readme version differ')

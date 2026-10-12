@@ -11,16 +11,20 @@ and newer MUI features without an identified application need are deferred.
 
 Version policy
 --------------
-The two native library names share release 19.81 (Alpha 1). Built-in
-classes retain implementation version 1.1, including inherited Notify
-version queries. These numbers identify this implementation; they do not
-promise every feature of a proprietary MUI release with the same number.
-External MCCs retain their own version reporting. Do not raise class
-versions merely to bypass an application's feature checks.
+The two native library names share library version [VERSION], the number
+of the retained AROS source baseline, and the release [RELEASE] ([STAGE]).
+Zune68 releases are identified by the date in the version string, not by
+a version number of their own: the library number stays what upstream
+AROS assigns, and the other modules in the collection keep their own
+numbers. Built-in classes retain implementation version 1.1, including
+inherited Notify version queries. These numbers identify this
+implementation; they do not promise every feature of a proprietary MUI
+release with the same number. External MCCs retain their own version
+reporting. Do not raise class versions merely to bypass an application's
+feature checks.
 
 Native release and built-in version definitions are centralized in
-native_version.h, used by the native GCC build. Version 19.81 follows
-the retained AROS source baseline; Alpha 1 identifies this native port.
+native_version.h, used by the native GCC build.
 
 Implemented areas with isolated linked-code checks
 -------------------------------------------------
@@ -90,8 +94,8 @@ RTG effects or every legacy Toolbar application's behavior.
 Application results
 -------------------
 IBrowse 3.0a basic functionality is working and the browser is pretty
-usable. It was tested on AmigaOS 3.2.3 with a standard A1200 setup.
-XSysInfo works as well. All 12 built-in Prefs pages display images;
+usable. YAM 2.x, Voyager 3.2 and XSysInfo run as well. All 12 built-in
+Prefs pages display images;
 MCP pages appear once, and Prefs Test/Cancel returns successfully.
 
 In IBrowse, page rendering, URL editing, links, HTTP downloads, tab
@@ -100,7 +104,7 @@ Settings pages open and Cancel restores the underlying page. Native
 list-tree glyphs and some settings layouts differ from original MUI.
 Newstring.mcc clipboard behavior matches original MUI 3.9.
 
-This is an alpha, and there are many ways to improve it. Settings edits,
+This is a beta, and there are many ways to improve it. Settings edits,
 form handling, more applications, AmigaOS 3.1, 68000 machines and
 CyberGraphX truecolor rendering all need more testing. We need testers:
 please report what works and what doesn't.

@@ -1,5 +1,5 @@
-Zune68 19.81 - Alpha 1 for AmigaOS 3.x / m68k
-==========================================
+Zune68 [RELEASE] - [STAGE] for AmigaOS 3.x / m68k
+===============================================
 
 Zune68 is a user interface library based on AROS Zune, targeting
 compatibility with classic MUI applications.
@@ -80,9 +80,11 @@ that output is deliberately excluded from performance measurements.
 
 Status and source
 -----------------
-This is the first alpha release. IBrowse 3.0a basic functionality is
-working and the browser is pretty usable. It was tested on AmigaOS 3.2.3
-with a standard A1200 setup. XSysInfo works as well.
+This is the first beta release, dated [RELEASE]. Its muimaster.library
+reports version [VERSION], the number of the AROS source baseline; Zune68
+releases are told apart by the date in the version string, so Installer
+shows an upgrade as a same-version replacement. IBrowse 3.0a, YAM 2.x,
+Voyager 3.2 and XSysInfo run; IBrowse is pretty usable.
 
 All 12 built-in Prefs pages display images; MCP pages appear once. Prefs
 Test/Cancel and TheBarDemo work. See Compatibility for application results
