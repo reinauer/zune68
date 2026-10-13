@@ -16,6 +16,11 @@
 #include <proto/layers.h>
 
 #include "muimaster_intern.h"
+#include "mui.h"
+#include "support.h"
+#include "menu.h"
+#include "datatypescache.h"
+#include <proto/muimaster.h>
 
 extern struct Library *MUIMasterBase;
 
@@ -106,8 +111,20 @@ void Characterize(struct Menu *menu)
 #define AMIGAKEY_KEY_SPACING     4      /* GadTools assumes this, too */
 #define AMIGAKEY_BORDER_SPACING  2
 
+struct MenuImage
+{
+    struct MenuImage *next;
+    struct MenuItem *item;
+    struct Image *image;
+    struct dt_node *picture;
+    WORD width, height, left;
+};
+
 struct MenuHandlerData
 {
+    struct MenuImage *images;
+    WORD popupx, popupy;
+    BOOL modal;
     struct Window *win;
     struct Screen *scr;
     struct DrawInfo *dri;
@@ -648,7 +665,7 @@ static void MakeMenuBarWin(struct MenuHandlerData *mhd)
     win_tags[6].ti_Tag = WA_CustomScreen;
     win_tags[6].ti_Data = (IPTR) mhd->scr;
     win_tags[7].ti_Tag = WA_BackFill;
-    win_tags[7].ti_Tag = (IPTR) LAYERS_NOBACKFILL;
+    win_tags[7].ti_Data = (IPTR) LAYERS_NOBACKFILL;
     win_tags[8].ti_Tag = TAG_DONE;
 
 #if MENUS_UNDERMOUSE
@@ -674,12 +691,16 @@ static void MakeMenuBarWin(struct MenuHandlerData *mhd)
     win_tags[3].ti_Data =
         mhd->menubaritemheight * mhd->nummenubaritems +
         mhd->scr->MenuVBorder * 2;
-    win_tags[0].ti_Data = mhd->scr->MouseX - win_tags[2].ti_Data / 2;
-    win_tags[1].ti_Data = mhd->scr->MouseY;
+    win_tags[0].ti_Data = mhd->popupx < 0 ?
+        mhd->scr->MouseX - win_tags[2].ti_Data / 2 : mhd->popupx;
+    win_tags[1].ti_Data = mhd->popupy < 0 ? mhd->scr->MouseY : mhd->popupy;
 
 #endif
 
     mhd->menubarwin = OpenWindowTagList(0, win_tags);
+    if (!mhd->menubarwin) return;
+    if (mhd->menubarwin && mhd->modal)
+        ModifyIDCMP(mhd->menubarwin, IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE | IDCMP_RAWKEY);
 
     for (menu = mhd->menu; menu; menu = menu->NextMenu)
     {
@@ -694,6 +715,11 @@ static void KillMenuBarWin(struct MenuHandlerData *mhd)
 {
     if (mhd->menubarwin)
     {
+        if (mhd->menubarwin->UserPort)
+        {
+            struct Message *msg;
+            while ((msg = GetMsg(mhd->menubarwin->UserPort))) ReplyMsg(msg);
+        }
         CloseWindow(mhd->menubarwin);
         mhd->menubarwin = NULL;
     }
@@ -846,7 +872,7 @@ static void MakeMenuWin(struct MenuHandlerData *mhd)
     win_tags[6].ti_Tag = WA_CustomScreen;
     win_tags[6].ti_Data = (IPTR) mhd->scr;
     win_tags[7].ti_Tag = WA_BackFill;
-    win_tags[7].ti_Tag = (IPTR) LAYERS_NOBACKFILL;
+    win_tags[7].ti_Data = (IPTR) LAYERS_NOBACKFILL;
     win_tags[8].ti_Tag = TAG_DONE;
 
 
@@ -868,6 +894,10 @@ static void MakeMenuWin(struct MenuHandlerData *mhd)
             item = item->NextItem;
         }
         mhd->menuwin = OpenWindowTagList(0, win_tags);
+        if (!mhd->menuwin) return;
+        if (mhd->menuwin && mhd->modal)
+            ModifyIDCMP(mhd->menuwin,
+                IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE | IDCMP_RAWKEY);
 
         mhd->maxcommkeywidth_menu = CalcMaxCommKeyWidth(mhd->menuwin, mhd);
 
@@ -884,6 +914,11 @@ static void KillMenuWin(struct MenuHandlerData *mhd)
     {
         struct MenuItem *item;
 
+        if (mhd->menuwin->UserPort)
+        {
+            struct Message *msg;
+            while ((msg = GetMsg(mhd->menuwin->UserPort))) ReplyMsg(msg);
+        }
         CloseWindow(mhd->menuwin);
         mhd->menuwin = NULL;
 
@@ -940,7 +975,7 @@ static void MakeSubMenuWin(struct MenuHandlerData *mhd)
     win_tags[6].ti_Tag = WA_CustomScreen;
     win_tags[6].ti_Data = (IPTR) mhd->scr;
     win_tags[7].ti_Tag = WA_BackFill;
-    win_tags[7].ti_Tag = (IPTR) LAYERS_NOBACKFILL;
+    win_tags[7].ti_Data = (IPTR) LAYERS_NOBACKFILL;
     win_tags[8].ti_Tag = TAG_DONE;
 
     GetMenuBox(mhd->menubarwin, item, &mhd->submenubox.MinX,
@@ -965,6 +1000,9 @@ static void MakeSubMenuWin(struct MenuHandlerData *mhd)
     }
 
     mhd->submenuwin = OpenWindowTagList(0, win_tags);
+    if (!mhd->submenuwin) return;
+    if (mhd->submenuwin && mhd->modal)
+        ModifyIDCMP(mhd->submenuwin, IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE | IDCMP_RAWKEY);
 
     mhd->maxcommkeywidth_submenu =
         CalcMaxCommKeyWidth(mhd->submenuwin, mhd);
@@ -977,6 +1015,11 @@ static void KillSubMenuWin(struct MenuHandlerData *mhd)
 {
     if (mhd->submenuwin)
     {
+        if (mhd->submenuwin->UserPort)
+        {
+            struct Message *msg;
+            while ((msg = GetMsg(mhd->submenuwin->UserPort))) ReplyMsg(msg);
+        }
         CloseWindow(mhd->submenuwin);
         mhd->submenuwin = NULL;
 
@@ -1063,6 +1106,22 @@ static void RenderItem(struct MenuItem *item, WORD itemtype,
         }
 
     }                           /* if (item->ItemFill) */
+
+    {
+        struct MenuImage *image;
+        for (image = mhd->images; image; image = image->next)
+            if (image->item == item)
+            {
+                LONG x = offx + item->LeftEdge + image->left;
+                LONG y = offy + item->TopEdge + (item->Height - image->height) / 2;
+                if (image->image)
+                    DrawImageState(rp, image->image, x, y,
+                        enabled ? IDS_NORMAL : IDS_DISABLED, mhd->dri);
+                else if (image->picture)
+                    dt_put_on_rastport(image->picture, rp, x, y);
+                break;
+            }
+    }
 
     RenderCheckMark(item, itemtype, mhd);
     RenderAmigaKey(item, itemtype, mhd);
@@ -1507,7 +1566,80 @@ struct ZMenu
     struct MenuHandlerData mhd;
 };
 
+/* Reserve a shared image column per level, retaining GadTools' text,
+ * checkmark and shortcut layout. Pictures are owned by this popup only. */
+static void MenuImages(struct MenuHandlerData *mhd, struct MenuItem *items)
+{
+    struct MenuItem *item;
+    struct MenuImage *image;
+    WORD column = 0, extra_top = 0;
+    for (item = items; item; item = item->NextItem)
+    {
+        Object *obj = (Object *)GTMENUITEM_USERDATA(item);
+        struct Image *boopsi = NULL;
+        CONST_STRPTR aiss = NULL;
+        struct dt_node *picture = NULL;
+        if (item->SubItem) MenuImages(mhd, item->SubItem);
+        if (!obj || !(item->Flags & ITEMTEXT)) continue;
+        get(obj, MUIA_Menuitem_Image, &boopsi);
+        get(obj, MUIA_Menuitem_AISSName, &aiss);
+        if (!boopsi && aiss && *aiss)
+        {
+            char *path = AllocVec(strlen(aiss) + 10, MEMF_ANY);
+            if (path)
+            {
+                strcpy(path, "TBIMAGES:");
+                strcat(path, aiss);
+                picture = dt_load_picture(path, mhd->scr);
+                FreeVec(path);
+            }
+        }
+        if (!boopsi && !picture) continue;
+        image = AllocVec(sizeof(*image), MEMF_CLEAR);
+        if (!image)
+        {
+            if (picture) dt_dispose_picture(picture);
+            continue;
+        }
+        image->item = item;
+        image->image = boopsi;
+        image->picture = picture;
+        image->width = boopsi ? boopsi->Width : dt_width(picture);
+        image->height = boopsi ? boopsi->Height : dt_height(picture);
+        image->left = ((struct IntuiText *)item->ItemFill)->LeftEdge;
+        image->next = mhd->images;
+        mhd->images = image;
+        column = max(column, image->width + 4);
+    }
+    for (item = items; item; item = item->NextItem)
+    {
+        item->TopEdge += extra_top;
+        item->Width += column;
+        if (item->Flags & ITEMTEXT)
+        {
+            struct IntuiText *text = item->ItemFill;
+            text->LeftEdge += column;
+            for (image = mhd->images; image; image = image->next)
+                if (image->item == item && image->height + 2 > item->Height)
+                {
+                    WORD extra = image->height + 2 - item->Height;
+                    item->Height += extra;
+                    text->TopEdge += extra / 2;
+                    extra_top += extra;
+                    break;
+                }
+        }
+    }
+}
+
 struct ZMenu *zune_open_menu(struct Window *wnd, struct NewMenu *newmenu)
+{
+    return zune_open_menu_at(wnd, newmenu, -1, -1);
+}
+
+struct ZMenu *zune_open_menu_at(struct Window *wnd, struct NewMenu *newmenu,
+    LONG x, LONG y)
+
 {
     struct TagItem tags[] = {
         {GTMN_NewLookMenus, TRUE},
@@ -1530,20 +1662,40 @@ struct ZMenu *zune_open_menu(struct Window *wnd, struct NewMenu *newmenu)
 
     if (!(menu = CreateMenusA(newmenu, NULL)))
     {
+        FreeVisualInfo(visinfo);
         FreeVec(zmenu);
         return NULL;
     }
 
-    LayoutMenusA(menu, visinfo, tags);
+    if (!LayoutMenusA(menu, visinfo, tags))
+    {
+        FreeVisualInfo(visinfo);
+        FreeMenus(menu);
+        FreeVec(zmenu);
+        return NULL;
+    }
     FreeVisualInfo(visinfo);
-
-    Characterize(menu);
-    CalculateDims(wnd, menu);
 
     zmenu->mhd.win = wnd;
     zmenu->mhd.scr = zmenu->mhd.win->WScreen;
     zmenu->mhd.dri = GetScreenDrawInfo(zmenu->mhd.scr);
     zmenu->mhd.menu = menu;
+    if (!zmenu->mhd.dri)
+    {
+        FreeMenus(menu);
+        FreeVec(zmenu);
+        return NULL;
+    }
+    zmenu->mhd.modal = x >= 0 && y >= 0;
+    zmenu->mhd.popupx = x;
+    zmenu->mhd.popupy = y;
+    {
+        struct Menu *entry;
+        for (entry = menu; entry; entry = entry->NextMenu)
+            MenuImages(&zmenu->mhd, entry->FirstItem);
+    }
+    Characterize(menu);
+    CalculateDims(wnd, menu);
     zmenu->mhd.activemenunum = -1;
     zmenu->mhd.activeitemnum = -1;
     zmenu->mhd.activesubitemnum = -1;
@@ -1554,6 +1706,11 @@ struct ZMenu *zune_open_menu(struct Window *wnd, struct NewMenu *newmenu)
     zmenu->mhd.firstmenupick = MENUNULL;
 
     MakeMenuBarWin(&zmenu->mhd);
+    if (!zmenu->mhd.menubarwin)
+    {
+        zune_close_menu(zmenu);
+        return NULL;
+    }
     HandleMouseMove(&zmenu->mhd);
     return zmenu;
 }
@@ -1567,6 +1724,38 @@ void zune_mouse_update(struct ZMenu *zmenu, int left_down)
         HandleMouseMove(&zmenu->mhd);
     else
         HandleMouseClick(&zmenu->mhd, 0);
+}
+
+int zune_poll_menu(struct ZMenu *zmenu, struct MenuItem **selected)
+{
+    int i;
+    for (i = 0; i < 3; i++)
+    {
+        struct Window *win = i == 0 ? zmenu->mhd.menubarwin :
+            i == 1 ? zmenu->mhd.menuwin : zmenu->mhd.submenuwin;
+        struct IntuiMessage *msg;
+        if (!win || !win->UserPort) continue;
+        while ((msg = (APTR)GetMsg(win->UserPort)))
+        {
+            ULONG type = msg->Class;
+            UWORD code = msg->Code;
+            ReplyMsg((struct Message *)msg);
+            if (type == IDCMP_RAWKEY && code == 0x45) return -1;
+            if (type == IDCMP_MOUSEBUTTONS &&
+                (code == SELECTUP || code == MENUUP))
+            {
+                *selected = zune_leave_menu(zmenu);
+                return *selected ? 1 : -1;
+            }
+            if (type == IDCMP_MOUSEMOVE)
+            {
+                HandleMouseMove(&zmenu->mhd);
+                /* Movement may have closed this submenu. */
+                break;
+            }
+        }
+    }
+    return 0;
 }
 
 struct MenuItem *zune_leave_menu(struct ZMenu *zmenu)
@@ -1586,6 +1775,13 @@ void zune_close_menu(struct ZMenu *zmenu)
     KillMenuWin(&zmenu->mhd);
     KillSubMenuWin(&zmenu->mhd);
 
+    while (zmenu->mhd.images)
+    {
+        struct MenuImage *image = zmenu->mhd.images;
+        zmenu->mhd.images = image->next;
+        if (image->picture) dt_dispose_picture(image->picture);
+        FreeVec(image);
+    }
     FreeMenus(zmenu->mhd.menu);
     zmenu->mhd.menu = 0;
 

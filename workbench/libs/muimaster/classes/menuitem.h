@@ -14,6 +14,20 @@
 #define MUIB_Menustrip         (MUIB_ZUNE | 0x00001a00)
 
 /*** Attributes *************************************************************/
+#define MUIM_Menustrip_InitChange 0x8042dcd9
+#define MUIM_Menustrip_ExitChange 0x8042ce4d
+#define MUIM_Menustrip_Popup      0x80420e76
+struct MUIP_Menustrip_InitChange { STACKED ULONG MethodID; };
+struct MUIP_Menustrip_ExitChange { STACKED ULONG MethodID; };
+struct MUIP_Menustrip_Popup
+{
+    STACKED ULONG MethodID;
+    STACKED Object *parent;
+    STACKED ULONG flags;
+    STACKED LONG x;
+    STACKED LONG y;
+};
+#define MUIA_Menustrip_CaseSensitive 0x8042d718 /* V20 i.g BOOL */
 #define MUIA_Menustrip_Enabled (MUIB_MUI | 0x0042815b)    /* MUI: V8  isg BOOL */
 
 
@@ -26,6 +40,7 @@
 #define MUIB_Menu         (MUIB_ZUNE | 0x00001b00)
 
 /*** Attributes *************************************************************/
+#define MUIA_Menu_CopyStrings 0x8042dbe2 /* V20 i.. BOOL */
 #define MUIA_Menu_Enabled (MUIB_MUI | 0x0042ed48) /* MUI: V8  isg BOOL   */
 #define MUIA_Menu_Title   (MUIB_MUI | 0x0042a0e3) /* MUI: V8  isg STRPTR */
 
@@ -39,6 +54,10 @@
 #define MUIB_Menuitem               (MUIB_ZUNE | 0x00001c00)
 
 /*** Attributes *************************************************************/
+#define MUIA_Menuitem_CopyStrings 0x8042dc1b /* V16 i.. BOOL */
+#define MUIA_Menuitem_AISSName    0x804248f2 /* V21 isg STRPTR */
+#define MUIA_Menuitem_Image       0x8042080b /* V20 isg struct Image * */
+#define MUIA_Menuitem_FreeImage   0x8042f95f /* V20 i.. BOOL */
 #define MUIA_Menuitem_Checked \
     (MUIB_MUI | 0x0042562a)       /* MUI: V8  isg BOOL              */
 #define MUIA_Menuitem_Checkit \

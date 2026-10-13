@@ -13,6 +13,8 @@
 #define MUIB_Image                  (MUIB_ZUNE | 0x00001300)
 
 /*** Attributes *************************************************************/
+#define MUIA_Image_CopySpec    0x8042a784 /* V20 i.. BOOL */
+#define MUIA_Image_BuiltinSpec 0x8042b907 /* V21 i.. ULONG */
 #define MUIA_Image_FontMatch \
     (MUIB_MUI | 0x0042815d)       /* MUI: V4  i.. BOOL                */
 #define MUIA_Image_FontMatchHeight \

@@ -51,8 +51,38 @@ struct MUI_ImageData
     Object *prop; /* private hack to use prop images */
     LONG   state; /* see IDS_* in intuition/imageclass.h */
     ULONG  specnr;
+    ULONG builtin;
 };
 
+
+static BOOL ImageSetSpec(struct MUI_ImageData *data, IPTR spec)
+{
+    /* Retain Zune's eager copy for existing MCCs with temporary specs.
+     * MUIA_Image_CopySpec=TRUE therefore requires no extra lifetime path. */
+    char *text = (char *)zune_image_spec_duplicate(spec);
+    if (!text && spec) return FALSE;
+    if (data->spec && data->spec != text)
+        zune_image_spec_free(data->spec);
+    data->spec = text;
+    data->specnr = spec;
+    return TRUE;
+}
+
+static struct MUI_ImageSpec_intern *ImageSetupSpec(struct MUI_ImageData *data,
+    struct MUI_RenderInfo *mri)
+{
+    struct MUI_ImageSpec_intern *image =
+        data->spec ? zune_imspec_setup((IPTR)data->spec, mri) : NULL;
+    BOOL missing = !image ||
+        (image->type == IST_BRUSH && !image->u.brush.dt[0]) ||
+        (image->type == IST_BITMAP && !image->u.bitmap.dt);
+    if (missing && data->builtin < MUII_Count)
+    {
+        if (image) zune_imspec_cleanup(image);
+        image = zune_imspec_setup(data->builtin, mri);
+    }
+    return image;
+}
 
 /**************************************************************************
  OM_NEW
@@ -74,6 +104,7 @@ IPTR Image__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     data = INST_DATA(cl, obj);
     data->state = IDS_NORMAL;
+    data->builtin = GetTagData(MUIA_Image_BuiltinSpec, (IPTR)-1, msg->ops_AttrList);
 
     /* parse initial taglist */
 
@@ -102,27 +133,10 @@ IPTR Image__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 _handle_bool_tag(data->flags, tag->ti_Data, MIF_FREEVERT);
                 break;
             case MUIA_Image_Spec:
+                if (!ImageSetSpec(data, tag->ti_Data))
                 {
-                    char *spec;
-                    char spec_buf[20];
-
-                    data->specnr = tag->ti_Data;
-
-                    if (tag->ti_Data >= MUII_WindowBack && tag->ti_Data < MUII_BACKGROUND)
-                    {
-                        sprintf(spec_buf,"6:%ld",tag->ti_Data);
-                        spec = spec_buf;
-                    }
-                    else if (tag->ti_Data >= MUII_BACKGROUND && tag->ti_Data < MUII_LASTPAT)
-                    {
-                        sprintf(spec_buf,"0:%ld",tag->ti_Data);
-                        spec = spec_buf;
-                    }
-                    else
-                    {
-                        spec = (char*)tag->ti_Data;
-                    }
-                    data->spec = StrDup(spec);
+                    CoerceMethod(cl, obj, OM_DISPOSE);
+                    return 0;
                 }
                 break;
 
@@ -192,10 +206,7 @@ IPTR Image__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 }
                 break;
             case MUIA_Image_Spec:
-                data->specnr = tag->ti_Data;
-                if (data->spec)
-                    zune_image_spec_free(data->spec);
-                data->spec = zune_image_spec_duplicate(tag->ti_Data);
+                if (!ImageSetSpec(data, tag->ti_Data)) break;
 
                 if ((_flags(obj) & MADF_CANDRAW) && data->img)
                     zune_imspec_hide(data->img);
@@ -204,7 +215,7 @@ IPTR Image__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 {
                     if (data->img)
                         zune_imspec_cleanup(data->img);
-                    data->img = zune_imspec_setup((IPTR)data->spec, muiRenderInfo(obj));
+                    data->img = ImageSetupSpec(data, muiRenderInfo(obj));
                     // FIXME: quick hack to not draw the background for gradients. It should really be generalized
                     if (data->img)
                     {
@@ -296,9 +307,9 @@ IPTR Image__MUIM_Setup(struct IClass *cl, Object *obj, struct MUIP_Setup *msg)
 
     }
 
-    if (data->spec)
+    if (data->spec || data->builtin < MUII_Count)
     {
-        data->img = zune_imspec_setup((IPTR)data->spec, muiRenderInfo(obj));
+        data->img = ImageSetupSpec(data, muiRenderInfo(obj));
         // FIXME: quick hack to not draw the background for gradients. It should really be generalized
         if (data->img)
         {

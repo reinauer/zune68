@@ -182,6 +182,7 @@ struct MUI_WindowData
     WORD wd_TitleMinWidth;
 #endif
     struct WindowEventCursor *wd_EventCursors;
+    struct ZuneWindowGuard *wd_Guards;
     struct ZunePointer *wd_Pointer;
     IPTR wd_PointerType;
 };
@@ -792,6 +793,25 @@ static void CreateWindowScrollbars(Object *obj,
     struct MUI_WindowData *data);
 static void CalcAltDimensions(Object *obj, struct MUI_WindowData *data,
     struct IBox *altdims);
+static void RemoveEventHandler(struct MUI_WindowData *data,
+    struct MUI_EventHandlerNode *handler);
+
+void ZuneWatchWindow(Object *window, struct ZuneWindowGuard *guard)
+{
+    struct MUI_WindowData *data = muiWindowData(window);
+    guard->closed = FALSE;
+    guard->next = data->wd_Guards;
+    data->wd_Guards = guard;
+}
+
+void ZuneUnwatchWindow(Object *window, struct ZuneWindowGuard *guard)
+{
+    struct MUI_WindowData *data = muiWindowData(window);
+    struct ZuneWindowGuard **link = &data->wd_Guards;
+    while (*link && *link != guard) link = &(*link)->next;
+    if (*link) *link = guard->next;
+}
+
 static void UndisplayWindow(Object *obj, struct MUI_WindowData *data);
 static struct ObjNode *FindObjNode(struct MinList *list, Object *obj);
 
@@ -1271,6 +1291,14 @@ static void UndisplayWindow(Object *obj, struct MUI_WindowData *data)
     if (prefssnap)
     {
         DoMethod(obj, MUIM_Window_Snapshot, 1);
+    }
+
+    while (data->wd_Guards)
+    {
+        struct ZuneWindowGuard *guard = data->wd_Guards;
+        data->wd_Guards = guard->next;
+        RemoveEventHandler(data, guard->handler);
+        guard->closed = TRUE;
     }
 
     data->wd_RenderInfo.mri_Window = NULL;
@@ -2100,6 +2128,67 @@ static BOOL HandleDragging(Object *oWin, struct MUI_WindowData *data,
     return finish_drag;
 }
 
+static struct MenuItem *FindCaseShortcut(struct MenuItem *item, UBYTE key)
+{
+    for (; item; item = item->NextItem)
+    {
+        Object *object = (Object *)GTMENUITEM_USERDATA(item);
+        STRPTR shortcut = NULL;
+        IPTR command = FALSE;
+        struct MenuItem *sub;
+        if (!(item->Flags & ITEMENABLED)) continue;
+        if (object)
+        {
+            get(object, MUIA_Menuitem_CommandString, &command);
+            get(object, MUIA_Menuitem_Shortcut, &shortcut);
+            if (shortcut == (STRPTR)MUIV_Menuitem_Shortcut_Check)
+                get(object, MUIA_Menuitem_Title, &shortcut);
+            if (!command && shortcut && shortcut[0] == key && !shortcut[1])
+                return item;
+        }
+        if (item->SubItem && (sub = FindCaseShortcut(item->SubItem, key)))
+            return sub;
+    }
+    return NULL;
+}
+
+static struct MenuItem *ResolveCaseShortcut(struct MUI_WindowData *data,
+    struct MenuItem *item, UWORD qualifier)
+{
+    IPTR sensitive = FALSE;
+    UBYTE key;
+    struct Menu *menu;
+    if (!(qualifier & IEQUALIFIER_RCOMMAND) || !data->wd_Menustrip ||
+        !get(data->wd_Menustrip, MUIA_Menustrip_CaseSensitive, &sensitive) ||
+        !sensitive) return item;
+    key = item->Command;
+    if (key >= 'A' && key <= 'Z') key += 'a' - 'A';
+    if (key < 'a' || key > 'z') return item;
+    if (qualifier & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT | IEQUALIFIER_CAPSLOCK))
+        key -= 'a' - 'A';
+    /* Intuition has already changed the case-insensitive match. Restore
+     * that native state before applying the exact match below. */
+    if (item->Flags & CHECKIT)
+    {
+        IPTR checked = FALSE;
+        get((Object *)GTMENUITEM_USERDATA(item), MUIA_Menuitem_Checked, &checked);
+        if (checked) item->Flags |= CHECKED;
+        else item->Flags &= ~CHECKED;
+    }
+    for (menu = data->wd_Menu; menu; menu = menu->NextMenu)
+        if ((menu->Flags & MENUENABLED) &&
+            (item = FindCaseShortcut(menu->FirstItem, key)))
+        {
+            if (item->Flags & CHECKIT)
+            {
+                if (item->Flags & MENUTOGGLE) item->Flags ^= CHECKED;
+                else item->Flags |= CHECKED;
+            }
+            return item;
+        }
+    return NULL;
+}
+
 /* Reply to imsg if handled */
 BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
     struct IntuiMessage *imsg)
@@ -2198,19 +2287,24 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
         break;
 
     case IDCMP_MENUPICK:
+    {
+        UWORD code = imsg->Code, qualifier = imsg->Qualifier;
         ReplyMsg((struct Message *)imsg);
         replied = TRUE;
 
         if (data->wd_Menu)
         {
-            if (MENUNUM(imsg->Code) != NOMENU
-                && ITEMNUM(imsg->Code) != NOITEM)
+            if (MENUNUM(code) != NOMENU
+                && ITEMNUM(code) != NOITEM)
             {
                 struct MenuItem *item =
-                    ItemAddress(data->wd_Menu, imsg->Code);
+                    ItemAddress(data->wd_Menu, code);
+                if (item) item = ResolveCaseShortcut(data, item, qualifier);
                 if (item)
                 {
                     Object *item_obj = (Object *) GTMENUITEM_USERDATA(item);
+                    struct MenuItem selected = *item;
+                    item = &selected;
                     if (item_obj)
                     {
                         Object *app = NULL;
@@ -2233,6 +2327,7 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
             }
         }
         break;
+    }
 
     case IDCMP_IDCMPUPDATE:
         is_handled = FALSE;     /* forwardable to area event handlers */

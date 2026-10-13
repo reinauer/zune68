@@ -2,12 +2,15 @@
     Copyright (C) 2002-2015, The AROS Development Team. All rights reserved.
 */
 
+#include <string.h>
 #include <exec/memory.h>
 #include <intuition/icclass.h>
 #include <intuition/gadgetclass.h>
 #include <libraries/gadtools.h>
 #include <clib/alib_protos.h>
 #include <proto/exec.h>
+#include <proto/dos.h>
+#include <devices/inputevent.h>
 #include <proto/intuition.h>
 #include <proto/utility.h>
 #include <proto/muimaster.h>
@@ -17,6 +20,7 @@
 #include "mui.h"
 #include "muimaster_intern.h"
 #include "support.h"
+#include "menu.h"
 
 extern struct Library *MUIMasterBase;
 
@@ -25,6 +29,9 @@ extern struct Library *MUIMasterBase;
 #define MENUF_COMMANDSTRING  (1<<2)
 #define MENUF_ENABLED        (1<<3)
 #define MENUF_TOGGLE         (1<<4)
+#define MENUF_COPYSTRINGS    (1<<5)
+#define MENUF_FREEIMAGE      (1<<6)
+#define MENUF_CASESENSITIVE  (1<<7)
 
 #define MENUF_MENUSTRIP      (1<<15)
 #define MENUF_MENU           (1<<16)
@@ -47,7 +54,72 @@ struct MUI_MenuitemData
     struct NewMenu *newmenu;
 
     struct MenuItem *trigger;
+    struct Image *image;
+    CONST_STRPTR aiss;
+    ULONG change_depth;
 };
+
+/* The private attribute is queried only while walking menu ancestors. */
+#define MUIA_Menuitem_ChangeDepth (MUIB_Menuitem | 0x00000002)
+
+static void Menuitem_Changed(Object *obj)
+{
+    Object *parent = obj;
+    IPTR depth;
+    while (parent)
+    {
+        depth = 0;
+        if (get(parent, MUIA_Menuitem_ChangeDepth, &depth) && depth)
+            return;
+        {
+            Object *next = NULL;
+            get(parent, MUIA_Parent, &next);
+            parent = next;
+        }
+    }
+    if (muiNotifyData(obj)->mnd_GlobalInfo && _app(obj))
+        DoMethod(_app(obj), MUIM_Application_UpdateMenus);
+}
+
+static BOOL Menuitem_SetString(struct MUI_MenuitemData *data,
+    char **slot, const char *value)
+{
+    char *copy = (char *)value;
+    if (*slot == value) return TRUE;
+    if ((data->flags & MENUF_COPYSTRINGS) && value &&
+        value != (char *)NM_BARLABEL && value != (char *)MUIV_Menuitem_Shortcut_Check)
+    {
+        if (slot == &data->title &&
+            data->shortcut == (char *)MUIV_Menuitem_Shortcut_Check)
+        {
+            ULONG length = strlen(value + 2) + 3;
+            copy = AllocVec(length, MEMF_ANY);
+            if (copy) memcpy(copy, value, length);
+        }
+        else
+            copy = StrDup(value);
+        if (!copy) return FALSE;
+    }
+    if ((data->flags & MENUF_COPYSTRINGS) && *slot &&
+        *slot != (char *)NM_BARLABEL && *slot != (char *)MUIV_Menuitem_Shortcut_Check)
+        FreeVec(*slot);
+    *slot = copy;
+    return TRUE;
+}
+
+static BOOL Menuitem_Changing(Object *obj)
+{
+    struct MinList *children = NULL;
+    Object *state, *child;
+    IPTR depth = 0;
+    get(obj, MUIA_Menuitem_ChangeDepth, &depth);
+    if (depth) return TRUE;
+    get(obj, MUIA_Family_List, &children);
+    state = children ? (Object *)children->mlh_Head : NULL;
+    while (state && (child = NextObject(&state)))
+        if (Menuitem_Changing(child)) return TRUE;
+    return FALSE;
+}
 
 static int Menuitem_GetTotalChildren(Object *obj)
 {
@@ -86,10 +158,21 @@ static int Menuitem_FillNewMenu(Object *obj, struct NewMenu *menu,
 
         get(child, MUIA_Menuitem_Title, &menu->nm_Label);
         get(child, MUIA_Menuitem_Shortcut, &menu->nm_CommKey);
+        if (menu->nm_CommKey == (STRPTR)MUIV_Menuitem_Shortcut_Check)
+        {
+            menu->nm_CommKey = menu->nm_Label;
+            if (menu->nm_Label && menu->nm_Label != NM_BARLABEL)
+                menu->nm_Label += 2;
+        }
         get(child, MUIA_Menuitem_Checkit, &checkit);
         get(child, MUIA_Menuitem_Checked, &checked);
         get(child, MUIA_Menuitem_Toggle, &toggle);
         get(child, MUIA_Menuitem_Enabled, &enabled);
+        {
+            IPTR parent_enabled = TRUE;
+            get(obj, MUIA_Menustrip_Enabled, &parent_enabled);
+            if (!parent_enabled) enabled = FALSE;
+        }
         get(child, MUIA_Menuitem_CommandString, &cmdstring);
         if (checkit)
             menu->nm_Flags |= CHECKIT;
@@ -149,7 +232,7 @@ static struct NewMenu *Menuitem_BuildNewMenu(struct MUI_MenuitemData *data,
     if (data->newmenu)
         FreeVec(data->newmenu);
     data->newmenu = NULL;
-    if (!entries)
+    if (!entries || Menuitem_Changing(obj))
         return NULL;
 
     if ((data->newmenu =
@@ -176,12 +259,29 @@ IPTR Common__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     data = INST_DATA(cl, obj);
 
-    data->flags = MENUF_ENABLED;
+    data->flags = MENUF_ENABLED | MENUF_FREEIMAGE;
+    if (GetTagData(MUIA_Menuitem_CopyStrings, FALSE, msg->ops_AttrList) ||
+        GetTagData(MUIA_Menu_CopyStrings, FALSE, msg->ops_AttrList))
+        data->flags |= MENUF_COPYSTRINGS;
+    if (!GetTagData(MUIA_Menuitem_FreeImage, TRUE, msg->ops_AttrList))
+        data->flags &= ~MENUF_FREEIMAGE;
+    if (GetTagData(MUIA_Menuitem_Shortcut, 0, msg->ops_AttrList) ==
+        (IPTR)MUIV_Menuitem_Shortcut_Check)
+        data->shortcut = (char *)MUIV_Menuitem_Shortcut_Check;
+    if (GetTagData(MUIA_Menustrip_CaseSensitive, FALSE, msg->ops_AttrList))
+        data->flags |= MENUF_CASESENSITIVE;
 
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_Menuitem_Image:
+            data->image = (struct Image *)tag->ti_Data;
+            break;
+        case MUIA_Menuitem_AISSName:
+            data->aiss = (CONST_STRPTR)tag->ti_Data;
+            break;
+
         case MUIA_Menuitem_Checked:
             _handle_bool_tag(data->flags, tag->ti_Data, MENUF_CHECKED);
             break;
@@ -194,6 +294,7 @@ IPTR Common__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             _handle_bool_tag(data->flags, tag->ti_Data, MENUF_COMMANDSTRING);
             break;
 
+        case MUIA_Menustrip_Enabled:
         case MUIA_Menu_Enabled:
         case MUIA_Menuitem_Enabled:
             _handle_bool_tag(data->flags, tag->ti_Data, MENUF_ENABLED);
@@ -208,12 +309,20 @@ IPTR Common__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Menuitem_Shortcut:
-            data->shortcut = (char *)tag->ti_Data;
+            if (!Menuitem_SetString(data, &data->shortcut, (char *)tag->ti_Data))
+            {
+                CoerceMethod(cl, obj, OM_DISPOSE);
+                return 0;
+            }
             break;
 
         case MUIA_Menu_Title:
         case MUIA_Menuitem_Title:
-            data->title = (char *)tag->ti_Data;
+            if (!Menuitem_SetString(data, &data->title, (char *)tag->ti_Data))
+            {
+                CoerceMethod(cl, obj, OM_DISPOSE);
+                return 0;
+            }
             break;
         }
     }
@@ -225,6 +334,7 @@ IPTR Menuitem__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     struct MUI_MenuitemData *data;
     obj = (Object *) Common__OM_NEW(cl, obj, msg);
+    if (!obj) return 0;
     data = INST_DATA(cl, obj);
 
     data->flags |= MENUF_MENUITEM;
@@ -236,6 +346,7 @@ IPTR Menu__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     struct MUI_MenuitemData *data;
     obj = (Object *) Common__OM_NEW(cl, obj, msg);
+    if (!obj) return 0;
     data = INST_DATA(cl, obj);
 
     data->flags |= MENUF_MENU;
@@ -247,6 +358,7 @@ IPTR Menustrip__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     struct MUI_MenuitemData *data;
     obj = (Object *) Common__OM_NEW(cl, obj, msg);
+    if (!obj) return 0;
     data = INST_DATA(cl, obj);
 
     data->flags |= MENUF_MENUSTRIP;
@@ -270,6 +382,20 @@ IPTR Menuitem__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_Menuitem_Image:
+            if (data->image != (struct Image *)tag->ti_Data)
+            {
+                if ((data->flags & MENUF_FREEIMAGE) && data->image)
+                    DisposeObject((Object *)data->image);
+                data->image = (struct Image *)tag->ti_Data;
+                rebuild = TRUE;
+            }
+            break;
+        case MUIA_Menuitem_AISSName:
+            data->aiss = (CONST_STRPTR)tag->ti_Data;
+            rebuild = TRUE;
+            break;
+
         case MUIA_Menuitem_Checked:
             _handle_bool_tag(data->flags, tag->ti_Data, MENUF_CHECKED);
             if (data->exclude && (data->flags & MENUF_CHECKED))
@@ -320,6 +446,7 @@ IPTR Menuitem__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             rebuild = TRUE;
             break;
 
+        case MUIA_Menustrip_Enabled:
         case MUIA_Menu_Enabled:
         case MUIA_Menuitem_Enabled:
             _handle_bool_tag(data->flags, tag->ti_Data, MENUF_ENABLED);
@@ -338,32 +465,26 @@ IPTR Menuitem__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Menuitem_Shortcut:
-            data->shortcut = (char *)tag->ti_Data;
+            Menuitem_SetString(data, &data->shortcut, (char *)tag->ti_Data);
             rebuild = TRUE;
             break;
 
         case MUIA_Menu_Title:
         case MUIA_Menuitem_Title:
-            data->title = (char *)tag->ti_Data;
+            Menuitem_SetString(data, &data->title, (char *)tag->ti_Data);
             tag->ti_Tag = TAG_IGNORE;
             rebuild = TRUE;
             break;
 
         case MUIA_Menuitem_Trigger:
             data->trigger = (struct MenuItem *)tag->ti_Data;
-            rebuild = TRUE;
             break;
         }
     }
 
     if (rebuild)
     {
-        if (muiNotifyData(obj) &&
-            muiNotifyData(obj)->mnd_GlobalInfo &&
-            muiNotifyData(obj)->mnd_GlobalInfo->mgi_ApplicationObject)
-        {
-            DoMethod(_app(obj), MUIM_Application_UpdateMenus);
-        }
+        Menuitem_Changed(obj);
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
@@ -379,6 +500,19 @@ IPTR Menuitem__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     switch (msg->opg_AttrID)
     {
+    case MUIA_Menuitem_ChangeDepth:
+        STORE = data->change_depth;
+        return 1;
+    case MUIA_Menustrip_CaseSensitive:
+        STORE = !!(data->flags & MENUF_CASESENSITIVE);
+        return 1;
+    case MUIA_Menuitem_Image:
+        STORE = (IPTR)data->image;
+        return 1;
+    case MUIA_Menuitem_AISSName:
+        STORE = (IPTR)data->aiss;
+        return 1;
+
     case MUIA_Menuitem_Checked:
         STORE = ((data->flags & MENUF_CHECKED) != 0);
         return 1;
@@ -391,6 +525,7 @@ IPTR Menuitem__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         STORE = ((data->flags & MENUF_COMMANDSTRING) != 0);
         return 1;
 
+    case MUIA_Menustrip_Enabled:
     case MUIA_Menu_Enabled:
     case MUIA_Menuitem_Enabled:
         STORE = ((data->flags & MENUF_ENABLED) != 0);
@@ -446,6 +581,10 @@ IPTR Menuitem__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
     struct MUI_MenuitemData *data = INST_DATA(cl, obj);
 
     FreeVec(data->newmenu);
+    Menuitem_SetString(data, &data->title, NULL);
+    Menuitem_SetString(data, &data->shortcut, NULL);
+    if ((data->flags & MENUF_FREEIMAGE) && data->image)
+        DisposeObject((Object *)data->image);
 
     return DoSuperMethodA(cl, obj, msg);
 }
@@ -504,24 +643,140 @@ IPTR Menuitem__MUIM_DisconnectParent(struct IClass *cl, Object *obj,
 **************************************************************************/
 IPTR Menuitem__MUIM_Update(struct IClass *cl, Object *obj, Msg msg)
 {
-    // struct MUI_MenuitemData *data = INST_DATA(cl, obj);
-
     IPTR retval = DoSuperMethodA(cl, obj, msg);
-
-    if (muiNotifyData(obj) &&
-        muiNotifyData(obj)->mnd_GlobalInfo &&
-        muiNotifyData(obj)->mnd_GlobalInfo->mgi_ApplicationObject)
-    {
-        DoMethod(_app(obj), MUIM_Application_UpdateMenus);
-    }
-
+    Menuitem_Changed(obj);
     return retval;
+}
+
+static IPTR Menustrip_Change(struct IClass *cl, Object *obj, BOOL begin)
+{
+    struct MUI_MenuitemData *data = INST_DATA(cl, obj);
+    if (begin)
+    {
+        if (!muiNotifyData(obj)->mnd_GlobalInfo || !_app(obj)) return FALSE;
+        if (!data->change_depth++)
+            DoMethod(_app(obj), MUIM_Application_UpdateMenus);
+        return TRUE;
+    }
+    if (data->change_depth && !--data->change_depth)
+        Menuitem_Changed(obj);
+    return 0;
+}
+
+struct PopupState
+{
+    struct ZMenu *menu;
+    struct MenuItem selected;
+    Object *choice;
+    BOOL done;
+};
+
+/* A stack-local dispatcher target keeps modal input state out of the
+ * application object's lifetime. It is removed before any notifications. */
+BOOPSI_DISPATCHER(IPTR, PopupEvent, cl, obj, rawmsg)
+{
+    struct MUIP_HandleEvent *msg = (APTR)rawmsg;
+    struct PopupState *state = (APTR)cl->cl_UserData;
+    struct IntuiMessage *event = msg->imsg;
+    if (!event) return 0;
+    if (event->Class == IDCMP_MOUSEMOVE)
+        zune_mouse_update(state->menu, 0);
+    else if (event->Class == IDCMP_MOUSEBUTTONS &&
+        (event->Code == SELECTUP || event->Code == MENUUP))
+    {
+        struct MenuItem *item = zune_leave_menu(state->menu);
+        if (item)
+        {
+            state->selected = *item;
+            state->choice = (Object *)GTMENUITEM_USERDATA(item);
+        }
+        state->done = TRUE;
+    }
+    else if (event->Class == IDCMP_RAWKEY && event->Code == 0x45)
+        state->done = TRUE;
+    return MUI_EventHandlerRC_Eat;
+}
+BOOPSI_DISPATCHER_END
+
+static IPTR Menustrip_Popup(struct IClass *cl, Object *obj,
+    struct MUIP_Menustrip_Popup *msg)
+{
+    struct PopupState state = {0};
+    struct IClass handler = {0};
+    struct MUI_EventHandlerNode ehn = {0};
+    struct ZuneWindowGuard guard = {0};
+    Object *parent = msg->parent;
+    Object *win, *app;
+    struct NewMenu *newmenu = NULL;
+    ULONG signals = 0;
+    IPTR result = 0;
+    if (!parent || !(_flags(parent) & MADF_CANDRAW)) return 0;
+    win = _win(parent);
+    app = _app(parent);
+    get(obj, MUIA_Menuitem_NewMenu, &newmenu);
+    if (!newmenu) return 0;
+    state.menu = zune_open_menu_at(_window(parent), newmenu,
+        _window(parent)->LeftEdge + _left(parent) + msg->x,
+        _window(parent)->TopEdge + _top(parent) + msg->y);
+    if (!state.menu) return 0;
+    handler.cl_Dispatcher.h_Entry = (HOOKFUNC)PopupEvent;
+    handler.cl_UserData = (IPTR)&state;
+    ehn.ehn_Events = IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE | IDCMP_RAWKEY;
+    ehn.ehn_Priority = 127;
+    ehn.ehn_Flags = MUI_EHF_GUIMODE;
+    ehn.ehn_Object = parent;
+    ehn.ehn_Class = &handler;
+    DoMethod(win, MUIM_Window_AddEventHandler, &ehn);
+    guard.handler = &ehn;
+    ZuneWatchWindow(win, &guard);
+    while (!state.done)
+    {
+        DoMethod(app, MUIM_Application_NewInput, &signals);
+        if (guard.closed) break;
+        if (!state.done)
+        {
+            struct MenuItem *selected = NULL;
+            int picked = zune_poll_menu(state.menu, &selected);
+            if (picked)
+            {
+                state.done = TRUE;
+                if (selected)
+                {
+                    state.selected = *selected;
+                    state.choice = (Object *)GTMENUITEM_USERDATA(selected);
+                }
+            }
+            if (SetSignal(0, SIGBREAKF_CTRL_C) & SIGBREAKF_CTRL_C) break;
+            if (!state.done) Delay(1);
+        }
+    }
+    if (!guard.closed)
+    {
+        ZuneUnwatchWindow(win, &guard);
+        DoMethod(win, MUIM_Window_RemEventHandler, &ehn);
+    }
+    zune_close_menu(state.menu);
+    if (state.choice && !guard.closed)
+    {
+        get(state.choice, MUIA_UserData, &result);
+        if (state.selected.Flags & CHECKIT)
+            set(state.choice, MUIA_Menuitem_Checked,
+                !!(state.selected.Flags & CHECKED));
+        set(state.choice, MUIA_Menuitem_Trigger, &state.selected);
+    }
+    return result;
 }
 
 IPTR Common_Dispatcher(Class *cl, Object *obj, Msg msg)
 {
     switch (msg->MethodID)
     {
+    case MUIM_Menustrip_Popup:
+        return Menustrip_Popup(cl, obj, (APTR)msg);
+    case MUIM_Menustrip_InitChange:
+        return Menustrip_Change(cl, obj, TRUE);
+    case MUIM_Menustrip_ExitChange:
+        return Menustrip_Change(cl, obj, FALSE);
     case OM_DISPOSE:
         return Menuitem__OM_DISPOSE(cl, obj, msg);
     case OM_SET:

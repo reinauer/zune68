@@ -63,6 +63,16 @@ IPTR XGET(Object * obj, Tag attr);
 IPTR DoSetupMethod(Object * obj, struct MUI_RenderInfo *info);
 IPTR DoShowMethod(Object * obj);
 IPTR DoHideMethod(Object * obj);
+/* Stack-owned modal input guard, cancelled before a window is closed. */
+struct ZuneWindowGuard
+{
+    struct ZuneWindowGuard *next;
+    struct MUI_EventHandlerNode *handler;
+    BOOL closed;
+};
+void ZuneWatchWindow(Object *window, struct ZuneWindowGuard *guard);
+void ZuneUnwatchWindow(Object *window, struct ZuneWindowGuard *guard);
+
 void ZuneResetWindowPointer(Object *window);
 IPTR DoLayoutMethod(Object *obj);
 IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
