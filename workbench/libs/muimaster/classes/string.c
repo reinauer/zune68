@@ -14,6 +14,9 @@
 #include <ctype.h>
 
 #include <exec/types.h>
+#include <libraries/gadtools.h>
+#include <intuition/sghooks.h>
+#include <intuition/cghooks.h>
 #include <clib/alib_protos.h>
 
 #include <proto/exec.h>
@@ -83,6 +86,9 @@ struct MUI_StringData
     STRPTR AckBuffer;           /* pointer to buffer of MUIA_String_Acknowledge */
     Object *KeyUpFocus;
     Object *KeyDownFocus;
+    CONST_STRPTR placeholder;
+    long long integer64;
+    Object *edit_menu;
 };
 
 #define MSDF_ADVANCEONCR    (1<<0)
@@ -490,6 +496,48 @@ static BOOL Buffer_KillMarked(struct MUI_StringData *data)
     return TRUE;
 }
 
+/* Keep conversion independent of the startup-free printf implementation. */
+static void StringFormat64(char *buffer, long long value)
+{
+    char digits[20];
+    unsigned long long magnitude = value;
+    unsigned int count = 0;
+    if (value < 0)
+    {
+        *buffer++ = '-';
+        magnitude = 0ULL - magnitude;
+    }
+    do
+    {
+        digits[count++] = '0' + magnitude % 10;
+        magnitude /= 10;
+    } while (magnitude);
+    while (count) *buffer++ = digits[--count];
+    *buffer = 0;
+}
+
+static long long StringParse64(CONST_STRPTR text)
+{
+    unsigned long long value = 0;
+    BOOL negative = FALSE;
+    while (*text == ' ' || *text == '\t') text++;
+    if (*text == '-' || *text == '+') negative = *text++ == '-';
+    while (*text >= '0' && *text <= '9')
+    {
+        unsigned digit = *text++ - '0';
+        unsigned long long limit = negative ? 0x8000000000000000ULL :
+            0x7fffffffffffffffULL;
+        if (value > 922337203685477580ULL ||
+            (value == 922337203685477580ULL && digit > (negative ? 8 : 7)))
+        {
+            value = limit;
+            break;
+        }
+        value = value * 10 + digit;
+    }
+    return negative ? 0ULL - value : value;
+}
+
 /**************************************************************************
  OM_NEW
 **************************************************************************/
@@ -498,10 +546,11 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     struct MUI_StringData *data;
     struct TagItem *tags, *tag;
     CONST_STRPTR str = NULL;
-    char integerbuf[20];
+    char integerbuf[22];
 
     obj = (Object *) DoSuperNewTags(cl, obj, NULL,
-        /*  MUIA_FillArea, TRUE, */
+        MUIA_PointerType, MUIV_PointerType_Text,
+        MUIA_ContextMenu, 1,
         TAG_MORE, (IPTR) msg->ops_AttrList);
     if (!obj)
         return FALSE;
@@ -519,6 +568,11 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_String_Placeholder:
+        case MUIA_String_InactiveContents:
+            data->placeholder = (CONST_STRPTR)tag->ti_Data;
+            break;
+
         case MUIA_String_Accept:
             data->msd_Accept = (CONST_STRPTR) tag->ti_Data;
             break;
@@ -554,6 +608,14 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_String_Format:
             data->msd_Align = (LONG) tag->ti_Data;
+            break;
+
+        case MUIA_String_Integer64:
+            if (tag->ti_Data)
+            {
+                StringFormat64(integerbuf, *(const long long *)tag->ti_Data);
+                str = integerbuf;
+            }
             break;
 
         case MUIA_String_Integer:
@@ -627,6 +689,7 @@ IPTR String__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_StringData *data = INST_DATA(cl, obj);
 
+    if (data->edit_menu) MUI_DisposeObject(data->edit_menu);
     FreeVec(data->Buffer);
     FreeVec(data->SecBuffer);
 
@@ -673,6 +736,36 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_String_AttachedList:
             data->msd_AttachedList = (Object *) tag->ti_Data;
+            break;
+
+        case MUIA_String_EditHook:
+            data->msd_EditHook = (struct Hook *)tag->ti_Data;
+            break;
+        case MUIA_String_LonelyEditHook:
+            _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_LONELYEDITHOOK);
+            break;
+
+        case MUIA_String_Placeholder:
+        case MUIA_String_InactiveContents:
+            if (data->placeholder == (CONST_STRPTR)tag->ti_Data)
+                tag->ti_Tag = TAG_IGNORE;
+            else
+            {
+                data->placeholder = (CONST_STRPTR)tag->ti_Data;
+                MUI_Redraw(obj, MADF_DRAWOBJECT);
+            }
+            break;
+
+        case MUIA_String_Integer64:
+            if (tag->ti_Data)
+            {
+                char buffer[22];
+                long long old = StringParse64(data->Buffer);
+                StringFormat64(buffer, *(const long long *)tag->ti_Data);
+                set(obj, MUIA_String_Contents, buffer);
+                if (old == StringParse64(data->Buffer))
+                    tag->ti_Tag = TAG_IGNORE;
+            }
             break;
 
         case MUIA_String_Integer:
@@ -727,6 +820,13 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 MSDF_STAYACTIVE);
             break;
 
+        /* MUI's Newstring wrapper forwards its selection anchor to String. */
+        case 0x81cd0025: /* MUIA_Newstring_StartPos */
+            Buffer_Select(data, (LONG)MIN(tag->ti_Data, data->NumChars) -
+                (LONG)MIN(data->BufferPos, data->NumChars));
+            MUI_Redraw(obj, MADF_DRAWUPDATE);
+            break;
+
         case MUIA_String_SelectSize:   /* BetterString */
             Buffer_Select(data, (LONG)tag->ti_Data);
             MUI_Redraw(obj, MADF_DRAWUPDATE);
@@ -754,6 +854,13 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         STORE = (IPTR) data->Buffer;
         return TRUE;
 
+    case MUIA_String_EditHook:
+        STORE = (IPTR)data->msd_EditHook;
+        return TRUE;
+    case MUIA_String_LonelyEditHook:
+        STORE = !!(data->msd_Flags & MSDF_LONELYEDITHOOK);
+        return TRUE;
+
     case MUIA_String_Secret:
         STORE = (IPTR) data->msd_useSecret;
         return TRUE;
@@ -776,6 +883,16 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_String_Format:
         STORE = (IPTR) data->msd_Align;
+        return TRUE;
+
+    case MUIA_String_Placeholder:
+    case MUIA_String_InactiveContents:
+        STORE = (IPTR)data->placeholder;
+        return TRUE;
+
+    case MUIA_String_Integer64:
+        data->integer64 = StringParse64(data->Buffer);
+        STORE = (IPTR)&data->integer64;
         return TRUE;
 
     case MUIA_String_Integer:
@@ -822,6 +939,10 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_String_KeyDownFocus:     /* BetterString */
         STORE = (IPTR)data->KeyDownFocus;
+        return TRUE;
+
+    case 0x81cd0025: /* MUIA_Newstring_StartPos */
+        STORE = data->msd_Flags & MSDF_MARKING ? data->MarkPos : data->BufferPos;
         return TRUE;
 
     case MUIA_String_SelectSize:       /* BetterString */
@@ -1266,6 +1387,33 @@ IPTR String__MUIM_Draw(struct IClass *cl, Object *obj,
     if (!(msg->flags & MADF_DRAWUPDATE) && !(msg->flags & MADF_DRAWOBJECT))
         return 0;
 
+    if (!data->is_active && !data->Buffer[0] && data->placeholder)
+    {
+        struct RastPort *rp = _rp(obj);
+        struct TextExtent extent;
+        ULONG style = rp->AlgoStyle;
+        LONG count, x = _mleft(obj), width;
+        DoMethod(obj, MUIM_DrawBackground, _mleft(obj), _mtop(obj),
+            _mwidth(obj), _mheight(obj), _mleft(obj), _mtop(obj), 0);
+        SetFont(rp, _font(obj));
+        SetSoftStyle(rp, FSF_ITALIC, AskSoftStyle(rp));
+        count = TextFit(rp, data->placeholder, strlen(data->placeholder),
+            &extent, NULL, 1, _mwidth(obj), _mheight(obj));
+        width = TextLength(rp, data->placeholder, count);
+        if (data->msd_Align == MUIV_String_Format_Center)
+            x += (_mwidth(obj) - width) / 2;
+        else if (data->msd_Align == MUIV_String_Format_Right)
+            x += _mwidth(obj) - width;
+        SetABPenDrMd(rp, _pens(obj)[MPEN_SHADOW],
+            _pens(obj)[MPEN_BACKGROUND], JAM1);
+        Move(rp, x, _mtop(obj) + ((_mheight(obj) - rp->Font->tf_YSize) / 2)
+            + rp->Font->tf_Baseline);
+        Text(rp, data->placeholder, count);
+        SetSoftStyle(rp, style, AskSoftStyle(rp));
+        data->msd_RedrawReason = NO_REASON;
+        return 0;
+    }
+
     PrepareVisualBuffer(data);
     SetFont(_rp(obj), _font(obj));
     if (data->is_active)
@@ -1601,6 +1749,23 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     BOOL edited = FALSE;
     LONG muikey = msg->muikey;
     BOOL cursor_kills_marking = FALSE;
+    BOOL acknowledge = FALSE;
+    STRPTR previous = NULL;
+    LONG oldpos = data->BufferPos;
+    ULONG oldflags = data->msd_Flags, oldmark = data->MarkPos;
+    BOOL hook_key = msg->imsg && msg->imsg->Class == IDCMP_RAWKEY &&
+        !(msg->imsg->Code & IECODE_UP_PREFIX) && data->is_active;
+    BOOL hook_click = msg->imsg && msg->imsg->Class == IDCMP_MOUSEBUTTONS &&
+        msg->imsg->Code == SELECTDOWN &&
+        _isinobject(obj, msg->imsg->MouseX, msg->imsg->MouseY);
+    if (data->msd_EditHook && (hook_key || hook_click))
+    {
+        previous = AllocVec(data->BufferSize, MEMF_ANY);
+        if (!previous) return MUI_EventHandlerRC_Eat;
+        memcpy(previous, data->Buffer, data->BufferSize);
+        if (hook_key && (data->msd_Flags & MSDF_LONELYEDITHOOK))
+            goto custom_edit;
+    }
 
     if ((data->msd_Flags & MSDF_MARKING)
         && !(data->msd_Flags & MSDF_KEYMARKING))
@@ -1781,35 +1946,7 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                     MUIA_List_Active, MUIV_List_Active_Bottom);
             break;
         case MUIKEY_PRESS:
-            {
-                UBYTE *buf = NULL;
-                LONG val = 0;
-
-                get(obj, MUIA_String_Contents, &buf);
-
-                if (data->msd_Flags & MSDF_STAYACTIVE)
-                {
-                    /* Do not change active object */
-                }
-                else if (data->msd_Flags & MSDF_ADVANCEONCR)
-                {
-                    set(_win(obj), MUIA_Window_ActiveObject,
-                        MUIV_Window_ActiveObject_Next);
-                }
-                else if (!(data->msd_Flags & MSDF_STAYACTIVE))
-                {
-                    set(_win(obj), MUIA_Window_ActiveObject,
-                        MUIV_Window_ActiveObject_None);
-                }
-
-                /* Notify listeners of new string value */
-                data->AckBuffer = buf;
-                set(obj, MUIA_String_Acknowledge, buf);
-
-                /* Notify listeners of new integer value (if any) */
-                if (StrToLong(buf, &val) >= 0)
-                    superset(cl, obj, MUIA_String_Integer, val);
-            }
+            acknowledge = TRUE;
             break;
 
         case MUIKEY_WINDOW_CLOSE:
@@ -2102,6 +2239,71 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         }
     }
 
+custom_edit:
+    if (previous)
+    {
+        struct InputEvent event = {0};
+        struct StringExtend extension = {0};
+        struct StringInfo info = {0};
+        struct Gadget gadget = {0};
+        struct GadgetInfo gi = {0};
+        struct SGWork work = {0};
+        ULONG command = hook_key ? SGH_KEY : SGH_CLICK;
+        BOOL handled;
+        event.ie_Class = hook_key ? IECLASS_RAWKEY : IECLASS_RAWMOUSE;
+        event.ie_Code = msg->imsg->Code;
+        event.ie_Qualifier = msg->imsg->Qualifier;
+        info.Buffer = previous;
+        info.BufferPos = oldpos;
+        info.NumChars = strlen(previous);
+        info.MaxChars = data->BufferSize;
+        info.Extension = &extension;
+        extension.WorkBuffer = data->Buffer;
+        extension.EditHook = data->msd_EditHook;
+        gadget.SpecialInfo = &info;
+        gadget.LeftEdge = _mleft(obj); gadget.TopEdge = _mtop(obj);
+        gadget.Width = _mwidth(obj); gadget.Height = _mheight(obj);
+        gi.gi_Window = _window(obj); gi.gi_Screen = _screen(obj);
+        gi.gi_RastPort = _rp(obj);
+        work.Gadget = &gadget; work.StringInfo = &info;
+        work.GadgetInfo = &gi; work.IEvent = &event;
+        work.WorkBuffer = data->Buffer; work.PrevBuffer = previous;
+        work.BufferPos = data->BufferPos; work.NumChars = data->NumChars;
+        work.Code = hook_key ? ConvertKey(msg->imsg) : 0;
+        work.Actions = SGA_USE | SGA_REDISPLAY;
+        work.EditOp = EO_NOOP;
+        if (acknowledge) work.EditOp = EO_ENTER;
+        else if (data->NumChars > info.NumChars) work.EditOp = EO_INSERTCHAR;
+        else if (data->NumChars < info.NumChars)
+        {
+            work.EditOp = EO_DELFORWARD;
+            if (work.Code == 8) work.Code = 127;
+        }
+        else if (data->BufferPos != oldpos) work.EditOp = EO_MOVECURSOR;
+        else if (strcmp((char *)previous, (char *)data->Buffer)) work.EditOp = EO_REPLACECHAR;
+        handled = CallHookPkt(data->msd_EditHook, &work, &command);
+        if (handled && (work.Actions & SGA_USE))
+        {
+            LONG length = MAX(0, MIN((LONG)data->BufferSize - 1, work.NumChars));
+            data->Buffer[length] = 0;
+            data->NumChars = strlen((char *)data->Buffer);
+            data->BufferPos = MAX(0, MIN((LONG)data->NumChars, work.BufferPos));
+        }
+        else if (handled)
+        {
+            memcpy(data->Buffer, previous, data->BufferSize);
+            data->NumChars = info.NumChars;
+            data->BufferPos = oldpos;
+            data->msd_Flags = oldflags;
+            data->MarkPos = oldmark;
+        }
+        if (handled && (work.Actions & SGA_BEEP)) DisplayBeep(_screen(obj));
+        edited = strcmp((char *)previous, (char *)data->Buffer) != 0;
+        update = TRUE;
+        retval = MUI_EventHandlerRC_Eat;
+        FreeVec(previous);
+    }
+
     /* Trigger notification */
     if (edited)
     {
@@ -2113,6 +2315,36 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     {
         MUI_Redraw(obj, MADF_DRAWUPDATE);
     }
+    if (acknowledge)
+            {
+                UBYTE *buf = NULL;
+                LONG val = 0;
+
+                get(obj, MUIA_String_Contents, &buf);
+
+                if (data->msd_Flags & MSDF_STAYACTIVE)
+                {
+                    /* Do not change active object */
+                }
+                else if (data->msd_Flags & MSDF_ADVANCEONCR)
+                {
+                    set(_win(obj), MUIA_Window_ActiveObject,
+                        MUIV_Window_ActiveObject_Next);
+                }
+                else if (!(data->msd_Flags & MSDF_STAYACTIVE))
+                {
+                    set(_win(obj), MUIA_Window_ActiveObject,
+                        MUIV_Window_ActiveObject_None);
+                }
+
+                /* Notify listeners of new string value */
+                data->AckBuffer = buf;
+                set(obj, MUIA_String_Acknowledge, buf);
+
+                /* Notify listeners of new integer value (if any) */
+                if (StrToLong(buf, &val) >= 0)
+                    superset(cl, obj, MUIA_String_Integer, val);
+            }
     //D(bug("String eh return %ld\n", retval));
 
     return retval;
@@ -2308,6 +2540,68 @@ IPTR String__MUIM_FileNameStart(struct IClass *cl, Object *obj,
     return (IPTR) buf;
 }
 
+/* Keep the default editing menu private; application-supplied menus retain
+ * Area's normal ownership and notification rules. */
+static IPTR String_ContextBuild(struct IClass *cl, Object *obj, Msg msg)
+{
+    struct MUI_StringData *data = INST_DATA(cl, obj);
+    IPTR menu = 0;
+    get(obj, MUIA_ContextMenu, &menu);
+    if (menu != 1) return DoSuperMethodA(cl, obj, msg);
+    if (!(_flags(obj) & MADF_SETUP)) return 1;
+    if (!data->edit_menu)
+    {
+        struct NewMenu items[] = {
+            {NM_TITLE, "Edit", NULL, 0, 0, NULL},
+            {NM_ITEM, "Cut", "X", 0, 0, (APTR)1},
+            {NM_ITEM, "Copy", "C", 0, 0, (APTR)2},
+            {NM_ITEM, "Paste", "V", 0, 0, (APTR)3},
+            {NM_ITEM, "Select all", NULL, 0, 0, (APTR)4},
+            {NM_END, NULL, NULL, 0, 0, NULL}
+        };
+        IPTR params[] = {(IPTR)items, 0};
+        data->edit_menu = MUI_MakeObjectA(MUIO_MenustripNM, params);
+    }
+    if (data->edit_menu)
+    {
+        BOOL selected = Buffer_AnythingMarked(data);
+        BOOL writable = !(data->msd_Flags & MSDF_NOINPUT);
+        DoMethod(data->edit_menu, MUIM_SetUData, 1, MUIA_Menuitem_Enabled,
+            selected && writable && !data->msd_useSecret);
+        DoMethod(data->edit_menu, MUIM_SetUData, 2, MUIA_Menuitem_Enabled,
+            selected && !data->msd_useSecret);
+        DoMethod(data->edit_menu, MUIM_SetUData, 3, MUIA_Menuitem_Enabled, writable);
+    }
+    return (IPTR)data->edit_menu;
+}
+
+static IPTR String_ContextChoice(struct IClass *cl, Object *obj,
+    struct MUIP_ContextMenuChoice *msg)
+{
+    struct MUI_StringData *data = INST_DATA(cl, obj);
+    IPTR menu = 0, action = 0, retval = 0;
+    get(obj, MUIA_ContextMenu, &menu);
+    if (menu != 1) return DoSuperMethodA(cl, obj, (Msg)msg);
+    get(msg->item, MUIA_UserData, &action);
+    if (action == 4)
+    {
+        data->BufferPos = 0;
+        Buffer_Select(data, data->NumChars);
+    }
+    else if (action >= 1 && action <= 3)
+    {
+        if (action != 3 && data->msd_useSecret) return 0;
+        if (String_HandleVanillakey(cl, obj, "xcv"[action - 1],
+            IEQUALIFIER_RCOMMAND, &retval) && action != 2)
+        {
+            data->AckBuffer = NULL;
+            superset(cl, obj, MUIA_String_Contents, data->Buffer);
+        }
+    }
+    MUI_Redraw(obj, MADF_DRAWUPDATE);
+    return 0;
+}
+
 BOOPSI_DISPATCHER(IPTR, String_Dispatcher, cl, obj, msg)
 {
     switch (msg->MethodID)
@@ -2341,6 +2635,10 @@ BOOPSI_DISPATCHER(IPTR, String_Dispatcher, cl, obj, msg)
         return String__MUIM_HandleEvent(cl, obj, (APTR) msg);
 
     /* BetterString */
+    case MUIM_ContextMenuBuild:
+        return String_ContextBuild(cl, obj, msg);
+    case MUIM_ContextMenuChoice:
+        return String_ContextChoice(cl, obj, (APTR)msg);
     case MUIM_String_ClearSelected:
         return String__MUIM_ClearSelected(cl, obj, (APTR) msg);
     case MUIM_String_Insert:

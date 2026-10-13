@@ -103,7 +103,20 @@ $(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERA
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
-check-core: core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe $(BUILD)/mui5-pointer-probe
+MUI5_PROBES = menu menu_input string string_input image ibrowse
+MUI5_PROBE_BINS = $(addprefix $(BUILD)/mui5-,$(addsuffix -probe,$(MUI5_PROBES)))
+
+$(MUI5_PROBE_BINS): $(BUILD)/mui5-%-probe: ../../../tests/native/mui5_%_probe.c $(GENERATED)
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -Wno-int-conversion \
+	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+
+$(BUILD)/mui5-ibrowse-probe: ../../../tests/native/mui5_fixture.h
+
+$(BUILD)/mui5-version_gate-probe: ../../../tests/native/mui5_version_gate.c ../../../tests/native/mui5_fixture.h $(GENERATED)
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) \
+	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+
+check-core: $(MUI5_PROBE_BINS) $(BUILD)/mui5-version_gate-probe core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe $(BUILD)/mui5-pointer-probe
 	$(PYTHON) ../../../tests/check_native_init.py $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_gcc_library.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library

@@ -186,6 +186,24 @@ def check(path):
     h.focus_events.clear()
     assert h.key(2) == 0 and not h.focus_events
     h.finish()
+    h = StringHarness(path)
+    for value in (-9223372036854775808, -4294967297, -1, 0,
+                  4294967296, 9223372036854775807):
+        h.contents(str(value))
+        ptr = h.get(0x80424820)
+        actual = struct.unpack('>q', h.mem.r_block(ptr, 8))[0]
+        assert actual == value
+    for text, expected in [('9' * 50, 9223372036854775807),
+                           ('-' + '9' * 50, -9223372036854775808)]:
+        h.contents(text)
+        ptr = h.get(0x80424820)
+        assert struct.unpack('>q', h.mem.r_block(ptr, 8))[0] == expected
+    h.contents('ftp://')
+    h.set((CURSOR, 6), (0x81cd0025, 1))
+    assert h.get(SELECT) == 0xfffffffb
+    h.call('String__MUIM_ClearSelected', CLASS, OBJECT, MESSAGE)
+    assert h.mem.r_cstr(h.get(CONTENTS)) == 'f'
+    h.finish()
     print(f'{path.name}: signed String selection, long ranges and focus forwarding passed')
 
 

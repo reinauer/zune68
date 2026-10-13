@@ -13,6 +13,9 @@
 #define MUIB_String                  (MUIB_ZUNE | 0x00003400)
 
 /*** Attributes *************************************************************/
+#define MUIA_String_InactiveContents 0x80427ecf /* V20 isg CONST_STRPTR */
+#define MUIA_String_Integer64        0x80424820 /* V20 isg int64 * */
+#define MUIA_String_Placeholder      0x8042ae65 /* V21 isg CONST_STRPTR */
 #define MUIA_String_Accept \
     (MUIB_MUI | 0x0042e3e1)      /* V4  isg STRPTR        */
 #define MUIA_String_Acknowledge \
