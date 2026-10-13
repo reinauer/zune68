@@ -99,3 +99,55 @@ run the probe with `classic` instead of `modern`.
 No MUI runtime, proprietary SDK/demo source, browser, ROM, disk image,
 or reference MCC is included here. The integration test establishes
 these specific workflows, not every version-gated browser feature.
+
+## Version 21 development profile
+
+Build `make check release MUI5_TEST=1 BUILD=/absolute/path/to/build`.
+Both library names and built-in class getters report 21.227; external MCC
+versions stay independent. The package identifies itself as **MUI5 development**.
+Use a separate build directory for the default 19.81 profile. Switching
+MUI5_TEST in one directory also regenerates the configuration and rebuilds
+the affected objects.
+
+CI builds both profiles on `mui5-dev`. Download `zune68-mui5-dev` to test
+actual version gates. The ordinary `zune68-release` artifact from that
+branch still contains the experimental source changes with the default
+identity. Main remains the classic baseline until the development branch
+has had an application-testing period and is explicitly merged.
+
+The data probe requires version 21 directly and checks class versions;
+it does not patch the installed library. The IBrowse helper remains useful
+for locating the application object. With the version 21 package, its
+recorded real identity is already 21.227. IBrowse 30.8's String-derived
+Newstring path passed form editing, URL entry and navigation with this
+profile on the emulated 68020 system.
+
+| Additional probe | Checks |
+| --- | --- |
+| `mui5_data_probe` | Datamap/Objectmap ownership, sorted iteration with removal, borrowed keys, external pools, Textdata conversion and Text ownership, Dataspace Get/Count/reuse, Group reordering, List StringArray/TitleArray/ColumnOrder, directory totals and rereading. |
+| `mui5_selection_probe` | Selectgroup label clicks and radio images, active-object keyboard routing, Textdata rendering, OS3 opacity storage, TextColor and Relayout. |
+
+Both probes are built with the original SDK and run against original
+MUI 21.227 and Zune68. They also run on Zune's 68000/no-FPU fixture; use
+`screen` to open a private planar screen. The data probe creates and removes
+`T:mui5-dir-probe`; run it only in a disposable guest without that directory.
+Textdata was exercised with and without codesets.library on the 68000.
+
+Observed reference differences are explicit in the probes:
+
+- MUI 21.227 stores the Selectgroup Next/Prev sentinel values in this
+  fixture; Zune implements documented wrapping. These assertions and
+  keyboard routing are Zune-specific.
+- Detaching Text_Data clears ordinary contents in MUI 21.227. Zune retains
+  the separately supplied ordinary contents as a fallback.
+- MUI 21.227 includes directory overhead in the byte count (1033 for the
+  two files totaling 9 bytes in this RAM: fixture). Zune sums file bytes.
+  The shared assertions check consistent 32/64-bit values and rereading.
+- Family reorder inserts each item after a fixed anchor, reversing the
+  supplied sequence, except when appending. Zune matches this behavior.
+- TextColor and Relayout are V22 APIs, tested as Zune behavior without a
+  matching V22 reference runtime. Opacity storage is compared on OS3.
+
+Filepanel/Fontpanel, marking and additional Text formats, menu copying,
+remaining List format interactions and broader application coverage are
+still open. These results do not establish complete MUI 5 compatibility.

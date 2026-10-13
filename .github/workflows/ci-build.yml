@@ -60,3 +60,17 @@ jobs:
             build/muimaster/release/*.lha
             build/muimaster/release/*.readme
           if-no-files-found: error
+
+      - name: Build the version 21 development distribution
+        if: github.ref_name == 'mui5-dev' || github.head_ref == 'mui5-dev'
+        run: make -j2 check release MUI5_TEST=1 BUILD="$RUNNER_TEMP/zune68-mui5"
+
+      - name: Upload the MUI 5 development distribution
+        if: github.ref_name == 'mui5-dev' || github.head_ref == 'mui5-dev'
+        uses: actions/upload-artifact@v7
+        with:
+          name: zune68-mui5-dev
+          path: |
+            ${{ runner.temp }}/zune68-mui5/release/*.lha
+            ${{ runner.temp }}/zune68-mui5/release/*.readme
+          if-no-files-found: error

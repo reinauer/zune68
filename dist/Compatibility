@@ -11,20 +11,46 @@ and newer MUI features without an identified application need are deferred.
 
 Version policy
 --------------
-The two native library names share library version [VERSION], the number
-of the retained AROS source baseline, and the release [RELEASE] ([STAGE]).
-Zune68 releases are identified by the date in the version string, not by
-a version number of their own: the library number stays what upstream
-AROS assigns, and the other modules in the collection keep their own
-numbers. Built-in classes retain implementation version 1.1, including
-inherited Notify version queries. These numbers identify this
-implementation; they do not promise every feature of a proprietary MUI
-release with the same number. External MCCs retain their own version
-reporting. Do not raise class versions merely to bypass an application's
-feature checks.
+The two native library names share library version [VERSION] and the
+release [RELEASE] ([STAGE]). The default build retains AROS version 19.81
+and built-in class implementation version 1.1. External MCCs retain their
+own version reporting. The date identifies the Zune68 release.
 
-Native release and built-in version definitions are centralized in
-native_version.h, used by the native GCC build.
+The mui5-dev branch also builds an opt-in MUI5_TEST=1 distribution with
+library and built-in class version 21.227. Its stage is "MUI5 development".
+This enables real application version gates during testing; it does not
+claim complete MUI 5 compatibility. Install it in a separate test system.
+The main branch retains the classic compatibility baseline until merging
+has been explicitly approved.
+
+Native version definitions are centralized in native_version.h. The
+GitHub Actions artifact named zune68-mui5-dev contains the version 21
+package; zune68-release contains the default version 19 development-tree
+build. Both artifacts on mui5-dev contain experimental changes.
+
+MUI 5 development scope
+-----------------------
+Implemented additions include library vectors, layout and pointers,
+menu images and shortcuts, String editing, Title tabs, newer List/Text
+APIs, Datamap, Objectmap, Textdata and Selectgroup. Data containers use
+pools and binary-search lookup. Textdata borrows its source and owns its
+converted buffers; codesets.library is optional. Without it, conversion
+covers Latin-1, UTF-8 and big-endian UCS-2/UTF-16. Encoding conversion
+alone does not add Unicode glyphs to the current Amiga font.
+
+Dataspace Get/Count, directory byte totals through a 64-bit pointer,
+Group/Family reordering, TextColor and Relayout are also implemented.
+Window opacity is stored; OS3 does not gain composited transparent
+windows. Default lists do not allocate column-mapping scratch space.
+
+Open gaps include Filepanel/Fontpanel and the MUI Panel contract,
+Text marking and further escape formats, menu-item copying and richer
+popup/preferences APIs, remaining List format interactions, and broader
+String edit-hook semantics. Textdata_SourceEncoding is declared but its
+undocumented behavior is not implemented. Arbitrary third-party MCCs,
+RTG themes and complete application workflows need further validation.
+See tests/native/README.mui5.md in the source tree for reproducible probe
+instructions, observed reference differences and the validation limits.
 
 Implemented areas with isolated linked-code checks
 -------------------------------------------------
