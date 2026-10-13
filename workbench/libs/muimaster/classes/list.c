@@ -33,7 +33,7 @@ extern struct Library *MUIMasterBase;
 #define ENTRY_TITLE (-1)
 
 #define FORMAT_TEMPLATE "DELTA=D/N,PREPARSE=P/K,WEIGHT=W/N,MINWIDTH=MIW/N," \
-    "MAXWIDTH=MAW/N,COL=C/N,BAR/S"
+    "MAXWIDTH=MAW/N,COL=C/N,BAR/S,HIDDEN/S,SORTABLE/S,ORDER/K"
 
 #define BAR_WIDTH 2
 
@@ -50,6 +50,9 @@ enum
     ARG_MAXWIDTH,
     ARG_COL,
     ARG_BAR,
+    ARG_HIDDEN,
+    ARG_SORTABLE,
+    ARG_ORDER,
     ARG_CNT
 };
 
@@ -78,6 +81,7 @@ struct ColumnInfo
     int bar;
     STRPTR preparse;
     int entries_width; /* width of the entries (maximum of all widths) */
+    BOOL hidden, sortable, descending;
 };
 
 struct MUI_ImageSpec_intern;
@@ -213,6 +217,12 @@ struct MUI_ListData
     LONG seltype;
 
     struct Hook hook;
+    LONG hscroll_visibility, title_click, sort_column;
+    BOOL stripes, editable;
+    Object *edit_object, *edit_focus;
+    LONG edit_row, edit_column;
+    APTR edit_entry;
+    BOOL ending_edit;
 };
 
 #define MOUSE_CLICK_ENTRY 1     /* on entry clicked */
@@ -227,6 +237,10 @@ struct MUI_ListData
 #define LIST_CHANGED    (1<<6)
 #define LIST_HORIZCHECK (1<<7)  /* check the horizontal scroller when quiet ends */
 
+
+static IPTR ListEndEdit(struct IClass *cl, Object *obj, ULONG mode, BOOL force);
+static IPTR ListEdit(struct IClass *cl, Object *obj, LONG row, LONG column);
+static void ListLayoutEditor(Object *obj, struct MUI_ListData *data);
 
 static BOOL IncreaseColumns(struct MUI_ListData *data, int new_columns);
 
@@ -728,6 +742,11 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
                         data->ci[i].max_width =
                             *(LONG *) args[ARG_MAXWIDTH];
                     data->ci[i].bar = args[ARG_BAR];
+                    data->ci[i].hidden = !!args[ARG_HIDDEN];
+                    data->ci[i].sortable = !!args[ARG_SORTABLE];
+                    data->ci[i].descending = args[ARG_ORDER] &&
+                        (!Stricmp((STRPTR)args[ARG_ORDER], "DESC") ||
+                         !Stricmp((STRPTR)args[ARG_ORDER], "DESCENDING"));
                     if (args[ARG_PREPARSE])
                         data->ci[i].preparse =
                             StrDup((STRPTR) args[ARG_PREPARSE]);
@@ -898,8 +917,9 @@ static void CalcWidths(struct IClass *cl, Object *obj)
     }
 
     for (j = 0; j < data->columns; j++)
-        data->entries_maxwidth += data->ci[j].entries_width
-            + data->ci[j].delta + (data->ci[j].bar ? BAR_WIDTH : 0);
+        if (!data->ci[j].hidden)
+            data->entries_maxwidth += data->ci[j].entries_width
+                + data->ci[j].delta + (data->ci[j].bar ? BAR_WIDTH : 0);
 
     if (!data->entry_maxheight)
         data->entry_maxheight = 1;
@@ -1177,6 +1197,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     data->entries_visible = data->vertprop_visible = -1;
     data->last_active = -1;
+    data->title_click = 0;
     data->drop_mark = 0;
 
     data->ehn.ehn_Events = IDCMP_MOUSEBUTTONS | IDCMP_RAWKEY;
@@ -1239,6 +1260,18 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             data->intern_thresh_size = tag->ti_Data;
             break;
 
+        case MUIA_List_HScrollerVisibility:
+            data->hscroll_visibility = tag->ti_Data;
+            break;
+        case MUIA_List_SortColumn:
+            data->sort_column = tag->ti_Data;
+            break;
+        case MUIA_List_Stripes:
+            data->stripes = !!tag->ti_Data;
+            break;
+        case MUIA_List_Editable:
+            data->editable = !!tag->ti_Data;
+            break;
         case MUIA_List_CompareHook:
             data->compare_hook = (struct Hook *)tag->ti_Data;
             if (data->compare_hook == NULL)
@@ -1362,6 +1395,11 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         return 0;
     }
 
+    for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
+        if ((tag->ti_Tag == MUIA_List_HideColumn || tag->ti_Tag == MUIA_List_ShowColumn)
+            && tag->ti_Data < data->columns)
+            data->ci[tag->ti_Data].hidden = tag->ti_Tag == MUIA_List_HideColumn;
+
     /* This is necessary for at least the title */
     if (!SetListSize(data, 0))
     {
@@ -1421,6 +1459,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 IPTR List__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
 
     D(bug("List Dispose\n"));
 
@@ -1461,6 +1500,34 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_List_HScrollerVisibility:
+            data->hscroll_visibility = tag->ti_Data;
+            break;
+        case MUIA_List_SortColumn:
+            data->sort_column = tag->ti_Data;
+            break;
+        case MUIA_List_Stripes:
+            data->stripes = !!tag->ti_Data;
+            data->update = UPDATEMODE_ALL;
+            MUI_Redraw(obj, MADF_DRAWUPDATE);
+            break;
+        case MUIA_List_Editable:
+            data->editable = !!tag->ti_Data;
+            break;
+        case MUIA_List_HideColumn:
+        case MUIA_List_ShowColumn:
+            if (tag->ti_Data < data->columns)
+            {
+                data->ci[tag->ti_Data].hidden = tag->ti_Tag == MUIA_List_HideColumn;
+                if (_flags(obj) & MADF_CANDRAW)
+                {
+                    DoMethod(obj, MUIM_Group_InitChange);
+                    DoMethod(obj, MUIM_Group_ExitChange);
+                }
+                data->update = UPDATEMODE_ALL;
+                MUI_Redraw(obj, MADF_DRAWUPDATE);
+            }
+            break;
         case MUIA_List_CompareHook:
             data->compare_hook = (struct Hook *)tag->ti_Data;
             if (data->compare_hook == NULL)
@@ -1504,6 +1571,7 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_List_Format:
+            ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
             data->format = (STRPTR) tag->ti_Data;
             ParseListFormat(data, data->format, FALSE);
             // FIXME: ParseListFormat() failure is ignored.
@@ -1774,6 +1842,10 @@ IPTR List__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     switch (msg->opg_AttrID)
     {
+    case MUIA_List_SortColumn: STORE = data->sort_column; return TRUE;
+    case MUIA_List_Stripes: STORE = data->stripes; return TRUE;
+    case MUIA_List_Editable: STORE = data->editable; return TRUE;
+    case MUIA_List_TitleClick: STORE = data->title_click; return TRUE;
     case MUIA_List_Entries:
         STORE = data->entries_num;
         return 1;
@@ -1891,6 +1963,7 @@ IPTR List__MUIM_Cleanup(struct IClass *cl, Object *obj,
     struct MUIP_Cleanup *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
 
     zune_imspec_cleanup(data->list_cursor);
     zune_imspec_cleanup(data->list_select);
@@ -1921,14 +1994,15 @@ static WORD List_TitleStrip(Object *obj, struct MUI_ListData *data)
  * matches MUI 3.9 on xSysInfo's register pages) */
 static LONG List_ContentWidth(struct MUI_ListData *data)
 {
-    LONG width = 0;
-    int j;
-
-    for (j = 0; j < data->columns; j++)
-        width += data->ci[j].entries_width + data->ci[j].delta
-            + (data->ci[j].bar ? BAR_WIDTH : 0);
-    if (data->columns > 0)
-        width -= data->ci[data->columns - 1].delta;
+    LONG width = 0, last = -1;
+    for (LONG j = 0; j < data->columns; j++)
+        if (!data->ci[j].hidden)
+        {
+            width += data->ci[j].entries_width + data->ci[j].delta +
+                (data->ci[j].bar ? BAR_WIDTH : 0);
+            last = j;
+        }
+    if (last >= 0) width -= data->ci[last].delta;
     return width;
 }
 
@@ -1939,7 +2013,9 @@ static BOOL List_NeedHoriz(struct MUI_ListData *data)
 {
     if (!data->horiz || !(_flags(data->area) & MADF_SETUP))
         return FALSE;
-    return List_ContentWidth(data) > _mwidth(data->area)
+    if (data->hscroll_visibility == MUIV_List_HScrollerVisibility_Never) return FALSE;
+    return (data->hscroll_visibility == MUIV_List_HScrollerVisibility_Always ||
+            List_ContentWidth(data) > _mwidth(data->area))
         && _minheight(data->horiz) > 0
         && _height(data->area) > 2 * _minheight(data->horiz);
 }
@@ -2182,6 +2258,7 @@ IPTR List__MUIM_Layout(struct IClass *cl, Object *obj,
     /* So the notify happens */
     set(obj, MUIA_List_VertProp_Visible, data->entries_visible);
 
+    ListLayoutEditor(obj, data);
     return rc;
 }
 
@@ -2198,6 +2275,7 @@ IPTR List__MUIM_Show(struct IClass *cl, Object *obj,
     zune_imspec_show(data->list_cursor, obj);
     zune_imspec_show(data->list_select, obj);
     zune_imspec_show(data->list_selcur, obj);
+    if (data->edit_object) DoShowMethod(data->edit_object);
     return rc;
 }
 
@@ -2209,6 +2287,7 @@ IPTR List__MUIM_Hide(struct IClass *cl, Object *obj,
     struct MUIP_Hide *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) DoHideMethod(data->edit_object);
 
     zune_imspec_hide(data->list_cursor);
     zune_imspec_hide(data->list_select);
@@ -2243,6 +2322,7 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
 
     for (col = 0; col < data->columns; col++) {
         ZText *text;
+        if (data->ci[col].hidden) continue;
         x2 = x1 + data->ci[col].entries_width;
 
         if ((text =
@@ -2292,6 +2372,7 @@ static void List_DrawTitleStrip(struct IClass *cl, Object *obj)
     for (col = 0; col < data->columns && x0 <= right; col++)
     {
         ULONG halfdelta = data->ci[col].delta / 2;
+        if (data->ci[col].hidden) continue;
         LONG end;
 
         x1 += data->ci[col].entries_width + halfdelta;
@@ -2497,6 +2578,12 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
                     data->entries_first * data->entry_maxheight, 0);
             }
 
+            if (!highlight && data->stripes && (entry_pos & 1))
+            {
+                SetAPen(_rp(obj), _pens(obj)[MPEN_HALFSHINE]);
+                RectFill(_rp(obj), _mleft(data->area), y,
+                    _mright(data->area), y + data->entry_maxheight - 1);
+            }
             List_DrawEntry(cl, obj, entry_pos, y);
             entry->flags &= ~ENTRY_RENDER;
         }
@@ -2532,6 +2619,7 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
         for (col = 0; col < data->columns; col++)
         {
             ULONG halfdelta = data->ci[col].delta / 2;
+            if (data->ci[col].hidden) continue;
             x1 += data->ci[col].entries_width + halfdelta;
 
             if (x1 + (data->ci[col].bar ? BAR_WIDTH : 0) > _mright(data->area))
@@ -2561,6 +2649,7 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     for (col = 0; col < data->columns; col++)
     {
         ULONG halfdelta = data->ci[col].delta / 2;
+        if (data->ci[col].hidden) continue;
         x1 += data->ci[col].entries_width + halfdelta;
 
         if (x1 + (data->ci[col].bar ? BAR_WIDTH : 0) > _mright(data->area))
@@ -2585,6 +2674,7 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
     data->flags &= ~LIST_CHANGED;
 
+    if (data->edit_object) MUI_Redraw(data->edit_object, MADF_DRAWOBJECT);
     return 0;
 }
 
@@ -2607,6 +2697,7 @@ IPTR List__MUIM_Clear(struct IClass *cl, Object *obj,
     struct MUIP_List_Clear *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
 
     while (data->confirm_entries_num)
     {
@@ -2677,6 +2768,7 @@ IPTR List__MUIM_Exchange(struct IClass *cl, Object *obj,
     struct MUIP_List_Exchange *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
     LONG pos1, pos2;
 
     switch (msg->pos1)
@@ -2847,6 +2939,7 @@ IPTR List__MUIM_Remove(struct IClass *cl, Object *obj,
     struct MUIP_List_Remove *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
     LONG pos;
     LONG new_act;
     UWORD i;
@@ -3167,18 +3260,18 @@ IPTR List__MUIM_Select(struct IClass *cl, Object *obj,
 *
 */
 
-static LONG CompareEntries(Object *obj, struct ListEntry *a,
+static LONG CompareEntries(Object *obj, struct MUI_ListData *data, struct ListEntry *a,
     struct ListEntry *b);
 
 /* Insert one appended entry into the sorted prefix, after equal keys. */
-static LONG InsertSortedEntry(Object *obj, struct ListEntry **entries, LONG at)
+static LONG InsertSortedEntry(Object *obj, struct MUI_ListData *data, struct ListEntry **entries, LONG at)
 {
     struct ListEntry *entry = entries[at];
     LONG lo = 0, hi = at, mid;
     while (lo < hi)
     {
         mid = lo + (hi - lo) / 2;
-        if (CompareEntries(obj, entries[mid], entry) <= 0)
+        if (CompareEntries(obj, data, entries[mid], entry) <= 0)
             lo = mid + 1;
         else
             hi = mid;
@@ -3198,6 +3291,7 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
     struct MUIP_List_Insert *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
     LONG pos, count, sort, active, until;
     BOOL adjusted = FALSE, failed = FALSE;
     APTR *toinsert;
@@ -3320,7 +3414,7 @@ IPTR List__MUIM_Insert(struct IClass *cl, Object *obj,
         {
             /* Insert_Sorted assumes existing entries are in order. An
              * explicit Sort still rechecks keys changed by the caller. */
-            i = InsertSortedEntry(obj, data->entries, data->insert_position);
+            i = InsertSortedEntry(obj, data, data->entries, data->insert_position);
             if (data->entries_active >= i &&
                 data->entries_active < data->insert_position)
                 data->entries_active++;
@@ -3523,6 +3617,8 @@ IPTR List__MUIM_Compare(struct IClass *cl, Object *obj,
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
 
+    if ((IPTR)data->compare_hook == MUIV_List_CompareHook_String)
+        return Stricmp(msg->entry1, msg->entry2);
     return CallHookPkt(data->compare_hook, msg->entry2, msg->entry1);
 }
 
@@ -3771,16 +3867,21 @@ IPTR List__MUIM_Jump(struct IClass *cl, Object *obj,
 */
 
 /* A fixed-stack heap handles arbitrary input without a scratch array. */
-static LONG CompareEntries(Object *obj, struct ListEntry *a,
+static LONG CompareEntries(Object *obj, struct MUI_ListData *data, struct ListEntry *a,
     struct ListEntry *b)
 {
-    struct MUIP_List_Compare msg = { MUIM_List_Compare, NULL, NULL, 0, 0 };
+    struct MUIP_List_Compare msg = { MUIM_List_Compare, NULL, NULL, {0}, 0 };
+    msg.column = data->sort_column;
     msg.entry1 = a->data;
     msg.entry2 = b->data;
-    return (LONG)DoMethodA(obj, (Msg)&msg);
+    LONG result = (LONG)DoMethodA(obj, (Msg)&msg);
+    if (data->sort_column >= 0 && data->sort_column < data->columns &&
+        data->ci[data->sort_column].descending)
+        result = result < 0 ? 1 : result > 0 ? -1 : 0;
+    return result;
 }
 
-static void SiftEntries(Object *obj, struct ListEntry **entries,
+static void SiftEntries(Object *obj, struct MUI_ListData *data, struct ListEntry **entries,
     LONG root, LONG count)
 {
     struct ListEntry *entry = entries[root];
@@ -3790,9 +3891,9 @@ static void SiftEntries(Object *obj, struct ListEntry **entries,
     {
         child = root * 2 + 1;
         if (child + 1 < count
-            && CompareEntries(obj, entries[child], entries[child + 1]) < 0)
+            && CompareEntries(obj, data, entries[child], entries[child + 1]) < 0)
             child++;
-        if (CompareEntries(obj, entry, entries[child]) >= 0) break;
+        if (CompareEntries(obj, data, entry, entries[child]) >= 0) break;
         entries[root] = entries[child];
         entries[root]->flags |= ENTRY_RENDER;
         root = child;
@@ -3805,6 +3906,7 @@ IPTR List__MUIM_Sort(struct IClass *cl, Object *obj,
     struct MUIP_List_Sort *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
     struct ListEntry **entries = data->entries;
     struct ListEntry *active = NULL, *entry;
     LONG count = data->entries_num, i;
@@ -3812,26 +3914,26 @@ IPTR List__MUIM_Sort(struct IClass *cl, Object *obj,
     if (count < 2) return 0;
     /* Verify order each time: callers may change comparison keys in place. */
     for (i = 1; i < count; i++)
-        if (CompareEntries(obj, entries[i - 1], entries[i]) > 0) break;
+        if (CompareEntries(obj, data, entries[i - 1], entries[i]) > 0) break;
     if (i == count) return 0;
     if (data->entries_active >= 0 && data->entries_active < count)
         active = entries[data->entries_active];
 
     if (i == count - 1)
     {
-        InsertSortedEntry(obj, entries, i);
+        InsertSortedEntry(obj, data, entries, i);
     }
     else
     {
         for (i = count / 2; i > 0; i--)
-            SiftEntries(obj, entries, i - 1, count);
+            SiftEntries(obj, data, entries, i - 1, count);
         for (i = count - 1; i > 0; i--)
         {
             entry = entries[0];
             entries[0] = entries[i];
             entries[i] = entry;
             entry->flags |= ENTRY_RENDER;
-            SiftEntries(obj, entries, 0, i);
+            SiftEntries(obj, data, entries, 0, i);
         }
     }
     if (active)
@@ -3886,6 +3988,7 @@ IPTR List__MUIM_Move(struct IClass *cl, Object *obj,
     struct MUIP_List_Move *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
 
     LONG from, to;
     int i;
@@ -4101,13 +4204,14 @@ IPTR List__MUIM_TestPos(struct IClass *cl, Object *obj,
         else
         {
             /* Identify column */
-            if (data->entries_num > 0 && data->columns > 0)
+            if (data->columns > 0)
             {
                 LONG width_sum = 0;
-                col = data->columns - 1;
                 for (i = 0; i < data->columns; i++)
                 {
-                    result->xoffset = mx - width_sum;
+                    if (data->ci[i].hidden) continue;
+                    col = i;
+                    result->xoffset = mx + data->horiz_first - width_sum;
                     width_sum +=
                         data->ci[i].entries_width +
                         data->ci[i].delta +
@@ -4115,7 +4219,7 @@ IPTR List__MUIM_TestPos(struct IClass *cl, Object *obj,
                     D(bug("[List/MUIM_TestPos] i %d "
                         "width %d width_sum %d mx %d\n",
                         i, data->ci[i].entries_width, width_sum, mx));
-                    if (mx < width_sum)
+                    if (mx + data->horiz_first < width_sum)
                     {
                         col = i;
                         D(bug("[List/MUIM_TestPos] Column hit %d\n", col));
@@ -4408,6 +4512,14 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     struct MUIP_HandleEvent *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
+    if (data->edit_object && msg->imsg && msg->imsg->Class == IDCMP_RAWKEY &&
+        msg->imsg->Code == 0x45)
+    {
+        DoMethod(_app(obj), MUIM_Application_PushMethod, obj, 2,
+            MUIM_List_EndEdit, MUIV_List_EndEdit_Abort);
+        return MUI_EventHandlerRC_Eat;
+    }
+
     struct MUI_List_TestPos_Result pos;
     LONG seltype = MUIV_List_Select_On, old_active, new_active, visible,
         first, last, i;
@@ -4533,6 +4645,23 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         case IDCMP_MOUSEBUTTONS:
             if (msg->imsg->Code == SELECTDOWN)
             {
+                if (data->title && msg->imsg->MouseY >= _mtop(obj) &&
+                    msg->imsg->MouseY < data->entries_top_pixel &&
+                    msg->imsg->MouseX >= _mleft(data->area) &&
+                    msg->imsg->MouseX <= _mright(data->area))
+                {
+                    if (pos.column >= 0 && data->ci[pos.column].sortable)
+                    {
+                        if (data->sort_column == pos.column)
+                            data->ci[pos.column].descending = !data->ci[pos.column].descending;
+                        set(obj, MUIA_List_SortColumn, pos.column);
+                        DoMethod(obj, MUIM_List_Sort);
+                    }
+                    if (pos.column < 0) return 0;
+                    data->title_click = pos.column;
+                    superset(cl, obj, MUIA_List_TitleClick, data->title_click);
+                    return MUI_EventHandlerRC_Eat;
+                }
                 if (_isinobject(data->area, msg->imsg->MouseX,
                     msg->imsg->MouseY)
                     && !(data->horiz_shown && _isinobject(data->horiz,
@@ -4715,10 +4844,142 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
 /**************************************************************************
  Dispatcher
 **************************************************************************/
+static LONG ListCompareRaw(Object *obj, struct MUI_ListData *data, APTR a, APTR b)
+{
+    struct MUIP_List_Compare msg = {MUIM_List_Compare, a, b, {data->sort_column}, 0};
+    LONG result = (LONG)DoMethodA(obj, (Msg)&msg);
+    if (data->sort_column >= 0 && data->sort_column < data->columns &&
+        data->ci[data->sort_column].descending)
+        result = result < 0 ? 1 : result > 0 ? -1 : 0;
+    return result;
+}
+
+static void ListSiftRaw(Object *obj, struct MUI_ListData *data, APTR *entries,
+    LONG root, LONG count)
+{
+    APTR entry = entries[root];
+    while (root < count / 2)
+    {
+        LONG child = root * 2 + 1;
+        if (child + 1 < count && ListCompareRaw(obj, data, entries[child], entries[child + 1]) < 0) child++;
+        if (ListCompareRaw(obj, data, entry, entries[child]) >= 0) break;
+        entries[root] = entries[child]; root = child;
+    }
+    entries[root] = entry;
+}
+
+static IPTR ListSortEntries(struct IClass *cl, Object *obj, APTR *entries)
+{
+    struct MUI_ListData *data = INST_DATA(cl, obj);
+    LONG count = 0, i;
+    if (!entries) return FALSE;
+    while (entries[count]) count++;
+    for (i = count / 2; i > 0; i--) ListSiftRaw(obj, data, entries, i - 1, count);
+    for (i = count - 1; i > 0; i--)
+    {
+        APTR entry = entries[0]; entries[0] = entries[i]; entries[i] = entry;
+        ListSiftRaw(obj, data, entries, 0, i);
+    }
+    return TRUE;
+}
+
+static void ListLayoutEditor(Object *obj, struct MUI_ListData *data)
+{
+    LONG left = _mleft(data->area) - data->horiz_first;
+    LONG top = data->entries_top_pixel + (data->edit_row - data->entries_first) * data->entry_maxheight;
+    if (!data->edit_object) return;
+    for (LONG column = 0; column < data->edit_column; column++)
+        if (!data->ci[column].hidden)
+            left += data->ci[column].entries_width + data->ci[column].delta +
+                (data->ci[column].bar ? BAR_WIDTH : 0);
+    LONG width = MIN(data->ci[data->edit_column].entries_width,
+        _mright(data->area) - left + 1);
+    MUI_LayoutObj(data->edit_object, left, top, MAX(1, width),
+        MAX(data->entry_maxheight, _minheight(data->edit_object)), 0);
+}
+
+static IPTR ListEdit(struct IClass *cl, Object *obj, LONG row, LONG column)
+{
+    struct MUI_ListData *data = INST_DATA(cl, obj);
+    Object *editor;
+    struct MUI_MinMax minmax = {0};
+    if (row == MUIV_List_Edit_Active) row = data->entries_active;
+    if (!data->editable || !(_flags(obj) & MADF_CANDRAW) || row < 0 ||
+        row >= data->entries_num || column < 0 || column >= data->columns) return FALSE;
+    if (data->ci[column].hidden)
+        set(obj, MUIA_List_ShowColumn, column);
+    if (data->edit_object && !ListEndEdit(cl, obj, MUIV_List_EndEdit_Done, FALSE)) return FALSE;
+    editor = (Object *)DoMethod(obj, MUIM_List_CreateEditObject, row, column, data->entries[row]->data);
+    if (!editor) return FALSE;
+    DoMethod(editor, MUIM_ConnectParent, obj);
+    if (!DoMethod(editor, MUIM_Setup, muiRenderInfo(obj)))
+    {
+        DoMethod(editor, MUIM_DisconnectParent); MUI_DisposeObject(editor);
+        return FALSE;
+    }
+    DoMethod(editor, MUIM_AskMinMax, &minmax);
+    data->edit_object = editor; data->edit_row = row; data->edit_column = column;
+    data->edit_entry = data->entries[row]->data;
+    data->edit_focus = (Object *)XGET(_win(obj), MUIA_Window_ActiveObject);
+    DoMethod(obj, MUIM_List_Jump, row);
+    ListLayoutEditor(obj, data);
+    DoShowMethod(editor); MUI_Redraw(editor, MADF_DRAWOBJECT);
+    DoMethod(editor, MUIM_Notify, MUIA_String_Acknowledge, MUIV_EveryTime,
+        _app(obj), 5, MUIM_Application_PushMethod, obj, 2,
+        MUIM_List_EndEdit, MUIV_List_EndEdit_Done);
+    set(_win(obj), MUIA_Window_ActiveObject, editor);
+    return TRUE;
+}
+
+static IPTR ListEndEdit(struct IClass *cl, Object *obj, ULONG mode, BOOL force)
+{
+    struct MUI_ListData *data = INST_DATA(cl, obj);
+    Object *editor = data->edit_object;
+    LONG row = data->edit_row, column = data->edit_column;
+    if (!editor) return TRUE;
+    if (data->ending_edit) return FALSE;
+    data->ending_edit = TRUE;
+    IPTR accepted = DoMethod(obj, MUIM_List_EditDone, row, column,
+        mode == MUIV_List_EndEdit_Abort ? NULL : data->edit_entry, editor);
+    if (!accepted && !force) { data->ending_edit = FALSE; return FALSE; }
+    set(_win(obj), MUIA_Window_ActiveObject, data->edit_focus);
+    data->edit_object = NULL;
+    DoHideMethod(editor); DoMethod(editor, MUIM_Cleanup);
+    DoMethod(editor, MUIM_DisconnectParent); MUI_DisposeObject(editor);
+    data->ending_edit = FALSE;
+    DoMethod(obj, MUIM_List_Redraw, MUIV_List_Redraw_All);
+    if (!force && mode >= MUIV_List_EndEdit_Prev && mode <= MUIV_List_EndEdit_Down)
+    {
+        if (mode == MUIV_List_EndEdit_Prev) column--;
+        if (mode == MUIV_List_EndEdit_Next) column++;
+        if (mode == MUIV_List_EndEdit_Up) row--;
+        if (mode == MUIV_List_EndEdit_Down) row++;
+        if (column < 0) { column = data->columns - 1; row--; }
+        if (column >= data->columns) { column = 0; row++; }
+        ListEdit(cl, obj, row, column);
+    }
+    return TRUE;
+}
+
 BOOPSI_DISPATCHER(IPTR, List_Dispatcher, cl, obj, msg)
 {
     switch (msg->MethodID)
     {
+    case MUIM_FindAreaObject:
+    {
+        struct MUI_ListData *data = INST_DATA(cl, obj);
+        IPTR found = data->edit_object ? DoMethodA(data->edit_object, msg) : 0;
+        return found ? found : DoSuperMethodA(cl, obj, msg);
+    }
+    case MUIM_List_SortEntries:
+        return ListSortEntries(cl, obj, ((struct MUIP_List_SortEntries *)msg)->entries);
+    case MUIM_List_Edit:
+        return ListEdit(cl, obj, ((struct MUIP_List_Edit *)msg)->row,
+            ((struct MUIP_List_Edit *)msg)->column);
+    case MUIM_List_EndEdit:
+        return ListEndEdit(cl, obj, ((struct MUIP_List_EndEdit *)msg)->mode, FALSE);
+    case MUIM_List_CreateEditObject: return 0;
+    case MUIM_List_EditDone: return TRUE;
     case OM_NEW:
         return List__OM_NEW(cl, obj, (struct opSet *)msg);
     case OM_DISPOSE:

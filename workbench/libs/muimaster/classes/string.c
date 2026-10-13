@@ -796,9 +796,9 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_String_DisplayPos:
-            data->BufferPos = (ULONG) tag->ti_Data;
-            data->DispPos = data->BufferPos;    // move both pos
-            data->msd_Flags &= ~MSDF_MARKING;
+            /* Scrolling the view must not move the editing cursor. Drawing
+             * may bring it back into view when the gadget is active. */
+            data->DispPos = MIN((ULONG)tag->ti_Data, data->NumChars);
             data->msd_RedrawReason = MOVE_CURSOR;
             MUI_Redraw(obj, MADF_DRAWUPDATE);
             break;
@@ -1763,10 +1763,10 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         previous = AllocVec(data->BufferSize, MEMF_ANY);
         if (!previous) return MUI_EventHandlerRC_Eat;
         memcpy(previous, data->Buffer, data->BufferSize);
-        if (hook_key && (data->msd_Flags & MSDF_LONELYEDITHOOK))
-            goto custom_edit;
     }
 
+    /* LonelyEditHook still receives the ordinary proposed edit, as with
+     * Intuition SGWork. It does not suppress character editing itself. */
     if ((data->msd_Flags & MSDF_MARKING)
         && !(data->msd_Flags & MSDF_KEYMARKING))
     {
@@ -2239,7 +2239,6 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         }
     }
 
-custom_edit:
     if (previous)
     {
         struct InputEvent event = {0};

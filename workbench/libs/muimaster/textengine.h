@@ -76,4 +76,7 @@ void zune_text_get_bounds (ZText *text, Object *obj);
 void zune_text_draw (ZText *text, Object *obj, WORD left, WORD right,
     WORD top);
 
+void zune_text_draw_shortened(ZText *text, Object *obj, WORD left,
+    WORD right, WORD top, LONG mode);
+
 #endif

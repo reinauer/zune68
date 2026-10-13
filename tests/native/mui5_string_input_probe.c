@@ -15,7 +15,7 @@
     ({ ULONG tags[] = {__VA_ARGS__}; MUI_NewObjectA(name, (struct TagItem *)tags); })
 struct Library *MUIMasterBase;
 ULONG __stack = 65536;
-static ULONG calls, veto_return;
+static ULONG calls, veto_return, lonely, lonely_calls;
 static int failures;
 static ULONG qualifier;
 static ULONG edit_hook(struct Hook *hook __asm("a0"),
@@ -25,6 +25,16 @@ static ULONG edit_hook(struct Hook *hook __asm("a0"),
     printf("hook cmd=%lu op=%u code=%u actions=%lu pos=%d chars=%d new=%s\n",
         *command, work->EditOp, work->Code, work->Actions, work->BufferPos,
         work->NumChars, (char *)work->WorkBuffer);
+    if (*command == SGH_KEY && lonely)
+    {
+        lonely_calls++;
+        if (work->EditOp != EO_INSERTCHAR || strcmp(work->WorkBuffer,"seeda"))
+            failures++;
+        strcpy(work->WorkBuffer,"lonely");
+        work->NumChars = work->BufferPos = 6;
+        work->Actions = SGA_USE | SGA_REDISPLAY;
+        return TRUE;
+    }
     if (*command == SGH_KEY)
     {
         if (work->EditOp == EO_INSERTCHAR && work->Code == 'a' && work->BufferPos)
@@ -99,6 +109,15 @@ int main(int argc, char **argv)
     got = 0; GetAttr(MUIA_String_Acknowledge, obj, &got);
     if (!got || strcmp((char *)got, "seed")) failures++;
     if (!calls) failures++;
+    SetAttrs(obj, MUIA_String_LonelyEditHook, TRUE, TAG_DONE);
+    SetAttrs(win, MUIA_Window_ActiveObject, obj, TAG_DONE);
+    SetAttrs(obj, MUIA_String_BufferPos, 4, TAG_DONE);
+    lonely = TRUE;
+    key(app, io, 0x20);
+    lonely = FALSE;
+    contents(obj, "lonely");
+    if (lonely_calls != 1) failures++;
+    SetAttrs(obj, MUIA_String_LonelyEditHook, FALSE, TAG_DONE);
     SetAttrs(obj, MUIA_String_EditHook, NULL, MUIA_String_Contents, "ftp://",
         TAG_DONE);
     SetAttrs(win, MUIA_Window_ActiveObject, obj, TAG_DONE);

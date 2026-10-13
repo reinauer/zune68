@@ -89,6 +89,19 @@ int main(void)
     GetAttr(MUIA_ContextMenu, obj, &got);
     printf("default context=%08lx\n", got);
     printf("context build=%08lx\n", DoMethod(obj, MUIM_ContextMenuBuild, 0, 0));
+    SetAttrs(obj, MUIA_String_Contents, "abcdefgh", MUIA_String_BufferPos, 6,
+        MUIA_String_DisplayPos, 2, TAG_DONE);
+    got = 0; GetAttr(MUIA_String_BufferPos, obj, &got);
+    check(got == 6, "display position preserves cursor");
+    printf("display-set cursor=%lu ", got);
+    GetAttr(MUIA_String_DisplayPos, obj, &got);
+    printf("display=%lu\n", got);
+    SetAttrs(obj, MUIA_String_BufferPos, 1, MUIA_String_DisplayPos, 4, TAG_DONE);
+    got = 0; GetAttr(MUIA_String_BufferPos, obj, &got);
+    check(got == 1, "display position preserves cursor before view");
+    printf("display-set2 cursor=%lu ", got);
+    GetAttr(MUIA_String_DisplayPos, obj, &got);
+    printf("display=%lu\n", got);
     MUI_DisposeObject(obj);
 done:
     CloseLibrary(MUIMasterBase);

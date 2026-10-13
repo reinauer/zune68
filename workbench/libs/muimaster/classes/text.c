@@ -41,6 +41,10 @@ struct MUI_TextData
 
     LONG update;        /* type of update: 1 - everything,
                          * 2 - insert char, no scroll */
+    STRPTR owned_contents;
+    BOOL copy_contents;
+    LONG shorten;
+    TEXT controlchar;
 };
 
 #define MTDF_SETMIN    (1<<0)
@@ -72,27 +76,34 @@ static LONG plain_length(CONST_STRPTR s)
 static BOOL store_contents_len(struct MUI_TextData *data, CONST_STRPTR src,
     ULONG len)
 {
+    STRPTR buffer;
     ULONG size;
-    STRPTR buf;
-
-    len++;
-
-    if (data->contents && len <= data->contents_size)
+    if (!data->copy_contents)
     {
-        /* a byte loop beats memmove's CopyMem for status lengths; a
-         * source inside the buffer itself lies at or after it */
-        STRPTR d = data->contents;
-
-        while ((*d++ = *src++))
-            ;
+        if (!data->owned_contents || (IPTR)src < (IPTR)data->owned_contents ||
+            (IPTR)src >= (IPTR)data->owned_contents + data->contents_size)
+        {
+            FreeVec(data->owned_contents);
+            data->owned_contents = NULL;
+            data->contents_size = 0;
+        }
+        data->contents = (STRPTR)src;
+        return TRUE;
+    }
+    len++;
+    if (data->owned_contents && len <= data->contents_size)
+    {
+        STRPTR dest = data->owned_contents;
+        while ((*dest++ = *src++)) ;
+        data->contents = data->owned_contents;
         return TRUE;
     }
     size = (len + 31) & ~31UL;
-    if (!(buf = AllocVec(size, MEMF_ANY)))
-        return FALSE;
-    memcpy(buf, src, len);
-    FreeVec(data->contents);
-    data->contents = buf;
+    buffer = AllocVec(size, MEMF_ANY);
+    if (!buffer) return FALSE;
+    memcpy(buffer, src, len);
+    FreeVec(data->owned_contents);
+    data->contents = data->owned_contents = buffer;
     data->contents_size = size;
     return TRUE;
 }
@@ -116,6 +127,8 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     data = INST_DATA(cl, obj);
     data->mtd_Flags = MTDF_SETMIN | MTDF_SETVMAX;
+    data->copy_contents = GetTagData(MUIA_Text_Copy, TRUE, msg->ops_AttrList);
+    data->shorten = GetTagData(MUIA_Text_Shorten, 0, msg->ops_AttrList);
 
     /* parse initial taglist */
 
@@ -128,6 +141,10 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 store_contents(data, (STRPTR) tag->ti_Data);
             break;
 
+        case MUIA_Text_ControlChar:
+            data->controlchar = tag->ti_Data;
+            /* The text engine's shortcut chunks preserve surrounding styles. */
+            /* fall through */
         case MUIA_Text_HiChar:
             data->hichar = tag->ti_Data;
             _handle_bool_tag(data->mtd_Flags, tag->ti_Data, MTDF_HICHAR);
@@ -178,7 +195,7 @@ IPTR Text__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_TextData *data = INST_DATA(cl, obj);
 
-    FreeVec(data->contents);
+    FreeVec(data->owned_contents);
     FreeVec((APTR) data->preparse);
 
     return DoSuperMethodA(cl, obj, msg);
@@ -192,11 +209,30 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     struct MUI_TextData *data = INST_DATA(cl, obj);
     struct TagItem *tags = msg->ops_AttrList;
     struct TagItem *tag;
+    BOOL relayout = FALSE;
 
     while ((tag = NextTagItem(&tags)) != NULL)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_Text_Copy:
+            data->copy_contents = !!tag->ti_Data;
+            break;
+        case MUIA_Text_Shorten:
+            relayout = TRUE;
+            data->shorten = MIN(tag->ti_Data, MUIV_Text_Shorten_ElideRight);
+            data->update = 1;
+            MUI_Redraw(obj, MADF_DRAWUPDATE);
+            break;
+        case MUIA_Text_ControlChar:
+            data->controlchar = data->hichar = tag->ti_Data;
+            _handle_bool_tag(data->mtd_Flags, tag->ti_Data, MTDF_HICHAR);
+            if (data->ztext) { zune_text_destroy(data->ztext); data->ztext = NULL; }
+            data->plain_chunk = NULL;
+            if (_flags(obj) & MADF_SETUP) setup_text(data, obj);
+            data->update = 1;
+            MUI_Redraw(obj, MADF_DRAWUPDATE);
+            break;
         case MUIA_Text_Contents:
             {
                 CONST_STRPTR src = ((char *)tag->ti_Data) ?
@@ -270,7 +306,13 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
-    return DoSuperMethodA(cl, obj, (Msg) msg);
+    IPTR result = DoSuperMethodA(cl, obj, (Msg)msg);
+    if (relayout && (_flags(obj) & MADF_SETUP) && _parent(obj))
+    {
+        DoMethod(_parent(obj), MUIM_Group_InitChange);
+        DoMethod(_parent(obj), MUIM_Group_ExitChange);
+    }
+    return result;
 }
 
 
@@ -284,6 +326,13 @@ IPTR Text__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 #define STORE *(msg->opg_Storage)
     switch (msg->opg_AttrID)
     {
+    case MUIA_Text_Copy: STORE = data->copy_contents; return TRUE;
+    case MUIA_Text_ControlChar: STORE = data->controlchar; return TRUE;
+    case MUIA_Text_Shorten: STORE = data->shorten; return TRUE;
+    case MUIA_Text_Shortened:
+        STORE = data->shorten && data->ztext &&
+            data->ztext->width > _mwidth(obj);
+        return TRUE;
     case MUIA_Text_Contents:
         STORE = (IPTR) data->contents;
         return TRUE;
@@ -410,7 +459,7 @@ IPTR Text__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     /* Area supplied the frame and inner spacing. MUI 3.8/3.9 pad the
      * default width with that spacing once more; without a minimum, the
      * default content width is three 'W' glyphs. */
-    if (data->mtd_Flags & MTDF_SETMIN)
+    if ((data->mtd_Flags & MTDF_SETMIN) && !data->shorten)
     {
         msg->MinMaxInfo->MinWidth += data->ztext->width;
         msg->MinMaxInfo->DefWidth += data->ztext->width + _subwidth(obj);
@@ -511,8 +560,12 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
 
     {
         int y = (_mheight(obj) - data->ztext->height) / 2;
-        zune_text_draw(data->ztext, obj,
-            _mleft(obj), _mright(obj), _mtop(obj) + y);
+        if (data->shorten >= MUIV_Text_Shorten_Hide)
+            zune_text_draw_shortened(data->ztext, obj, _mleft(obj),
+                _mright(obj), _mtop(obj) + y, data->shorten);
+        else
+            zune_text_draw(data->ztext, obj,
+                _mleft(obj), _mright(obj), _mtop(obj) + y);
     }
 
     if (clip != (APTR)-1)

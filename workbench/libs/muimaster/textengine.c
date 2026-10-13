@@ -426,6 +426,9 @@ static CONST_STRPTR parse_escape_code(ZTextLine * ztl,
     case 'n':
         zc->style = FS_NORMAL;
         break;
+    case 'U':
+        zc->style &= ~FSF_UNDERLINED;
+        break;
     case 'u':
         zc->style |= FSF_UNDERLINED;
         break;
@@ -974,5 +977,103 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
             x += chunk_node->cwidth;
         }
         top += line_node->lheight;
+    }
+}
+
+/* Elide parsed chunks rather than cutting escape sequences in the source.
+ * Text keeps its original contents, styles, images and per-line alignment. */
+static LONG elide_chunk(struct RastPort *rp, const ZTextChunk *source,
+    ZTextChunk *dest, LONG available, BOOL tail)
+{
+    struct TextExtent extent;
+    LONG length;
+    if (available <= 0) return 0;
+    *dest = *source;
+    if (source->cwidth <= available) return source->cwidth;
+    if (!source->str || !source->clen || source->image || source->obj)
+        return 0;
+    SetSoftStyle(rp, source->style & ~ZTEXT_STYLE_HICHAR, AskSoftStyle(rp));
+    length = TextFit(rp, source->str + (tail ? source->clen - 1 : 0),
+        source->clen, &extent, NULL, tail ? -1 : 1, available, 32767);
+    if (length <= 0) return 0;
+    dest->str += tail ? source->clen - length : 0;
+    dest->clen = length;
+    dest->cwidth = TextLength(rp, dest->str, length);
+    return dest->cwidth;
+}
+
+void zune_text_draw_shortened(ZText *text, Object *obj, WORD left,
+    WORD right, WORD top, LONG mode)
+{
+    ZTextLine *source;
+    LONG available = right - left + 1;
+    if (!text || available <= 0) return;
+    if (mode == MUIV_Text_Shorten_Hide && text->width > available) return;
+    for (source = (APTR)text->lines.mlh_Head; source->node.mln_Succ;
+        source = (APTR)source->node.mln_Succ)
+    {
+        ZText view = *text;
+        ZTextLine line = *source;
+        ZTextChunk *chunk, *chunks = NULL;
+        struct RastPort rp = *_rp(obj);
+        LONG count = 0, used = 0, suffix, i, budget, width;
+        NewList((struct List *)&view.lines);
+        AddTail((struct List *)&view.lines, (struct Node *)&line.node);
+        view.height = line.lheight;
+        if (source->lwidth <= available)
+            zune_text_draw(&view, obj, left, right, top);
+        else if (mode != MUIV_Text_Shorten_Hide)
+        {
+            for (chunk = (APTR)source->chunklist.mlh_Head; chunk->node.mln_Succ;
+                chunk = (APTR)chunk->node.mln_Succ) count++;
+            chunks = AllocVec((2 * count + 1) * sizeof(*chunks), MEMF_CLEAR);
+            if (!chunks)
+            {
+                view.truncate = TRUE;
+                zune_text_draw(&view, obj, left, right, top);
+            }
+            else
+            {
+                SetFont(&rp, _font(obj)); SetSoftStyle(&rp, 0, AskSoftStyle(&rp));
+                LONG dots = TextLength(&rp, "...", 3);
+                LONG remaining = MAX(0, available - dots);
+                LONG prefix = mode == MUIV_Text_Shorten_ElideLeft ? 0 :
+                    mode == MUIV_Text_Shorten_ElideCenter ? remaining / 2 : remaining;
+                NewList((struct List *)&line.chunklist);
+                line.lwidth = 0; line.centreskip = 0;
+                budget = prefix;
+                for (chunk = (APTR)source->chunklist.mlh_Head;
+                    chunk->node.mln_Succ && budget > 0; chunk = (APTR)chunk->node.mln_Succ)
+                {
+                    width = elide_chunk(&rp, chunk, &chunks[used], budget, FALSE);
+                    if (!width) break;
+                    AddTail((struct List *)&line.chunklist, (struct Node *)&chunks[used++].node);
+                    budget -= width; line.lwidth += width;
+                    if (width < chunk->cwidth) break;
+                }
+                chunks[used].str = "..."; chunks[used].clen = 3;
+                chunks[used].cwidth = dots; chunks[used].cheight = rp.TxHeight;
+                chunks[used].dripen = TEXTPEN; chunks[used].pen = -1;
+                AddTail((struct List *)&line.chunklist, (struct Node *)&chunks[used++].node);
+                line.lwidth += dots;
+                budget = mode == MUIV_Text_Shorten_ElideRight ? 0 :
+                    remaining - (line.lwidth - dots);
+                suffix = used;
+                for (chunk = (APTR)source->chunklist.mlh_TailPred;
+                    chunk->node.mln_Pred && budget > 0; chunk = (APTR)chunk->node.mln_Pred)
+                {
+                    width = elide_chunk(&rp, chunk, &chunks[used], budget, TRUE);
+                    if (!width) break;
+                    used++; budget -= width; line.lwidth += width;
+                    if (width < chunk->cwidth) break;
+                }
+                for (i = used - 1; i >= suffix; i--)
+                    AddTail((struct List *)&line.chunklist, (struct Node *)&chunks[i].node);
+                view.width = line.lwidth; view.truncate = TRUE;
+                zune_text_draw(&view, obj, left, right, top);
+                FreeVec(chunks);
+            }
+        }
+        top += source->lheight;
     }
 }

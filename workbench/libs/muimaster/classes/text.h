@@ -16,6 +16,17 @@
 #define MUIB_Text           (MUIB_ZUNE | 0x00003500)
 
 /*** Attributes *************************************************************/
+#define MUIA_Text_Copy        0x80427727
+#define MUIA_Text_ControlChar 0x8042e6d0
+#define MUIA_Text_Shorten     0x80428bbd
+#define MUIA_Text_Shortened   0x80425a86
+#define MUIV_Text_Shorten_Nothing 0
+#define MUIV_Text_Shorten_Cutoff 1
+#define MUIV_Text_Shorten_Hide 2
+#define MUIV_Text_Shorten_ElideLeft 3
+#define MUIV_Text_Shorten_ElideCenter 4
+#define MUIV_Text_Shorten_ElideRight 5
+
 #define MUIA_Text_Contents \
     (MUIB_MUI | 0x0042f8dc)       /* MUI: V4  isg STRPTR */
 #define MUIA_Text_HiChar \

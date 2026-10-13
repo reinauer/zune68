@@ -78,6 +78,15 @@ def check(path):
     h.call('zune_text_destroy', text)
     assert not h.allocations
 
+    # Ending an underline must keep other styles, including bold.
+    text = h.parse('\33b\33uA\33UB')
+    line = next(h.nodes(text + 4))
+    chunks = list(h.nodes(line + 10))
+    assert h.chunks(text) == [['A', 'B']]
+    assert [h.mem.r8(chunk + 36) for chunk in chunks] == [3, 2]
+    h.call('zune_text_destroy', text)
+    assert not h.allocations
+
     # Enough lines and style chunks to overflow the inline space.
     lines = ['\33bbold%d\33nplain%d' % (i, i) for i in range(12)]
     text = h.parse('\n'.join(lines))

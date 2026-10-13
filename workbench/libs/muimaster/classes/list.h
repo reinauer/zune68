@@ -14,6 +14,51 @@
 #define MUIB_List                     (MUIB_ZUNE | 0x00001400)
 
 /*** Methods ****************************************************************/
+#define MUIM_List_SortEntries         0x80429e32
+#define MUIM_List_CreateEditObject    0x804219ae
+#define MUIM_List_Edit               0x8042843d
+#define MUIM_List_EditDone           0x80423ab3
+#define MUIM_List_EndEdit            0x804203ee
+#define MUIV_List_HScrollerVisibility_Auto 0
+#define MUIV_List_HScrollerVisibility_Always 1
+#define MUIV_List_HScrollerVisibility_Never 2
+#define MUIV_List_Edit_Active -1
+#define MUIV_List_CompareHook_String -1
+#define MUIV_List_EndEdit_Done 0
+#define MUIV_List_EndEdit_Abort 1
+#define MUIV_List_EndEdit_Prev 2
+#define MUIV_List_EndEdit_Next 3
+#define MUIV_List_EndEdit_Up 4
+#define MUIV_List_EndEdit_Down 5
+struct MUIP_List_SortEntries
+{
+    STACKED ULONG MethodID;
+    STACKED APTR *entries;
+};
+struct MUIP_List_CreateEditObject
+{
+    STACKED ULONG MethodID;
+    STACKED LONG row, column;
+    STACKED APTR entry;
+};
+struct MUIP_List_Edit
+{
+    STACKED ULONG MethodID;
+    STACKED LONG row, column;
+};
+struct MUIP_List_EditDone
+{
+    STACKED ULONG MethodID;
+    STACKED LONG row, column;
+    STACKED APTR entry;
+    STACKED Object *editobj;
+};
+struct MUIP_List_EndEdit
+{
+    STACKED ULONG MethodID;
+    STACKED ULONG mode;
+};
+
 #define MUIM_List_Clear           (MUIB_MUI | 0x0042ad89)     /* MUI: V4  */
 #define MUIM_List_Compare         (MUIB_MUI | 0x00421b68)     /* MUI: V20 */
 #define MUIM_List_Construct       (MUIB_MUI | 0x0042d662)     /* MUI: V20 */
@@ -44,7 +89,7 @@ struct MUIP_List_Compare
     STACKED ULONG MethodID;
     STACKED APTR entry1;
     STACKED APTR entry2;
-    STACKED LONG sort_type1;
+    union { STACKED LONG column; STACKED LONG sort_type1; };
     STACKED LONG sort_type2;
 };
 
@@ -80,7 +125,7 @@ struct MUIP_List_Display
     STACKED ULONG MethodID;
     STACKED APTR entry;
     STACKED STRPTR *array;
-    STACKED LONG entry_pos;
+    union { STACKED LONG row; STACKED LONG entry_pos; };
     STACKED STRPTR *preparses;
 };
 
@@ -178,6 +223,13 @@ struct MUIP_List_SelectChange
 };
 
 /*** Attributes *************************************************************/
+#define MUIA_List_HScrollerVisibility 0x804280a6
+#define MUIA_List_TitleClick          0x80422fd9
+#define MUIA_List_SortColumn          0x8042cafb
+#define MUIA_List_Stripes             0x8042a308
+#define MUIA_List_HideColumn          0x80428052
+#define MUIA_List_ShowColumn          0x8042c840
+#define MUIA_List_Editable            0x8042f9b9
 #define MUIA_List_Active \
     (MUIB_MUI | 0x0042391c)     /* MUI: V4  isg LONG          */
 #define MUIA_List_AdjustHeight \
