@@ -5,11 +5,13 @@
 struct Title_DATA
 {
     struct Hook *layout_hook;
-    ULONG location;
     struct MUI_EventHandlerNode ehn;
     LONG activetab;
-    LONG oldactivetab;
-    IPTR background;
+    ULONG position, onlastclose;
+    BOOL clickable, closable, newable, sortable;
+    LONG pressed, first, last;
+    BOOL overflow;
+    Object *page_menu;
 };
 
 #endif /* _TITLE_PRIVATE_H_ */

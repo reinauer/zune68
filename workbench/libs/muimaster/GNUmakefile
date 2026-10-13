@@ -62,7 +62,7 @@ SOURCES = \
   classes/register.c classes/semaphore.c classes/scale.c \
   classes/scrollbar.c classes/scrollbutton.c classes/scrollgroup.c \
   classes/settings.c classes/settingsgroup.c classes/slider.c \
-  classes/string.c classes/text.c classes/virtgroup.c \
+  classes/string.c classes/text.c classes/title.c classes/virtgroup.c \
   classes/volumelist.c classes/window.c
 OBJECTS = $(addprefix $(BUILD)/,$(SOURCES:.c=.o))
 LDLIBS = -Wl,--start-group -lgcc -lnix20 -lnix -lm -lamiga -ldebug \
@@ -103,7 +103,7 @@ $(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERA
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
-MUI5_PROBES = menu menu_input string string_input image ibrowse
+MUI5_PROBES = menu menu_input string string_input image ibrowse title
 MUI5_PROBE_BINS = $(addprefix $(BUILD)/mui5-,$(addsuffix -probe,$(MUI5_PROBES)))
 
 $(MUI5_PROBE_BINS): $(BUILD)/mui5-%-probe: ../../../tests/native/mui5_%_probe.c $(GENERATED)

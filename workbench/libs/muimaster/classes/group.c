@@ -17,6 +17,7 @@
 extern struct Library *MUIMasterBase;
 
 #include "muimaster_intern.h"
+#include <string.h>
 #include "mui.h"
 #include "support.h"
 #include "prefs.h"
@@ -174,6 +175,12 @@ static void change_active_page(struct IClass *cl, Object *obj, LONG page)
     if (data->titlegroup != NULL)
         num_children--;
 
+    if (num_children <= 0)
+    {
+        data->active_page = 0;
+        return;
+    }
+
     switch (page)
     {
     case MUIV_Group_ActivePage_First:
@@ -262,6 +269,19 @@ static IPTR Group__MUIM_AddObject(struct IClass *cl, Object *obj, Msg msg)
 
     DoMethodA(data->family, (Msg) msg);
     data->num_children++;
+    if (data->num_children == 1)
+    {
+        struct IClass *childclass = OCLASS(msgint->obj);
+        for (; childclass; childclass = childclass->cl_Super)
+            if (childclass->cl_ID &&
+                !strcmp((char *)childclass->cl_ID, MUIC_Title))
+            {
+                data->titlegroup = msgint->obj;
+                data->flags |= GROUP_PAGEMODE;
+                break;
+            }
+    }
+
     if ((data->flags & GROUP_CHANGING) != 0)
         data->flags |= GROUP_CHANGED;
 
@@ -807,6 +827,7 @@ IPTR Group__MUIM_Remove(struct IClass *cl, Object *obj,
 {
     struct MUI_GroupData *data = INST_DATA(cl, obj);
 
+    if (msg->obj == data->titlegroup) data->titlegroup = NULL;
     if (_flags(obj) & MADF_CANDRAW)
         DoHideMethod(msg->obj);
     if (_flags(obj) & MADF_SETUP)
@@ -2110,6 +2131,9 @@ group_minmax_pagemode(struct IClass *cl, Object *obj,
 
     if (data->titlegroup)
     {
+        tmp.MinWidth = MAX(tmp.MinWidth, _minwidth(data->titlegroup));
+        tmp.DefWidth = MAX(tmp.DefWidth, _defwidth(data->titlegroup));
+        tmp.MaxWidth = MAX(tmp.MaxWidth, _maxwidth(data->titlegroup));
         tmp.MinHeight += _minheight(data->titlegroup);
         tmp.MaxHeight += w0_maxheight(data->titlegroup);
         tmp.DefHeight += w0_defheight(data->titlegroup);
@@ -3405,13 +3429,19 @@ static void group_layout_pagemode(struct IClass *cl, Object *obj,
 
         if (child == data->titlegroup)
         {
-            MUI_Layout(child, (layout_width - w) / 2, 0, w, yoffset, 0);
+            IPTR position = 0;
+            get(child, MUIA_Title_Position, &position);
+            MUI_Layout(child, (layout_width - w) / 2,
+                position == MUIV_Title_Position_Bottom ? layout_height : 0,
+                w, yoffset, 0);
         }
         else
         {
             D(bug("PM/child %p -> layout %d x %d\n", child, w, h));
             MUI_Layout(child, (layout_width - w) / 2,
-                yoffset + (layout_height - h) / 2, w, h, 0);
+                (data->titlegroup && XGET(data->titlegroup, MUIA_Title_Position) ==
+                    MUIV_Title_Position_Bottom ? 0 : yoffset) +
+                (layout_height - h) / 2, w, h, 0);
         }
     }
 }
