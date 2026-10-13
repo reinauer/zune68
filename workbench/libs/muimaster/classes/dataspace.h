@@ -67,6 +67,15 @@ struct MUIP_Dataspace_WriteIFF
     STACKED ULONG id;
 };
 
+#define MUIM_Dataspace_Get 0x8042483f
+struct MUIP_Dataspace_Get
+{
+    STACKED ULONG MethodID;
+    STACKED ULONG id;
+    STACKED ULONG *size;
+};
+#define MUIA_Dataspace_Count 0x8042e7ea
+
 /*** Attributes *************************************************************/
 #define MUIA_Dataspace_Pool       (MUIB_MUI | 0x00424cf9) /* MUI: V11 i.. APTR */
 

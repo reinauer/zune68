@@ -189,7 +189,7 @@ int main(int argc, char **argv)
         if (result != (select_item ? 42 : 0)) failures++;
     }
     if (!draws) failures++;
-    if (MUIMasterBase->lib_Version == 19)
+    if (strstr((char *)MUIMasterBase->lib_IdString, "Zune68") != NULL)
     {
         DoMethod(app, MUIM_Application_PushMethod, win, 3,
             MUIM_Set, MUIA_Window_Open, FALSE);

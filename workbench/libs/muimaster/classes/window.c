@@ -185,6 +185,7 @@ struct MUI_WindowData
     struct ZuneWindowGuard *wd_Guards;
     struct ZunePointer *wd_Pointer;
     IPTR wd_PointerType;
+    LONG wd_Opacity;
 };
 
 #ifndef WFLG_SIZEGADGET
@@ -3504,6 +3505,7 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     /* Initial local instance data */
     data = INST_DATA(cl, obj);
 
+    data->wd_Opacity = 255;
     data->wd_Class = cl;
     data->wd_EventCursors = NULL;
     data->wd_MemoryPool = CreatePool(0, 4096, 2048);
@@ -3547,6 +3549,9 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_Window_Opacity:
+            data->wd_Opacity = MIN(tag->ti_Data, 255);
+            break;
         case MUIA_Window_EraseArea:
             _handle_bool_tag(data->wd_Flags, tag->ti_Data, MUIWF_ERASEAREA);
             break;
@@ -3922,6 +3927,10 @@ IPTR Window__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             data->wd_UserPublicScreen = (STRPTR) tag->ti_Data;
             break;
 
+        case MUIA_Window_Opacity:
+            /* OS3 has no window compositor; retain the public setting. */
+            data->wd_Opacity = MIN(tag->ti_Data, 255);
+            break;
         case MUIA_Window_Sleep:
             if (tag->ti_Data)
             {
@@ -4100,6 +4109,9 @@ IPTR Window__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
 
 
+    case MUIA_Window_Opacity:
+        STORE = data->wd_Opacity;
+        return TRUE;
     case MUIA_Window_Sleep:
         STORE = data->wd_SleepCount ? TRUE : FALSE;
         return TRUE;

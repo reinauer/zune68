@@ -82,6 +82,7 @@ struct ColumnInfo
     STRPTR preparse;
     int entries_width; /* width of the entries (maximum of all widths) */
     BOOL hidden, sortable, descending;
+    int order_id;
 };
 
 struct MUI_ImageSpec_intern;
@@ -223,6 +224,10 @@ struct MUI_ListData
     LONG edit_row, edit_column;
     APTR edit_entry;
     BOOL ending_edit;
+    LONG max_columns;
+    CONST_STRPTR *title_array;
+    LONG title_columns;
+    STRPTR *mapped_strings;
 };
 
 #define MOUSE_CLICK_ENTRY 1     /* on entry clicked */
@@ -623,6 +628,8 @@ static void FreeListFormat(struct MUI_ListData *data)
         FreeVec(data->ci);
         data->ci = NULL;
     }
+    FreeVec(data->mapped_strings);
+    data->mapped_strings = NULL;
     FreeVec(data->preparses);
     data->preparses = NULL;
     if (data->strings_mem)
@@ -664,11 +671,14 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
         if (c == ',')
             new_columns++;
 
+    if (!*format && data->max_columns > new_columns)
+        new_columns = data->max_columns;
+
     if (!(data->preparses =
-            AllocVec((new_columns + 10) * sizeof(STRPTR), MEMF_CLEAR)))
+            AllocVec((MAX(new_columns, data->max_columns) + 10) * sizeof(STRPTR), MEMF_CLEAR)))
         return FALSE;
 
-    if (!(data->strings_mem = AllocVec((new_columns + 1 + 10)
+    if (!(data->strings_mem = AllocVec((MAX(new_columns, data->max_columns) + 1 + 10)
         * sizeof(STRPTR), MEMF_CLEAR)))
                                   /* hold enough space also for the entry pos,
                                    * used by orginal MUI and also some
@@ -682,7 +692,7 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
     // set defaults
     for (i = 0; i < new_columns; i++)
     {
-        data->ci[i].colno = -1; // -1 means: use unassigned column
+        data->ci[i].colno = data->ci[i].order_id = i;
         data->ci[i].weight = 100;
         data->ci[i].delta = 4;
         data->ci[i].min_width = -1;
@@ -692,7 +702,7 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
         data->ci[i].preparse = NULL;
     }
 
-    if ((format_sep = StrDup(format)) != 0)
+    if (*format && (format_sep = StrDup(format)) != 0)
     {
         for (i = 0; format_sep[i] != '\0'; i++)
         {
@@ -785,10 +795,51 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
         }
         data->columns_allocated = new_columns;
     }
+    for (i = 0; i < new_columns; i++)
+    {
+        if (data->ci[i].colno < 0 ||
+            data->ci[i].colno >= MAX(new_columns, data->max_columns))
+            data->ci[i].colno = i;
+        if (data->ci[i].colno != i && !data->mapped_strings)
+        {
+            data->mapped_strings = AllocVec(new_columns * sizeof(STRPTR), MEMF_ANY);
+            if (!data->mapped_strings) return FALSE;
+        }
+    }
     data->columns = new_columns;
     /* Skip entry pos (-1) and enough indexes to get (-9). Based on MPlayer source codes. */
     data->strings += 10;
 
+    return TRUE;
+}
+
+static void MapColumns(struct MUI_ListData *data)
+{
+    if (!data->mapped_strings) return;
+    for (LONG i = 0; i < data->columns; i++)
+        data->mapped_strings[i] = data->strings[data->ci[i].colno];
+    memcpy(data->strings, data->mapped_strings, data->columns * sizeof(STRPTR));
+}
+static BOOL SetColumnOrder(struct MUI_ListData *data, const UBYTE *order)
+{
+    struct ColumnInfo *columns;
+    if (!order || data->columns > 256) return FALSE;
+    for (LONG i = 0; i < data->columns; i++)
+    {
+        if (order[i] >= data->columns) return FALSE;
+        for (LONG j = 0; j < i; j++)
+            if (order[i] == order[j]) return FALSE;
+    }
+    columns = AllocVec(data->columns * sizeof(*columns), MEMF_ANY);
+    if (!columns) return FALSE;
+    if (!data->mapped_strings)
+        data->mapped_strings = AllocVec(data->columns * sizeof(STRPTR), MEMF_ANY);
+    if (!data->mapped_strings) { FreeVec(columns); return FALSE; }
+    for (LONG i = 0; i < data->columns; i++)
+        for (LONG j = 0; j < data->columns; j++)
+            if (data->ci[j].order_id == order[i]) { columns[i] = data->ci[j]; break; }
+    memcpy(data->ci, columns, data->columns * sizeof(*columns));
+    FreeVec(columns);
     return TRUE;
 }
 
@@ -807,6 +858,14 @@ static void DisplayEntry(struct IClass *cl, Object *obj, int entry_pos)
 
     if (entry_pos == ENTRY_TITLE)
     {
+        if (data->title_array)
+        {
+            LONG count = data->title_columns;
+            for (col = 0; col < MAX(data->columns, data->max_columns); col++)
+                data->strings[col] = col < count ? (STRPTR)data->title_array[col] : NULL;
+            MapColumns(data);
+            return;
+        }
         if ((data->columns == 1) && (data->title != (STRPTR) 1))
         {
             *data->strings = data->title;
@@ -823,6 +882,7 @@ static void DisplayEntry(struct IClass *cl, Object *obj, int entry_pos)
     /* Get the display formation */
     DoMethod(obj, MUIM_List_Display, (IPTR) entry_data,
         (IPTR) data->strings, entry_pos, (IPTR) data->preparses);
+    MapColumns(data);
 }
 
 /**************************************************************************
@@ -1184,6 +1244,9 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data = INST_DATA(cl, obj);
 
     data->columns = 1;
+    data->max_columns = GetTagData(MUIA_List_MaxColumns, 0, msg->ops_AttrList);
+    if (data->max_columns < 0 || data->max_columns > 4096)
+    { CoerceMethod(cl, obj, OM_DISPOSE); return 0; }
     data->entries_active = MUIV_List_Active_Off;
     data->intern_puddle_size = 2008;
     data->intern_thresh_size = 1024;
@@ -1413,6 +1476,15 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         return 0;
     }
 
+    CONST_STRPTR *titles = (APTR)GetTagData(MUIA_List_TitleArray, 0, msg->ops_AttrList);
+    if (titles)
+    {
+        ULONG count = data->max_columns ? data->max_columns : data->columns;
+        data->title_array = titles;
+        data->title_columns = count;
+        data->title = (STRPTR)1;
+    }
+
     if (array)
     {
         int i;
@@ -1557,6 +1629,17 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             }
             break;
 
+        case MUIA_List_ColumnOrder:
+            ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
+            if (SetColumnOrder(data, (APTR)tag->ti_Data))
+                DoMethod(obj, MUIM_List_Redraw, MUIV_List_Redraw_All);
+            break;
+        case MUIA_List_TitleArray:
+            data->title_array = (APTR)tag->ti_Data;
+            data->title_columns = data->max_columns ? data->max_columns : data->columns;
+            data->title = data->title_array ? (STRPTR)1 : NULL;
+            DoMethod(obj, MUIM_List_Redraw, MUIV_List_Redraw_All);
+            break;
         case MUIA_List_Title:
             data->title = (STRPTR) tag->ti_Data;
             DoMethod(obj, MUIM_List_Redraw, MUIV_List_Redraw_All);
@@ -1858,6 +1941,13 @@ IPTR List__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     case MUIA_List_InsertPosition:
         STORE = data->insert_position;
         return 1;
+    case MUIA_List_ColumnOrder:
+        for (LONG i = 0; i < data->columns; i++)
+            ((UBYTE *)msg->opg_Storage)[i] = data->ci[i].order_id;
+        return TRUE;
+    case MUIA_List_TitleArray:
+        STORE = (IPTR)data->title_array;
+        return TRUE;
     case MUIA_List_Title:
         STORE = (IPTR) data->title;
         return 1;
@@ -3546,6 +3636,38 @@ IPTR List__MUIM_Construct(struct IClass *cl, Object *obj,
 
     if (NULL == data->construct_hook)
         return (IPTR) msg->entry;
+    if ((IPTR)data->construct_hook == MUIV_List_ConstructHook_StringArray)
+    {
+        CONST_STRPTR *src = msg->entry;
+        ULONG bytes, *allocation;
+        STRPTR *copy, dest;
+        if (!src || data->max_columns <= 0) return 0;
+        bytes = sizeof(ULONG) + data->max_columns * sizeof(STRPTR);
+        for (LONG i = 0; i < data->max_columns; i++)
+            if (src[i])
+            {
+                ULONG len = strlen(src[i]) + 1;
+                if (len > 0x7fffffffUL - bytes) return 0;
+                bytes += len;
+            }
+        allocation = AllocPooled(msg->pool, bytes);
+        if (!allocation) return 0;
+        *allocation = bytes;
+        copy = (APTR)(allocation + 1);
+        dest = (STRPTR)(copy + data->max_columns);
+        for (LONG i = 0; i < data->max_columns; i++)
+        {
+            copy[i] = NULL;
+            if (src[i])
+            {
+                ULONG len = strlen(src[i]) + 1;
+                copy[i] = dest;
+                memcpy(dest, src[i], len);
+                dest += len;
+            }
+        }
+        return (IPTR)copy;
+    }
     if ((IPTR) data->construct_hook == MUIV_List_ConstructHook_String)
     {
         int len = msg->entry ? strlen((STRPTR) msg->entry) : 0;
@@ -3574,7 +3696,8 @@ IPTR List__MUIM_Destruct(struct IClass *cl, Object *obj,
     if (NULL == data->destruct_hook)
         return 0;
 
-    if ((IPTR) data->destruct_hook == MUIV_List_DestructHook_String)
+    if ((IPTR)data->destruct_hook == MUIV_List_DestructHook_String ||
+        (IPTR)data->destruct_hook == MUIV_List_DestructHook_StringArray)
     {
         ULONG *mem = ((ULONG *) msg->entry) - 1;
         FreePooled(msg->pool, mem, mem[0]);
@@ -3617,7 +3740,15 @@ IPTR List__MUIM_Compare(struct IClass *cl, Object *obj,
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
 
-    if ((IPTR)data->compare_hook == MUIV_List_CompareHook_String)
+    if ((IPTR)data->compare_hook == MUIV_List_CompareHook_StringArray)
+    {
+        LONG column = msg->column;
+        if (column < 0 || column >= data->max_columns) column = 0;
+        CONST_STRPTR a = ((CONST_STRPTR *)msg->entry1)[column];
+        CONST_STRPTR b = ((CONST_STRPTR *)msg->entry2)[column];
+        return Stricmp(a ? a : "", b ? b : "");
+    }
+    if (!data->compare_hook || (IPTR)data->compare_hook == MUIV_List_CompareHook_String)
         return Stricmp(msg->entry1, msg->entry2);
     return CallHookPkt(data->compare_hook, msg->entry2, msg->entry1);
 }
@@ -3630,7 +3761,15 @@ IPTR List__MUIM_Display(struct IClass *cl, Object *obj,
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
 
-    if (NULL == data->display_hook)
+    if ((IPTR)data->display_hook == MUIV_List_DisplayHook_StringArray)
+    {
+        for (LONG i = 0; i < MAX(data->columns, data->max_columns); i++)
+            msg->array[i] = msg->entry && i < data->max_columns ?
+                ((STRPTR *)msg->entry)[i] : NULL;
+        return TRUE;
+    }
+    if (NULL == data->display_hook ||
+        (IPTR)data->display_hook == MUIV_List_DisplayHook_String)
     {
         if (msg->entry)
             *msg->array = msg->entry;

@@ -9,12 +9,24 @@
  * to name the archive and fill the readmes; the release tag is the same
  * date as vYYYY.MM.DD.
  * Keep class implementation versions independent of the library version;
- * external classes retain their own MUIA_Version/MUIA_Revision handlers.
+ * The opt-in MUI5_TEST profile deliberately reports 21.227 for validation;
+ * it is a development identity, not a complete compatibility claim.
+ * External classes retain their own MUIA_Version/MUIA_Revision handlers.
  */
+#if ZUNE68_MUI5_TEST
+/* Exercise library and class gates together in disposable test guests. */
+#define ZUNE68_LIBRARY_VERSION 21
+#define ZUNE68_LIBRARY_REVISION 227
+#else
 #define ZUNE68_LIBRARY_VERSION 19
 #define ZUNE68_LIBRARY_REVISION 81
+#endif
 #define ZUNE68_LIBRARY_DATE "12.10.2026"
+#if ZUNE68_MUI5_TEST
+#define ZUNE68_RELEASE_STAGE "MUI5 development"
+#else
 #define ZUNE68_RELEASE_STAGE "Beta 1"
+#endif
 #define ZUNE68_STRINGIFY_(x) #x
 #define ZUNE68_STRINGIFY(x) ZUNE68_STRINGIFY_(x)
 #define ZUNE68_LIBRARY_VERSION_STRING \
@@ -23,7 +35,12 @@
 
 /* Retain the established implementation series until a release changes it.
  * Do not raise these to bypass an application's unsupported-feature check. */
+#if ZUNE68_MUI5_TEST
+#define ZUNE68_BUILTIN_VERSION 21
+#define ZUNE68_BUILTIN_REVISION 227
+#else
 #define ZUNE68_BUILTIN_VERSION 1
 #define ZUNE68_BUILTIN_REVISION 1
+#endif
 
 #endif

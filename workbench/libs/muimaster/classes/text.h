@@ -16,6 +16,7 @@
 #define MUIB_Text           (MUIB_ZUNE | 0x00003500)
 
 /*** Attributes *************************************************************/
+#define MUIA_Text_Data        0x80424838
 #define MUIA_Text_Copy        0x80427727
 #define MUIA_Text_ControlChar 0x8042e6d0
 #define MUIA_Text_Shorten     0x80428bbd

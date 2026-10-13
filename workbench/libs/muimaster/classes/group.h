@@ -21,6 +21,11 @@
 #define MUIM_Group_ExitChange   (MUIB_MUI | 0x0042d1cc)        /* MUI: V11 */
 #define MUIM_Group_ExitChange2  (MUIB_MUI | 0x0042e541)        /* MUI: PRIV */
 #define MUIM_Group_InitChange   (MUIB_MUI | 0x00420887)        /* MUI: V11 */
+#define MUIM_Group_MoveMember 0x8042ff4e
+#define MUIM_Group_Reorder 0x80426c3f
+struct MUIP_Group_MoveMember { STACKED ULONG MethodID; STACKED Object *o; STACKED LONG pos; };
+struct MUIP_Group_Reorder { STACKED ULONG MethodID; STACKED Object *after; STACKED Object *array[1]; };
+#define MUIA_Group_ChildCount 0x80420322
 #define MUIM_Group_Sort         (MUIB_MUI | 0x00427417)        /* MUI: V4  */
 #define MUIM_Group_Remove       (MUIB_MUI | 0x0042f8a9)        /* MUI: V8 */
 

@@ -18,6 +18,8 @@
 /*** Methods ****************************************************************/
 #define MUIM_Family_AddHead    (MUIB_MUI | 0x0042e200)    /* MUI: V8  */
 #define MUIM_Family_AddTail    (MUIB_MUI | 0x0042d752)    /* MUI: V8  */
+#define MUIM_Family_Reorder 0x80426008
+struct MUIP_Family_Reorder { STACKED ULONG MethodID; STACKED Object *after; STACKED Object *array[1]; };
 #define MUIM_Family_Insert     (MUIB_MUI | 0x00424d34)    /* MUI: V8  */
 #define MUIM_Family_Remove     (MUIB_MUI | 0x0042f8a9)    /* MUI: V8  */
 #define MUIM_Family_Sort       (MUIB_MUI | 0x00421c49)    /* MUI: V8  */

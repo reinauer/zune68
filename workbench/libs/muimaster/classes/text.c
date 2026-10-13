@@ -45,6 +45,7 @@ struct MUI_TextData
     BOOL copy_contents;
     LONG shorten;
     TEXT controlchar;
+    Object *textdata;
 };
 
 #define MTDF_SETMIN    (1<<0)
@@ -129,6 +130,7 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->mtd_Flags = MTDF_SETMIN | MTDF_SETVMAX;
     data->copy_contents = GetTagData(MUIA_Text_Copy, TRUE, msg->ops_AttrList);
     data->shorten = GetTagData(MUIA_Text_Shorten, 0, msg->ops_AttrList);
+    data->textdata = (Object *)GetTagData(MUIA_Text_Data, 0, msg->ops_AttrList);
 
     /* parse initial taglist */
 
@@ -197,6 +199,7 @@ IPTR Text__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 
     FreeVec(data->owned_contents);
     FreeVec((APTR) data->preparse);
+    if (data->textdata) MUI_DisposeObject(data->textdata);
 
     return DoSuperMethodA(cl, obj, msg);
 }
@@ -215,6 +218,16 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_Text_Data:
+            /* Replacing returns ownership of the previous object. */
+            data->textdata = (Object *)tag->ti_Data;
+            if (data->ztext) { zune_text_destroy(data->ztext); data->ztext = NULL; }
+            data->plain_chunk = NULL;
+            if (_flags(obj) & MADF_SETUP) setup_text(data, obj);
+            relayout = TRUE;
+            data->update = 1;
+            MUI_Redraw(obj, MADF_DRAWUPDATE);
+            break;
         case MUIA_Text_Copy:
             data->copy_contents = !!tag->ti_Data;
             break;
@@ -241,7 +254,7 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 
                 /* Plain status text keeps its parsed form and gets the
                  * new string, which needs no parsing either */
-                if (data->plain_chunk && (len = plain_length(src)) > 0
+                if (!data->textdata && data->plain_chunk && (len = plain_length(src)) > 0
                     && store_contents_len(data, src, len))
                 {
                     zune_text_set_plain(data->ztext, data->plain_chunk,
@@ -326,6 +339,7 @@ IPTR Text__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 #define STORE *(msg->opg_Storage)
     switch (msg->opg_AttrID)
     {
+    case MUIA_Text_Data: STORE = (IPTR)data->textdata; return TRUE;
     case MUIA_Text_Copy: STORE = data->copy_contents; return TRUE;
     case MUIA_Text_ControlChar: STORE = data->controlchar; return TRUE;
     case MUIA_Text_Shorten: STORE = data->shorten; return TRUE;
@@ -358,24 +372,31 @@ IPTR Text__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 **************************************************************************/
 static void setup_text(struct MUI_TextData *data, Object *obj)
 {
+    CONST_STRPTR contents = data->contents;
+    if (data->textdata)
+    {
+        contents = (CONST_STRPTR)DoMethod(data->textdata,
+            MUIM_Textdata_Convert, 0);
+        if (!contents) contents = "";
+    }
     if (data->mtd_Flags & MTDF_HICHAR)
     {
-        data->ztext = zune_text_new(data->preparse, data->contents,
+        data->ztext = zune_text_new(data->preparse, contents,
             ZTEXT_ARG_HICHAR, data->hichar);
     }
     else if (data->mtd_Flags & MTDF_HICHARIDX)
     {
-        data->ztext = zune_text_new(data->preparse, data->contents,
+        data->ztext = zune_text_new(data->preparse, contents,
             ZTEXT_ARG_HICHARIDX, data->hichar);
     }
     else
     {
-        data->ztext = zune_text_new(data->preparse, data->contents,
+        data->ztext = zune_text_new(data->preparse, contents,
             ZTEXT_ARG_NONE, 0);
     }
     zune_text_get_bounds(data->ztext, obj);
     data->plain_chunk = (data->mtd_Flags & (MTDF_HICHAR | MTDF_HICHARIDX))
-        ? NULL : zune_text_plain_chunk(data->ztext, data->contents);
+        ? NULL : zune_text_plain_chunk(data->ztext, contents);
 
 /*      D(bug("muimaster.library/text.c: ZText of 0x%p at 0x%p\n", */
 /*          obj, data->ztext)); */

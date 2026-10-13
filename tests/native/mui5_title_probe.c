@@ -118,7 +118,7 @@ int main(int argc, char **argv)
     struct List *children=NULL; GetAttr(MUIA_Group_ChildList,title,(ULONG*)&children);
     APTR state=children->lh_Head; int count=0; while(NextObject(&state)) count++;
     printf("children after close=%d\n",count);
-    if(MUIMasterBase->lib_Version==19)
+    if(strstr((char *)MUIMasterBase->lib_IdString, "Zune68") != NULL)
     {
         check(_top(title)>_top(pages[0]),"bottom placement");
         click(app,_mright(title)-8,_mtop(title)+8);

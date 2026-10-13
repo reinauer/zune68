@@ -10,6 +10,7 @@
 */
 
 /*** Name *******************************************************************/
+#define MUIA_Window_Opacity 0x80429617
 #define MUIC_Window                 "Window.mui"
 
 /*** Identifier base (for Zune extensions) **********************************/

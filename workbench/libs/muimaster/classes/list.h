@@ -8,6 +8,14 @@
 
 /****************************************************************************/
 /*** Name *******************************************************************/
+#define MUIA_List_ColumnOrder 0x9d5100f6
+#define MUIA_List_MaxColumns 0x8042a98b
+#define MUIA_List_TitleArray 0x80427d95
+#define MUIV_List_ConstructHook_StringArray (-2)
+#define MUIV_List_DestructHook_StringArray (-2)
+#define MUIV_List_CompareHook_StringArray (-2)
+#define MUIV_List_DisplayHook_String (-1)
+#define MUIV_List_DisplayHook_StringArray (-2)
 #define MUIC_List                     "List.mui"
 
 /*** Identifier base (for Zune extensions) **********************************/

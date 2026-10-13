@@ -267,8 +267,11 @@ static void ReadDirectory(Object *obj, struct Dirlist_DATA *data)
                         {
                             set(obj, MUIA_Dirlist_NumFiles,
                                 ++data->numfiles);
-                            set(obj, MUIA_Dirlist_NumBytes,
-                                data->numbytes + fib->fib_Size);
+                            data->numbytes64 += (ULONG)fib->fib_Size;
+                            data->numbytes = data->numbytes64 > 0x7fffffffULL ?
+                                0x7fffffff : (ULONG)data->numbytes64;
+                            set(obj, MUIA_Dirlist_NumBytes, data->numbytes);
+                            set(obj, MUIA_Dirlist_NumBytes64, &data->numbytes64);
                         }
 
                         DoMethod(obj, MUIM_List_InsertSingle, (IPTR) fib,
@@ -351,6 +354,16 @@ IPTR Dirlist__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             data->sorttype = tidata;
             break;
 
+        case MUIA_Dirlist_NumBytes:
+            if (!tidata) data->numbytes64 = 0;
+            data->numbytes = tidata;
+            break;
+        case MUIA_Dirlist_NumFiles:
+            data->numfiles = tidata;
+            break;
+        case MUIA_Dirlist_NumDrawers:
+            data->numdrawers = tidata;
+            break;
         case MUIA_Dirlist_Status:
             data->status = tidata;
             break;
@@ -421,6 +434,10 @@ IPTR Dirlist__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_Dirlist_NumBytes:
         STORE = data->numbytes;
+        return 1;
+
+    case MUIA_Dirlist_NumBytes64:
+        STORE = (IPTR)&data->numbytes64;
         return 1;
 
     case MUIA_Dirlist_NumFiles:

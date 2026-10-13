@@ -68,7 +68,7 @@ struct MUIP_Group_Insert
     STACKED Object *pred;
 };
 
-#define MUIA_Group_ChildCount  0x80420322       /* MUI: V20 isg LONG */
+
 
 struct layout2d_elem
 {
@@ -1056,6 +1056,40 @@ IPTR Group__MUIM_ExitChange2(struct IClass *cl, Object *obj,
 /*
  * Sort the family
  */
+static IPTR GroupMoveMember(struct IClass *cl, Object *obj,
+    struct MUIP_Group_MoveMember *msg)
+{
+    struct MUI_GroupData *data = INST_DATA(cl, obj);
+    struct List *list;
+    Object *state, *child, *after = NULL;
+    LONG remaining = 0, pos;
+    BOOL found = FALSE;
+    get(data->family, MUIA_Family_List, &list);
+    state = (Object *)list->lh_Head;
+    while ((child = NextObject(&state)))
+        if (child == msg->o) found = TRUE;
+        else remaining++;
+    if (!found) return FALSE;
+    pos = msg->pos;
+    if (pos < 0) pos = remaining + pos + 1;
+    if (pos < 0) pos = 0;
+    if (pos > remaining) pos = remaining;
+    state = (Object *)list->lh_Head;
+    while (pos && (child = NextObject(&state)))
+        if (child != msg->o) { after = child; pos--; }
+    return DoMethod(data->family, MUIM_Family_Reorder, after, msg->o, NULL);
+}
+static IPTR GroupReorder(struct IClass *cl, Object *obj,
+    struct MUIP_Group_Reorder *msg)
+{
+    struct MUI_GroupData *data = INST_DATA(cl, obj);
+    IPTR result;
+    msg->MethodID = MUIM_Family_Reorder;
+    result = DoMethodA(data->family, (Msg)msg);
+    msg->MethodID = MUIM_Group_Reorder;
+    return result;
+}
+
 IPTR Group__MUIM_Sort(struct IClass *cl, Object *obj,
     struct MUIP_Group_Sort *msg)
 {
@@ -4102,6 +4136,10 @@ BOOPSI_DISPATCHER(IPTR, Group_Dispatcher, cl, obj, msg)
         return Group__MUIM_ExitChange2(cl, obj, (APTR) msg);
     case MUIM_Group_InitChange:
         return Group__MUIM_InitChange(cl, obj, (APTR) msg);
+    case MUIM_Group_MoveMember:
+        return GroupMoveMember(cl, obj, (APTR)msg);
+    case MUIM_Group_Reorder:
+        return GroupReorder(cl, obj, (APTR)msg);
     case MUIM_Group_Sort:
         return Group__MUIM_Sort(cl, obj, (APTR) msg);
     case MUIM_Group_DoMethodNoForward:

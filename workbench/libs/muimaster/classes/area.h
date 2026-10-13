@@ -21,6 +21,9 @@
 #endif
 
 /*** Name *******************************************************************/
+#define MUIA_TextColor 0x8042dba6
+#define MUIM_Relayout 0x8042b381
+struct MUIP_Relayout { STACKED ULONG MethodID; STACKED ULONG flags; };
 #define MUIC_Area                   "Area.mui"
 
 /*** Identifier base (for Zune extensions) **********************************/

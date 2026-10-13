@@ -100,7 +100,7 @@ int main(int argc, char **argv)
     strcat(styled,"...");
     SetAttrs(expected[5],MUIA_Text_Contents,styled,TAG_DONE);
     for(int j=0;j<4;j++){DoMethod(app,MUIM_Application_InputBuffered);Delay(2);}
-    if(MUIMasterBase->lib_Version==19)
+    if(strstr((char *)MUIMasterBase->lib_IdString, "Zune68") != NULL)
         check(pixels(texts[5])==pixels(expected[5]),"elision preserves styled chunks");
     else if(pixels(texts[5])!=pixels(expected[5]))
         puts("REFERENCE DIFFERENCE: formatted elision differs from explicit text");

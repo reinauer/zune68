@@ -14,6 +14,12 @@ FD2SFD ?= fd2sfd
 BUILD ?= ../../../build/muimaster
 CPUFLAGS ?= -m68000 -msoft-float
 TRACE ?= 0
+MUI5_TEST ?= 0
+ifneq ($(MUI5_TEST),0)
+ifneq ($(MUI5_TEST),1)
+$(error MUI5_TEST must be 0 or 1)
+endif
+endif
 ifneq ($(TRACE),0)
 ifneq ($(TRACE),1)
 $(error TRACE must be 0 or 1)
@@ -48,10 +54,10 @@ SOURCES = \
   classes/application.c classes/area.c classes/balance.c classes/bitmap.c \
   classes/bodychunk.c classes/boopsi.c classes/chunkyimage.c \
   classes/configdata.c classes/coloradjust.c classes/colorfield.c \
-  classes/crawling.c classes/cycle.c classes/dataspace.c \
+  classes/crawling.c classes/cycle.c classes/dataspace.c classes/datamap.c \
   classes/dirlist.c classes/dtpic.c classes/family.c classes/floattext.c \
   classes/frameadjust.c classes/framedisplay.c classes/gauge.c \
-  classes/group.c classes/image.c classes/imageadjust.c \
+  classes/group.c classes/selectgroup.c classes/image.c classes/imageadjust.c \
   classes/imagedisplay.c classes/knob.c classes/levelmeter.c \
   classes/list.c classes/listview.c classes/mccprefs.c classes/menuitem.c \
   classes/notify.c classes/numeric.c classes/numericbutton.c \
@@ -62,7 +68,7 @@ SOURCES = \
   classes/register.c classes/semaphore.c classes/scale.c \
   classes/scrollbar.c classes/scrollbutton.c classes/scrollgroup.c \
   classes/settings.c classes/settingsgroup.c classes/slider.c \
-  classes/string.c classes/text.c classes/title.c classes/virtgroup.c \
+  classes/string.c classes/text.c classes/textdata.c classes/title.c classes/virtgroup.c \
   classes/volumelist.c classes/window.c
 OBJECTS = $(addprefix $(BUILD)/,$(SOURCES:.c=.o))
 LDLIBS = -Wl,--start-group -lgcc -lnix20 -lnix -lm -lamiga -ldebug \
@@ -103,7 +109,7 @@ $(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERA
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
-MUI5_PROBES = menu menu_input string string_input image ibrowse title text list
+MUI5_PROBES = data selection menu menu_input string string_input image ibrowse title text list
 MUI5_PROBE_BINS = $(addprefix $(BUILD)/mui5-,$(addsuffix -probe,$(MUI5_PROBES)))
 
 $(MUI5_PROBE_BINS): $(BUILD)/mui5-%-probe: ../../../tests/native/mui5_%_probe.c $(GENERATED)
@@ -140,7 +146,7 @@ check-core: $(MUI5_PROBE_BINS) $(BUILD)/mui5-version_gate-probe core $(BUILD)/co
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_floattext.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
-	$(PYTHON) ../../../tests/check_notifications.py \
+	ZUNE68_TEST_MUI5=$(MUI5_TEST) $(PYTHON) ../../../tests/check_notifications.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_config_items.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
@@ -184,8 +190,8 @@ check-core: $(MUI5_PROBE_BINS) $(BUILD)/mui5-version_gate-probe core $(BUILD)/co
 # Changing TRACE in an existing build must also recompile the callers.
 $(BUILD)/trace-config.h: FORCE
 	@mkdir -p $(@D)
-	@printf '#define ZUNE68_TRACE %s\n' '$(TRACE)' | cmp -s - $@ || \
-	  printf '#define ZUNE68_TRACE %s\n' '$(TRACE)' > $@
+	@printf '#define ZUNE68_TRACE %s\n#define ZUNE68_MUI5_TEST %s\n' '$(TRACE)' '$(MUI5_TEST)' | cmp -s - $@ || \
+	  printf '#define ZUNE68_TRACE %s\n#define ZUNE68_MUI5_TEST %s\n' '$(TRACE)' '$(MUI5_TEST)' > $@
 
 FORCE:
 

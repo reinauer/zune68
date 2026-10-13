@@ -451,6 +451,43 @@ IPTR Family__MUIM_GetChild(struct IClass *cl, Object *obj,
     return (IPTR) NULL;
 }
 
+/* Reorder links without disconnecting children or changing ownership. */
+static BOOL FamilyContains(struct List *list, Object *obj)
+{
+    Object *state = (Object *)list->lh_Head, *child;
+    while ((child = NextObject(&state)))
+        if (child == obj) return TRUE;
+    return FALSE;
+}
+static IPTR FamilyReorder(struct IClass *cl, Object *obj,
+    struct MUIP_Family_Reorder *msg)
+{
+    struct MUI_FamilyData *data = INST_DATA(cl, obj);
+    struct Node *after;
+    ULONG i, j;
+    if (msg->after && msg->after != (Object *)-1 &&
+        !FamilyContains(&data->children, msg->after)) return FALSE;
+    for (i = 0; msg->array[i]; i++)
+    {
+        if (msg->array[i] == msg->after ||
+            !FamilyContains(&data->children, msg->array[i])) return FALSE;
+        for (j = 0; j < i; j++)
+            if (msg->array[i] == msg->array[j]) return FALSE;
+    }
+    for (i = 0; msg->array[i]; i++)
+        Remove((struct Node *)_OBJECT(msg->array[i]));
+    after = msg->after == (Object *)-1 ? data->children.lh_TailPred :
+        msg->after ? (struct Node *)_OBJECT(msg->after) : NULL;
+    for (i = 0; msg->array[i]; i++)
+    {
+        struct Node *node = (struct Node *)_OBJECT(msg->array[i]);
+        Insert(&data->children, node, after);
+        /* MUI keeps a fixed insertion point except when appending. */
+        if (msg->after == (Object *)-1) after = node;
+    }
+    return TRUE;
+}
+
 BOOPSI_DISPATCHER(IPTR, Family_Dispatcher, cl, obj, msg)
 {
     switch (msg->MethodID)
@@ -471,6 +508,8 @@ BOOPSI_DISPATCHER(IPTR, Family_Dispatcher, cl, obj, msg)
     case MUIM_Family_AddTail:
         return Family__MUIM_AddTail(cl, obj, (APTR) msg);
 
+    case MUIM_Family_Reorder:
+        return FamilyReorder(cl, obj, (APTR)msg);
     case MUIM_Family_Insert:
         return Family__MUIM_Insert(cl, obj, (APTR) msg);
 

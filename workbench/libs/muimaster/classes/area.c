@@ -775,6 +775,17 @@ static IPTR Area__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     struct MUI_AreaData *data = INST_DATA(cl, obj);
 
     switch (msg->opg_AttrID) {
+    case MUIA_TextColor:
+        STORE = 0;
+        if ((_flags(obj) & MADF_SETUP) && muiRenderInfo(obj)->mri_Screen)
+        {
+            ULONG rgb[3];
+            GetRGB32(muiRenderInfo(obj)->mri_Screen->ViewPort.ColorMap,
+                _pens(obj)[MPEN_TEXT], 1, rgb);
+            STORE = ((rgb[0] >> 8) & 0xff0000) |
+                ((rgb[1] >> 16) & 0xff00) | (rgb[2] >> 24);
+        }
+        return TRUE;
     case MUIA_Background:
         STORE = (IPTR)data->mad_Background;
         return TRUE;
@@ -2686,6 +2697,9 @@ IPTR Area__MUIM_Layout(struct IClass *cl, Object *obj,
 BOOPSI_DISPATCHER(IPTR, Area_Dispatcher, cl, obj, msg)
 {
     switch (msg->MethodID) {
+    case MUIM_Relayout:
+        if (!(_flags(obj) & MADF_CANDRAW) || !_win(obj)) return FALSE;
+        return DoMethod(_win(obj), MUIM_Window_RecalcDisplay, (IPTR)obj);
     case OM_NEW:
         return Area__OM_NEW(cl, obj, (struct opSet *)msg);
     case OM_DISPOSE:

@@ -107,6 +107,8 @@ IPTR Dataspace__MUIM_Add(struct IClass *cl, Object *obj,
         return 0;
     }
 
+    /* The source may be the entry being replaced. */
+    CopyMem(msg->data, node + 1, msg->len);
     replace = List_First(&data->list);
     while (replace)
     {
@@ -122,7 +124,7 @@ IPTR Dataspace__MUIM_Add(struct IClass *cl, Object *obj,
     AddTail((struct List *)&data->list, (struct Node *)node);
     node->id = msg->id;
     node->len = msg->len;
-    CopyMem(msg->data, node + 1, node->len);
+
     return 1;
 }
 
@@ -140,6 +142,7 @@ IPTR Dataspace__MUIM_Clear(struct IClass *cl, Object *obj,
 
         FreeVecPooled(data->current_pool, tmp);
     }
+    NewList((struct List *)&data->list);
 
     return 1;
 }
@@ -161,6 +164,20 @@ IPTR Dataspace__MUIM_Find(struct IClass *cl, Object *obj,
     }
 
     return (IPTR) NULL;
+}
+
+static IPTR Dataspace_Get(struct IClass *cl, Object *obj,
+    struct MUIP_Dataspace_Get *msg)
+{
+    struct MUI_DataspaceData *data = INST_DATA(cl, obj);
+    struct Dataspace_Node *node;
+    for (node = List_First(&data->list); node; node = Node_Next(node))
+        if (node->id == msg->id)
+        {
+            if (msg->size) *msg->size = node->len;
+            return (IPTR)(node + 1);
+        }
+    return 0;
 }
 
 IPTR Dataspace__MUIM_Merge(struct IClass *cl, Object *obj,
@@ -288,6 +305,25 @@ BOOPSI_DISPATCHER(IPTR, Dataspace_Dispatcher, cl, obj, msg)
          */
     case OM_NEW:
         return Dataspace__OM_NEW(cl, obj, (struct opSet *)msg);
+    case OM_GET:
+        if (((struct opGet *)msg)->opg_AttrID == MUIA_Dataspace_Count)
+        {
+            struct MUI_DataspaceData *data = INST_DATA(cl, obj);
+            struct Dataspace_Node *node;
+            ULONG count = 0;
+            DoMethod(obj, MUIM_Semaphore_ObtainShared);
+            for (node = List_First(&data->list); node; node = Node_Next(node))
+                count++;
+            *((struct opGet *)msg)->opg_Storage = count;
+            DoMethod(obj, MUIM_Semaphore_Release);
+            return TRUE;
+        }
+        break;
+    case MUIM_Dataspace_Get:
+        DoMethod(obj, MUIM_Semaphore_ObtainShared);
+        res = Dataspace_Get(cl, obj, (APTR)msg);
+        DoMethod(obj, MUIM_Semaphore_Release);
+        return res;
     case OM_DISPOSE:
         return Dataspace__OM_DISPOSE(cl, obj, msg);
     case MUIM_Dataspace_Add:

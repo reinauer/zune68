@@ -5,6 +5,7 @@ OS allocation and dispatch are modelled. Callback scripts call the real C
 methods on the emulated stack; freed blocks are poisoned and checked.
 """
 import struct
+import os
 import sys
 from pathlib import Path
 from check_class_lifetime import Harness, EXEC, INTUITION
@@ -134,14 +135,15 @@ class NotifyHarness(Harness):
 def check(path):
     # Built-in versions describe Zune68's implementation series, not the
     # library release number or a claimed proprietary MUI feature level.
+    builtin_version = (21, 227) if os.environ.get('ZUNE68_TEST_MUI5') == '1' else (1, 1)
     VERSION, REVISION = 0x80422301, 0x80427eaa
     for name in ['Text', 'Rectangle', 'Window']:
         h = NotifyHarness(path)
         storage = h.words(0)
-        for attr in [VERSION, REVISION]:
+        for attr, value in zip([VERSION, REVISION], builtin_version):
             assert h.call(name + '__OM_GET', CLASS, OBJECT,
                           h.words(0x104, attr, storage))
-            assert h.mem.r32(storage) == 1
+            assert h.mem.r32(storage) == value
         h.finish()
     # Groups and families leave the answer to Notify.
     for name in ['Family', 'Group']:
@@ -153,7 +155,7 @@ def check(path):
     # Notify reports the nearest external class library, as MUI does, and
     # the built-in series for built-in classes. OCLASS is at object - 4,
     # IClass h_Data at 16 and cl_Super at 24.
-    for library, expected in [(None, (1, 1)), ('external', (20, 131)),
+    for library, expected in [(None, builtin_version), ('external', (20, 131)),
                               ('subclass', (20, 131))]:
         h = NotifyHarness(path)
         builtin = h.words(*[0] * 8)

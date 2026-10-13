@@ -31,6 +31,7 @@ struct Dirlist_DATA
     UBYTE time_string[20];
     UBYTE prot_string[8];
     STRPTR path;
+    unsigned long long numbytes64;
 };
 
 struct Dirlist_Entry

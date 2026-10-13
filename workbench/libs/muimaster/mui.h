@@ -337,6 +337,7 @@ struct MUI_AlphaData
 
 #ifndef _MUI_CLASSES_GROUP_H
 #include "classes/group.h"
+#include "classes/selectgroup.h"
 #endif
 
 #ifndef _MUI_CLASSES_RECTANGLE_H
@@ -345,6 +346,7 @@ struct MUI_AlphaData
 
 #ifndef _MUI_CLASSES_TEXT_H
 #include "classes/text.h"
+#include "classes/textdata.h"
 #endif
 
 #ifndef _MUI_CLASSES_NUMERIC_H
@@ -381,6 +383,8 @@ struct MUI_AlphaData
 
 #ifndef _MUI_CLASSES_DATASPACE_H
 #include "classes/dataspace.h"
+#include "classes/datamap.h"
+#include "classes/objectmap.h"
 #endif
 
 #ifndef _MUI_CLASSES_VIRTGROUP_H

@@ -21,6 +21,14 @@
 #define ChunkyImageObject   MUIOBJMACRO_START(MUIC_ChunkyImage)
 #define NotifyObject        MUIOBJMACRO_START(MUIC_Notify)
 #define ApplicationObject   MUIOBJMACRO_START(MUIC_Application)
+#define DatamapObject       MUIOBJMACRO_START(MUIC_Datamap)
+#define ObjectmapObject     MUIOBJMACRO_START(MUIC_Objectmap)
+#define TextdataObject      MUIOBJMACRO_START(MUIC_Textdata)
+#define Textdata(s) TextdataObject, MUIA_Textdata_Contents, (s), End
+#define ATextdata(s) TextdataObject, MUIA_Textdata_Contents, (s), MUIA_Textdata_Encoding, MIBENUM_ISO_8859_1, End
+#define UTextdata(s) TextdataObject, MUIA_Textdata_Contents, (s), MUIA_Textdata_Encoding, MIBENUM_UTF_8, End
+#define LTextdata(s) TextdataObject, MUIA_Textdata_Contents, (s), MUIA_Textdata_Encoding, MIBENUM_ISO_10646_UCS_2, End
+#define SelectgroupObject   MUIOBJMACRO_START(MUIC_Selectgroup)
 #define TextObject          MUIOBJMACRO_START(MUIC_Text)
 #define RectangleObject     MUIOBJMACRO_START(MUIC_Rectangle)
 #define BalanceObject       MUIOBJMACRO_START(MUIC_Balance)
