@@ -1,0 +1,120 @@
+{
+  "binary_sha256": "a2eb2a9911ff63b7eb07953ccb75a4084986cca47ae951a64d4a79aae5f9ef9e",
+  "config_sha256": "7d7c439c47dd24050e19dbb0287750cd65935ffd121ecd4fb84a3ba659005653",
+  "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+  "libraries": {
+    "baseline": {
+      "muimaster.library": "483bbb51c4b48719c87caf2b5b49b60db5ae3e915f794d7c3501e0835e20ed6f",
+      "zunemaster.library": "f74bea2c48f62561630efb4ad606f255ebcf91a5036ab75d1eb00ee55ae0e69d"
+    },
+    "candidate": {
+      "muimaster.library": "31b8f0b5b50f9edc49af2c54b33de5ca6a19c4a8dc21b144a063feda63fd00c7",
+      "zunemaster.library": "291e718a9746ce90ea936eae0cd13d285a10e9804f0610d905e26e5e2b6c50e6"
+    }
+  },
+  "runs": [
+    {
+      "trial": 0,
+      "profile": "baseline",
+      "ticks": {
+        "create+dispose": 677407,
+        "open+close": 1052501,
+        "redraw x10": 3857002,
+        "relayout x5": 2885664,
+        "list insert200": 2229018,
+        "list active x50": 4365504,
+        "notify x100": 1753262,
+        "text set x100": 521495
+      }
+    },
+    {
+      "trial": 0,
+      "profile": "candidate",
+      "ticks": {
+        "create+dispose": 676993,
+        "open+close": 1056052,
+        "redraw x10": 3872277,
+        "relayout x5": 2941893,
+        "list insert200": 2202883,
+        "list active x50": 4341749,
+        "notify x100": 1752036,
+        "text set x100": 522731
+      }
+    },
+    {
+      "trial": 1,
+      "profile": "candidate",
+      "ticks": {
+        "create+dispose": 679181,
+        "open+close": 1052611,
+        "redraw x10": 3873045,
+        "relayout x5": 2941975,
+        "list insert200": 2214259,
+        "list active x50": 4349906,
+        "notify x100": 1752031,
+        "text set x100": 522727
+      }
+    },
+    {
+      "trial": 1,
+      "profile": "baseline",
+      "ticks": {
+        "create+dispose": 656059,
+        "open+close": 1038994,
+        "redraw x10": 3856539,
+        "relayout x5": 2884949,
+        "list insert200": 2204619,
+        "list active x50": 4339375,
+        "notify x100": 1753176,
+        "text set x100": 521531
+      }
+    },
+    {
+      "trial": 2,
+      "profile": "baseline",
+      "ticks": {
+        "create+dispose": 658355,
+        "open+close": 1039000,
+        "redraw x10": 3856904,
+        "relayout x5": 2883925,
+        "list insert200": 2204780,
+        "list active x50": 4338370,
+        "notify x100": 1752541,
+        "text set x100": 521509
+      }
+    },
+    {
+      "trial": 2,
+      "profile": "candidate",
+      "ticks": {
+        "create+dispose": 672859,
+        "open+close": 1052744,
+        "redraw x10": 3872339,
+        "relayout x5": 2942111,
+        "list insert200": 2213618,
+        "list active x50": 4348682,
+        "notify x100": 1750089,
+        "text set x100": 522686
+      }
+    }
+  ],
+  "baseline_revision": "7b847fba7da3f94f84508d039c052fd6ab3ad89c",
+  "candidate_revision": "c0e9b043",
+  "cpu": "68000",
+  "repetitions_per_phase": 5,
+  "config": {
+    "cachesize": "0",
+    "chipset": "ecs",
+    "chipmem_size": "4",
+    "cpu_speed": "real",
+    "cpu_model": "68000",
+    "cpu_compatible": "true",
+    "cpu_multiplier": "4",
+    "cpu_cycle_exact": "false",
+    "cpu_memory_cycle_exact": "true",
+    "blitter_cycle_exact": "true",
+    "fastmem_size": "4",
+    "gfxcard_size": "4",
+    "z3mem_size": "0"
+  }
+}

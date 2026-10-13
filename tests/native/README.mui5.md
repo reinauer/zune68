@@ -151,3 +151,10 @@ Observed reference differences are explicit in the probes:
 Filepanel/Fontpanel, marking and additional Text formats, menu copying,
 remaining List format interactions and broader application coverage are
 still open. These results do not establish complete MUI 5 compatibility.
+
+## Classic-workload performance
+
+See [PERFORMANCE.mui5.md](PERFORMANCE.mui5.md) for the comparison against
+published baseline `7b847fba`, the raw run medians, library-size changes
+and reproduction commands. `compare_perf.py` requires a disposable guest
+fixture and records hashes of the exact emulator, benchmark and libraries.

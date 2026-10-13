@@ -17,11 +17,29 @@
 #include <proto/timer.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
+/* Use va_start rather than the older SDK's address-of-argument wrapper.
+ * AmigaOS/m68k passes the tag/value words consecutively on the stack. */
+#include <stdarg.h>
 struct Library *MUIMasterBase;
+static Object *bench_new_object(CONST_STRPTR name, ...)
+{
+    va_list tags;
+    Object *obj;
+    va_start(tags, name);
+    obj = MUI_NewObjectA(name, (struct TagItem *)tags);
+    va_end(tags);
+    return obj;
+}
+#undef MUI_NewObject
+#define MUI_NewObject bench_new_object
+
 struct Device *TimerBase;
 ULONG __stack = 65536;
 
-#define REPS 15
+#ifndef PERFBENCH_REPS
+#define PERFBENCH_REPS 15
+#endif
+#define REPS PERFBENCH_REPS
 static ULONG samples[REPS];
 static ULONG eclock_freq;
 
@@ -34,6 +52,7 @@ static const char *entries[] = {
 };
 
 static Object *app, *win, *root, *list, *slider, *numeric, *text;
+static struct Screen *benchmark_screen;
 
 static ULONG now(void)
 {
@@ -68,6 +87,7 @@ static Object *build(void)
         MUIA_Application_Title, "perfbench",
         SubWindow, win = WindowObject,
             MUIA_Window_Title, "perfbench",
+            MUIA_Window_Screen, benchmark_screen,
             MUIA_Window_LeftEdge, 20,
             MUIA_Window_TopEdge, 20,
             WindowContents, root = VGroup,
@@ -165,6 +185,7 @@ int main(int argc, char **argv)
     ULONG t, open = FALSE;
     int i, j, rc = 20;
 
+    setvbuf(stdout, NULL, _IONBF, 0);
     if (OpenDevice(TIMERNAME, UNIT_ECLOCK, (struct IORequest *)&tr, 0))
         return 20;
     TimerBase = tr.tr_node.io_Device;
@@ -172,6 +193,13 @@ int main(int argc, char **argv)
         goto nolib;
     printf("library %d.%d eclock=%lu\n", MUIMasterBase->lib_Version,
         MUIMasterBase->lib_Revision, (unsigned long)(now(), eclock_freq));
+
+    if (argc == 2 && !strcmp(argv[1], "screen"))
+    {
+        benchmark_screen = OpenScreenTags(NULL, SA_Width, 640,
+            SA_Height, 256, SA_Depth, 2, TAG_DONE);
+        if (!benchmark_screen) goto done;
+    }
 
     if (argc > 2)
     {
@@ -296,6 +324,7 @@ int main(int argc, char **argv)
 done:
     if (app)
         MUI_DisposeObject(app);
+    if (benchmark_screen) CloseScreen(benchmark_screen);
     CloseLibrary(MUIMasterBase);
 nolib:
     CloseDevice((struct IORequest *)&tr);
