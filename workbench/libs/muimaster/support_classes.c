@@ -201,6 +201,10 @@ static Class *ZUNE_FindBuiltinClass(CONST_STRPTR classid, struct Library *MUIMas
     struct MUIMasterBase_intern *intZuneBase = (struct MUIMasterBase_intern *)MUIMasterBase;
     Class *cl = NULL, *cl2;
 
+    cl2 = intZuneBase->BuiltinClassCache[(UBYTE)classid[0] & 31];
+    if (cl2 && (cl2->cl_ID == classid || !strcmp(cl2->cl_ID, classid)))
+        return cl2;
+
     ForeachNode(&intZuneBase->BuiltinClasses, cl2)
     {
         if (cl2->cl_ID == classid ||
@@ -284,7 +288,11 @@ Class *ZUNE_GetBuiltinClass(CONST_STRPTR id, struct Library *base)
         cl = ZUNE_MakeBuiltinClass(id, base);
         if (cl) ZUNE_AddBuiltinClass(cl, base);
     }
-    if (cl) ++cl->cl_UserData;
+    if (cl)
+    {
+        MUIMB(base)->BuiltinClassCache[(UBYTE)id[0] & 31] = cl;
+        ++cl->cl_UserData;
+    }
     ReleaseSemaphore(&MUIMB(base)->ZuneSemaphore);
     return cl;
 }
@@ -303,6 +311,9 @@ BOOL ZUNE_FreeBuiltinClasses(struct Library *mb)
        task to reopen the library after LibExpunge checked its open count. */
     if (!AttemptSemaphore(&base->ZuneSemaphore))
         return FALSE;
+    /* Some classes can be freed even if expunge later finds a live class.
+       Drop all borrowed cache entries before walking the ownership list. */
+    memset(base->BuiltinClassCache, 0, sizeof(base->BuiltinClassCache));
     node = base->BuiltinClasses.mlh_TailPred;
     while (node->mln_Pred)
     {

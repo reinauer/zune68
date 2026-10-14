@@ -363,6 +363,34 @@ def empty(h):
     h.assert_expunged()
 
 
+def lookup_cache(h):
+    h.call('LibOpen')
+    area = h.get('Area.mui')
+    text = h.get('Text.mui')
+    application = h.get('Application.mui')
+    # All get() calls reuse one mutable input buffer. Cache entries must
+    # refer to the class's stable name, including first-letter collisions.
+    for name, expected in [('Area.mui', area), ('Application.mui', application),
+                           ('Text.mui', text), ('Text.mui', text)]:
+        cl = h.get(name)
+        assert cl == expected
+        h.call('MUI_FreeClass', cl)
+    h.call('MUI_FreeClass', text)
+    h.call('MUI_FreeClass', application)
+    h.call('LibClose')
+    assert not h.call('LibExpunge'), 'Area lookup must keep library resident'
+    assert area in h.classes and text not in h.classes
+    assert application not in h.classes
+    h.call('LibOpen')
+    for name, old in [('Text.mui', text), ('Application.mui', application)]:
+        cl = h.get(name)
+        assert cl != old and cl in h.classes, 'cache retained a freed class'
+        h.call('MUI_FreeClass', cl)
+    h.call('MUI_FreeClass', area)
+    h.call('LibClose')
+    h.assert_expunged()
+
+
 def check(path, cases):
     for name in cases:
         h = Harness(path)
@@ -377,8 +405,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('libraries', type=Path, nargs='+')
     parser.add_argument('--case', choices=['cycles', 'custom', 'builtin', 'expunge',
-                                                'hierarchy', 'empty'])
+                                                'hierarchy', 'empty', 'lookup_cache'])
     args = parser.parse_args()
     for path in args.libraries:
         check(path, [args.case] if args.case else
-              ['cycles', 'custom', 'builtin', 'expunge', 'hierarchy', 'empty'])
+              ['cycles', 'custom', 'builtin', 'expunge', 'hierarchy', 'empty',
+               'lookup_cache'])

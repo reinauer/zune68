@@ -82,6 +82,8 @@ struct MUIMasterBase_intern
     struct SignalSemaphore      ZuneSemaphore; /* Used when accessing global data */
     APTR                        SpecialMemory;
 
+    /* Borrowed built-in classes, cleared before any expunge attempt. */
+    Class                       *BuiltinClassCache[32];
     struct MinList              BuiltinClasses;
     struct MinList              Applications;
     struct MUI_PenSpec          *defaultPens;
