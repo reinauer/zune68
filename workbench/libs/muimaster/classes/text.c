@@ -22,12 +22,21 @@
 #include "muimaster_intern.h"
 #include "support.h"
 #include "textengine.h"
+#include "clipboard.h"
+#include <devices/inputevent.h>
 
 extern struct Library *MUIMasterBase;
 
 //#define MYDEBUG 1
 #include "debug.h"
 
+
+struct TextMark
+{
+    struct MUI_EventHandlerNode handler;
+    LONG anchor, end;
+    BOOL dragging, focused;
+};
 
 struct MUI_TextData
 {
@@ -46,6 +55,7 @@ struct MUI_TextData
     LONG shorten;
     TEXT controlchar;
     Object *textdata;
+    struct TextMark *mark;
 };
 
 #define MTDF_SETMIN    (1<<0)
@@ -132,6 +142,18 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->shorten = GetTagData(MUIA_Text_Shorten, 0, msg->ops_AttrList);
     data->textdata = (Object *)GetTagData(MUIA_Text_Data, 0, msg->ops_AttrList);
 
+    if (GetTagData(MUIA_Text_Marking, FALSE, msg->ops_AttrList))
+    {
+        data->mark = AllocVec(sizeof(*data->mark), MEMF_CLEAR);
+        if (!data->mark) { CoerceMethod(cl, obj, OM_DISPOSE); return 0; }
+        data->mark->handler.ehn_Events = IDCMP_MOUSEBUTTONS |
+            IDCMP_MOUSEMOVE | IDCMP_RAWKEY | IDCMP_INACTIVEWINDOW;
+        data->mark->handler.ehn_Priority = 1;
+        data->mark->handler.ehn_Flags = MUI_EHF_GUIMODE;
+        data->mark->handler.ehn_Object = obj;
+        data->mark->handler.ehn_Class = cl;
+    }
+
     /* parse initial taglist */
 
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
@@ -197,6 +219,7 @@ IPTR Text__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_TextData *data = INST_DATA(cl, obj);
 
+    FreeVec(data->mark);
     FreeVec(data->owned_contents);
     FreeVec((APTR) data->preparse);
     if (data->textdata) MUI_DisposeObject(data->textdata);
@@ -216,6 +239,13 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 
     while ((tag = NextTagItem(&tags)) != NULL)
     {
+        if (data->mark && (tag->ti_Tag == MUIA_Text_Data ||
+            tag->ti_Tag == MUIA_Text_Contents || tag->ti_Tag == MUIA_Text_PreParse ||
+            tag->ti_Tag == MUIA_Text_ControlChar))
+        {
+            data->mark->anchor = data->mark->end = 0;
+            data->mark->dragging = FALSE;
+        }
         switch (tag->ti_Tag)
         {
         case MUIA_Text_Data:
@@ -339,6 +369,7 @@ IPTR Text__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 #define STORE *(msg->opg_Storage)
     switch (msg->opg_AttrID)
     {
+    case MUIA_Text_Marking: STORE = data->mark != NULL; return TRUE;
     case MUIA_Text_Data: STORE = (IPTR)data->textdata; return TRUE;
     case MUIA_Text_Copy: STORE = data->copy_contents; return TRUE;
     case MUIA_Text_ControlChar: STORE = data->controlchar; return TRUE;
@@ -414,6 +445,8 @@ IPTR Text__MUIM_Setup(struct IClass *cl, Object *obj,
         return FALSE;
 
     setup_text(data, obj);
+    if (data->mark)
+        DoMethod(_win(obj), MUIM_Window_AddEventHandler, &data->mark->handler);
 
     return TRUE;
 }
@@ -426,6 +459,12 @@ IPTR Text__MUIM_Cleanup(struct IClass *cl, Object *obj,
 {
     struct MUI_TextData *data = INST_DATA(cl, obj);
 
+    if (data->mark)
+    {
+        DoMethod(_win(obj), MUIM_Window_RemEventHandler, &data->mark->handler);
+        data->mark->anchor = data->mark->end = 0;
+        data->mark->dragging = data->mark->focused = FALSE;
+    }
     if (data->ztext)
     {
         zune_text_destroy(data->ztext);
@@ -589,6 +628,11 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
                 _mleft(obj), _mright(obj), _mtop(obj) + y);
     }
 
+    if (data->mark && data->mark->anchor != data->mark->end)
+        zune_text_mark(data->ztext, obj, data->shorten,
+            MIN(data->mark->anchor, data->mark->end),
+            MAX(data->mark->anchor, data->mark->end), 0, 0, TRUE);
+
     if (clip != (APTR)-1)
         MUI_RemoveClipping(muiRenderInfo(obj), clip);
     data->update = 0;
@@ -638,6 +682,52 @@ IPTR Text__MUIM_Import(struct IClass *cl, Object *obj,
 }
 
 
+static IPTR Text_HandleEvent(struct IClass *cl, Object *obj,
+    struct MUIP_HandleEvent *msg)
+{
+    struct MUI_TextData *data = INST_DATA(cl, obj);
+    struct TextMark *mark = data->mark;
+    struct IntuiMessage *imsg = msg->imsg;
+    BOOL inside;
+    if (!mark || !imsg || !(_flags(obj) & MADF_CANDRAW) ||
+        muiAreaData(obj)->mad_DisableCount) return 0;
+    inside = imsg->MouseX >= _mleft(obj) && imsg->MouseX <= _mright(obj) &&
+        imsg->MouseY >= _mtop(obj) && imsg->MouseY <= _mbottom(obj);
+    if (imsg->Class == IDCMP_INACTIVEWINDOW)
+        mark->dragging = FALSE;
+    else if (imsg->Class == IDCMP_MOUSEBUTTONS && imsg->Code == SELECTDOWN)
+    {
+        mark->focused = inside;
+        mark->dragging = inside;
+        if (inside) set(_win(obj), MUIA_Window_ActiveObject, obj);
+        mark->anchor = mark->end = inside ? zune_text_mark(data->ztext,
+            obj, data->shorten, 0, 0, imsg->MouseX, imsg->MouseY, FALSE) : 0;
+        data->update = 1;
+        MUI_Redraw(obj, MADF_DRAWUPDATE);
+        return inside ? MUI_EventHandlerRC_Eat : 0;
+    }
+    else if (mark->dragging && (imsg->Class == IDCMP_MOUSEMOVE ||
+        (imsg->Class == IDCMP_MOUSEBUTTONS && imsg->Code == SELECTUP)))
+    {
+        mark->end = zune_text_mark(data->ztext, obj, data->shorten, 0, 0,
+            imsg->MouseX, imsg->MouseY, FALSE);
+        if (imsg->Class == IDCMP_MOUSEBUTTONS) mark->dragging = FALSE;
+        data->update = 1;
+        MUI_Redraw(obj, MADF_DRAWUPDATE);
+        return MUI_EventHandlerRC_Eat;
+    }
+    else if (XGET(_win(obj), MUIA_Window_ActiveObject) == (IPTR)obj &&
+        mark->focused && imsg->Class == IDCMP_RAWKEY &&
+        (imsg->Qualifier & IEQUALIFIER_RCOMMAND) && imsg->Code == 0x33)
+    {
+        STRPTR text = zune_text_copy(data->ztext,
+            MIN(mark->anchor, mark->end), MAX(mark->anchor, mark->end));
+        if (text) { clipboard_write_text(text, strlen(text)); FreeVec(text); }
+        return MUI_EventHandlerRC_Eat;
+    }
+    return 0;
+}
+
 BOOPSI_DISPATCHER(IPTR, Text_Dispatcher, cl, obj, msg)
 {
     switch (msg->MethodID)
@@ -651,6 +741,8 @@ BOOPSI_DISPATCHER(IPTR, Text_Dispatcher, cl, obj, msg)
     case OM_GET:
         return Text__OM_GET(cl, obj, (struct opGet *)msg);
 
+    case MUIM_HandleEvent:
+        return Text_HandleEvent(cl, obj, (APTR)msg);
     case MUIM_AskMinMax:
         return Text__MUIM_AskMinMax(cl, obj, (APTR) msg);
     case MUIM_Draw:

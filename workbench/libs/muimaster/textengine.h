@@ -79,4 +79,7 @@ void zune_text_draw (ZText *text, Object *obj, WORD left, WORD right,
 void zune_text_draw_shortened(ZText *text, Object *obj, WORD left,
     WORD right, WORD top, LONG mode);
 
+LONG zune_text_mark(ZText *, Object *, LONG, LONG, LONG, LONG, LONG, BOOL);
+STRPTR zune_text_copy(ZText *, LONG, LONG);
+
 #endif

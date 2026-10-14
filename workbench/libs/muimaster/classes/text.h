@@ -20,6 +20,7 @@
 #define MUIA_Text_Copy        0x80427727
 #define MUIA_Text_ControlChar 0x8042e6d0
 #define MUIA_Text_Shorten     0x80428bbd
+#define MUIA_Text_Marking 0x8042f780
 #define MUIA_Text_Shortened   0x80425a86
 #define MUIV_Text_Shorten_Nothing 0
 #define MUIV_Text_Shorten_Cutoff 1
