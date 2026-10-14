@@ -239,7 +239,7 @@ static void SAVEDS requester_process(void)
         set(win, MUIA_Window_RootObject, panel);
         app = MUI_NewObject(MUIC_Application,
             MUIA_Application_Base, "ZUNE_REQUESTER",
-            MUIA_Application_SingleTask, TRUE, TAG_DONE);
+            TAG_DONE);
         if (app) DoMethod(app, OM_ADDMEMBER, win);
     }
     if (app)

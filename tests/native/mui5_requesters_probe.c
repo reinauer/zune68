@@ -94,6 +94,55 @@ static ULONG filter(struct Hook *h __asm("a0"), struct FileRequester *r __asm("a
     if(expected_request && r!=expected_request)wrong_request++;
     return TRUE;
 }
+static APTR concurrent_requests[2];
+static volatile ULONG concurrent_done;
+static void concurrent0(void)
+{
+    MUI_AslRequest(concurrent_requests[0],NULL);
+    Forbid();concurrent_done|=1;
+}
+static void concurrent1(void)
+{
+    MUI_AslRequest(concurrent_requests[1],NULL);
+    Forbid();concurrent_done|=2;
+}
+static void concurrent(void)
+{
+    Object *windows[2]={NULL,NULL};
+    const char *titles[]={"Concurrent request 0","Concurrent request 1"};
+    APTR entries[]={concurrent0,concurrent1};
+    concurrent_done=0;
+    for(int i=0;i<2;i++)
+    {
+        struct TagItem tags[]={{ASLFR_TitleText,(ULONG)titles[i]},
+            {ASLFR_InitialDrawer,(ULONG)"RAM:zune-requester-test"},{TAG_DONE,0}};
+        concurrent_requests[i]=MUI_AllocAslRequest(ASL_FileRequest,tags);
+        struct TagItem process[]={{NP_Entry,(ULONG)entries[i]},
+            {NP_Name,(ULONG)titles[i]},{NP_StackSize,32768},{TAG_DONE,0}};
+        if(!concurrent_requests[i]||!CreateNewProc(process))
+        {check(FALSE,"concurrent requester caller");Forbid();concurrent_done|=1UL<<i;Permit();}
+    }
+    for(int tries=0;tries<500&&(!windows[0]||!windows[1]);tries++)
+    {
+        ULONG lock=LockIBase(0);
+        for(struct Screen *s=IntuitionBase->FirstScreen;s;s=s->NextScreen)
+            for(struct Window *w=s->FirstWindow;w;w=w->NextWindow)
+                for(int i=0;i<2;i++)
+                    if(w->Title&&!strcmp((char *)w->Title,titles[i]))
+                        windows[i]=(APTR)w->UserData;
+        UnlockIBase(lock);Delay(1);
+    }
+    printf("concurrent windows=%d,%d\n",windows[0]!=NULL,windows[1]!=NULL);
+    check(windows[0]&&windows[1],"two simultaneous requester windows");
+    for(int i=0;i<2;i++)if(windows[i])
+    {
+        Object *app=(APTR)attr(windows[i],MUIA_ApplicationObject);
+        DoMethod(app,MUIM_Application_PushMethod,windows[i],3,
+            MUIM_Set,MUIA_Window_CloseRequest,TRUE);
+    }
+    while(concurrent_done!=3)Delay(1);
+    for(int i=0;i<2;i++)if(concurrent_requests[i])MUI_FreeAslRequest(concurrent_requests[i]);
+}
 int main(void)
 {
     setvbuf(stdout,NULL,_IONBF,0); caller=FindTask(NULL);
@@ -137,5 +186,6 @@ int main(void)
     struct FontRequester *font=MUI_AllocAslRequest(ASL_FontRequest,ft);
     check(font!=NULL,"font allocation");
     if(font){check(run(font,NULL),"font acceptance");check(font->fo_Attr.ta_Name&&!strcmp((char*)font->fo_Attr.ta_Name,"topaz.font"),"owned ASL font name");check(font->fo_Attr.ta_YSize==9&&font->fo_Attr.ta_Style==FSF_BOLD,"font attributes");check(font->fo_SpecialDrawMode==FO_SPECIALMODE_SHADOW,"extended font style");MUI_FreeAslRequest(font);}
+    concurrent();
     CloseLibrary(MUIMasterBase);printf("%s failures=%d\n",failures?"FAIL":"PASS",failures);return failures?20:0;
 }
