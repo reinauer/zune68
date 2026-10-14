@@ -10,12 +10,12 @@ from check_class_lifetime import Harness
 
 # Native PenSpec intern union starts at 14 (BOOL is a 16-bit WORD).
 OUTPUT = 0x70000
-RAM_END = 0x100000
 RGB = ord('r')
 
 
 def check(path):
     h = Harness(path)
+    ram_end = h.machine.ram_total
     cases = 0
     # Older parsing used strtoul/libgcc, whose multiplication uses Utility.
     for name in ('_UtilityBase', '___UtilityBase'):
@@ -48,7 +48,7 @@ def check(path):
         for source, expected in [(s, rgb) for s, rgb in valid.items()] + [
                 (s, None) for s in invalid]:
             data = source.encode() + b'\0'
-            address = RAM_END - len(data)
+            address = ram_end - len(data)
             h.mem.w_block(address, data)
             h.mem.w_block(OUTPUT, b'!' * 44)
             result = h.call('zune_pen_spec_to_intern', address, OUTPUT + 8) & 0xffff
@@ -63,11 +63,11 @@ def check(path):
             cases += 1
         # Fixed-size PenSpec buffers must terminate inside their 32 bytes.
         for byte in [b'0', b'r', b'm', b's', b'p']:
-            h.mem.w_block(RAM_END - 32, byte * 32)
-            assert not (h.call('zune_pen_spec_to_intern', RAM_END - 32, OUTPUT + 8) & 0xffff)
+            h.mem.w_block(ram_end - 32, byte * 32)
+            assert not (h.call('zune_pen_spec_to_intern', ram_end - 32, OUTPUT + 8) & 0xffff)
             cases += 1
         assert not (h.call('zune_pen_spec_to_intern', 0, OUTPUT + 8) & 0xffff)
-        assert not (h.call('zune_pen_spec_to_intern', RAM_END - 32, 0) & 0xffff)
+        assert not (h.call('zune_pen_spec_to_intern', ram_end - 32, 0) & 0xffff)
         assert not h.allocations
     finally:
         h.machine.cleanup()

@@ -11,7 +11,8 @@ from amitools.binfmt.BinFmt import BinFmt
 from amitools.binfmt.Relocate import Relocate
 from amitools.vamos.machine.machine import Machine
 
-BASE, STACK = 0x10000, 0xf0000
+# Keep linked code above the mocked OS, objects, heap and stack.
+BASE, STACK, RAM_KIB = 0x100000, 0xf0000, 2048
 EXEC, INTUITION, MASTER, EXTERNAL = 0x68000, 0x69000, 0x6a000, 0x6b000
 ROOTCLASS, EXTCLASS, TEXT = 0x6c000, 0x6c100, 0x6d000
 # Classic m68k IClass and Library ABI offsets.
@@ -28,7 +29,8 @@ class Harness:
                         for seg, address in zip(image.get_segments(),
                                                 reloc.get_seq_addrs(BASE))
                         if seg.symtab for s in seg.symtab.symbols}
-        self.machine = Machine()
+        assert len(data) < RAM_KIB * 1024 - BASE, "library exceeds code region"
+        self.machine = Machine.from_name("68000", ram_size=RAM_KIB)
         self.mem, self.cpu = self.machine.mem, self.machine.cpu
         self.mem.w_block(BASE, data)
         self.allocations = {}

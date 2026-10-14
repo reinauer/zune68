@@ -2,7 +2,7 @@
 """Exercise native initialization and every library-open failure on a 68000."""
 import sys
 from pathlib import Path
-from check_class_lifetime import Harness, EXEC, MASTER, STACK
+from check_class_lifetime import Harness, EXEC, MASTER, STACK, BASE
 
 GRAPHICS = 0x79000
 
@@ -114,11 +114,11 @@ def check(path):
     from amitools.binfmt.BinFmt import BinFmt
     from amitools.binfmt.Relocate import Relocate
     image = BinFmt().load_image(str(path))
-    data = bytes(Relocate(image).relocate_one_block(0x10000))
+    data = bytes(Relocate(image).relocate_one_block(BASE))
 
     def restore_cleanup(h):
         address = h.symbols['_L_ExpungeLib']
-        h.mem.w_block(address, data[address - 0x10000:address - 0x10000 + 4])
+        h.mem.w_block(address, data[address - BASE:address - BASE + 4])
 
     restore_cleanup(h)
     assert h.call('L_InitLib')

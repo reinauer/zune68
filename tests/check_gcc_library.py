@@ -11,13 +11,14 @@ from pathlib import Path
 from amitools.binfmt.BinFmt import BinFmt
 from amitools.binfmt.Relocate import Relocate
 from amitools.vamos.machine.machine import Machine
+from check_class_lifetime import BASE, STACK, RAM_KIB
 
 ROOT = Path(__file__).resolve().parents[1]
 FD = ROOT / 'workbench/libs/muimaster/include/fd/muimaster_lib.fd'
 ENTRIES = re.findall(r'^(MUI_\w+)\([^\n]*\)\(([^)]*)\)$',
                      FD.read_text(), re.MULTILINE)
 assert len(ENTRIES) == 35, 'expected 29 public and six private FD entries'
-BASE, STACK, STUB, RESULT = 0x10000, 0xf0000, 0x70000, 0x71000
+STUB, RESULT = 0x70000, 0x71000
 
 
 def check(path):
@@ -25,6 +26,7 @@ def check(path):
     reloc = Relocate(image)
     addresses = reloc.get_seq_addrs(BASE)
     data = bytes(reloc.relocate_one_block(BASE))
+    assert len(data) < RAM_KIB * 1024 - BASE, "library exceeds code region"
     symbols = {}
     for segment, address in zip(image.get_segments(), addresses):
         if segment.symtab:
@@ -53,7 +55,7 @@ def check(path):
         assert long(vectors + i * 4) == symbols[name], name
     assert long(vectors + len(expected) * 4) == 0xffffffff
 
-    machine = Machine()
+    machine = Machine.from_name("68000", ram_size=RAM_KIB)
     mem, cpu = machine.mem, machine.cpu
 
     def run(address):
