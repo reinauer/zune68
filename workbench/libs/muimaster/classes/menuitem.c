@@ -43,6 +43,8 @@ extern struct Library *MUIMasterBase;
 #define MUIV_Menuitem_Type_Menu         (-2)
 #define MUIV_Menuitem_Type_Menuitem     (-3)
 
+struct SharedMenuImage { ULONG references; struct Image *image; };
+
 struct MUI_MenuitemData
 {
     ULONG flags;
@@ -57,6 +59,7 @@ struct MUI_MenuitemData
     struct Image *image;
     CONST_STRPTR aiss;
     ULONG change_depth;
+    struct SharedMenuImage *shared_image;
 };
 
 /* The private attribute is queried only while walking menu ancestors. */
@@ -105,6 +108,58 @@ static BOOL Menuitem_SetString(struct MUI_MenuitemData *data,
         FreeVec(*slot);
     *slot = copy;
     return TRUE;
+}
+
+/* Copying an owned image shares its lifetime. BOOPSI image classes have
+ * no generic clone method, and disposing either menu must not leave the
+ * other with a dangling image pointer. Allocate only on the first copy. */
+#define MUIA_Menuitem_CopyData (MUIB_Menuitem | 0x00000003)
+static void Menuitem_ReleaseImage(struct MUI_MenuitemData *data)
+{
+    if (data->shared_image)
+    {
+        if (!--data->shared_image->references)
+        {
+            DisposeObject((Object *)data->shared_image->image);
+            FreeVec(data->shared_image);
+        }
+        data->shared_image = NULL;
+    }
+    else if ((data->flags & MENUF_FREEIMAGE) && data->image)
+        DisposeObject((Object *)data->image);
+    data->image = NULL;
+}
+
+static BOOL Menuitem_Copy(struct MUI_MenuitemData *dest, Object *source)
+{
+    struct MUI_MenuitemData *src = NULL, copy = {0};
+    if (!source || !get(source, MUIA_Menuitem_CopyData, &src) || !src) return FALSE;
+    if (src == dest) return TRUE;
+    copy.flags = src->flags;
+    /* Shortcut_Check affects the title's embedded NUL, so copy it first. */
+    if (!Menuitem_SetString(&copy, &copy.shortcut, src->shortcut) ||
+        !Menuitem_SetString(&copy, &copy.title, src->title)) goto fail;
+    if (src->image && (src->flags & MENUF_FREEIMAGE) && !src->shared_image)
+    {
+        src->shared_image = AllocVec(sizeof(*src->shared_image), MEMF_ANY);
+        if (!src->shared_image) goto fail;
+        src->shared_image->references = 1;
+        src->shared_image->image = src->image;
+    }
+    if (src->shared_image) src->shared_image->references++;
+    Menuitem_SetString(dest, &dest->title, NULL);
+    Menuitem_SetString(dest, &dest->shortcut, NULL);
+    Menuitem_ReleaseImage(dest);
+    dest->flags = (dest->flags & (MENUF_MENUSTRIP | MENUF_MENU | MENUF_MENUITEM)) |
+        (src->flags & ~(MENUF_MENUSTRIP | MENUF_MENU | MENUF_MENUITEM));
+    dest->title = copy.title; dest->shortcut = copy.shortcut;
+    dest->image = src->image; dest->shared_image = src->shared_image;
+    dest->aiss = src->aiss; dest->exclude = src->exclude;
+    return TRUE;
+fail:
+    Menuitem_SetString(&copy, &copy.title, NULL);
+    Menuitem_SetString(&copy, &copy.shortcut, NULL);
+    return FALSE;
 }
 
 static BOOL Menuitem_Changing(Object *obj)
@@ -180,7 +235,20 @@ static int Menuitem_FillNewMenu(Object *obj, struct NewMenu *menu,
             menu->nm_Flags |= CHECKED;
         if (toggle)
             menu->nm_Flags |= MENUTOGGLE;
-        if (cmdstring)
+        /* Intuition's native accelerator matching folds case and some
+         * OS versions omit qualifiers from MENUPICK. Preserve the label
+         * as a command string and match sensitive shortcuts in RAWKEY. */
+        Object *ancestor = obj;
+        IPTR sensitive = FALSE;
+        while (ancestor)
+        {
+            get(ancestor, MUIA_Menustrip_CaseSensitive, &sensitive);
+            if (sensitive) break;
+            Object *parent = NULL;
+            get(ancestor, MUIA_Parent, &parent);
+            ancestor = parent;
+        }
+        if (cmdstring || sensitive)
             menu->nm_Flags |= COMMSEQ;
         get(child, MUIA_Menuitem_Exclude, &exclude);
         menu->nm_MutualExclude = exclude;
@@ -244,6 +312,22 @@ static struct NewMenu *Menuitem_BuildNewMenu(struct MUI_MenuitemData *data,
     return data->newmenu;
 }
 
+/* A popup cascade is not constrained by Intuition's packed menu number.
+ * Build two more levels beneath an item when its submenu is entered. */
+struct NewMenu *zune_build_submenu(Object *parent)
+{
+    LONG count = Menuitem_GetTotalChildren(parent);
+    struct NewMenu *menu;
+    if (!count) return NULL;
+    menu = AllocVec((count + 2) * sizeof(*menu), MEMF_CLEAR);
+    if (!menu) return NULL;
+    menu[0].nm_Type = NM_TITLE;
+    get(parent, MUIA_Menuitem_Title, &menu[0].nm_Label);
+    menu[0].nm_UserData = parent;
+    Menuitem_FillNewMenu(parent, menu + 1, 1);
+    return menu;
+}
+
 /**************************************************************************
  OM_NEW
 **************************************************************************/
@@ -275,7 +359,13 @@ IPTR Common__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_Menuitem_Menuitem:
+            if (!Menuitem_Copy(data, (Object *)tag->ti_Data))
+            { CoerceMethod(cl, obj, OM_DISPOSE); return 0; }
+            break;
         case MUIA_Menuitem_Image:
+            if (data->image != (struct Image *)tag->ti_Data)
+                Menuitem_ReleaseImage(data);
             data->image = (struct Image *)tag->ti_Data;
             break;
         case MUIA_Menuitem_AISSName:
@@ -382,11 +472,13 @@ IPTR Menuitem__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_Menuitem_Menuitem:
+            rebuild |= Menuitem_Copy(data, (Object *)tag->ti_Data);
+            break;
         case MUIA_Menuitem_Image:
             if (data->image != (struct Image *)tag->ti_Data)
             {
-                if ((data->flags & MENUF_FREEIMAGE) && data->image)
-                    DisposeObject((Object *)data->image);
+                Menuitem_ReleaseImage(data);
                 data->image = (struct Image *)tag->ti_Data;
                 rebuild = TRUE;
             }
@@ -500,6 +592,13 @@ IPTR Menuitem__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     switch (msg->opg_AttrID)
     {
+    case MUIA_Menuitem_CopyData:
+        STORE = (IPTR)data; return TRUE;
+    case MUIA_Menuitem_Menuitem:
+        if (STORE && (Object *)STORE != obj)
+            set((Object *)STORE, MUIA_Menuitem_Menuitem, obj);
+        /* MUI performs the copy without returning an attribute value. */
+        return 0;
     case MUIA_Menuitem_ChangeDepth:
         STORE = data->change_depth;
         return 1;
@@ -583,8 +682,7 @@ IPTR Menuitem__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
     FreeVec(data->newmenu);
     Menuitem_SetString(data, &data->title, NULL);
     Menuitem_SetString(data, &data->shortcut, NULL);
-    if ((data->flags & MENUF_FREEIMAGE) && data->image)
-        DisposeObject((Object *)data->image);
+    Menuitem_ReleaseImage(data);
 
     return DoSuperMethodA(cl, obj, msg);
 }
@@ -713,6 +811,12 @@ static IPTR Menustrip_Popup(struct IClass *cl, Object *obj,
     if (!parent || !(_flags(parent) & MADF_CANDRAW)) return 0;
     win = _win(parent);
     app = _app(parent);
+    /* Install the guard before the application callback, which can close
+     * or dispose the parent window. No event handler is needed yet. */
+    ZuneWatchWindow(win, &guard);
+    DoMethod(obj, MUIM_Menustrip_WillOpen);
+    if (guard.closed) return 0;
+    ZuneUnwatchWindow(win, &guard);
     get(obj, MUIA_Menuitem_NewMenu, &newmenu);
     if (!newmenu) return 0;
     state.menu = zune_open_menu_at(_window(parent), newmenu,
@@ -771,6 +875,8 @@ IPTR Common_Dispatcher(Class *cl, Object *obj, Msg msg)
 {
     switch (msg->MethodID)
     {
+    case MUIM_Menustrip_WillOpen:
+        return 0;
     case MUIM_Menustrip_Popup:
         return Menustrip_Popup(cl, obj, (APTR)msg);
     case MUIM_Menustrip_InitChange:

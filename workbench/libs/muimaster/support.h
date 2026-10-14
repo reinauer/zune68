@@ -68,6 +68,7 @@ struct ZuneWindowGuard
 {
     struct ZuneWindowGuard *next;
     struct MUI_EventHandlerNode *handler;
+    struct IntuiMessage *menu_message;
     BOOL closed;
 };
 void ZuneWatchWindow(Object *window, struct ZuneWindowGuard *guard);

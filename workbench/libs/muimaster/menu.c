@@ -1564,7 +1564,40 @@ static void AddToSelection(struct MenuHandlerData *mhd)
 struct ZMenu
 {
     struct MenuHandlerData mhd;
+    struct ZMenu *child;
+    Object *child_owner;
 };
+static BOOL PopupContains(struct ZMenu *menu, LONG x, LONG y)
+{
+    if (menu->child && PopupContains(menu->child, x, y)) return TRUE;
+    struct Window *windows[] = {menu->mhd.menubarwin,
+        menu->mhd.menuwin, menu->mhd.submenuwin};
+    for (LONG i = 0; i < 3; i++)
+    {
+        struct Window *w = windows[i];
+        if (w && x >= w->LeftEdge && y >= w->TopEdge &&
+            x < w->LeftEdge + w->Width && y < w->TopEdge + w->Height)
+            return TRUE;
+    }
+    return FALSE;
+}
+static void PopupCascade(struct ZMenu *menu)
+{
+    struct MenuHandlerData *mhd = &menu->mhd;
+    if (!mhd->modal || !mhd->submenuwin || !mhd->activesubitem ||
+        !(mhd->activesubitem->Flags & ITEMENABLED)) return;
+    Object *owner = (Object *)GTMENUITEM_USERDATA(mhd->activesubitem);
+    if (!owner || menu->child_owner == owner) return;
+    struct NewMenu *items = zune_build_submenu(owner);
+    if (!items) return;
+    if (menu->child) zune_close_menu(menu->child);
+    menu->child = zune_open_menu_at(mhd->win, items,
+        mhd->submenuwin->LeftEdge + mhd->submenuwin->Width - 4,
+        mhd->submenuwin->TopEdge + mhd->activesubitem->TopEdge);
+    menu->child_owner = menu->child ? owner : NULL;
+    FreeVec(items);
+}
+
 
 /* Reserve a shared image column per level, retaining GadTools' text,
  * checkmark and shortcut layout. Pictures are owned by this popup only. */
@@ -1720,8 +1753,25 @@ void zune_mouse_update(struct ZMenu *zmenu, int left_down)
     if (!zmenu)
         return;
 
+    LONG x = zmenu->mhd.scr->MouseX, y = zmenu->mhd.scr->MouseY;
+    if (zmenu->child && PopupContains(zmenu->child, x, y))
+    {
+        zune_mouse_update(zmenu->child, left_down);
+        return;
+    }
+    /* Keep the cascade while traversing the small gap between windows. */
+    if (zmenu->child && !PopupContains(zmenu, x, y)) return;
+    if (zmenu->child)
+    {
+        zune_close_menu(zmenu->child);
+        zmenu->child = NULL;
+        zmenu->child_owner = NULL;
+    }
     if (!left_down)
+    {
         HandleMouseMove(&zmenu->mhd);
+        PopupCascade(zmenu);
+    }
     else
         HandleMouseClick(&zmenu->mhd, 0);
 }
@@ -1729,6 +1779,11 @@ void zune_mouse_update(struct ZMenu *zmenu, int left_down)
 int zune_poll_menu(struct ZMenu *zmenu, struct MenuItem **selected)
 {
     int i;
+    if (zmenu->child)
+    {
+        int picked = zune_poll_menu(zmenu->child, selected);
+        if (picked) return picked;
+    }
     for (i = 0; i < 3; i++)
     {
         struct Window *win = i == 0 ? zmenu->mhd.menubarwin :
@@ -1749,7 +1804,7 @@ int zune_poll_menu(struct ZMenu *zmenu, struct MenuItem **selected)
             }
             if (type == IDCMP_MOUSEMOVE)
             {
-                HandleMouseMove(&zmenu->mhd);
+                zune_mouse_update(zmenu, 0);
                 /* Movement may have closed this submenu. */
                 break;
             }
@@ -1760,6 +1815,11 @@ int zune_poll_menu(struct ZMenu *zmenu, struct MenuItem **selected)
 
 struct MenuItem *zune_leave_menu(struct ZMenu *zmenu)
 {
+    if (zmenu->child && PopupContains(zmenu->child,
+        zmenu->mhd.scr->MouseX, zmenu->mhd.scr->MouseY))
+        return zune_leave_menu(zmenu->child);
+    /* A branch is navigation, never a leaf selection. */
+    if (zmenu->child) return NULL;
     HandleMouseClick(&zmenu->mhd, 1);
 
     return ItemAddress(zmenu->mhd.menu, zmenu->mhd.firstmenupick);
@@ -1771,6 +1831,7 @@ void zune_close_menu(struct ZMenu *zmenu)
     if (!zmenu)
         return;
 
+    if (zmenu->child) zune_close_menu(zmenu->child);
     KillMenuBarWin(&zmenu->mhd);
     KillMenuWin(&zmenu->mhd);
     KillSubMenuWin(&zmenu->mhd);

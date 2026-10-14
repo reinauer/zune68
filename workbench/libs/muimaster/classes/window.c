@@ -758,7 +758,7 @@ static void HideRenderInfo(struct MUI_RenderInfo *mri)
 static ULONG GetDefaultEvents(void)
 {
     return IDCMP_NEWSIZE | IDCMP_CHANGEWINDOW | IDCMP_REFRESHWINDOW
-        | IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE | IDCMP_MENUPICK
+        | IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE | IDCMP_MENUPICK | IDCMP_MENUVERIFY
         | IDCMP_CLOSEWINDOW | IDCMP_RAWKEY | IDCMP_INTUITICKS
         | IDCMP_ACTIVEWINDOW | IDCMP_INACTIVEWINDOW | IDCMP_GADGETUP;
 }
@@ -811,6 +811,25 @@ void ZuneUnwatchWindow(Object *window, struct ZuneWindowGuard *guard)
     struct ZuneWindowGuard **link = &data->wd_Guards;
     while (*link && *link != guard) link = &(*link)->next;
     if (*link) *link = guard->next;
+}
+
+/* Release verification messages before Hide/Cleanup can touch layers. */
+static void CancelWindowGuards(struct MUI_WindowData *data)
+{
+    while (data->wd_Guards)
+    {
+        struct ZuneWindowGuard *guard = data->wd_Guards;
+        data->wd_Guards = guard->next;
+        if (guard->handler) RemoveEventHandler(data, guard->handler);
+        if (guard->menu_message)
+        {
+            guard->menu_message->Code = MENUCANCEL;
+            ReplyMsg((struct Message *)guard->menu_message);
+            guard->menu_message = NULL;
+        }
+        guard->closed = TRUE;
+    }
+
 }
 
 static void UndisplayWindow(Object *obj, struct MUI_WindowData *data);
@@ -1294,13 +1313,6 @@ static void UndisplayWindow(Object *obj, struct MUI_WindowData *data)
         DoMethod(obj, MUIM_Window_Snapshot, 1);
     }
 
-    while (data->wd_Guards)
-    {
-        struct ZuneWindowGuard *guard = data->wd_Guards;
-        data->wd_Guards = guard->next;
-        RemoveEventHandler(data, guard->handler);
-        guard->closed = TRUE;
-    }
 
     data->wd_RenderInfo.mri_Window = NULL;
     data->wd_RenderInfo.mri_VertProp = NULL;
@@ -2153,43 +2165,6 @@ static struct MenuItem *FindCaseShortcut(struct MenuItem *item, UBYTE key)
     return NULL;
 }
 
-static struct MenuItem *ResolveCaseShortcut(struct MUI_WindowData *data,
-    struct MenuItem *item, UWORD qualifier)
-{
-    IPTR sensitive = FALSE;
-    UBYTE key;
-    struct Menu *menu;
-    if (!(qualifier & IEQUALIFIER_RCOMMAND) || !data->wd_Menustrip ||
-        !get(data->wd_Menustrip, MUIA_Menustrip_CaseSensitive, &sensitive) ||
-        !sensitive) return item;
-    key = item->Command;
-    if (key >= 'A' && key <= 'Z') key += 'a' - 'A';
-    if (key < 'a' || key > 'z') return item;
-    if (qualifier & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT | IEQUALIFIER_CAPSLOCK))
-        key -= 'a' - 'A';
-    /* Intuition has already changed the case-insensitive match. Restore
-     * that native state before applying the exact match below. */
-    if (item->Flags & CHECKIT)
-    {
-        IPTR checked = FALSE;
-        get((Object *)GTMENUITEM_USERDATA(item), MUIA_Menuitem_Checked, &checked);
-        if (checked) item->Flags |= CHECKED;
-        else item->Flags &= ~CHECKED;
-    }
-    for (menu = data->wd_Menu; menu; menu = menu->NextMenu)
-        if ((menu->Flags & MENUENABLED) &&
-            (item = FindCaseShortcut(menu->FirstItem, key)))
-        {
-            if (item->Flags & CHECKIT)
-            {
-                if (item->Flags & MENUTOGGLE) item->Flags ^= CHECKED;
-                else item->Flags |= CHECKED;
-            }
-            return item;
-        }
-    return NULL;
-}
-
 /* Reply to imsg if handled */
 BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
     struct IntuiMessage *imsg)
@@ -2287,9 +2262,23 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
         set(oWin, MUIA_Window_CloseRequest, TRUE);
         break;
 
+    case IDCMP_MENUVERIFY:
+    {
+        struct ZuneWindowGuard guard = {0};
+        if (data->wd_Menustrip && imsg->Code == MENUHOT)
+        {
+            guard.menu_message = imsg;
+            ZuneWatchWindow(oWin, &guard);
+            DoMethod(data->wd_Menustrip, MUIM_Menustrip_WillOpen);
+            if (guard.closed) return TRUE;
+            ZuneUnwatchWindow(oWin, &guard);
+        }
+        ReplyMsg((struct Message *)imsg);
+        return TRUE;
+    }
     case IDCMP_MENUPICK:
     {
-        UWORD code = imsg->Code, qualifier = imsg->Qualifier;
+        UWORD code = imsg->Code;
         ReplyMsg((struct Message *)imsg);
         replied = TRUE;
 
@@ -2300,7 +2289,6 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
             {
                 struct MenuItem *item =
                     ItemAddress(data->wd_Menu, code);
-                if (item) item = ResolveCaseShortcut(data, item, qualifier);
                 if (item)
                 {
                     Object *item_obj = (Object *) GTMENUITEM_USERDATA(item);
@@ -2627,6 +2615,44 @@ static void HandleRawkey(Object *win, struct MUI_WindowData *data,
     ReplyMsg((struct Message *)event);
     event = &imsg_copy;
 
+    /* Case-sensitive menus use displayed command strings, leaving the
+     * raw key and its qualifiers available for exact keymap matching. */
+    IPTR sensitive = FALSE;
+    if (!(event->Code & IECODE_UP_PREFIX) &&
+        (event->Qualifier & IEQUALIFIER_RCOMMAND) && data->wd_Menustrip &&
+        get(data->wd_Menustrip, MUIA_Menustrip_CaseSensitive, &sensitive) && sensitive)
+    {
+        struct Menu *menu;
+        for (menu = data->wd_Menu; menu; menu = menu->NextMenu)
+        {
+            struct MenuItem *item;
+            if (!(menu->Flags & MENUENABLED) ||
+                !(item = FindCaseShortcut(menu->FirstItem, key))) continue;
+            Object *object = (Object *)GTMENUITEM_USERDATA(item);
+            Object *app = _app(win);
+            struct MenuItem selected = *item;
+            struct ZuneWindowGuard guard = {0};
+            IPTR id = 0;
+            get(object, MUIA_UserData, &id);
+            ZuneWatchWindow(win, &guard);
+            if (selected.Flags & CHECKIT)
+            {
+                if (selected.Flags & MENUTOGGLE) selected.Flags ^= CHECKED;
+                else selected.Flags |= CHECKED;
+                set(object, MUIA_Menuitem_Checked, !!(selected.Flags & CHECKED));
+                if (guard.closed) return;
+            }
+            set(object, MUIA_Menuitem_Trigger, &selected);
+            if (guard.closed) return;
+            set(app, MUIA_Application_MenuAction, id);
+            if (guard.closed) return;
+            set(win, MUIA_Window_MenuAction, id);
+            if (guard.closed) return;
+            DoMethod(app, MUIM_Application_ReturnID, id);
+            if (!guard.closed) ZuneUnwatchWindow(win, &guard);
+            return;
+        }
+    }
     //bug("rawkey: code=%lx, qual=%lx\n", event->Code, event->Qualifier);
 
     /* check if imsg translates to predefined keystroke */
@@ -4588,6 +4614,8 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
 static ULONG WindowClose(struct IClass *cl, Object *obj)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
+
+    CancelWindowGuards(data);
 
     if (data->wd_ActiveObject != NULL)
     {

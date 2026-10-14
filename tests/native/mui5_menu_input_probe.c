@@ -20,10 +20,25 @@
 struct Library *MUIMasterBase;
 extern struct IntuitionBase *IntuitionBase;
 ULONG __stack = 65536;
+#define CO(cl, ...) \
+    ({ ULONG tags[] = {__VA_ARGS__}; NewObjectA(cl, NULL, (struct TagItem *)tags); })
+static Object *test_win;
+static ULONG will_open;
+static BOOL close_on_open;
+static ULONG menu_dispatch(struct IClass *cl __asm("a0"),
+    Object *obj __asm("a2"), Msg msg __asm("a1"))
+{
+    if (msg->MethodID == 0x804230e9)
+    {
+        will_open++;
+        if (close_on_open) SetAttrs(test_win, MUIA_Window_Open, FALSE, TAG_DONE);
+    }
+    return DoSuperMethodA(cl, obj, msg);
+}
 static struct Window *window;
 static volatile ULONG draws, disposed, done, select_item;
 static LONG px, py;
-static LONG boxes[8][4];
+static LONG boxes[8][4], deepboxes[7][2];
 static ULONG nboxes, keyqual, chosen;
 static ULONG image_dispatch(struct IClass *cl __asm("a0"),
     Object *obj __asm("a2"), Msg msg __asm("a1"))
@@ -66,7 +81,13 @@ static void driver(void)
     if (io && !OpenDevice("input.device", 0, (APTR)io, 0))
     {
         Delay(30);
-        if (select_item)
+        if (select_item == 3)
+        {
+            inject(io, IECLASS_NEWPOINTERPOS, 0, px, py);
+            inject(io, IECLASS_RAWMOUSE, IECODE_RBUTTON, 0, 0);
+            inject(io, IECLASS_RAWMOUSE, IECODE_RBUTTON | IECODE_UP_PREFIX, 0, 0);
+        }
+        else if (select_item)
         {
             struct Window *w;
             inject(io, IECLASS_NEWPOINTERPOS, 0, px + 8, py + 8);
@@ -85,6 +106,18 @@ static void driver(void)
             {
                 inject(io, IECLASS_NEWPOINTERPOS, 0,
                     boxes[0][0] + 20, boxes[0][1] + 8);
+                if (select_item == 2)
+                    for (int depth = 0; depth < 7; depth++)
+                    {
+                        LONG x = 0, y = 0;
+                        Forbid();
+                        for (w = window->WScreen->FirstWindow; w; w = w->NextWindow)
+                            if (w != window && (w->Flags & WFLG_BORDERLESS))
+                            { x = w->LeftEdge + 20; y = w->TopEdge + 8; break; }
+                        Permit();
+                        deepboxes[depth][0] = x; deepboxes[depth][1] = y;
+                        inject(io, IECLASS_NEWPOINTERPOS, 0, x, y);
+                    }
                 inject(io, IECLASS_RAWMOUSE, IECODE_LBUTTON, 0, 0);
                 inject(io, IECLASS_RAWMOUSE, IECODE_LBUTTON | IECODE_UP_PREFIX, 0, 0);
             }
@@ -99,6 +132,7 @@ static void driver(void)
 }
 int main(int argc, char **argv)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
     Object *item, *strip, *root, *win, *app, *lower, *upper, *menu;
     struct IClass *ic;
     Object *image;
@@ -123,7 +157,10 @@ int main(int argc, char **argv)
         MUIA_Menuitem_Shortcut, "a", TAG_DONE);
     upper = MO(MUIC_Menuitem, MUIA_Menuitem_Title, "Upper",
         MUIA_Menuitem_Shortcut, "A", TAG_DONE);
-    strip = MO(MUIC_Menustrip, MUIA_Menustrip_CaseSensitive, TRUE, MUIA_Family_Child,
+    struct MUI_CustomClass *menu_class = MUI_CreateCustomClass(NULL,
+        MUIC_Menustrip, NULL, 0, (APTR)menu_dispatch);
+    if (!menu_class) return 20;
+    strip = CO(menu_class->mcc_Class, MUIA_Menustrip_CaseSensitive, TRUE, MUIA_Family_Child,
         menu = MO(MUIC_Menu, MUIA_Menu_Title, "Probe", MUIA_Family_Child, item,
             MUIA_Family_Child, MO(MUIC_Menuitem, MUIA_Menuitem_Title, "Disabled",
                 MUIA_Menuitem_Enabled, FALSE, TAG_DONE),
@@ -132,6 +169,7 @@ int main(int argc, char **argv)
     win = MO(MUIC_Window, MUIA_Window_Title, "Menu input probe",
         MUIA_Window_Menustrip, strip, MUIA_Window_Width, 240, MUIA_Window_Height, 100,
         MUIA_Window_Screen, screen, MUIA_Window_RootObject, root, TAG_DONE);
+    test_win = win;
     app = MO(MUIC_Application, MUIA_Application_Window, win, TAG_DONE);
     if (!app) return 20;
     SetAttrs(win, MUIA_Window_Open, TRUE, TAG_DONE);
@@ -189,6 +227,26 @@ int main(int argc, char **argv)
         if (result != (select_item ? 42 : 0)) failures++;
     }
     if (!draws) failures++;
+    if (strstr((char *)MUIMasterBase->lib_IdString, "Zune68"))
+    {
+        Object *deep = MO(MUIC_Menuitem, MUIA_Menuitem_Title, "Deep leaf",
+            MUIA_UserData, 42, TAG_DONE);
+        for (int depth = 0; depth < 4; depth++)
+            deep = MO(MUIC_Menuitem, MUIA_Menuitem_Title, "Branch",
+                MUIA_Family_Child, deep, TAG_DONE);
+        Object *deepstrip = MO(MUIC_Menustrip, MUIA_Family_Child,
+            MO(MUIC_Menu, MUIA_Menu_Title, "Deep", MUIA_Family_Child, deep, TAG_DONE), TAG_DONE);
+        DoMethod(app, MUIM_Application_InputBuffered);
+        select_item = 2; done = FALSE; nboxes = 0;
+        if (!CreateNewProcTags(NP_Entry, driver, NP_Name, "Deep menu input",
+            NP_StackSize, 16384, TAG_DONE)) return 20;
+        result = DoMethod(deepstrip, MUIM_Menustrip_Popup, root, 0, 10, 10);
+        while (!done) Delay(1);
+        printf("deep popup result=%lu\n", result);
+        for (int i = 0; i < 7; i++) printf("deep point %ld,%ld\n", deepboxes[i][0], deepboxes[i][1]);
+        if (result != 42) failures++;
+        MUI_DisposeObject(deepstrip);
+    }
     if (strstr((char *)MUIMasterBase->lib_IdString, "Zune68") != NULL)
     {
         DoMethod(app, MUIM_Application_PushMethod, win, 3,
@@ -197,8 +255,23 @@ int main(int argc, char **argv)
         GetAttr(MUIA_Window_Open, win, &opened);
         printf("popup parent close result=%lu open=%lu\n", result, opened);
         if (result || opened) failures++;
+        SetAttrs(win, MUIA_Window_Open, TRUE, TAG_DONE);
+        GetAttr(win, MUIA_Window_Window, (ULONG *)&window);
+        ActivateWindow(window);
+        ULONG before = will_open;
+        close_on_open = TRUE;
+        px = window->LeftEdge + 30; py = window->TopEdge + 30;
+        select_item = 3; done = FALSE;
+        if (!CreateNewProcTags(NP_Entry, driver, NP_Name, "Menu verify input",
+            NP_StackSize, 16384, TAG_DONE)) return 20;
+        while (!done)
+        { DoMethod(app, MUIM_Application_InputBuffered); Delay(2); }
+        GetAttr(win, MUIA_Window_Open, &opened);
+        printf("WillOpen close calls=%lu open=%lu\n", will_open - before, opened);
+        if (will_open == before || opened) failures++;
     }
     MUI_DisposeObject(app);
+    MUI_DeleteCustomClass(menu_class);
     if (disposed != 1 || !FreeClass(ic)) failures++;
     if (screen) CloseScreen(screen);
     CloseLibrary(MUIMasterBase);

@@ -10,6 +10,7 @@
 struct NewMenu;
 struct Window;
 struct ZMenu;
+struct NewMenu *zune_build_submenu(Object *parent);
 
 struct ZMenu *zune_open_menu(struct Window *wnd, struct NewMenu *newmenu);
 struct ZMenu *zune_open_menu_at(struct Window *wnd, struct NewMenu *newmenu,

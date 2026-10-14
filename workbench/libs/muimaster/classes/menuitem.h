@@ -14,6 +14,8 @@
 #define MUIB_Menustrip         (MUIB_ZUNE | 0x00001a00)
 
 /*** Attributes *************************************************************/
+#define MUIM_Menustrip_WillOpen 0x804230e9
+struct MUIP_Menustrip_WillOpen { STACKED ULONG MethodID; };
 #define MUIM_Menustrip_InitChange 0x8042dcd9
 #define MUIM_Menustrip_ExitChange 0x8042ce4d
 #define MUIM_Menustrip_Popup      0x80420e76
@@ -54,6 +56,7 @@ struct MUIP_Menustrip_Popup
 #define MUIB_Menuitem               (MUIB_ZUNE | 0x00001c00)
 
 /*** Attributes *************************************************************/
+#define MUIA_Menuitem_Menuitem 0x80424b21
 #define MUIA_Menuitem_CopyStrings 0x8042dc1b /* V16 i.. BOOL */
 #define MUIA_Menuitem_AISSName    0x804248f2 /* V21 isg STRPTR */
 #define MUIA_Menuitem_Image       0x8042080b /* V20 isg struct Image * */

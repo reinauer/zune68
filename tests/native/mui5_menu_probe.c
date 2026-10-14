@@ -90,6 +90,48 @@ int main(void)
     printf("nested exit=%lu\n", DoMethod(strip, MUIM_Menustrip_ExitChange));
     printf("exit=%lu\n", DoMethod(strip, MUIM_Menustrip_ExitChange));
     MUI_DisposeObject(strip);
+    if (strstr((char *)MUIMasterBase->lib_IdString, "Zune68"))
+    {
+    /* Copying preserves menu settings, not Family identity or UserData. */
+    obj = MUI_NewObject(MUIC_Menuitem, MUIA_Menuitem_Title, "Source",
+        MUIA_Menuitem_Shortcut, "S", MUIA_Menuitem_CopyStrings, TRUE,
+        MUIA_Menuitem_Checkit, TRUE, MUIA_Menuitem_Checked, TRUE,
+        MUIA_UserData, 42, TAG_DONE);
+    Object *copy = MUI_NewObject(MUIC_Menuitem,
+        MUIA_Menuitem_Menuitem, obj, TAG_DONE);
+    got = 0; GetAttr(MUIA_Menuitem_Title, copy, &got);
+    check(got && !strcmp((char *)got, "Source"), "constructor copy");
+    before = 0; GetAttr(MUIA_Menuitem_Title, obj, &before);
+    check(got != before, "copied strings have independent storage");
+    got = 0; GetAttr(MUIA_Menuitem_Checked, copy, &got);
+    check(got, "copied checked state");
+    got = 0; GetAttr(MUIA_UserData, copy, &got);
+    check(got == 0, "copy preserves destination identity");
+    SetAttrs(obj, MUIA_Menuitem_Title, "Changed", TAG_DONE);
+    MUI_DisposeObject(copy);
+    copy = MUI_NewObject(MUIC_Menuitem, TAG_DONE);
+    got = (ULONG)copy; GetAttr(MUIA_Menuitem_Menuitem, obj, &got);
+    got = 0; GetAttr(MUIA_Menuitem_Title, copy, &got);
+    check(got && !strcmp((char *)got, "Changed"), "get copies to supplied object");
+    MUI_DisposeObject(obj); MUI_DisposeObject(copy);
+    if (strstr((char *)MUIMasterBase->lib_IdString, "Zune68"))
+    {
+        /* Arbitrary BOOPSI images cannot be cloned. Keep the shared image
+         * alive until both menu owners have released it. */
+        image1 = NewObject(ic, NULL, TAG_DONE);
+        obj = MUI_NewObject(MUIC_Menuitem, MUIA_Menuitem_Image, image1,
+            MUIA_Menuitem_Title, "Owned", MUIA_Menuitem_CopyStrings, TRUE, TAG_DONE);
+        copy = MUI_NewObject(MUIC_Menuitem, MUIA_Menuitem_Title, "Borrowed",
+            MUIA_Menuitem_Menuitem, obj, TAG_DONE);
+        before = disposed;
+        MUI_DisposeObject(obj);
+        check(disposed == before, "copied image survives source");
+        SetAttrs(copy, MUIA_Menuitem_Image, NULL, TAG_DONE);
+        check(disposed == before + 1, "last owner releases copied image");
+        MUI_DisposeObject(copy);
+        check(disposed == before + 1, "copied image disposed once");
+    }
+    }
 done:
     check(FreeClass(ic), "all images freed");
     CloseLibrary(MUIMasterBase);
