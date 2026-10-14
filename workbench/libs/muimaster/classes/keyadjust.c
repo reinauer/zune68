@@ -31,6 +31,7 @@ static BOOL valid_keys(CONST_STRPTR value, BOOL multiple)
 {
     char key[128];
     if (!value || !*value) return TRUE;
+    if (strlen(value) >= 1024) return FALSE;
     for (;;)
     {
         const char *comma = strchr(value, ',');
@@ -158,7 +159,9 @@ AROS_UFH3S(IPTR, key_edit_hook,
         strlcat(value, work->PrevBuffer, sizeof(value));
         if (*value) strlcat(value, ",", sizeof(value));
     }
-    strlcat(value, key, sizeof(value)); d->append = FALSE;
+    if (strlcat(value, key, sizeof(value)) >= sizeof(value))
+    { work->Actions = SGA_BEEP; return TRUE; }
+    d->append = FALSE;
     strcpy(work->WorkBuffer, value);
     work->BufferPos = work->NumChars = strlen(value);
     work->Actions = SGA_USE | SGA_REDISPLAY;
@@ -266,7 +269,9 @@ fail:   CoerceMethod(cl, obj, OM_DISPOSE); return 0;
             strlcat(value, (APTR)XGET(d->string, MUIA_String_Contents), sizeof(value));
             if (*value) strlcat(value, ",", sizeof(value));
         }
-        strlcat(value, key, sizeof(value)); d->append = FALSE;
+        if (strlcat(value, key, sizeof(value)) >= sizeof(value))
+        { DisplayBeep(_screen(obj)); return MUI_EventHandlerRC_Eat; }
+        d->append = FALSE;
         set(obj, MUIA_Keyadjust_Key, value);
         return MUI_EventHandlerRC_Eat;
     }

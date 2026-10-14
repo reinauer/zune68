@@ -44,6 +44,11 @@ int main(void)
     {
         SetAttrs(o,MUIA_Keyadjust_Key,"not a valid key expression",TAG_DONE);
         check(!strcmp((char*)attr(o,MUIA_Keyadjust_Key),"rcommand c"),"invalid expression rejected");
+        char longkeys[1102];
+        for(int i=0;i<1101;i++)longkeys[i]=(i&1)?',':'a';
+        longkeys[1101]=0;
+        SetAttrs(o,MUIA_Keyadjust_AllowMultipleKeys,TRUE,MUIA_Keyadjust_Key,longkeys,TAG_DONE);
+        check(!strcmp((char*)attr(o,MUIA_Keyadjust_Key),"rcommand c"),"oversized shortcuts rejected");
     }
     Object *w=MO(MUIC_Window,MUIA_Window_Screen,screen,MUIA_Window_RootObject,o,TAG_DONE);
     Object *app=MO(MUIC_Application,MUIA_Application_Window,w,TAG_DONE);
