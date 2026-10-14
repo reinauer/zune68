@@ -219,8 +219,11 @@ all soft-style effects still need broader application coverage.
 Process.mui has separate-task launch, signaling, cooperative kill and
 joined disposal. Keyadjust.mui supports copied/validated shortcuts,
 keyboard capture, mouse capture options and a menu for editing multiple
-shortcuts. Its native input probe validates keyboard capture; popup and
-mouse combinations still need interactive coverage.
+shortcuts. Its native input probe validates keyboard capture and real popup selection
+for removing a shortcut and appending another. Mouse-expression capture
+and double/triple-click suppression have direct event-handler checks;
+all physical mouse/qualifier combinations remain broader coverage.
+Two simultaneous file requesters also open and cancel independently.
 
 ### Remaining class and theme scope
 
