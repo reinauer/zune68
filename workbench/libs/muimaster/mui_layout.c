@@ -10,6 +10,7 @@
 #include "mui.h"
 #include "muimaster_intern.h"
 #include "support.h"
+#include "layout_intern.h"
 
 //#define MYDEBUG 1
 #include "debug.h"
@@ -68,7 +69,7 @@
         top -= val;
     }
 
-    return ZuneLayoutObject(obj, left + _mleft(parent), top + _mtop(parent),
+    return ZuneLayoutInline(obj, left + _mleft(parent), top + _mtop(parent),
         width, height, flags);
 
     AROS_LIBFUNC_EXIT

@@ -280,6 +280,7 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
     text->styles = 0;
     text->nontext = 0;
     text->truncate = 0;
+    text->plain = plain && content_len;
     NewList((struct List *)&text->lines);
     text->arena_next = (UBYTE *)(text + 1);
     text->arena_end = text->arena_next + arena_size;
@@ -1048,6 +1049,26 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
     if (rp->AlgoStyle != style)
         SetSoftStyle(rp, style, AskSoftStyle(rp));
 
+    if (text->plain)
+    {
+        ZTextLine *line = (APTR)text->lines.mlh_Head;
+        ZTextChunk *chunk = (APTR)line->chunklist.mlh_Head;
+        LONG len = chunk->clen;
+        if (text->truncate && left + chunk->cwidth > right + 1)
+        {
+            struct TextExtent extent;
+            len = right + 1 > left ? TextFit(rp, chunk->str, len,
+                &extent, NULL, 1, right + 1 - left, 32767) : 0;
+        }
+        if (len > 0)
+        {
+            if (rp->DrawMode != JAM1) SetDrMd(rp, JAM1);
+            Move(rp, left, _font(obj)->tf_Baseline + top);
+            Text(rp, chunk->str, len);
+        }
+        return;
+    }
+
     for (line_node = (ZTextLine *) text->lines.mlh_Head;
         line_node->node.mln_Succ;
         line_node = (ZTextLine *) line_node->node.mln_Succ)
@@ -1215,6 +1236,7 @@ static void text_shortened(ZText *text, Object *obj, WORD left,
         source = (APTR)source->node.mln_Succ)
     {
         ZText view = *text;
+        view.plain = FALSE;
         ZTextLine line = *source;
         ZTextChunk *chunk, *chunks = NULL;
         struct RastPort rp = *_rp(obj);

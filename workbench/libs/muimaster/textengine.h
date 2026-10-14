@@ -69,6 +69,7 @@ struct ZText {
     UBYTE nontext;      /* image or object chunks, set by get_bounds */
     UBYTE truncate;     /* draw only whole characters left of the right
                          * edge, as MUI's Text class does */
+    UBYTE plain;       /* one nonempty, unformatted, left-aligned chunk */
 };
 
 typedef struct ZText ZText;

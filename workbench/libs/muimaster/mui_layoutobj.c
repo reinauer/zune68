@@ -5,28 +5,7 @@
 #include "support.h"
 #include "support_classes.h"
 
-/* Public methods enter here after subclass dispatch, so the old callback
- * can run without re-entering the public method on the same object. */
-static inline __attribute__((always_inline)) IPTR LayoutBuiltin(
-    Object *obj, LONG left, LONG top, LONG width, LONG height,
-    ULONG flags)
-{
-    static const struct MUIP_Zune_Layout method = { MUIM_Zune_Layout };
-
-    /* Unlike MUI_Layout, these coordinates are already window-relative. */
-    _left(obj) = left;
-    _top(obj) = top;
-    muiAreaData(obj)->mad_VirtualTop = top;
-    _width(obj) = width;
-    _height(obj) = height;
-
-    /* MUI keeps the requested box even when its size is unacceptable. */
-    if (width < _minwidth(obj) || width > _maxwidth(obj) ||
-        height < _minheight(obj) || height > _maxheight(obj))
-        return FALSE;
-
-    return DoMethodA(obj, (Msg)&method);
-}
+#include "layout_intern.h"
 
 IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
     ULONG flags)
@@ -34,28 +13,10 @@ IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
     return LayoutBuiltin(obj, left, top, width, height, flags);
 }
 
-static inline BOOL NeedsPublicLayout(Object *obj)
-{
-    return (muiAreaData(obj)->mad_Flags2 & MADF2_ISGROUP)
-#if !defined(__AROS__) && !defined(__amigaos4__) && !defined(__MAXON__)
-        && OCLASS(obj)->cl_Dispatcher.h_Entry != (HOOKFUNC)builtinDispatcher
-#endif
-        ;
-}
-
 IPTR ZuneLayoutObject(Object *obj, LONG left, LONG top, LONG width,
     LONG height, ULONG flags)
 {
-    if (NeedsPublicLayout(obj))
-    {
-        struct MUIP_Layout method = {
-            MUIM_Layout, left, top, width, height, flags
-        };
-
-        return DoMethodA(obj, (Msg)&method) != 0;
-    }
-
-    return LayoutBuiltin(obj, left, top, width, height, flags);
+    return ZuneLayoutInline(obj, left, top, width, height, flags);
 }
 
 AROS_LH6(BOOL, MUI_LayoutObj,
@@ -68,7 +29,7 @@ AROS_LH6(BOOL, MUI_LayoutObj,
     struct Library *, MUIMasterBase, 38, MUIMaster)
 {
     AROS_LIBFUNC_INIT
-    return ZuneLayoutObject(obj, left, top, width, height, flags);
+    return ZuneLayoutInline(obj, left, top, width, height, flags);
     AROS_LIBFUNC_EXIT
 }
 
