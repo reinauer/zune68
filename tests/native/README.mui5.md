@@ -269,6 +269,13 @@ published baseline `7b847fba`, the raw run medians, library-size changes
 and reproduction commands. `compare_perf.py` requires a disposable guest
 fixture and records hashes of the exact emulator, benchmark and libraries.
 
+[PERFORMANCE.toolkits.md](PERFORMANCE.toolkits.md) compares the development
+library with original MUI 3.8 and MUI 5. `compare_toolkits.py` keeps complete
+toolkit installations separate and restores a pristine OS disk before
+each boot. It uses the benchmark's `screen-fixed` mode, which requests a
+larger screen and bounded geometry and checks that the root fits inside
+the window. Actual toolkit-constrained dimensions are recorded.
+
 ## Application dependency and shutdown checks
 
 See [APPLICATIONS.mui5.md](APPLICATIONS.mui5.md) for the IBrowse 3.0a

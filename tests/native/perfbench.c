@@ -53,6 +53,7 @@ static const char *entries[] = {
 
 static Object *app, *win, *root, *list, *slider, *numeric, *text;
 static struct Screen *benchmark_screen;
+static int fixed_geometry;
 
 static ULONG now(void)
 {
@@ -90,7 +91,11 @@ static Object *build(void)
             MUIA_Window_Screen, benchmark_screen,
             MUIA_Window_LeftEdge, 20,
             MUIA_Window_TopEdge, 20,
+            fixed_geometry ? MUIA_Window_Width : TAG_IGNORE, 600,
+            fixed_geometry ? MUIA_Window_Height : TAG_IGNORE, 400,
             WindowContents, root = VGroup,
+                fixed_geometry ? MUIA_FixWidth : TAG_IGNORE, 600,
+                fixed_geometry ? MUIA_FixHeight : TAG_IGNORE, 400,
                 Child, HGroup, GroupFrameT("Controls"),
                     Child, ColGroup(2),
                         Child, Label2("Name:"),
@@ -194,11 +199,15 @@ int main(int argc, char **argv)
     printf("library %d.%d eclock=%lu\n", MUIMasterBase->lib_Version,
         MUIMasterBase->lib_Revision, (unsigned long)(now(), eclock_freq));
 
-    if (argc == 2 && !strcmp(argv[1], "screen"))
+    fixed_geometry = argc == 2 && !strcmp(argv[1], "screen-fixed");
+    if (argc == 2 && (!strcmp(argv[1], "screen") || fixed_geometry))
     {
         benchmark_screen = OpenScreenTags(NULL, SA_Width, 640,
-            SA_Height, 256, SA_Depth, 2, TAG_DONE);
+            SA_Height, fixed_geometry ? 480 : 256, SA_Depth, 2, TAG_DONE);
         if (!benchmark_screen) goto done;
+        printf("screen=%dx%d depth=%d repetitions=%d\n",
+            benchmark_screen->Width, benchmark_screen->Height,
+            benchmark_screen->RastPort.BitMap->Depth, REPS);
     }
 
     if (argc > 2)
@@ -255,6 +264,26 @@ int main(int argc, char **argv)
 
     set(win, MUIA_Window_Open, TRUE);
     DoMethod(app, MUIM_Application_InputBuffered);
+    {
+        struct Window *native = NULL;
+        ULONG width = 0, height = 0, visible = 0;
+
+        get(win, MUIA_Window_Window, &native);
+        get(root, MUIA_Width, &width);
+        get(root, MUIA_Height, &height);
+        get(list, MUIA_List_Visible, &visible);
+        if (!native) goto done;
+        printf("geometry window=%dx%d root=%lux%lu list-visible=%lu\n",
+            native->Width, native->Height, (unsigned long)width,
+            (unsigned long)height, (unsigned long)visible);
+        if (fixed_geometry &&
+            (width > native->Width - native->BorderLeft - native->BorderRight ||
+             height > native->Height - native->BorderTop - native->BorderBottom))
+        {
+            puts("root exceeds window interior");
+            goto done;
+        }
+    }
 
     for (i = 0; i < REPS; i++)
     {
@@ -288,6 +317,13 @@ int main(int argc, char **argv)
             DoMethod(list, MUIM_List_Clear);
     }
     report("list insert200", REPS, 200);
+    {
+        ULONG count = 0;
+
+        get(list, MUIA_List_Entries, &count);
+        printf("list-entries=%lu\n", (unsigned long)count);
+        if (count != 200) goto done;
+    }
 
     for (i = 0; i < REPS; i++)
     {

@@ -7,6 +7,11 @@ List and Text/RTG completion pass, followed by plain-text and layout
 optimizations. This compares Zune68 revisions, not proprietary MUI 3.8
 against proprietary MUI 5.
 
+For a separate comparison against original MUI 3.8 and MUI 5, see
+[PERFORMANCE.toolkits.md](PERFORMANCE.toolkits.md). That comparison uses
+a larger screen to accommodate MUI 5's default layout; its absolute times
+must not be mixed with the measurements in this report.
+
 A subsequent requester-worker naming fix is validated separately; it is
 not included in these frozen timings. The benchmark does not invoke ASL
 requesters.

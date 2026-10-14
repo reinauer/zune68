@@ -1,0 +1,61 @@
+{
+  "mui38_archive": {
+    "filename": "mui38usr.lha",
+    "bytes": 1033392,
+    "sha256": "f3acb2fe98f74c025daf10ae7df92d08abe787332124963771e2c21a869cca5b"
+  },
+  "mui5_archive": {
+    "filename": "MUI-5.0-20210831-os3.lha",
+    "bytes": 4105827,
+    "sha256": "8a869a037db465828dbe42fa7854114121280ed2691afa61fe53a25bf427a847"
+  },
+  "mui38": {
+    "version": "$VER: muimaster.library 19.35 (12.02.97) \u00a91992-1997 Stefan Stuntz",
+    "bytes": 166412,
+    "sha256": "22ba0a4e36cc9f9bd7baa2946340164f21c8d8feedf6c4738fb8533fd24ca8d1"
+  },
+  "mui5": {
+    "version": "$VER: muimaster.library 21.227 (31.08.2021) Copyright (C) 2006-2021 by Thore Boeckelmann, Jens Maus [AmigaOS3/mc68020] [git efa6e87] [20210831]",
+    "bytes": 565488,
+    "sha256": "de5cb96711174c5652dc4d61d195a5bc90275eccec952aefa6f803cbd7f11d3a"
+  },
+  "zune68": {
+    "version": "$VER: muimaster.library 21.227 (12.10.2026) Zune68 MUI5 development",
+    "bytes": 434516,
+    "sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e",
+    "source_revision": "c70d226a0af2900475638094d0f57b3f3b753c76",
+    "trace": 0
+  },
+  "environment": {
+    "cpu_model": "68020",
+    "cpu_speed": "real",
+    "cpu_multiplier": "4",
+    "cpu_cycle_exact": "false",
+    "cpu_memory_cycle_exact": "true",
+    "cpu_compatible": "true",
+    "cpu_data_cache": "false",
+    "blitter_cycle_exact": "true",
+    "cachesize": "0",
+    "chipset": "aga",
+    "chipmem_size": "4",
+    "fastmem_size": "4",
+    "z3mem_size": "16",
+    "rom_sha256": "27ddaf0a460e2ee85935139cbac1df234c283b3979c50526d118e9a55c61100a",
+    "os": "AmigaOS 3.2.3"
+  },
+  "benchmark": {
+    "source_sha256": "ddfd0add7df7ec3438d120f4bc4c1724683c36119a719ec1159d881c8f168fb0",
+    "compiler": "m68k-amigaos-gcc 13.4",
+    "flags": "-m68000 -msoft-float -noixemul -Os -Wl,-u,___stkinit -lamiga",
+    "repetitions": 15,
+    "trials": 3,
+    "screen": "640x480 depth 2",
+    "arguments": "screen-fixed",
+    "root_request": "600x400, constrained by each toolkit",
+    "window_request": "600x400",
+    "sdk_archive": {
+      "filename": "MUI-5.0-20250420-93d34b1-os3.lha",
+      "sha256": "0721cb3916d8171c708b19b009f9e1c969b912851cae977eb0597cd1b5c20d42"
+    }
+  }
+}
