@@ -1,0 +1,10 @@
+beta1 19.81 / LumiZip / window close
+
+lumi-result.txt
+muimaster.library 19.81
+close LumiZip at 194,114
+close input sent
+ALIVE
+
+lumi-exited.txt
+EXIT:0

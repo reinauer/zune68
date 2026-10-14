@@ -1,0 +1,11 @@
+development 21.227 / LumiWeather / window close
+
+lumi-result.txt
+muimaster.library 21.227
+close LumiWeather at 217,54
+Quit confirmation key sent
+close input sent
+ALIVE
+
+lumi-exited.txt
+EXIT:0

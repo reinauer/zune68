@@ -1,0 +1,10 @@
+development 21.227 / LumiZip / window close
+
+lumi-result.txt
+muimaster.library 21.227
+close LumiZip at 181,108
+close input sent
+ALIVE
+
+lumi-exited.txt
+EXIT:0

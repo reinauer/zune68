@@ -268,3 +268,8 @@ See [PERFORMANCE.mui5.md](PERFORMANCE.mui5.md) for the comparison against
 published baseline `7b847fba`, the raw run medians, library-size changes
 and reproduction commands. `compare_perf.py` requires a disposable guest
 fixture and records hashes of the exact emulator, benchmark and libraries.
+
+## Application dependency and shutdown checks
+
+See [APPLICATIONS.mui5.md](APPLICATIONS.mui5.md) for the IBrowse 3.0a
+Newstring dependency comparison, Lumi shutdown checks and their OS limits.

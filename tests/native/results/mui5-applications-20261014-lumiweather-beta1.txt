@@ -1,0 +1,11 @@
+beta1 19.81 / LumiWeather / window close
+Quit confirmation: Q via WinUAE raw keyboard input.
+
+lumi-result.txt
+muimaster.library 19.81
+close LumiWeather at 217,54
+close input sent
+ALIVE
+
+lumi-exited.txt
+EXIT:0

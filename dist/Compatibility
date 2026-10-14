@@ -136,6 +136,15 @@ Settings pages open and Cancel restores the underlying page. Native
 list-tree glyphs and some settings layouts differ from original MUI.
 Newstring.mcc clipboard behavior matches original MUI 3.9.
 
+The classic version-19 build needs a compatible Newstring.mcc for
+IBrowse. With IBrowse 3.0a, Newstring 16.18 starts successfully; the
+Newstring 21.26 supplied with MUI 5 requires muimaster.library version 20
+and produces "Couldn't create CL_URLString" under beta1 (19.81).
+Check both MUI:Libs/mui and the browser's own mui drawer. Preserve the
+newer class when testing an older compatible copy in a separate system.
+The opt-in version-21 development build is tested separately with the
+newer String-derived Newstring class.
+
 This is a beta, and there are many ways to improve it. Settings edits,
 form handling, more applications, AmigaOS 3.1, 68000 machines and
 CyberGraphX truecolor rendering all need more testing. We need testers:

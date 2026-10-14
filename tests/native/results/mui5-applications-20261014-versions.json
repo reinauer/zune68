@@ -1,0 +1,30 @@
+{
+  "LumiZip 1.0.1": {
+    "version": "$VER: LumiZip 1.0.1 (12.10.2026) \u00a9 2026 Matthias M\u00fcnch",
+    "sha256": "753822e993fdf41a1a73938ae0d4d9e2952694c4f9e833e5e408d4d22f01a05d"
+  },
+  "LumiWeather": {
+    "version": "$VER: LumiWeather 1.4.524 (11.10.2026) \u00a9 2026 Matthias M\u00fcnch",
+    "sha256": "33baaf71f012e725a7689ef77aa82e1721e81bdb8ba34ddad866b7c50226aee3"
+  },
+  "IBrowse 30.8": {
+    "version": "$VER: IBrowse 30.8 (22.12.2023) \u00a9 2019-2023 Oliver Roberts",
+    "sha256": "8b2007e49f60e868ed4693f200abbd67dad17a975c6f492779d54d5d9567f7b8"
+  },
+  "Newstring 16.18": {
+    "version": "$VER: Newstring.mcc 16.18 (27.12.2005) Copyright 1995-1996 R\u00fcdiger Sopp fixes by MM",
+    "sha256": "2e82015491bc5e96d8bc593394b1bdc03ab7ec1882b9a0c8a2ef1d5baf0d1ebd"
+  },
+  "Newstring 21.26": {
+    "version": "$VER: Newstring.mcc 21.26 (31.08.2021) Copyright (C) 2012-2021 by Thore Boeckelmann [AmigaOS3/mc68020] [git efa6e87] [20210831]\r\n",
+    "sha256": "4c12982faec30b4e35e1be32f080491444dd15e66b096fb26c5e903cc992d917"
+  },
+  "Zune68 beta1 19.81": {
+    "source_revision": "7b847fba",
+    "sha256": "483bbb51c4b48719c87caf2b5b49b60db5ae3e915f794d7c3501e0835e20ed6f"
+  },
+  "Zune68 development 21.227": {
+    "source_revision": "58a17519",
+    "sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+  }
+}

@@ -1,0 +1,12 @@
+IBrowse 3.0a / beta1 / Newstring modern
+
+newstring-dependency.txt
+library=19.81
+Newstring=unavailable
+
+ibrowse-start-query.txt
+
+ibrowse-start-ready.txt
+
+Screen requester: Couldn’t create CL_URLString
+Query did not return before the 150-second host timeout.
