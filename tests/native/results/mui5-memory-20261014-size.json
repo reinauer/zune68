@@ -1,0 +1,54 @@
+[
+  {
+    "label": "classic",
+    "file": 363228,
+    "stripped": 334840,
+    "hunks": {
+      "CODE": 312368,
+      "DATA": 1072,
+      "BSS": 1296
+    }
+  },
+  {
+    "label": "panels",
+    "file": 413328,
+    "stripped": 383536,
+    "hunks": {
+      "CODE": 358148,
+      "DATA": 1212,
+      "BSS": 1296
+    }
+  },
+  {
+    "label": "features",
+    "file": 432952,
+    "stripped": 402480,
+    "hunks": {
+      "CODE": 375380,
+      "DATA": 1260,
+      "BSS": 1300
+    }
+  },
+  {
+    "label": "optimized",
+    "file": 433692,
+    "stripped": 403220,
+    "hunks": {
+      "CODE": 376088,
+      "DATA": 1260,
+      "BSS": 1300
+    }
+  },
+  {
+    "label": "final",
+    "revision": "6abcf70c56e0f62c73de156c84ca0a70ff15ddc4",
+    "sha256": "fed673bf56a00017efe729422c854758d9c26bbd8cec7e7997e94d2e4aabdedc",
+    "file": 434528,
+    "stripped": 404056,
+    "hunks": {
+      "CODE": 376884,
+      "DATA": 1260,
+      "BSS": 1300
+    }
+  }
+]

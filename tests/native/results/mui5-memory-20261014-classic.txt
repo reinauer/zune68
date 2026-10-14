@@ -1,0 +1,31 @@
+START:memory
+library=19.81 already-loaded=0 open-held=479672
+class=Notify.mui round=1 n=128 own=28 inherited=0 held=7168 retained=0
+class=Notify.mui round=2 n=128 own=28 inherited=0 held=7168 retained=0
+class=Notify.mui round=3 n=128 own=28 inherited=0 held=7168 retained=0
+class=Rectangle.mui round=1 n=128 own=12 inherited=262 held=38912 retained=0
+class=Rectangle.mui round=2 n=128 own=12 inherited=262 held=38912 retained=0
+class=Rectangle.mui round=3 n=128 own=12 inherited=262 held=38912 retained=0
+class=Text.mui round=1 n=128 own=30 inherited=262 held=47104 retained=-48
+class=Text.mui round=2 n=128 own=30 inherited=262 held=47104 retained=0
+class=Text.mui round=3 n=128 own=30 inherited=262 held=47104 retained=0
+class=String.mui round=1 n=128 own=256 inherited=262 held=81920 retained=0
+class=String.mui round=2 n=128 own=256 inherited=262 held=81920 retained=0
+class=String.mui round=3 n=128 own=256 inherited=262 held=81920 retained=0
+class=Group.mui round=1 n=128 own=148 inherited=262 held=65536 retained=0
+class=Group.mui round=2 n=128 own=148 inherited=262 held=65536 retained=0
+class=Group.mui round=3 n=128 own=148 inherited=262 held=65536 retained=0
+class=List.mui round=1 n=128 own=354 inherited=410 held=978944 retained=0
+class=List.mui round=2 n=128 own=354 inherited=410 held=978944 retained=0
+class=List.mui round=3 n=128 own=354 inherited=410 held=978944 retained=0
+SKIP class=Title.mui unavailable
+SKIP class=Process.mui unavailable
+SKIP class=Keyadjust.mui unavailable
+SKIP class=Filepanel.mui unavailable
+SKIP class=Fontpanel.mui unavailable
+setup=text128 round=1 open=1 held=34784 retained=0
+setup=text128 round=2 open=1 held=34784 retained=0
+setup=text128 round=3 open=1 held=34784 retained=0
+PASS failures=0
+RC:0
+ALLDONE
