@@ -1,0 +1,101 @@
+{
+  "binary_sha256": "a2eb2a9911ff63b7eb07953ccb75a4084986cca47ae951a64d4a79aae5f9ef9e",
+  "config_sha256": "7d7c439c47dd24050e19dbb0287750cd65935ffd121ecd4fb84a3ba659005653",
+  "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+  "libraries": {
+    "baseline": {
+      "muimaster.library": "483bbb51c4b48719c87caf2b5b49b60db5ae3e915f794d7c3501e0835e20ed6f",
+      "zunemaster.library": "f74bea2c48f62561630efb4ad606f255ebcf91a5036ab75d1eb00ee55ae0e69d"
+    },
+    "candidate": {
+      "muimaster.library": "fed673bf56a00017efe729422c854758d9c26bbd8cec7e7997e94d2e4aabdedc",
+      "zunemaster.library": "0978c4e1d31a9b937e9355dfcb13fe5a8088bb4892816705552342e11775bc57"
+    }
+  },
+  "runs": [
+    {
+      "trial": 0,
+      "profile": "baseline",
+      "ticks": {
+        "create+dispose": 663678,
+        "open+close": 1043091,
+        "redraw x10": 3857364,
+        "relayout x5": 2884298,
+        "list insert200": 2207733,
+        "list active x50": 4344581,
+        "notify x100": 1754408,
+        "text set x100": 523404
+      }
+    },
+    {
+      "trial": 0,
+      "profile": "candidate",
+      "ticks": {
+        "create+dispose": 652046,
+        "open+close": 1051410,
+        "redraw x10": 3884585,
+        "relayout x5": 2924059,
+        "list insert200": 2097058,
+        "list active x50": 4203089,
+        "notify x100": 1751816,
+        "text set x100": 519298
+      }
+    },
+    {
+      "trial": 1,
+      "profile": "candidate",
+      "ticks": {
+        "create+dispose": 661646,
+        "open+close": 1054590,
+        "redraw x10": 3884382,
+        "relayout x5": 2924603,
+        "list insert200": 2099692,
+        "list active x50": 4208616,
+        "notify x100": 1750192,
+        "text set x100": 519245
+      }
+    },
+    {
+      "trial": 1,
+      "profile": "baseline",
+      "ticks": {
+        "create+dispose": 658361,
+        "open+close": 1037009,
+        "redraw x10": 3857037,
+        "relayout x5": 2883999,
+        "list insert200": 2204924,
+        "list active x50": 4338723,
+        "notify x100": 1752700,
+        "text set x100": 521531
+      }
+    },
+    {
+      "trial": 2,
+      "profile": "baseline",
+      "ticks": {
+        "create+dispose": 680105,
+        "open+close": 1052468,
+        "redraw x10": 3857124,
+        "relayout x5": 2885404,
+        "list insert200": 2227285,
+        "list active x50": 4366795,
+        "notify x100": 1756189,
+        "text set x100": 521503
+      }
+    },
+    {
+      "trial": 2,
+      "profile": "candidate",
+      "ticks": {
+        "create+dispose": 655024,
+        "open+close": 1054524,
+        "redraw x10": 3884730,
+        "relayout x5": 2923800,
+        "list insert200": 2101050,
+        "list active x50": 4207487,
+        "notify x100": 1754178,
+        "text set x100": 519253
+      }
+    }
+  ]
+}
