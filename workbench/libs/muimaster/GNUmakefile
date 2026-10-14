@@ -31,7 +31,7 @@ CRTFLAGS = -noixemul
 CFLAGS ?= -std=gnu17 -Os -g -Wall -Wno-pointer-sign \
 	-falign-functions=4 -falign-loops=4 -falign-jumps=4
 CPPFLAGS += -DMUIMASTER_YES_INLINE_STDARG= -DZUNE68_GCC_NATIVE \
-  -DMUI_OBSOLETE -DMUIMASTER_LIBRARY_BUILD -DZUNE_NO_CYBERGRAPHICS \
+  -DMUI_OBSOLETE -DMUIMASTER_LIBRARY_BUILD \
   -I$(BUILD)/include -I$(BUILD) -Igcc -Iinclude -I. -include include/clib/muimaster_protos.h \
   -include $(BUILD)/trace-config.h
 LIB_CFLAGS = $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) \
@@ -50,7 +50,7 @@ SOURCES = \
   mui_offset.c mui_makeobject.c mui_newobject.c \
   mui_obtainpen.c mui_redraw.c mui_rejectidcmp.c \
   mui_releasepen.c mui_removeclipping.c mui_removeclipregion.c \
-  mui_request.c mui_requestidcmp.c mui_seterror.c classes/aboutmui.c \
+  requesters.c rtg.c mui_request.c mui_requestidcmp.c mui_seterror.c classes/aboutmui.c \
   classes/application.c classes/area.c classes/balance.c classes/bitmap.c \
   classes/bodychunk.c classes/boopsi.c classes/chunkyimage.c \
   classes/configdata.c classes/coloradjust.c classes/colorfield.c \
@@ -59,14 +59,14 @@ SOURCES = \
   classes/frameadjust.c classes/framedisplay.c classes/gauge.c \
   classes/selectorpanel.c classes/filepanel.c classes/fontpanel.c \
   classes/group.c classes/selectgroup.c classes/image.c classes/imageadjust.c \
-  classes/imagedisplay.c classes/knob.c classes/levelmeter.c \
+  classes/imagedisplay.c classes/keyadjust.c classes/knob.c classes/levelmeter.c \
   classes/list.c classes/listview.c classes/mccprefs.c classes/menuitem.c \
   classes/notify.c classes/numeric.c classes/numericbutton.c \
   classes/palette.c classes/penadjust.c classes/pendisplay.c \
   classes/poppen.c classes/popasl.c classes/popframe.c classes/popimage.c \
   classes/poplist.c classes/popobject.c classes/popscreen.c \
   classes/popstring.c classes/prop.c classes/radio.c classes/rectangle.c \
-  classes/register.c classes/semaphore.c classes/scale.c \
+  classes/register.c classes/process.c classes/semaphore.c classes/scale.c \
   classes/scrollbar.c classes/scrollbutton.c classes/scrollgroup.c \
   classes/settings.c classes/settingsgroup.c classes/slider.c \
   classes/string.c classes/text.c classes/textdata.c classes/title.c classes/virtgroup.c \
@@ -111,7 +111,7 @@ $(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERA
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 MUI5_PROBES = data selection menu menu_input string string_input image ibrowse title text list \
-  panel marking list_format
+  panel requesters process keyadjust text_escape rtg marking list_format
 MUI5_PROBE_BINS = $(addprefix $(BUILD)/mui5-,$(addsuffix -probe,$(MUI5_PROBES)))
 
 $(MUI5_PROBE_BINS): $(BUILD)/mui5-%-probe: ../../../tests/native/mui5_%_probe.c $(GENERATED)

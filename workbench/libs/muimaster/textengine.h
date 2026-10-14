@@ -18,6 +18,16 @@ struct MUI_ImageSpec_intern;
 /* Chunk style bit for a shortcut character, whose underline is drawn
  * like MUI 3.9's rather than by graphics.library (FSF_UNDERLINED) */
 #define ZTEXT_STYLE_HICHAR 0x80
+#define ZTEXT_STYLE_OUTLINE 0x08
+#define ZTEXT_STYLE_SHADOW 0x10
+#define ZTEXT_STYLE_GHOST 0x20
+#define ZTEXT_JAM2 0x01
+#define ZTEXT_INVERSE 0x02
+#define ZTEXT_HIDEIMAGES 0x04
+#define ZTEXT_SELECTED 0x08
+#define ZTEXT_RGBPEN 0x10
+#define ZTEXT_RGBBACK 0x20
+#define ZTEXT_ALPHA 0x40
 
 typedef struct ZTextChunk {
     struct MinNode node; /* embedded node */
@@ -25,10 +35,14 @@ typedef struct ZTextChunk {
     CONST_STRPTR          spec;
     struct MUI_ImageSpec_intern *image;
     Object               *obj; /* Area subclass, see List_CreateImage */
-    struct MUI_AlphaData *alpha_data;
+    union {
+        struct MUI_AlphaData *alpha_data; /* non-text chunks */
+        LONG backpen;                  /* text: alpha and background color */
+    };
     LONG                  dripen;
     LONG                  pen;
     UBYTE                 style; /* FSF_UNDERLINED, FSF_BOLD, ... */
+    UBYTE                 effects;
     WORD                  cwidth;
     WORD                  cheight;
     WORD                  clen;   /* strlen(str), kept for measuring and drawing */

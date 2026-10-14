@@ -86,12 +86,24 @@ int main(int argc,char **argv)
         check(attr(list,MUIA_List_Entries)==2,"changed pattern rereads");
         puts("running file panel"); runpanel(p,screen);
     }
+    puts("checking filter");
     struct Hook h={0};h.h_Entry=(HOOKFUNC)filter;
     p=MO(MUIC_Filepanel,ASLFR_InitialDrawer,"RAM:z68-panel",ASLFR_FilterFunc,&h,
         MUIA_Filepanel_DrawersOnly,TRUE,TAG_DONE);
     check(p!=NULL,"filtered panel creation");
     if(p){Object *list=find(p,"Dirlist.mui",FALSE);check(filtered==3,"filter receives each entry");
         check(attr(list,MUIA_List_Entries)==1,"filter overrides other filters");MUI_DisposeObject(p);}
+    BPTR oldenv=Lock("ENV:",ACCESS_READ), oldarc=Lock("ENVARC:",ACCESS_READ);
+    BPTR envdir=CreateDir("RAM:z68-family-env");
+    check(envdir!=0,"isolated family preferences");
+    if(envdir)
+    {
+        UnLock(envdir);envdir=Lock("RAM:z68-family-env",ACCESS_READ);
+        BPTR copy=DupLock(envdir);
+        check(copy && AssignLock("ENV",copy),"temporary ENV assign");
+        check(AssignLock("ENVARC",envdir),"aliased ENVARC assign");
+    }
+    puts("constructing font panel");
     p=MO(MUIC_Fontpanel,ASLFO_InitialName,"topaz.font",ASLFO_InitialSize,9,
         ASLFO_DoStyle,TRUE,ASLFO_InitialStyle,FSF_BOLD,TAG_DONE);
     check(p!=NULL,"font panel creation");
@@ -105,7 +117,32 @@ int main(int argc,char **argv)
         check(attr(p,ASLFO_InitialFrontPen)==2,"set front pen");
         check(attr(p,ASLFO_InitialBackPen)==1,"set back pen");
         check(attr(p,ASLFO_InitialDrawMode)==INVERSVID,"inverse draw mode value");
-        Object *list=find(p,"List.mui",FALSE);check(attr(list,MUIA_List_Entries)>0,"installed font inventory");runpanel(p,screen);}
+        Object *list=find(p,"List.mui",FALSE);check(attr(list,MUIA_List_Entries)>0,"installed font inventory");
+        puts("adding font family");
+        Object *family=find(p,MUIC_String,FALSE);
+        Object *add=find(p,"Add to family",TRUE);
+        check(family&&add,"user family controls");
+        if(family&&add)
+        {
+            SetAttrs(family,MUIA_String_Contents,"Zune68 fixture family",TAG_DONE);
+            SetAttrs(add,MUIA_Pressed,TRUE,TAG_DONE);
+            SetAttrs(add,MUIA_Pressed,FALSE,TAG_DONE);
+        }
+        puts("running font panel");
+        runpanel(p,screen);}
+    p=MO(MUIC_Fontpanel,MUIA_Fontpanel_ShowCollection,MUIV_Fontpanel_ShowCollection_User,TAG_DONE);
+    check(p!=NULL,"user collection panel");
+    if(p)
+    {
+        Object *family=find(p,MUIC_String,FALSE), *remove=find(p,"Remove from family",TRUE);
+        Object *list=find(p,MUIC_List,FALSE);
+        SetAttrs(family,MUIA_String_Contents,"Zune68 fixture family",MUIA_String_Acknowledge,TRUE,TAG_DONE);
+        check(attr(list,MUIA_List_Entries)>0,"saved family loaded and filtered");
+        SetAttrs(remove,MUIA_Pressed,TRUE,TAG_DONE);SetAttrs(remove,MUIA_Pressed,FALSE,TAG_DONE);
+        check(attr(list,MUIA_List_Entries)==0,"remove family membership");
+        MUI_DisposeObject(p);
+    }
+    AssignLock("ENV",oldenv);AssignLock("ENVARC",oldarc);
     if(screen)CloseScreen(screen);
     CloseLibrary(MUIMasterBase);
     printf("%s failures=%d\n",failures?"FAIL":"PASS",failures);return failures?20:0;

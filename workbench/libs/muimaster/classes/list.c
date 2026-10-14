@@ -277,6 +277,7 @@ static void LayoutColumns(struct MUI_ListData *data)
             ci->min_pixels ? ci->min_width : available * ci->min_width / 100;
         LONG maximum = ci->max_width < 0 ? ci->entries_width :
             ci->max_pixels ? ci->max_width : available * ci->max_width / 100;
+        if (ci->user_width < 0) { minimum += 6; maximum += 6; }
         ci->layout_max = MAX(minimum, maximum);
         LONG gap = last < 0 ? 0 : data->ci[last].delta +
             (data->ci[last].bar ? BAR_WIDTH : 0);
@@ -830,6 +831,8 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
                         data->ci[i].min_width = data->ci[i].max_width =
                             MAX(0, MIN(32767, *(LONG *)args[ARG_FIXWIDTH]));
                         data->ci[i].min_pixels = data->ci[i].max_pixels = TRUE;
+                        data->ci[i].user_width = data->ci[i].min_width;
+                        data->ci[i].delta = 0;
                     }
                     data->format_layout |= args[ARG_MINWIDTH] || args[ARG_MAXWIDTH] || args[ARG_FIXWIDTH];
                     data->ci[i].is_object = !!args[ARG_ISOBJECT];
@@ -928,10 +931,23 @@ static BOOL SetColumnOrder(struct MUI_ListData *data, const UBYTE *order)
     if (!data->mapped_strings)
         data->mapped_strings = AllocVec(2 * data->columns * sizeof(STRPTR), MEMF_ANY);
     if (!data->mapped_strings) { FreeVec(columns); return FALSE; }
+    memcpy(columns, data->ci, data->columns * sizeof(*columns));
     for (LONG i = 0; i < data->columns; i++)
         for (LONG j = 0; j < data->columns; j++)
-            if (data->ci[j].order_id == order[i]) { columns[i] = data->ci[j]; break; }
-    memcpy(data->ci, columns, data->columns * sizeof(*columns));
+            if (columns[j].order_id == order[i])
+            {
+                /* The format describes physical column widths. Reorder
+                 * the logical contents and their display properties. */
+                data->ci[i].colno = columns[j].colno;
+                data->ci[i].order_id = columns[j].order_id;
+                data->ci[i].preparse = columns[j].preparse;
+                data->ci[i].hidden = columns[j].hidden;
+                data->ci[i].is_object = columns[j].is_object;
+                data->ci[i].sortable = columns[j].sortable;
+                data->ci[i].descending = columns[j].descending;
+                data->ci[i].elide = columns[j].elide;
+                break;
+            }
     FreeVec(columns);
     return TRUE;
 }
@@ -4548,8 +4564,7 @@ IPTR List__MUIM_TestPos(struct IClass *cl, Object *obj,
                 for (i = 0; i < data->columns; i++)
                 {
                     if (ColumnHidden(data, i)) continue;
-                    col = i;
-                    result->xoffset = mx + data->horiz_first - width_sum;
+                    LONG offset = mx + data->horiz_first - width_sum;
                     width_sum +=
                         ColumnWidth(data, i) +
                         data->ci[i].delta +
@@ -4560,6 +4575,7 @@ IPTR List__MUIM_TestPos(struct IClass *cl, Object *obj,
                     if (mx + data->horiz_first < width_sum)
                     {
                         col = i;
+                        result->xoffset = offset;
                         D(bug("[List/MUIM_TestPos] Column hit %d\n", col));
                         break;
                     }
@@ -4568,6 +4584,7 @@ IPTR List__MUIM_TestPos(struct IClass *cl, Object *obj,
         }
     }
 
+    if (col < 0) result->xoffset = -1;
     result->entry = row;
     result->column = col;
     result->flags = flags;

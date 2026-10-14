@@ -84,6 +84,8 @@ static const struct __MUIBuiltinClass *const builtins[] = {
     &_MUI_SelectorPanel_desc,
     &_MUI_Filepanel_desc,
     &_MUI_Fontpanel_desc,
+    &_MUI_Fontdisplay_desc,
+    &_MUI_Keyadjust_desc,
     &_MUI_Image_desc,
     &_MUI_Configdata_desc,
     &_MUI_Text_desc,
@@ -100,6 +102,9 @@ static const struct __MUIBuiltinClass *const builtins[] = {
     &_MUI_Menustrip_desc,
     ZUNE_VIRTGROUP_DESC ZUNE_SCROLLGROUP_DESC & _MUI_Scrollbutton_desc,
     &_MUI_Semaphore_desc,
+#if ZUNE_BUILTIN_PROCESS
+    &_MUI_Process_desc,
+#endif
     &_MUI_Dataspace_desc,
     &_MUI_Datamap_desc,
     &_MUI_Objectmap_desc,
@@ -201,7 +206,7 @@ static Class *ZUNE_FindBuiltinClass(CONST_STRPTR classid, struct Library *MUIMas
     struct MUIMasterBase_intern *intZuneBase = (struct MUIMasterBase_intern *)MUIMasterBase;
     Class *cl = NULL, *cl2;
 
-    cl2 = intZuneBase->BuiltinClassCache[(UBYTE)classid[0] & 31];
+    cl2 = intZuneBase->BuiltinClassCache[((UBYTE)classid[0] ^ (UBYTE)classid[1]) & 31];
     if (cl2 && (cl2->cl_ID == classid || !strcmp(cl2->cl_ID, classid)))
         return cl2;
 
@@ -282,6 +287,7 @@ static Class *ZUNE_MakeBuiltinClass(CONST_STRPTR classid,
 Class *ZUNE_GetBuiltinClass(CONST_STRPTR id, struct Library *base)
 {
     Class *cl;
+    if (!id || !*id) return NULL;
     ObtainSemaphore(&MUIMB(base)->ZuneSemaphore);
     cl = ZUNE_FindBuiltinClass(id, base);
     if (!cl) {
@@ -290,7 +296,7 @@ Class *ZUNE_GetBuiltinClass(CONST_STRPTR id, struct Library *base)
     }
     if (cl)
     {
-        MUIMB(base)->BuiltinClassCache[(UBYTE)id[0] & 31] = cl;
+        MUIMB(base)->BuiltinClassCache[((UBYTE)id[0] ^ (UBYTE)id[1]) & 31] = cl;
         ++cl->cl_UserData;
     }
     ReleaseSemaphore(&MUIMB(base)->ZuneSemaphore);

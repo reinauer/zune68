@@ -87,6 +87,12 @@ BOOPSI_DISPATCHER(IPTR, SelectorPanel_Dispatcher, cl, obj, msg)
             if (guard.closed) return FALSE;
             if (id)
             {
+                if (id == 1 || id == MUIV_Application_ReturnID_Quit)
+                {
+                    d->done = TRUE;
+                    d->accepted = id == 1;
+                    break;
+                }
                 /* Let the application's own loop handle its return IDs. */
                 DoMethod(app, MUIM_Application_ReturnID, id);
                 break;

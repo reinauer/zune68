@@ -6,6 +6,9 @@
 #include <proto/asl.h>
 
 #include "muimaster_intern.h"
+#ifdef ZUNE68_GCC_NATIVE
+#include "requesters.h"
+#endif
 
 /*****************************************************************************
 
@@ -43,7 +46,11 @@
 {
     AROS_LIBFUNC_INIT
 
+#ifdef ZUNE68_GCC_NATIVE
+    return ZuneAllocAslRequest(reqType, tagList);
+#else
     return AllocAslRequest(reqType, tagList);
+#endif
 
     AROS_LIBFUNC_EXIT
 

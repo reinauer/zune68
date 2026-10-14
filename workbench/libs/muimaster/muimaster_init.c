@@ -59,6 +59,8 @@ void L_ExpungeLib(struct Library *library)
     struct MUIMasterBase_intern *base = MUIMB(library);
     unsigned i = sizeof(dependencies) / sizeof(dependencies[0]);
     MUIGfx_Remove();
+    if (CyberGfxBase) CloseLibrary(CyberGfxBase);
+    CyberGfxBase = NULL;
     Locale_Deinitialize();
     ZuneGccCleanup();
     if (base->topaz8font) CloseFont(base->topaz8font);

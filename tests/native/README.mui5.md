@@ -161,14 +161,21 @@ The following probes exercise the development implementation added on
 | `mui5_menu_probe` | Menuitem copying, independent owned strings and shared BOOPSI image lifetime in addition to the previous menu checks. |
 | `mui5_menu_input_probe` | Actual input.device events: case-sensitive shortcuts, popup selection/images, four nested branches, cancellation, parent closure and native WillOpen closing its window. |
 
-Filepanel and Fontpanel are real selector groups, separate from AROS's
-collapsible Panel class. The current Panel_Run path runs a modal input
-loop in the caller's task and leaves the caller-owned window open.
-It is not yet the separate-process requester path described by MUI's
-Panel documentation. Native ASL wrappers still use asl.library; multi-file
-results are not yet exported through an ASL replacement requester.
-Fontpanel supports installed fonts, styles, colors and draw modes; user
-font-family editing and all engine-specific font options remain open.
+Filepanel and Fontpanel are real selector groups. Direct Panel_Run calls
+run the supplied application's modal loop in the caller's task and leave
+its window open. MUI_AllocAslRequest/MUI_AslRequest now create supported
+file/font requesters in a separate process, exporting owned strings,
+multi-file WBArgs and directory locks before disposing the panel. Filter
+callbacks receive the original public requester address. Unsupported ASL
+options and other requester types continue through asl.library.
+
+Fontpanel supports installed fonts, styles, pens, draw modes and outline/
+shadow previews. User font families are saved to ENV:Zune/fontfamilies
+and ENVARC:Zune/fontfamilies with replacement/rollback handling. Native
+probes use temporary RAM assigns and restore the original assignments.
+Fontdisplay is a shared built-in preview class. Installed font engines
+remain responsible for font availability and rasterization; no private
+engine-specific API is claimed.
 
 Text marking copies parsed text, excluding formatting codes, embedded
 objects and synthetic ellipses. Its optional selection state is allocated
@@ -183,17 +190,74 @@ accepted borrowed-string copying but hung in the owned-string copy probe;
 those ownership checks are therefore Zune-specific assertions. WillOpen
 is a V22 method, tested without a matching V22 reference runtime.
 
-List column tests also contain Zune-specific assertions. Original 21.227
-reported different fixed-column hit boundaries and retained slot widths
-after reordering; it did not draw the probe's object cell. Zune follows the
-SDK's object-column contract and moves column formatting with the column.
-Hiding refers to the original column identity after reordering; TestPos
-and edit callbacks use current column positions. Further application and
-reference comparisons are needed before claiming identical List behavior.
+List columns now retain physical width constraints when their contents
+are reordered, matching 21.227. Constrained pixel columns include its
+six-pixel internal allowance; legacy FIXWIDTH includes the inter-column
+advance. TestPos rejects blank space beyond the last column. Explicit
+DELTA=0 follows the SDK; 21.227 substitutes its default gap. Object cells
+have balanced setup/cleanup and remain caller-owned; the 21.227 reference
+did not draw the probe's object cell. Frame padding and effect artwork
+are not pixel-identical to the reference.
 
-Additional Text escape formats, Textdata_SourceEncoding, newer preference
-classes, String edit-hook internals and broader application coverage remain
-open. These checks do not establish complete MUI 5 compatibility.
+String edit hooks now honor SGA_END, SGA_REUSE, SGA_NEXTACTIVE and
+SGA_PREVACTIVE. The action matrix was compared with 21.227, including an
+inactive string whose Window_ActiveObject pointer remains unchanged.
+Textdata_SourceEncoding has no documented function and was ignored by
+21.227 in the tested cases; Encoding controls conversion in both runtimes.
+
+Text parsing covers tabs, outline/shadow/ghost toggles, JAM2/inverse,
+foreground/background pens, selected/hidden inline images, explicit
+object widths, RGB/ARGB colors and raw ARGB images. Classic CyberGraphX
+V41/Picasso96 pixel arrays supply software alpha blending on RTG screens;
+no newer MorphOS vectors are called. Plain text retains direct drawing.
+The RTG probe checks opaque, half-alpha and transparent pixels, preserving
+the current color when only alpha changes, and an inline alpha image.
+Planar effect probes check state resets and rendering, not identical
+MUI artwork. Complex clipping, themed images and alpha combined with
+all soft-style effects still need broader application coverage.
+
+Process.mui has separate-task launch, signaling, cooperative kill and
+joined disposal. Keyadjust.mui supports copied/validated shortcuts,
+keyboard capture, mouse capture options and a menu for editing multiple
+shortcuts. Its native input probe validates keyboard capture; popup and
+mouse combinations still need interactive coverage.
+
+### Remaining class and theme scope
+
+The SDK calls Scrmodelist private; Gadget is an Intuition-gadget base
+with no complete subclass contract. Argstring's attributes are explicitly
+undocumented. The SDK provides no class autodocs for Menubar,
+Frimagedisplay, Popfrimage, Menudisplay, Backgroundadjust, Pubscreenadjust,
+Pubscreenpanel, Pubscreenlist, Applist, Cclist, Screenspace, Imagespace,
+Rootgrp, Audiocontrols, Audiomixer, Popmenu, Imagebrowser, Colorring,
+Pubscreen, Aboutpage or Winborder. These classes have not been replaced
+with empty objects. They require a concrete caller and behavioral probes.
+Screenmodepanel and Slave remain separate public class gaps; screen-mode
+ASL requests still work through native ASL. Full MUI preferences/theme
+file compatibility and composited window opacity are not implemented.
+These results do not establish complete MUI 5 compatibility.
+
+### Native batch reproduction
+
+`run_mui5_probes.py` locks a disposable guest fixture and restores replaced
+libraries and startup files. It requires a fixture that boots
+`Bench:run-tests` with `fixture/guest` mapped as Bench:. For example:
+
+```sh
+python3 tests/native/run_mui5_probes.py \
+  --fixture /path/to/disposable-fixture --emulator /path/to/winuae \
+  --build /path/to/build --libraries /path/to/build \
+  --output /path/to/results.txt \
+  panel requesters process keyadjust text_escape rtg list_format \
+  data string_input text list
+```
+
+Omit `--libraries` to retain the fixture's reference MUI. Omit `rtg` for
+a planar-only installation. Functional runs use unrestricted emulation
+speed and must never be used as timing measurements. The complete new
+probe batch passed on 68000 and 68020 AmigaOS 3.2.3; the RTG pixel probe
+passed on the 68020 Picasso96 fixture. Physical hardware and AfA OS are
+not covered by these results.
 
 ## Classic-workload performance
 

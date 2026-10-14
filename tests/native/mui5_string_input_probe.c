@@ -17,11 +17,12 @@ struct Library *MUIMasterBase;
 ULONG __stack = 65536;
 static ULONG calls, veto_return, lonely, lonely_calls;
 static int failures;
-static ULONG qualifier;
+static ULONG qualifier, action_override, action_flags;
 static ULONG edit_hook(struct Hook *hook __asm("a0"),
     struct SGWork *work __asm("a2"), ULONG *command __asm("a1"))
 {
     calls++;
+    if(action_override){work->Actions=action_flags;return TRUE;}
     printf("hook cmd=%lu op=%u code=%u actions=%lu pos=%d chars=%d new=%s\n",
         *command, work->EditOp, work->Code, work->Actions, work->BufferPos,
         work->NumChars, (char *)work->WorkBuffer);
@@ -83,8 +84,10 @@ int main(int argc, char **argv)
     obj = MO(MUIC_String, 0x8042b06eUL, 2, /* Newstring compatibility mode */
         MUIA_Frame, MUIV_Frame_String, MUIA_CycleChain, 1,
         MUIA_String_Contents, "seed", MUIA_String_EditHook, &hook, TAG_DONE);
+    Object *other=MO(MUIC_String,MUIA_CycleChain,TRUE,TAG_DONE);
+    Object *group=MO(MUIC_Group,MUIA_Group_Child,obj,MUIA_Group_Child,other,TAG_DONE);
     win = MO(MUIC_Window, MUIA_Window_Title, "String input probe",
-        MUIA_Window_Screen, screen, MUIA_Window_RootObject, obj, TAG_DONE);
+        MUIA_Window_Screen, screen, MUIA_Window_RootObject, group, TAG_DONE);
     app = MO(MUIC_Application, MUIA_Application_Window, win, TAG_DONE);
     if (!app) return 20;
     SetAttrs(win, MUIA_Window_Open, TRUE, TAG_DONE);
@@ -94,6 +97,26 @@ int main(int argc, char **argv)
     port = CreateMsgPort();
     io = port ? (APTR)CreateIORequest(port, sizeof(*io)) : NULL;
     if (!io || OpenDevice("input.device", 0, (APTR)io, 0)) return 20;
+    ULONG flags[]={SGA_USE,0,SGA_USE|SGA_END,SGA_USE|SGA_END|SGA_NEXTACTIVE,
+        SGA_USE|SGA_END|SGA_PREVACTIVE,SGA_USE|SGA_REUSE,SGA_USE|SGA_END|SGA_REUSE};
+    action_override=1;
+    for(int f=0;f<7;f++)
+    {
+        SetAttrs(obj,MUIA_String_Contents,"seed",MUIA_String_BufferPos,4,TAG_DONE);
+        SetAttrs(win,MUIA_Window_ActiveObject,NULL,TAG_DONE);SetAttrs(win,MUIA_Window_ActiveObject,obj,TAG_DONE);pump(app);
+        action_flags=flags[f];key(app,io,0x20);
+        ULONG active=0,text=0,ack=0;GetAttr(MUIA_String_Acknowledge,obj,&ack);GetAttr(MUIA_Window_ActiveObject,win,&active);GetAttr(MUIA_String_Contents,obj,&text);
+        printf("ACTION flags=%lu active=%ld text=%s ack=%s\n",flags[f],active==(ULONG)obj?1L:active==(ULONG)other?2L:0L,(char*)text,ack?(char*)ack:"NULL");
+        if(strcmp((char*)text,flags[f]&SGA_USE?"seeda":"seed"))failures++;
+        if(active!=(ULONG)((flags[f]&(SGA_NEXTACTIVE|SGA_PREVACTIVE))?other:obj))failures++;
+        if((flags[f]&SGA_END)&&!(flags[f]&(SGA_NEXTACTIVE|SGA_PREVACTIVE)))
+        {
+            key(app,io,0x35); contents(obj,"seeda");
+        }
+    }
+    action_override=0;
+    SetAttrs(obj,MUIA_String_Contents,"seed",MUIA_String_BufferPos,4,TAG_DONE);
+    SetAttrs(win,MUIA_Window_ActiveObject,NULL,TAG_DONE);SetAttrs(win,MUIA_Window_ActiveObject,obj,TAG_DONE);pump(app);
     key(app, io, 0x20); contents(obj, "seedA");
     key(app, io, 0x35); contents(obj, "seedA");
     key(app, io, 0x41); contents(obj, "seed");

@@ -44,6 +44,9 @@
 #include "dragndrop.h"
 
 #include "muimaster_intern.h"
+#ifdef ZUNE68_GCC_NATIVE
+#include <proto/cybergraphics.h>
+#endif
 
 #include <proto/muiscreen.h>
 
@@ -545,6 +548,11 @@ static BOOL SetupRenderInfo(Object *obj, struct MUI_WindowData *data,
         return FALSE;
     }
 
+#ifdef ZUNE68_GCC_NATIVE
+    /* Planar windows never load or allocate RTG support. */
+    if (GetBitMapAttr(scr->RastPort.BitMap, BMA_DEPTH) >= 15)
+        ZuneOpenCyberGfx();
+#endif
     if (!InitCustomFrames(obj, mri))
     {
         DisposeCustomFrames(mri);

@@ -213,7 +213,7 @@ class Harness:
             self.mem.w32(STACK + 4 * i, value)
         self.cpu.w_reg(14, MASTER)
         self.machine.prepare(self.symbols['_' + name], STACK)
-        result = self.machine.execute(100000)
+        result = self.machine.execute(getattr(self, "cycle_budget", 100000))
         assert self.machine.was_exit(result), name
         assert self.cpu.r_sp() == STACK, (name, 'stack')
         assert self.lock_depth == 0, (name, 'semaphore')

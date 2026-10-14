@@ -6,6 +6,9 @@
 #include <proto/asl.h>
 
 #include "muimaster_intern.h"
+#ifdef ZUNE68_GCC_NATIVE
+#include "requesters.h"
+#endif
 
 /*****************************************************************************
 
@@ -40,7 +43,11 @@
 {
     AROS_LIBFUNC_INIT
 
+#ifdef ZUNE68_GCC_NATIVE
+    ZuneFreeAslRequest(requester);
+#else
     FreeAslRequest(requester);
+#endif
 
     AROS_LIBFUNC_EXIT
 

@@ -43,14 +43,18 @@ Group/Family reordering, TextColor and Relayout are also implemented.
 Window opacity is stored; OS3 does not gain composited transparent
 windows. Default lists do not allocate column-mapping scratch space.
 
-Open gaps include Filepanel/Fontpanel and the MUI Panel contract,
-Text marking and further escape formats, menu-item copying and richer
-popup/preferences APIs, remaining List format interactions, and broader
-String edit-hook semantics. Textdata_SourceEncoding is declared but its
-undocumented behavior is not implemented. Arbitrary third-party MCCs,
-RTG themes and complete application workflows need further validation.
-See tests/native/README.mui5.md in the source tree for reproducible probe
-instructions, observed reference differences and the validation limits.
+Filepanel/Fontpanel, separate-process MUI ASL requests, multi-file results,
+user font families, Text marking and additional escapes, menu copying,
+List column mapping and String hook actions are implemented. Process,
+Keyadjust and Fontdisplay are available. Textdata_SourceEncoding matches
+the observed no-op behavior of the 21.227 reference in the tested cases.
+
+Remaining gaps include Screenmodepanel, Slave, undocumented preferences
+classes, complete theme compatibility and full application workflows.
+Native ASL handles unsupported requester options. External MCC versions
+and AfA OS interactions need their own application checks. See
+tests/native/README.mui5.md in the source tree for reproducible probes,
+reference differences and exact validation limits.
 
 Implemented areas with isolated linked-code checks
 -------------------------------------------------
@@ -73,8 +77,10 @@ with third-party MCCs which open muimaster.library themselves.
 Rendering and lifetime limits
 -----------------------------
 Planar Bitmap rendering treats nonzero global alpha as opaque while
-retaining its mask; zero alpha is transparent. Fractional alpha blending
-and the core CyberGraphX path are not provided. Window refresh follows
+retaining its mask; zero alpha is transparent. Core RTG rendering now
+opens CyberGraphX V41 on demand and uses its classic pixel-array calls
+for software alpha blending. Text RGB/ARGB and inline image pixels are
+covered by a Picasso96 probe; complete RTG themes are not. Window refresh follows
 the configured preferences. Both refresh modes use clip regions outside
 an update, and managed refresh preserves pending damage while changing
 regions. Broad redraw/text caches need measurements and GUI evidence

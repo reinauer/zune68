@@ -139,6 +139,22 @@ static void textdata(void)
         check(attr(data, MUIA_Textdata_Contents) == (ULONG)utf8, "Text detachment returns ownership");
     }
     MUI_DisposeObject(data);
+    /* 21.227 interprets Contents using Encoding; SourceEncoding does not
+     * transcode or take ownership of the supplied bytes. */
+    for (ULONG source = 4; source <= 106; source += 102)
+    {
+        data = MO(MUIC_Textdata, MUIA_Textdata_Contents, utf8,
+            MUIA_Textdata_Encoding, 106, MUIA_Textdata_SourceEncoding, source, TAG_DONE);
+        check(data != NULL, "SourceEncoding construction");
+        if (data)
+        {
+            check(attr(data, MUIA_Textdata_Contents) == (ULONG)utf8,
+                "SourceEncoding keeps borrowed source");
+            latin = (APTR)DoMethod(data, MUIM_Textdata_Convert, 4);
+            check(latin && !strcmp(latin, "A\xe4"), "Encoding determines source decoding");
+            MUI_DisposeObject(data);
+        }
+    }
     data = MO(MUIC_Textdata, MUIA_Textdata_Contents, utf8,
         MUIA_Textdata_Encoding, 106, MUIA_Textdata_SourceBytes, 1, TAG_DONE);
     if (data)

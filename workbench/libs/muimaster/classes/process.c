@@ -9,6 +9,8 @@
 #include <proto/muimaster.h>
 #include <proto/utility.h>
 #include <proto/dos.h>
+#include <proto/exec.h>
+#include <dos/dostags.h>
 
 #include "mui.h"
 #include "muimaster_intern.h"
@@ -25,15 +27,16 @@
 extern struct Library *MUIMasterBase;
 
 
-static void my_process(void)
+static void SAVEDS my_process(void)
 {
     // invokes MUIM_Process_Process  for the the class/object specified by
     // MUIA_Process_SourceClass/Object (source class may be NULL)
 
     D(bug("[Process.mui] my_process called\n"));
 
-    struct Task *thistask = FindTask(NULL);
-    struct Process_DATA *data = thistask->tc_UserData;
+    struct Process *self = (APTR)FindTask(NULL);
+    WaitPort(&self->pr_MsgPort);
+    struct Process_DATA *data = (APTR)GetMsg(&self->pr_MsgPort);
 
     D(bug("[Process.mui::my_process] data %p sourceclass %p sourceobject %p\n",
         data, data->sourceclass, data->sourceobject));
@@ -49,9 +52,11 @@ static void my_process(void)
             data->self);
     }
 
-    data->task = NULL;          // show MUIM_Process_Kill that we're done
+    /* The parent may dispose the object and unload this library as soon
+     * as task becomes NULL. RemTask restores scheduling after we return. */
+    Forbid();
+    data->task = NULL;
 
-    D(bug("[Process.mui] my_process terminated\n"));
 }
 
 
@@ -71,7 +76,8 @@ IPTR Process__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     // defaults
     data->autolaunch = TRUE;
-    data->stacksize = 40000;
+    data->stacksize = 32768;
+    data->sourceobject = obj;
     thistask = FindTask(NULL);
     data->priority = thistask->tc_Node.ln_Pri;
 
@@ -108,6 +114,12 @@ IPTR Process__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     D(bug("muimaster.library/process.c: Process Object created at 0x%p\n",
             obj));
 
+    data->name = StrDup(data->name ? data->name : (STRPTR)"Zune process");
+    if (!data->name)
+    {
+        CoerceMethod(cl, obj, OM_DISPOSE);
+        return 0;
+    }
     if (data->autolaunch)
     {
         DoMethod(obj, MUIM_Process_Launch);
@@ -141,9 +153,9 @@ IPTR Process__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     D(bug("[Process.mui/OM_DISPOSE]\n"));
 
-    // struct Process_DATA *data = INST_DATA(cl, obj);
-
+    struct Process_DATA *data = INST_DATA(cl, obj);
     DoMethod(obj, MUIM_Process_Kill, 0);
+    FreeVec(data->name);
 
     return DoSuperMethodA(cl, obj, msg);
 }
@@ -155,38 +167,22 @@ IPTR Process__MUIM_Process_Kill(struct IClass *cl, Object *obj,
     D(bug("[MUIM_Process_Kill] maxdelay %d\n", msg->maxdelay));
 
     struct Process_DATA *data = INST_DATA(cl, obj);
-    ULONG delay = 0;
-    BOOL retval = TRUE;
-
-    // send SIGBREAKF_CTRL_C
-    // wait until  it has terminated
-
-    // Stops process' loop (MUIM_Process_Process). If the loop
-    // is not running does nothing.
-
-    // msg->maxdelay == 0 means "wait forever"
-
-    data->kill = 1;             // stops the loop in Class4.c demo
-
-    // the spawned task sets data->task to NULL on exit
-    while (data->task != NULL)
+    ULONG seconds = 0;
+    data->kill = 1;
+    for (;;)
     {
-        Signal((struct Task *)data->task, SIGBREAKF_CTRL_C);
-        Delay(DELAYTICKS);
-        delay += DELAYTICKS;
-        D(bug("[MUIM_Process_Kill] delay %d maxdelay %d\n", delay,
-                msg->maxdelay));
-        if ((msg->maxdelay != 0) && (delay > msg->maxdelay))
-        {
-            D(bug("[MUIM_Process_Kill] timeout\n"));
-            retval = FALSE;
-            break;
-        }
+        Forbid();
+        struct Process *task = data->task;
+        if (task) Signal((struct Task *)task, SIGBREAKF_CTRL_C);
+        BOOL self = task && (struct Task *)task == FindTask(NULL);
+        Permit();
+        if (!task) return TRUE;
+        if (self || (msg->maxdelay > 0 && seconds >= (ULONG)msg->maxdelay))
+            return FALSE;
+        Delay(50);
+        seconds++;
     }
 
-    D(bug("[MUIM_Process_Kill] retval %d\n", retval));
-
-    return retval;
 }
 
 
@@ -208,13 +204,14 @@ IPTR Process__MUIM_Process_Launch(struct IClass *cl, Object *obj,
             {data->name ? NP_Name : TAG_IGNORE,
                 (IPTR) data->name},
             {NP_Priority, data->priority},
-            {NP_UserData, (IPTR) data},
             {TAG_DONE}
         };
 
-        data->task = CreateNewProc(tags);
-
         data->kill = 0;
+        data->startup.mn_Length = sizeof(data->startup);
+        data->task = CreateNewProc(tags);
+        if (!data->task) return FALSE;
+        PutMsg(&data->task->pr_MsgPort, &data->startup);
     }
 
     return (IPTR) TRUE;
@@ -246,11 +243,9 @@ IPTR Process__MUIM_Process_Signal(struct IClass *cl, Object *obj,
     struct Process_DATA *data = INST_DATA(cl, obj);
 
     // just send an arbitrary signal to the spawned process.
-    if (data->task)
-    {
-        Signal((struct Task *)data->task, msg->sigs);
-    }
-
+    Forbid();
+    if (data->task) Signal((struct Task *)data->task, msg->sigs);
+    Permit();
     return 0;
 }
 

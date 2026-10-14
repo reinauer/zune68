@@ -4,6 +4,7 @@
 /*** Instance data **********************************************************/
 struct Process_DATA
 {
+    struct Message startup;
     Object *self;
     BOOL autolaunch;
     STRPTR name;
@@ -11,7 +12,7 @@ struct Process_DATA
     struct IClass *sourceclass;
     Object *sourceobject;
     ULONG stacksize;
-    struct Process *task;
+    struct Process * volatile task;
     ULONG kill;
 };
 

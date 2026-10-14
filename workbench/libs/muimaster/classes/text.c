@@ -76,7 +76,7 @@ static LONG plain_length(CONST_STRPTR s)
     CONST_STRPTR c = s;
 
     for (; *c; c++)
-        if (*c == '\33' || *c == '\n')
+        if ((UBYTE)*c < 32 && (*c == '\33' || *c == '\n' || *c == '\t'))
             return -1;
     return c == s ? -1 : c - s;
 }
@@ -131,6 +131,8 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     struct MUI_TextData *data;
     struct TagItem *tags, *tag;
+    CONST_STRPTR initial_contents = "", initial_preparse = NULL;
+    BOOL marking = FALSE;
 
     obj = (Object *) DoSuperMethodA(cl, obj, (Msg) msg);
     if (!obj)
@@ -138,21 +140,7 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     data = INST_DATA(cl, obj);
     data->mtd_Flags = MTDF_SETMIN | MTDF_SETVMAX;
-    data->copy_contents = GetTagData(MUIA_Text_Copy, TRUE, msg->ops_AttrList);
-    data->shorten = GetTagData(MUIA_Text_Shorten, 0, msg->ops_AttrList);
-    data->textdata = (Object *)GetTagData(MUIA_Text_Data, 0, msg->ops_AttrList);
-
-    if (GetTagData(MUIA_Text_Marking, FALSE, msg->ops_AttrList))
-    {
-        data->mark = AllocVec(sizeof(*data->mark), MEMF_CLEAR);
-        if (!data->mark) { CoerceMethod(cl, obj, OM_DISPOSE); return 0; }
-        data->mark->handler.ehn_Events = IDCMP_MOUSEBUTTONS |
-            IDCMP_MOUSEMOVE | IDCMP_RAWKEY | IDCMP_INACTIVEWINDOW;
-        data->mark->handler.ehn_Priority = 1;
-        data->mark->handler.ehn_Flags = MUI_EHF_GUIMODE;
-        data->mark->handler.ehn_Object = obj;
-        data->mark->handler.ehn_Class = cl;
-    }
+    data->copy_contents = TRUE;
 
     /* parse initial taglist */
 
@@ -161,8 +149,7 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         switch (tag->ti_Tag)
         {
         case MUIA_Text_Contents:
-            if (tag->ti_Data)
-                store_contents(data, (STRPTR) tag->ti_Data);
+            if (tag->ti_Data) initial_contents = (APTR)tag->ti_Data;
             break;
 
         case MUIA_Text_ControlChar:
@@ -180,8 +167,13 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Text_PreParse:
-            data->preparse = StrDup((STRPTR) tag->ti_Data);
+            initial_preparse = (APTR)tag->ti_Data;
             break;
+
+        case MUIA_Text_Copy: data->copy_contents = !!tag->ti_Data; break;
+        case MUIA_Text_Shorten: data->shorten = tag->ti_Data; break;
+        case MUIA_Text_Data: data->textdata = (APTR)tag->ti_Data; break;
+        case MUIA_Text_Marking: marking = !!tag->ti_Data; break;
 
         case MUIA_Text_SetMin:
             _handle_bool_tag(data->mtd_Flags, tag->ti_Data, MTDF_SETMIN);
@@ -198,15 +190,24 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
-    if (!data->preparse)
-        data->preparse = StrDup("");
-    if (!data->contents)
-        store_contents(data, "");
-
-    if (!data->contents || !data->preparse)
+    if (initial_preparse && *initial_preparse)
+        data->preparse = StrDup(initial_preparse);
+    if (!store_contents(data, initial_contents) ||
+        (initial_preparse && *initial_preparse && !data->preparse))
     {
         CoerceMethod(cl, obj, OM_DISPOSE);
-        return (IPTR) NULL;
+        return 0;
+    }
+    if (marking)
+    {
+        data->mark = AllocVec(sizeof(*data->mark), MEMF_CLEAR);
+        if (!data->mark) { CoerceMethod(cl, obj, OM_DISPOSE); return 0; }
+        data->mark->handler.ehn_Events = IDCMP_MOUSEBUTTONS |
+            IDCMP_MOUSEMOVE | IDCMP_RAWKEY | IDCMP_INACTIVEWINDOW;
+        data->mark->handler.ehn_Priority = 1;
+        data->mark->handler.ehn_Flags = MUI_EHF_GUIMODE;
+        data->mark->handler.ehn_Object = obj;
+        data->mark->handler.ehn_Class = cl;
     }
 
     return (IPTR) obj;
@@ -383,7 +384,7 @@ IPTR Text__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_Text_PreParse:
-        STORE = (IPTR) data->preparse;
+        STORE = (IPTR)(data->preparse ? data->preparse : (CONST_STRPTR)"");
         return TRUE;
 
     case MUIA_Version:

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <dos/exall.h>
 #include <libraries/asl.h>
+#include <workbench/startup.h>
 #include <clib/alib_protos.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
@@ -31,6 +32,7 @@ struct FilepanelData
     struct Hook filter;
     struct Hook *userfilter;
     struct FileRequester request;
+    struct FileRequester *external_request;
     STRPTR accept, reject, parsed;
     BOOL multi, save, patterns, drawers, filterdrawers, icons;
     STRPTR history[32];
@@ -98,7 +100,15 @@ AROS_UFH3S(IPTR, file_filter,
         d->request.fr_Drawer = field(d->drawer);
         d->request.fr_File = field(d->file);
         d->request.fr_Pattern = field(d->pattern);
-        return CallHookPkt(d->userfilter, &d->request, &anchor);
+        struct FileRequester *request = d->external_request;
+        if (!request) return CallHookPkt(d->userfilter, &d->request, &anchor);
+        struct FileRequester saved = *request;
+        request->fr_Drawer = d->request.fr_Drawer;
+        request->fr_File = d->request.fr_File;
+        request->fr_Pattern = d->request.fr_Pattern;
+        IPTR result = CallHookPkt(d->userfilter, request, &anchor);
+        *request = saved;
+        return result;
     }
     if (!drawer && d->drawers) return FALSE;
     if (d->icons)
@@ -136,6 +146,73 @@ static void navigate(struct FilepanelData *d, CONST_STRPTR path, BOOL remember)
     }
     set(d->list, MUIA_Dirlist_Directory, field(d->drawer));
     FreeVec(copy);
+}
+
+/* These are our result buffers, never storage allocated by asl.library. */
+void ZuneFreeFileResult(struct FileRequester *r)
+{
+    for (LONG i = 0; i < r->fr_NumArgs; i++)
+    {
+        if (r->fr_ArgList[i].wa_Lock) UnLock(r->fr_ArgList[i].wa_Lock);
+        FreeVec(r->fr_ArgList[i].wa_Name);
+    }
+    FreeVec(r->fr_ArgList);
+    FreeVec(r->fr_Drawer);
+    FreeVec(r->fr_File);
+    FreeVec(r->fr_Pattern);
+    r->fr_ArgList = NULL;
+    r->fr_NumArgs = 0;
+    r->fr_Drawer = r->fr_File = r->fr_Pattern = NULL;
+}
+
+static BOOL export_files(struct FilepanelData *d, struct FileRequester *r)
+{
+    struct FileRequester result = {0};
+    LONG count = 0, entry = MUIV_List_NextSelected_Start;
+    BPTR drawer = 0;
+    result.fr_File = StrDup(field(d->file));
+    result.fr_Drawer = StrDup(field(d->drawer));
+    result.fr_Pattern = StrDup(field(d->pattern));
+    result.fr_UserData = d->request.fr_UserData;
+    if (!result.fr_File || !result.fr_Drawer || !result.fr_Pattern) goto fail;
+    if (d->multi)
+    {
+        while (DoMethod(d->list, MUIM_List_NextSelected, &entry),
+            entry != MUIV_List_NextSelected_End) count++;
+        if (!count && *result.fr_File) count = 1;
+        if (count)
+        {
+            drawer = Lock(result.fr_Drawer, SHARED_LOCK);
+            if (!drawer) goto fail;
+            result.fr_ArgList = AllocVec(count * sizeof(struct WBArg),
+                MEMF_ANY | MEMF_CLEAR);
+            if (!result.fr_ArgList) goto fail;
+            entry = MUIV_List_NextSelected_Start;
+            for (LONG i = 0; i < count; i++)
+            {
+                struct FileInfoBlock *fib = NULL;
+                DoMethod(d->list, MUIM_List_NextSelected, &entry);
+                if (entry != MUIV_List_NextSelected_End)
+                    DoMethod(d->list, MUIM_List_GetEntry, entry, &fib);
+                result.fr_NumArgs++;
+                result.fr_ArgList[i].wa_Lock = DupLock(drawer);
+                result.fr_ArgList[i].wa_Name = StrDup(fib ?
+                    fib->fib_FileName : result.fr_File);
+                if (!result.fr_ArgList[i].wa_Lock ||
+                    !result.fr_ArgList[i].wa_Name) goto fail;
+            }
+            UnLock(drawer);
+            drawer = 0;
+        }
+    }
+    /* Publish only a complete result, preserving the previous one on OOM. */
+    ZuneFreeFileResult(r);
+    *r = result;
+    return TRUE;
+fail:
+    if (drawer) UnLock(drawer);
+    ZuneFreeFileResult(&result);
+    return FALSE;
 }
 static IPTR Filepanel_Action(Object *obj, struct FilepanelData *d, LONG act)
 {
@@ -202,6 +279,7 @@ BOOPSI_DISPATCHER(IPTR, Filepanel_Dispatcher, cl, obj, msg)
         obj = (Object *)DoSuperMethodA(cl, obj, msg);
         if (!obj) return 0;
         d = INST_DATA(cl, obj);
+        d->external_request = (APTR)GetTagData(MUIA_Zune_PanelRequester, 0, tags);
         d->position = d->last = -1;
         ULONG flags1 = GetTagData(ASLFR_Flags1, 0, tags);
         ULONG flags2 = GetTagData(ASLFR_Flags2, 0, tags);
@@ -261,6 +339,8 @@ fail:
     d = INST_DATA(cl, obj);
     switch (msg->MethodID)
     {
+    case MUIM_Zune_PanelExport:
+        return export_files(d, ((struct MUIP_Zune_PanelExport *)msg)->requester);
     case OM_DISPOSE:
     {
         /* Keep filter state alive until child lists have been disposed. */

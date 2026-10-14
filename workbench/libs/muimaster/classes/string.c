@@ -1745,6 +1745,7 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     struct MUI_StringData *data =
         (struct MUI_StringData *)INST_DATA(cl, obj);
     IPTR retval = 0;
+    ULONG hook_actions = 0;
     int update = 0;
     BOOL edited = FALSE;
     LONG muikey = msg->muikey;
@@ -2296,6 +2297,7 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
             data->msd_Flags = oldflags;
             data->MarkPos = oldmark;
         }
+        if (handled && hook_key) hook_actions = work.Actions;
         if (handled && (work.Actions & SGA_BEEP)) DisplayBeep(_screen(obj));
         edited = strcmp((char *)previous, (char *)data->Buffer) != 0;
         update = TRUE;
@@ -2313,6 +2315,16 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     if (update)
     {
         MUI_Redraw(obj, MADF_DRAWUPDATE);
+    }
+    if ((hook_actions & SGA_END) && !acknowledge)
+    {
+        /* Ending an edit need not clear Window_ActiveObject. The hook can
+         * explicitly request a cycle-chain move, as in MUI 21.227. */
+        if (hook_actions & (SGA_NEXTACTIVE | SGA_PREVACTIVE))
+            set(_win(obj), MUIA_Window_ActiveObject,
+                (hook_actions & SGA_PREVACTIVE) ? MUIV_Window_ActiveObject_Prev : MUIV_Window_ActiveObject_Next);
+        else DoMethod(obj, MUIM_GoInactive);
+        return (hook_actions & SGA_REUSE) ? 0 : MUI_EventHandlerRC_Eat;
     }
     if (acknowledge)
             {

@@ -18,20 +18,122 @@
 #include "support.h"
 #include "selectorpanel.h"
 extern struct Library *MUIMasterBase, *DiskfontBase;
+struct UserFontFamily
+{
+    struct UserFontFamily *next;
+    STRPTR family, font;
+};
 struct FontpanelData
 {
     Object *list, *name, *size, *preview, *sample;
-    Object *bold, *italic, *underline, *front, *back, *mode;
+    Object *bold, *italic, *underline, *front, *back, *mode, *special;
+    Object *family, *collection_control;
+    struct UserFontFamily *user_fonts;
+    CONST_STRPTR collection_names[6];
+    LONG collection_values[5], selected_collection;
     struct AvailFontsHeader *fonts;
-    struct MUI_CustomClass *sample_class;
+    struct TextFont *sample_font;
     struct Hook display;
     struct Hook *filter;
     struct FontRequester request;
+    struct FontRequester *external_request;
     STRPTR sampletext;
-    char fontspec[256], number[16];
+    char number[16];
     LONG collection, minimum, maximum;
     BOOL fixed;
 };
+static BOOL family_member(struct FontpanelData *d, CONST_STRPTR font)
+{
+    CONST_STRPTR family = d->family ? (APTR)XGET(d->family, MUIA_String_Contents) : NULL;
+    for (struct UserFontFamily *f = d->user_fonts; f; f = f->next)
+        if (!Stricmp(f->font, font) && (!family || !*family || !Stricmp(f->family, family)))
+            return TRUE;
+    return FALSE;
+}
+static void free_families(struct UserFontFamily *f)
+{
+    while (f)
+    {
+        struct UserFontFamily *next = f->next;
+        FreeVec(f->family); FreeVec(f->font); FreeVec(f); f = next;
+    }
+}
+static BOOL add_family(struct FontpanelData *d, CONST_STRPTR family, CONST_STRPTR font)
+{
+    if (!family || !*family || !font || !*font ||
+        strpbrk(family, "\t\r\n") || strpbrk(font, "\t\r\n")) return FALSE;
+    for (struct UserFontFamily *f = d->user_fonts; f; f = f->next)
+        if (!Stricmp(f->family, family) && !Stricmp(f->font, font)) return TRUE;
+    struct UserFontFamily *f = AllocVec(sizeof(*f), MEMF_ANY | MEMF_CLEAR);
+    if (!f) return FALSE;
+    f->family = StrDup(family); f->font = StrDup(font);
+    if (!f->family || !f->font) { free_families(f); return FALSE; }
+    f->next = d->user_fonts; d->user_fonts = f;
+    return TRUE;
+}
+static void load_families(struct FontpanelData *d)
+{
+    char line[512];
+    BPTR file = Open("ENV:Zune/fontfamilies", MODE_OLDFILE);
+    if (!file) file = Open("ENVARC:Zune/fontfamilies", MODE_OLDFILE);
+    if (!file) return;
+    while (FGets(file, line, sizeof(line)))
+    {
+        char *font = strchr(line, '\t');
+        if (!font) continue;
+        *font++ = 0;
+        font[strcspn(font, "\r\n")] = 0;
+        if (!add_family(d, line, font)) break;
+    }
+    Close(file);
+}
+static BOOL save_family_directory(struct FontpanelData *d)
+{
+    BPTR file = Open("fontfamilies.new", MODE_NEWFILE);
+    if (!file) return FALSE;
+    BOOL ok = TRUE;
+    for (struct UserFontFamily *f = d->user_fonts; f; f = f->next)
+        if (FPuts(file, f->family) < 0 || FPuts(file, "\t") < 0 ||
+            FPuts(file, f->font) < 0 || FPuts(file, "\n") < 0)
+        { ok = FALSE; break; }
+    if (!Close(file)) ok = FALSE;
+    if (!ok) { DeleteFile("fontfamilies.new"); return FALSE; }
+    DeleteFile("fontfamilies.bak");
+    BOOL had_old = Rename("fontfamilies", "fontfamilies.bak");
+    if (!Rename("fontfamilies.new", "fontfamilies"))
+    {
+        if (had_old) Rename("fontfamilies.bak", "fontfamilies");
+        DeleteFile("fontfamilies.new"); return FALSE;
+    }
+    DeleteFile("fontfamilies.bak");
+    return TRUE;
+}
+static BOOL save_families(struct FontpanelData *d)
+{
+    static const char *paths[] = {"ENVARC:Zune", "ENV:Zune"};
+    BPTR dirs[2] = {0, 0};
+    BOOL ok = TRUE;
+    for (ULONG i = 0; i < 2; i++)
+    {
+        dirs[i] = Lock(paths[i], ACCESS_READ);
+        if (!dirs[i])
+        {
+            BPTR created = CreateDir(paths[i]);
+            if (created) UnLock(created);
+            dirs[i] = Lock(paths[i], ACCESS_READ);
+        }
+        if (!dirs[i]) { ok = FALSE; break; }
+        /* ENV may be a soft link to ENVARC. Resolve the directory before
+         * renaming files, and do not replace the same file twice. */
+        if (i && SameLock(dirs[0], dirs[1]) == LOCK_SAME) continue;
+        BPTR old = CurrentDir(dirs[i]);
+        ok = save_family_directory(d);
+        CurrentDir(old);
+        if (!ok) break;
+    }
+    for (ULONG i = 0; i < 2; i++) if (dirs[i]) UnLock(dirs[i]);
+    return ok;
+}
 static const UBYTE font_modes[] = {JAM1, JAM2, COMPLEMENT, INVERSVID};
 static ULONG font_mode_index(ULONG mode)
 {
@@ -45,9 +147,20 @@ static ULONG font_style(struct FontpanelData *d)
         (XGET(d->italic, MUIA_Selected) ? FSF_ITALIC : 0) |
         (XGET(d->underline, MUIA_Selected) ? FSF_UNDERLINED : 0);
 }
-BOOPSI_DISPATCHER(IPTR, FontSample_Dispatcher, cl, obj, msg)
+struct FontdisplayData { struct FontpanelData *panel; };
+BOOPSI_DISPATCHER(IPTR, Fontdisplay_Dispatcher, cl, obj, msg)
 {
     IPTR result = DoSuperMethodA(cl, obj, msg);
+    if (msg->MethodID == OM_NEW)
+    {
+        if (result)
+        {
+            struct FontdisplayData *display = INST_DATA(cl, (Object *)result);
+            display->panel = (APTR)GetTagData(MUIA_Zune_FontPreviewData, 0,
+                ((struct opSet *)msg)->ops_AttrList);
+        }
+        return result;
+    }
     if (msg->MethodID == MUIM_AskMinMax)
     {
         struct MUI_MinMax *mm = ((struct MUIP_AskMinMax *)msg)->MinMaxInfo;
@@ -60,22 +173,49 @@ BOOPSI_DISPATCHER(IPTR, FontSample_Dispatcher, cl, obj, msg)
     else if (msg->MethodID == MUIM_Draw &&
         (((struct MUIP_Draw *)msg)->flags & MADF_DRAWOBJECT))
     {
-        struct FontpanelData *d = (APTR)XGET(obj, MUIA_UserData);
+        struct FontdisplayData *display = INST_DATA(cl, obj);
+        struct FontpanelData *d = display->panel;
+        CONST_STRPTR sample = d ? d->sampletext : (CONST_STRPTR)"The quick brown fox jumps over the lazy dog.";
         struct RastPort rp = *_rp(obj);
         APTR clip = MUI_AddClipping(muiRenderInfo(obj),
             _mleft(obj), _mtop(obj), _mwidth(obj), _mheight(obj));
         SetFont(&rp, _font(obj));
-        SetSoftStyle(&rp, font_style(d), AskSoftStyle(&rp));
-        SetAPen(&rp, XGET(d->front, MUIA_Numeric_Value));
-        SetBPen(&rp, XGET(d->back, MUIA_Numeric_Value));
-        SetDrMd(&rp, font_modes[XGET(d->mode, MUIA_Cycle_Active)]);
-        Move(&rp, _mleft(obj), _mtop(obj) + _font(obj)->tf_Baseline + 2);
-        Text(&rp, d->sampletext, strlen(d->sampletext));
+        SetSoftStyle(&rp, d ? font_style(d) : 0, AskSoftStyle(&rp));
+        SetAPen(&rp, d ? XGET(d->front, MUIA_Numeric_Value) : _dri(obj)->dri_Pens[TEXTPEN]);
+        SetBPen(&rp, d ? XGET(d->back, MUIA_Numeric_Value) : _dri(obj)->dri_Pens[BACKGROUNDPEN]);
+        ULONG mode = d ? font_modes[XGET(d->mode, MUIA_Cycle_Active)] : JAM1;
+        LONG special = d ? XGET(d->special, MUIA_Cycle_Active) : 0;
+        LONG x = _mleft(obj) + 1, y = _mtop(obj) + _font(obj)->tf_Baseline + 2;
+        if (special)
+        {
+            if (mode & JAM2)
+            {
+                SetAPen(&rp, GetBPen(&rp));
+                RectFill(&rp, _mleft(obj), _mtop(obj), _mright(obj), _mbottom(obj));
+            }
+            SetDrMd(&rp, JAM1);
+            SetAPen(&rp, GetBPen(&rp));
+            for (LONG dy = -1; dy <= 1; dy++)
+                for (LONG dx = -1; dx <= 1; dx++)
+                    if ((dx || dy) && (special == FO_SPECIALMODE_OUTLINE || (dx == 1 && dy == 1)))
+                    {
+                        Move(&rp, x + dx, y + dy);
+                        Text(&rp, sample, strlen(sample));
+                    }
+            SetAPen(&rp, d ? XGET(d->front, MUIA_Numeric_Value) : _dri(obj)->dri_Pens[TEXTPEN]);
+            mode = JAM1;
+        }
+        SetDrMd(&rp, mode);
+        Move(&rp, x, y);
+        Text(&rp, sample, strlen(sample));
         if (clip != (APTR)-1) MUI_RemoveClipping(muiRenderInfo(obj), clip);
     }
     return result;
 }
 BOOPSI_DISPATCHER_END
+const struct __MUIBuiltinClass _MUI_Fontdisplay_desc = {
+    MUIC_Fontdisplay, MUIC_Area, sizeof(struct FontdisplayData), (APTR)Fontdisplay_Dispatcher
+};
 static Object *font_button(CONST_STRPTR label, BOOL toggle)
 {
     return MUI_NewObject(MUIC_Text, MUIA_Frame, MUIV_Frame_Button,
@@ -128,20 +268,25 @@ static LONG font_size(struct FontpanelData *d)
 static void font_preview(struct FontpanelData *d)
 {
     Object *sample;
-    snprintf(d->fontspec, sizeof(d->fontspec), "%s/%ld",
-        (STRPTR)XGET(d->name, MUIA_String_Contents), font_size(d));
+    char name[256];
+    snprintf(name, sizeof(name), "%s.font", (STRPTR)XGET(d->name, MUIA_String_Contents));
+    struct TextAttr attr = {(STRPTR)name, font_size(d), 0, 0};
+    struct TextFont *font = OpenDiskFont(&attr);
+    if (!font) font = OpenFont(&attr);
+    if (!font) return;
     struct TagItem tags[] = {
-        {MUIA_UserData, (IPTR)d}, {MUIA_Font, (IPTR)d->fontspec},
-        {TAG_DONE, 0}
+        {MUIA_Zune_FontPreviewData, (IPTR)d}, {MUIA_Font, (IPTR)font}, {TAG_DONE, 0}
     };
-    sample = NewObjectA(d->sample_class->mcc_Class, NULL, tags);
-    if (!sample) return;
+    sample = MUI_NewObjectA(MUIC_Fontdisplay, tags);
+    if (!sample) { CloseFont(font); return; }
     DoMethod(d->preview, MUIM_Group_InitChange);
     if (d->sample)
     {
         DoMethod(d->preview, OM_REMMEMBER, d->sample);
         MUI_DisposeObject(d->sample);
     }
+    if (d->sample_font) CloseFont(d->sample_font);
+    d->sample_font = font;
     d->sample = sample;
     DoMethod(d->preview, OM_ADDMEMBER, sample);
     DoMethod(d->preview, MUIM_Group_ExitChange);
@@ -196,6 +341,12 @@ static void font_inventory(struct FontpanelData *d)
         if (extra < 0 || size > 1024 * 1024 - extra) return;
         size += extra;
     }
+ }
+static void font_filter(struct FontpanelData *d)
+{
+    DoMethod(d->list, MUIM_List_Clear);
+    if (!d->fonts) return;
+    LONG collection = d->selected_collection;
     struct AvailFonts *font = (APTR)(d->fonts + 1);
     for (LONG i = 0; i < d->fonts->afh_NumEntries; i++, font++)
     {
@@ -203,15 +354,26 @@ static void font_inventory(struct FontpanelData *d)
         BOOL scalable = !!(font->af_Type & AFF_SCALED);
         if (font->af_Attr.ta_YSize < d->minimum || font->af_Attr.ta_YSize > d->maximum) continue;
         if (d->fixed && !fixed) continue;
-        if (d->collection != MUIV_Fontpanel_ShowCollection_All &&
-            !((fixed && (d->collection & MUIV_Fontpanel_ShowCollection_FixedWidth)) ||
-              (!scalable && (d->collection & MUIV_Fontpanel_ShowCollection_Bitmap)) ||
-              ((d->collection & MUIV_Fontpanel_ShowCollection_TrueType) &&
-               font_truetype(font->af_Attr.ta_Name)))) continue;
+        if (collection != MUIV_Fontpanel_ShowCollection_All &&
+            !((fixed && (collection & MUIV_Fontpanel_ShowCollection_FixedWidth)) ||
+              (!scalable && (collection & MUIV_Fontpanel_ShowCollection_Bitmap)) ||
+              ((collection & MUIV_Fontpanel_ShowCollection_TrueType) &&
+               font_truetype(font->af_Attr.ta_Name)) ||
+              ((collection & MUIV_Fontpanel_ShowCollection_User) &&
+               family_member(d, font->af_Attr.ta_Name)))) continue;
         d->request.fo_Attr.ta_Name = (STRPTR)XGET(d->name, MUIA_String_Contents);
         d->request.fo_Attr.ta_YSize = font_size(d);
         d->request.fo_Attr.ta_Style = font_style(d);
-        if (d->filter && !CallHookPkt(d->filter, &d->request, &font->af_Attr)) continue;
+        if (d->filter)
+        {
+            struct FontRequester *request = d->external_request;
+            struct FontRequester saved;
+            if (request) { saved = *request; request->fo_Attr = d->request.fo_Attr; }
+            IPTR accepted = CallHookPkt(d->filter,
+                request ? request : &d->request, &font->af_Attr);
+            if (request) *request = saved;
+            if (!accepted) continue;
+        }
         DoMethod(d->list, MUIM_List_InsertSingle, font, MUIV_List_Insert_Bottom);
     }
 }
@@ -225,7 +387,9 @@ BOOPSI_DISPATCHER(IPTR, Fontpanel_Dispatcher, cl, obj, msg)
         obj = (Object *)DoSuperMethodA(cl, obj, msg);
         if (!obj) return 0;
         d = INST_DATA(cl, obj);
+        d->external_request = (APTR)GetTagData(MUIA_Zune_PanelRequester, 0, tags);
         d->collection = GetTagData(MUIA_Fontpanel_ShowCollection, -1, tags);
+        d->selected_collection = d->collection;
         d->minimum = MAX(1, GetTagData(ASLFO_MinHeight, 1, tags));
         d->maximum = MAX(d->minimum, MIN(32767, GetTagData(ASLFO_MaxHeight, 256, tags)));
         ULONG options = GetTagData(ASLFO_Flags, 0, tags);
@@ -235,6 +399,35 @@ BOOPSI_DISPATCHER(IPTR, Fontpanel_Dispatcher, cl, obj, msg)
         d->request.fo_Attr.ta_Flags = GetTagData(ASLFO_InitialFlags, 0, tags);
         d->sampletext = StrDup((STRPTR)GetTagData(ASLFO_SampleText, (IPTR)"The quick brown fox jumps over the lazy dog.", tags));
         if (!d->sampletext) goto fail;
+        static const char *collection_names[] = {"Fixed width", "Bitmap", "TrueType", "User families"};
+        d->collection_names[0] = "All allowed fonts";
+        d->collection_values[0] = d->collection;
+        LONG n = 1;
+        for (LONG i = 0; i < 4; i++)
+            if (d->collection & (1L << i))
+            {
+                d->collection_names[n] = collection_names[i];
+                d->collection_values[n++] = 1L << i;
+            }
+        d->collection_control = MUI_NewObject(MUIC_Cycle,
+            MUIA_Cycle_Entries, d->collection_names, MUIA_CycleChain, TRUE, TAG_DONE);
+        if (!font_add(obj, d->collection_control)) goto fail;
+        font_action(d->collection_control, MUIA_Cycle_Active, MUIV_EveryTime, obj, 4);
+        row = MUI_NewObject(MUIC_Group, MUIA_Group_Horiz, TRUE,
+            MUIA_ShowMe, !!(d->collection & MUIV_Fontpanel_ShowCollection_User), TAG_DONE);
+        if (!font_add(obj, row)) goto fail;
+        d->family = MUI_NewObject(MUIC_String, MUIA_Frame, MUIV_Frame_String,
+            MUIA_String_MaxLen, 128, MUIA_String_Placeholder, "User family (empty shows all)",
+            MUIA_CycleChain, TRUE, TAG_DONE);
+        if (!font_add(row, d->family)) goto fail;
+        font_action(d->family, MUIA_String_Acknowledge, MUIV_EveryTime, obj, 4);
+        b = font_button("Add to family", FALSE);
+        if (!font_add(row, b)) goto fail;
+        font_action(b, MUIA_Pressed, FALSE, obj, 5);
+        b = font_button("Remove from family", FALSE);
+        if (!font_add(row, b)) goto fail;
+        font_action(b, MUIA_Pressed, FALSE, obj, 6);
+        if (d->collection & MUIV_Fontpanel_ShowCollection_User) load_families(d);
         d->name = MUI_NewObject(MUIC_String, MUIA_Frame, MUIV_Frame_String,
             MUIA_CycleChain, TRUE, MUIA_String_MaxLen, 256, TAG_DONE);
         if (!font_add(obj, d->name)) goto fail;
@@ -280,6 +473,11 @@ BOOPSI_DISPATCHER(IPTR, Fontpanel_Dispatcher, cl, obj, msg)
             MUIA_Cycle_Active, font_mode_index(GetTagData(ASLFO_InitialDrawMode, JAM1, tags)),
             MUIA_ShowMe, GetTagData(ASLFO_DoDrawMode, options & FOF_DODRAWMODE, tags), TAG_DONE);
         if (!font_add(obj, d->mode)) goto fail;
+        static const char *special_modes[] = {"Normal", "Outline", "Shadow", NULL};
+        d->special = MUI_NewObject(MUIC_Cycle, MUIA_Cycle_Entries, special_modes,
+            MUIA_Cycle_Active, MIN(2, GetTagData(ASLFO_InitialSpecMode, 0, tags)),
+            MUIA_ShowMe, GetTagData(ASLFO_DoSpecialMode, FALSE, tags), TAG_DONE);
+        if (!font_add(obj, d->special)) goto fail;
         d->preview = MUI_NewObject(MUIC_Group, TAG_DONE);
         if (!font_add(obj, d->preview)) goto fail;
         row = MUI_NewObject(MUIC_Group, MUIA_Group_Horiz, TRUE, TAG_DONE);
@@ -299,10 +497,8 @@ BOOPSI_DISPATCHER(IPTR, Fontpanel_Dispatcher, cl, obj, msg)
         font_action(d->front, MUIA_Numeric_Value, MUIV_EveryTime, obj, 0);
         font_action(d->back, MUIA_Numeric_Value, MUIV_EveryTime, obj, 0);
         font_action(d->mode, MUIA_Cycle_Active, MUIV_EveryTime, obj, 0);
-        d->sample_class = MUI_CreateCustomClass(NULL, MUIC_Area, NULL, 0,
-            (APTR)FontSample_Dispatcher);
-        if (!d->sample_class) goto fail;
-        font_inventory(d); font_preview(d);
+        font_action(d->special, MUIA_Cycle_Active, MUIV_EveryTime, obj, 0);
+        font_inventory(d); font_filter(d); font_preview(d);
         return (IPTR)obj;
 fail:
         CoerceMethod(cl, obj, OM_DISPOSE); return 0;
@@ -310,14 +506,37 @@ fail:
     d = INST_DATA(cl, obj);
     switch (msg->MethodID)
     {
+    case MUIM_Zune_PanelExport:
+    {
+        struct FontRequester *r =
+            ((struct MUIP_Zune_PanelExport *)msg)->requester;
+        CONST_STRPTR name = (APTR)XGET(d->name, MUIA_String_Contents);
+        STRPTR copy = AllocVec(strlen(name) + 6, MEMF_ANY);
+        if (!copy) return FALSE;
+        strcpy(copy, name);
+        strcat(copy, ".font");
+        FreeVec(r->fo_Attr.ta_Name);
+        r->fo_Attr.ta_Name = copy;
+        r->fo_Attr.ta_YSize = font_size(d);
+        r->fo_Attr.ta_Style = font_style(d);
+        r->fo_Attr.ta_Flags = d->request.fo_Attr.ta_Flags;
+        r->fo_FrontPen = XGET(d->front, MUIA_Numeric_Value);
+        r->fo_BackPen = XGET(d->back, MUIA_Numeric_Value);
+        r->fo_DrawMode = font_modes[XGET(d->mode, MUIA_Cycle_Active)];
+        r->fo_SpecialDrawMode = XGET(d->special, MUIA_Cycle_Active);
+        r->fo_UserData = d->request.fo_UserData;
+        return TRUE;
+    }
     case OM_DISPOSE:
         /* Lists borrow entries from this buffer and must go first. */
     {
         APTR fonts = d->fonts;
+        struct TextFont *sample_font = d->sample_font;
+        struct UserFontFamily *families = d->user_fonts;
         STRPTR text = d->sampletext;
-        struct MUI_CustomClass *sample_class = d->sample_class;
         IPTR result = DoSuperMethodA(cl, obj, msg);
-        if (sample_class) MUI_DeleteCustomClass(sample_class);
+        if (sample_font) CloseFont(sample_font);
+        free_families(families);
         FreeVec(fonts); FreeVec(text); return result;
     }
     case OM_SET:
@@ -339,11 +558,12 @@ fail:
             case ASLFO_InitialFrontPen: nnset(d->front, MUIA_Numeric_Value, tag->ti_Data); break;
             case ASLFO_InitialBackPen: nnset(d->back, MUIA_Numeric_Value, tag->ti_Data); break;
             case ASLFO_InitialDrawMode: nnset(d->mode, MUIA_Cycle_Active, font_mode_index(tag->ti_Data)); break;
+            case ASLFO_InitialSpecMode: nnset(d->special, MUIA_Cycle_Active, MIN(2, tag->ti_Data)); break;
             default: continue;
             }
             changed = TRUE;
         }
-        if (changed && d->sample_class) font_preview(d);
+        if (changed && d->special) font_preview(d);
         break;
     }
     case OM_GET:
@@ -362,6 +582,7 @@ fail:
         case ASLFO_InitialFrontPen: value = XGET(d->front, MUIA_Numeric_Value); break;
         case ASLFO_InitialBackPen: value = XGET(d->back, MUIA_Numeric_Value); break;
         case ASLFO_InitialDrawMode: value = font_modes[XGET(d->mode, MUIA_Cycle_Active)]; break;
+        case ASLFO_InitialSpecMode: value = XGET(d->special, MUIA_Cycle_Active); break;
         default: return DoSuperMethodA(cl, obj, msg);
         }
         *getmsg->opg_Storage = value; return TRUE;
@@ -370,6 +591,39 @@ fail:
     {
         LONG act = ((IPTR *)msg)[1];
         if (act == 2 || act == 3) return DoMethod(obj, MUIM_Zune_PanelFinish, act == 2);
+        if (act >= 4 && act <= 6)
+        {
+            if (act != 4)
+            {
+                CONST_STRPTR family = (APTR)XGET(d->family, MUIA_String_Contents);
+                char font[256];
+                snprintf(font, sizeof(font), "%s.font", (STRPTR)XGET(d->name, MUIA_String_Contents));
+                BOOL ok = TRUE;
+                if (act == 5) ok = add_family(d, family, font);
+                else
+                {
+                    struct UserFontFamily **link = &d->user_fonts;
+                    while (*link)
+                    {
+                        struct UserFontFamily *f = *link;
+                        if (!Stricmp(f->family, family) && !Stricmp(f->font, font))
+                        { *link = f->next; f->next = NULL; free_families(f); }
+                        else link = &f->next;
+                    }
+                }
+                if (!ok || !save_families(d))
+                {
+                    if (_flags(obj) & MADF_SETUP)
+                        MUI_Request(_app(obj), _win(obj), 0, "Font families", "OK",
+                            "Could not save the user font family.");
+                    else DisplayBeep(NULL);
+                    return FALSE;
+                }
+            }
+            d->selected_collection = d->collection_values[XGET(d->collection_control, MUIA_Cycle_Active)];
+            font_filter(d);
+            return TRUE;
+        }
         if (act == 1)
         {
             struct AvailFonts *font = NULL;

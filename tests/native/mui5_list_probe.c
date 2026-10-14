@@ -124,11 +124,11 @@ int main(int argc,char **argv)
     input(app,IECLASS_RAWKEY,0x45|IECODE_UP_PREFIX,0,0,0);
     printf("escape commits=%lu aborts=%lu\n",commits,aborts);
     check(aborts==2,"Escape cancels editor");
-    LONG title_x=_left(list)+3*_width(list)/4;
+    LONG title_x=-1;
     for(LONG x=_mleft(list);x<=_mright(list);x++) {
         struct MUI_List_TestPos_Result pos;
         DoMethod(list,MUIM_List_TestPos,x,_mtop(list)+2,&pos);
-        if(pos.column==1 && x>=title_x) {title_x=x;break;}
+        if(pos.column==1) {title_x=x;break;}
     }
     check(title_x>=0,"find second title column");
     if(title_x>=0) {

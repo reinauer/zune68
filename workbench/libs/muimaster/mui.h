@@ -574,6 +574,7 @@ struct MUI_AlphaData
 
 #ifndef _MUI_CLASSES_PROCESS_H
 #include "classes/process.h"
+#include "classes/keyadjust.h"
 #endif
 
 #ifndef _MUI_CLASSES_PIXMAP_H

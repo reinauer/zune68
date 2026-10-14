@@ -7,7 +7,8 @@
 
 /* Public methods enter here after subclass dispatch, so the old callback
  * can run without re-entering the public method on the same object. */
-IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
+static inline __attribute__((always_inline)) IPTR LayoutBuiltin(
+    Object *obj, LONG left, LONG top, LONG width, LONG height,
     ULONG flags)
 {
     static const struct MUIP_Zune_Layout method = { MUIM_Zune_Layout };
@@ -25,6 +26,12 @@ IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
         return FALSE;
 
     return DoMethodA(obj, (Msg)&method);
+}
+
+IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
+    ULONG flags)
+{
+    return LayoutBuiltin(obj, left, top, width, height, flags);
 }
 
 static inline BOOL NeedsPublicLayout(Object *obj)
@@ -48,7 +55,7 @@ IPTR ZuneLayoutObject(Object *obj, LONG left, LONG top, LONG width,
         return DoMethodA(obj, (Msg)&method) != 0;
     }
 
-    return ZuneLayout(obj, left, top, width, height, flags);
+    return LayoutBuiltin(obj, left, top, width, height, flags);
 }
 
 AROS_LH6(BOOL, MUI_LayoutObj,

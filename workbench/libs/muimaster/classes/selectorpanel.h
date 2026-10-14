@@ -5,6 +5,7 @@
 struct MUIP_Panel_Run { STACKED ULONG MethodID; STACKED Object *app, *win; };
 #define MUIC_Filepanel "Filepanel.mui"
 #define MUIC_Fontpanel "Fontpanel.mui"
+#define MUIC_Fontdisplay "Fontdisplay.mui"
 #define MUIA_Filepanel_AcceptPattern 0x80426f3b
 #define MUIA_Filepanel_DoMultiSelect 0x8042fd78
 #define MUIA_Filepanel_DoPatterns 0x80420b3b
@@ -26,8 +27,19 @@ struct MUIP_Panel_Run { STACKED ULONG MethodID; STACKED Object *app, *win; };
 extern const struct __MUIBuiltinClass _MUI_SelectorPanel_desc;
 extern const struct __MUIBuiltinClass _MUI_Filepanel_desc;
 extern const struct __MUIBuiltinClass _MUI_Fontpanel_desc;
+extern const struct __MUIBuiltinClass _MUI_Fontdisplay_desc;
 
 /* Internal messages shared by the selector implementations. */
 #define MUIM_Zune_PanelFinish (MUIB_ZUNE | 0x4500)
 #define MUIM_Zune_PanelAction (MUIB_ZUNE | 0x4501)
+#define MUIM_Zune_PanelExport (MUIB_ZUNE | 0x4502)
+#define MUIA_Zune_PanelRequester (MUIB_ZUNE | 0x4503)
+#define MUIA_Zune_FontPreviewData (MUIB_ZUNE | 0x4504)
+struct MUIP_Zune_PanelExport
+{
+    STACKED ULONG MethodID;
+    STACKED APTR requester;
+};
+struct FileRequester;
+void ZuneFreeFileResult(struct FileRequester *);
 #endif

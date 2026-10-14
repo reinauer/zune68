@@ -110,6 +110,10 @@ int main(int argc, char **argv)
     DoMethod(group,MUIM_Group_ExitChange);
     for(int j=0;j<4;j++){DoMethod(app,MUIM_Application_InputBuffered);Delay(2);}
     check(pixels(texts[2])==pixels(expected[2]),"hide removes all lines");
+    SetAttrs(texts[1],MUIA_Text_Contents,"a\tb",TAG_DONE);
+    SetAttrs(expected[1],MUIA_Text_Contents,"a    b",TAG_DONE);
+    for(int j=0;j<4;j++){DoMethod(app,MUIM_Application_InputBuffered);Delay(2);}
+    check(pixels(texts[1])==pixels(expected[1]),"plain update expands tabs");
     SetAttrs(texts[0],MUIA_Text_ControlChar,'a',TAG_DONE);
     check(attr(texts[0],MUIA_Text_ControlChar)=='a',"text control character");
     check(attr(texts[0],MUIA_ControlChar)==0,"underline does not change activation key");

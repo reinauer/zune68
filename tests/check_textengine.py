@@ -14,6 +14,8 @@ PREPARSE, CONTENT = 0x7e000, 0x7f000
 class TextHarness(Harness):
     def __init__(self, path):
         super().__init__(path)
+        # Twelve formatted lines exceed 100000 emulated cycles.
+        self.cycle_budget = 200000
         self.allocs = 0
         self.trap(EXEC - 264, self.rem_tail)
         self.trap(EXEC - 684, self.counted_alloc)
@@ -69,6 +71,12 @@ def check(path):
     text = h.parse('Status 42')
     assert text and h.allocs == 1, h.allocs
     assert h.chunks(text) == [['Status 42']]
+    assert sum(h.allocations.values()) <= 128, 'short caption wastes arena space'
+    h.call('zune_text_destroy', text)
+    assert not h.allocations
+
+    text = h.parse('x' * 220)
+    assert h.allocs == 1 and h.chunks(text) == [['x' * 220]]
     h.call('zune_text_destroy', text)
     assert not h.allocations
 
@@ -95,6 +103,11 @@ def check(path):
                               for i in range(12)]
     h.call('zune_text_destroy', text)
     assert not h.allocations, 'inline or heap nodes leaked'
+
+    text = h.parse('a\tb')
+    assert h.chunks(text) == [['a', '    ', 'b']]
+    h.call('zune_text_destroy', text)
+    assert not h.allocations
 
     h.fail_alloc = True
     assert h.parse('Status') == 0
