@@ -124,7 +124,15 @@ $(BUILD)/mui5-version_gate-probe: ../../../tests/native/mui5_version_gate.c ../.
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) \
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
-check-core: $(MUI5_PROBE_BINS) $(BUILD)/mui5-version_gate-probe core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe $(BUILD)/mui5-pointer-probe
+$(BUILD)/list-repaint-probe: ../../../tests/native/list_repaint_probe.c $(GENERATED)
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -I$(BUILD)/include -Iinclude \
+	  -Wl,-u,___stkinit -o $@ $< -lmui
+
+$(BUILD)/config-init-probe: ../../../tests/native/config_init_probe.c $(GENERATED) prefs.h
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -I$(BUILD)/include -Iinclude -I. \
+	  -Wl,-u,___stkinit -o $@ $< -lmui
+
+check-core: $(BUILD)/list-repaint-probe $(BUILD)/config-init-probe $(MUI5_PROBE_BINS) $(BUILD)/mui5-version_gate-probe core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe $(BUILD)/mui5-pointer-probe
 	$(PYTHON) ../../../tests/check_native_init.py $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_gcc_library.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library

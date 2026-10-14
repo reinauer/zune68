@@ -109,6 +109,30 @@ def check(path):
     h.call('zune_text_destroy', text)
     assert not h.allocations
 
+    # Borrowed rows must match ordinary parsing without allocating or
+    # taking ownership of the display hook's temporary buffer.
+    borrowed, line, chunk = 0x78000, 0x78100, 0x78200
+    for content in ('Status 42', 'caf\xe9', 'x' * 220):
+        owned = h.parse(content)
+        owned_line = next(h.nodes(owned + 4))
+        owned_chunk = next(h.nodes(owned_line + 10))
+        allocations = dict(h.allocations)
+        assert h.call('zune_text_init_plain', borrowed, line, chunk,
+                      PREPARSE, CONTENT) == 1
+        assert h.allocations == allocations
+        assert h.chunks(borrowed) == h.chunks(owned)
+        assert h.mem.r_block(chunk + 12, 32) == h.mem.r_block(owned_chunk + 12, 32)
+        assert h.mem.r8(line + 8) == h.mem.r8(owned_line + 8)
+        h.call('zune_text_destroy', owned)
+        assert not h.allocations
+    for content, preparse in (('', ''), ('a\tb', ''), ('a\nb', ''),
+                              ('\33bBold', ''), ('plain', '\33c')):
+        h.mem.w_block(CONTENT, content.encode() + b'\0')
+        h.mem.w_block(PREPARSE, preparse.encode() + b'\0')
+        assert not h.call('zune_text_init_plain', borrowed, line, chunk,
+                          PREPARSE, CONTENT)
+    assert not h.allocations
+
     h.fail_alloc = True
     assert h.parse('Status') == 0
     assert not h.allocations

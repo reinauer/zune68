@@ -84,6 +84,10 @@ enum {
 ZText *zune_text_new (CONST_STRPTR preparse, CONST_STRPTR content,
     int argtype, TEXT arg);
 void zune_text_destroy (ZText *text);
+/* Borrow one unformatted string for synchronous measurement/drawing.
+ * The caller owns all storage and must not call zune_text_destroy(). */
+BOOL zune_text_init_plain(ZText *text, ZTextLine *line, ZTextChunk *chunk,
+    CONST_STRPTR preparse, CONST_STRPTR content);
 ZTextChunk *zune_text_plain_chunk (ZText *text, CONST_STRPTR s);
 void zune_text_set_plain (ZText *text, ZTextChunk *chunk, STRPTR s,
     LONG len, Object *obj);

@@ -84,6 +84,11 @@ const static MPattern patternPens[] = {
 
 #define PATTERN_COUNT (MUII_LASTPAT - MUII_BACKGROUND + 1)
 
+BOOL zune_imspec_is_solid(struct MUI_ImageSpec_intern *spec)
+{
+    return spec && spec->type == IST_COLOR;
+}
+
 static struct MUI_ImageSpec_intern *get_pattern_imspec(LONG in)
 {
     struct MUI_ImageSpec_intern *spec = NULL;

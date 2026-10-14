@@ -13,6 +13,7 @@
 #include <clib/alib_protos.h>
 #include <proto/exec.h>
 #include <proto/graphics.h>
+#include <proto/layers.h>
 #include <proto/utility.h>
 #include <proto/dos.h>
 #include <proto/intuition.h>
@@ -1747,6 +1748,77 @@ IPTR List__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 /**************************************************************************
  OM_SET
 **************************************************************************/
+/* These tags describe the list itself, not its internal scrollbar/area.
+ * Keep mixed inherited tag lists and explicit forwarding requests intact. */
+static IPTR List_SuperSet(struct IClass *cl, Object *obj, struct opSet *msg)
+{
+    struct TagItem *state = msg->ops_AttrList, *tag;
+    while ((tag = NextTagItem(&state)))
+    {
+        switch (tag->ti_Tag)
+        {
+        case MUIA_List_Active:
+        case MUIA_List_First:
+        case MUIA_List_Entries:
+        case MUIA_List_Visible:
+        case MUIA_List_VertProp_First:
+        case MUIA_List_VertProp_Entries:
+        case MUIA_List_VertProp_Visible:
+        case MUIA_List_Quiet:
+        case MUIA_NoNotify:
+            break;
+        default:
+            return DoSuperMethodA(cl, obj, (Msg)msg);
+        }
+    }
+    struct TagItem local[] = {
+        {MUIA_Group_Forward, FALSE}, {TAG_MORE, (IPTR)msg->ops_AttrList}
+    };
+    struct opSet copy = *msg;
+    copy.ops_AttrList = local;
+    return DoSuperMethodA(cl, obj, (Msg)&copy);
+}
+
+/* A conservative raster-copy path. Images, custom backfills, disabled
+ * overlays, virtual clipping and damaged/covered layers repaint normally. */
+static BOOL List_CanScroll(Object *obj, struct MUI_ListData *data)
+{
+    struct MUI_RenderInfo *mri = muiRenderInfo(obj);
+    struct Layer *layer;
+    struct ClipRect *cr;
+    if (!(_flags(obj) & MADF_CANDRAW) || !mri || !mri->mri_RastPort)
+        return FALSE;
+    layer = _rp(obj)->Layer;
+    if (data->area_replaced || muiAreaData(obj)->mad_DisableCount ||
+        (_flags(obj) & MADF_INVIRTUALGROUP) ||
+        (muiAreaData(obj)->mad_Flags2 & MADF2_CUSTOMBACKFILL) ||
+        !zune_imspec_is_solid(muiAreaData(obj)->mad_Background) ||
+        !layer || layer->Scroll_X || layer->Scroll_Y ||
+        (layer->Flags & LAYERREFRESH) || layer->ClipRegion ||
+        mri->mri_BufferBM || !mri->mri_Window ||
+        _rp(obj) != mri->mri_Window->RPort)
+        return FALSE;
+    /* Object cells also need their live geometry moved, not just pixels. */
+    for (ULONG col = 0; col < data->columns; col++)
+        if (data->ci[col].is_object) return FALSE;
+    BOOL visible = TRUE;
+    LockLayer(0, layer);
+    for (cr = layer->ClipRect; cr; cr = cr->Next)
+    {
+#ifdef ZUNE68_GCC_NATIVE
+        if (cr->obscured)
+#else
+        if (cr->lobs)
+#endif
+        {
+            visible = FALSE;
+            break;
+        }
+    }
+    UnlockLayer(layer);
+    return visible;
+}
+
 IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
@@ -1907,10 +1979,7 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 if (data->entries_active != new_entries_active)
                 {
                     LONG old = data->entries_active;
-                    /* An active entry outside the view is jumped to with
-                     * one redraw of the visible rows, as MUI 3.9 does,
-                     * instead of drawing the old and new rows, scrolling
-                     * and drawing the rows scrolled in */
+                    /* Update selection before moving existing rows. */
                     BOOL jump = new_entries_active != -1
                         && (_flags(obj) & MADF_SETUP)
                         && !(data->flags & LIST_QUIET) && !data->read_only
@@ -1932,43 +2001,37 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                         DoMethod(obj, MUIM_List_SelectChange,
                             MUIV_List_Active_Off, MUIV_List_Select_Off, 0);
 
+                    if (old >= 0 && old < data->entries_num)
+                        data->entries[old]->flags |= ENTRY_RENDER;
+                    if (data->entries_active >= 0 && data->entries_active < data->entries_num)
+                        data->entries[data->entries_active]->flags |= ENTRY_RENDER;
                     if (jump)
                     {
-                        LONG first = new_entries_active;
+                        LONG first = new_entries_active, previous = data->entries_first;
+                        BOOL scroll = data->update == 0 &&
+                            !(data->flags & LIST_CHANGED) && List_CanScroll(obj, data);
 
-                        if (first >= data->entries_first)
+                        if (first >= previous)
                             first = MAX(first - (data->entries_visible - 1), 0);
-                        /* notify MUIA_List_First without drawing */
+                        /* Preserve First/VertProp notification order. */
                         data->flags |= LIST_QUIET;
                         set(obj, MUIA_List_First, first);
                         data->flags &= ~(LIST_QUIET | LIST_CHANGED);
                         set(obj, MUIA_List_VertProp_First, first);
-                        if (old >= 0)
-                            data->entries[old]->flags &= ~ENTRY_RENDER;
-                        data->update = UPDATEMODE_ALL;
+                        data->update_pos = previous;
+                        data->update = scroll ? (UPDATEMODE_ENTRY | UPDATEMODE_ALL) : UPDATEMODE_ALL;
                         MUI_Redraw(obj, MADF_DRAWUPDATE);
                     }
                     else if (!data->read_only)
                     {
-                        data->entries[old]->flags |= ENTRY_RENDER;
-                        if (!(data->flags & LIST_QUIET))
-                        {
-                            data->update = UPDATEMODE_ENTRY;
-                            data->update_pos = old;
-                            MUI_Redraw(obj, MADF_DRAWUPDATE);
-                        }
-                        data->entries[data->entries_active]->flags |= ENTRY_RENDER;
-                        if (!(data->flags & LIST_QUIET))
-                        {
-                            data->update = UPDATEMODE_ENTRY;
-                            data->update_pos = data->entries_active;
-                            MUI_Redraw(obj, MADF_DRAWUPDATE);
-                        }
-                        else
-                        {
+                        /* Paint both cursor rows in one pass. Do not discard
+                         * a pending full repaint accumulated in quiet mode. */
+                        if (data->update != UPDATEMODE_ALL)
                             data->update = UPDATEMODE_NEEDED;
+                        if (!(data->flags & LIST_QUIET))
+                            MUI_Redraw(obj, MADF_DRAWUPDATE);
+                        else
                             data->flags |= LIST_CHANGED;
-                        }
                     }
 
                     /* Make new active entry visible (if there is one and
@@ -1988,7 +2051,8 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             data->entries_first = tag->ti_Data;
             if (!(data->flags & LIST_QUIET))
             {
-                data->update = (UPDATEMODE_ENTRY|UPDATEMODE_ALL);
+                data->update = data->update == 0 && List_CanScroll(obj, data)
+                    ? (UPDATEMODE_ENTRY | UPDATEMODE_ALL) : UPDATEMODE_ALL;
                 MUI_Redraw(obj, MADF_DRAWUPDATE);
                 if (data->vertprop_first != tag->ti_Data)
                 {
@@ -2099,7 +2163,7 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
-    return DoSuperMethodA(cl, obj, (Msg) msg);
+    return List_SuperSet(cl, obj, msg);
 }
 
 /**************************************************************************
@@ -2601,7 +2665,10 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
     x1 = _mleft(data->area) - data->horiz_first;
 
     for (col = 0; col < data->columns; col++) {
-        ZText *text;
+        ZText *text, local_text;
+        ZTextLine local_line;
+        ZTextChunk local_chunk;
+        BOOL borrowed;
         if (ColumnHidden(data, col)) continue;
         x2 = x1 + ColumnWidth(data, col);
         if (data->ci[col].is_object && entry_pos != ENTRY_TITLE)
@@ -2612,9 +2679,11 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
             continue;
         }
 
-        if ((text =
-                zune_text_new(data->preparses[col], data->strings[col],
-                    ZTEXT_ARG_NONE, 0))) {
+        borrowed = zune_text_init_plain(&local_text, &local_line, &local_chunk,
+            data->preparses[col], data->strings[col]);
+        text = borrowed ? &local_text : zune_text_new(data->preparses[col],
+            data->strings[col], ZTEXT_ARG_NONE, 0);
+        if (text) {
             /*
              * We need the bounds so that embedded
              * images are (correctly) rendered and to
@@ -2643,7 +2712,7 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
                 zune_text_draw(text, obj, x1, MIN(x2 - 1, _mright(data->area)), y_offset);
             }
             else zune_text_draw(text, obj, x1, x2, y_offset);
-            zune_text_destroy(text);
+            if (!borrowed) zune_text_destroy(text);
         }
         x1 = x2 + data->ci[col].delta + (data->ci[col].bar ? BAR_WIDTH : 0);
     }
@@ -2716,7 +2785,8 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     struct MUI_ListData *data = INST_DATA(cl, obj);
     int entry_pos, y;
     APTR clip;
-    int start, end;
+    int start, end, exposed_start = 0, exposed_end = 0;
+    BOOL scrolling = FALSE;
     BOOL scroll_caused_damage = FALSE;
     struct MUI_ImageSpec_intern *highlight;
     IPTR ret = (IPTR)0;
@@ -2801,7 +2871,7 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     {
         int diffy = data->entries_first - data->update_pos;
         int top, bottom;
-        if (abs(diffy) < data->entries_visible)
+        if (diffy && abs(diffy) < data->entries_visible)
         {
             scroll_caused_damage =
                 (_rp(obj)->Layer->Flags & LAYERREFRESH) ? FALSE : TRUE;
@@ -2820,8 +2890,12 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
             if (diffy > 0)
             {
                 start = end - diffy;
-                y += data->entry_maxheight * (data->entries_visible -
-                    diffy);
+                /* The former bottom row may have been clipped: its newly
+                 * visible lower pixels cannot be recovered by the blit. */
+                if ((entries_bottom - data->entries_top_pixel + 1) % data->entry_maxheight)
+                    start--;
+                y = data->entries_top_pixel +
+                    (start - data->entries_first) * data->entry_maxheight;
             }
             else
                 end = start - diffy;
@@ -2834,6 +2908,12 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
             _mwidth(data->area), bottom - top + 1, 0,
             top - _mtop(data->area) + data->entries_first
             * data->entry_maxheight, 0);
+        exposed_start = start;
+        exposed_end = end;
+        scrolling = TRUE;
+        start = data->entries_first;
+        end = start + data->entries_visible;
+        y = data->entries_top_pixel;
     }
 
     for (entry_pos = start;
@@ -2843,7 +2923,9 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
         if (!(msg->flags & MADF_DRAWUPDATE) ||
             ((msg->flags & MADF_DRAWUPDATE) && data->update == UPDATEMODE_ALL) ||
-            ((msg->flags & MADF_DRAWUPDATE) && data->update == (UPDATEMODE_ENTRY|UPDATEMODE_ALL)) ||
+            (scrolling && ((entry_pos >= exposed_start && entry_pos < exposed_end)
+                || (entry->flags & (ENTRY_RENDER | ENTRY_SELECTED))
+                || entry_pos == data->entries_active)) ||
             ((msg->flags & MADF_DRAWUPDATE) && data->update == UPDATEMODE_ENTRY
                 && data->update_pos == entry_pos) ||
             ((msg->flags & MADF_DRAWUPDATE) && data->update == UPDATEMODE_NEEDED
@@ -2865,12 +2947,20 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
             if (highlight != NULL)
             {
+                /* A masked highlight must not blend with pixels copied
+                 * from a different phase of the previous highlight. */
+                if (scrolling && !zune_imspec_is_solid(highlight))
+                    DoMethod(obj, MUIM_DrawBackground, _mleft(data->area), y,
+                        _mwidth(data->area), data->entry_maxheight, 0,
+                        y - _mtop(data->area) +
+                        data->entries_first * data->entry_maxheight, 0);
                 zune_imspec_draw(highlight, muiRenderInfo(obj),
                     _mleft(data->area), y, _mwidth(data->area),
                     data->entry_maxheight,
                     0, y - data->entries_top_pixel, 0);
             }
-            else if (((msg->flags & MADF_DRAWUPDATE) && data->update == UPDATEMODE_ENTRY
+            else if ((scrolling && (entry->flags & ENTRY_RENDER)) ||
+            ((msg->flags & MADF_DRAWUPDATE) && data->update == UPDATEMODE_ENTRY
                 && data->update_pos == entry_pos) ||
             ((msg->flags & MADF_DRAWUPDATE) && data->update == UPDATEMODE_NEEDED
                 && (entry->flags & ENTRY_RENDER)))

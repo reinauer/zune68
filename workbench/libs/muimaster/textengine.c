@@ -245,6 +245,33 @@ static void ztext_free(ZText *text, APTR mem)
 /**************************************************************************
 ...
 **************************************************************************/
+BOOL zune_text_init_plain(ZText *text, ZTextLine *line, ZTextChunk *chunk,
+    CONST_STRPTR preparse, CONST_STRPTR content)
+{
+    ULONG len = 0;
+    if ((preparse && *preparse) || !content || !*content) return FALSE;
+    while (content[len])
+    {
+        if (content[len] == '\33' || content[len] == '\n' ||
+            content[len] == '\t' || len == 32767) return FALSE;
+        len++;
+    }
+    memset(text, 0, sizeof(*text));
+    memset(line, 0, sizeof(*line));
+    memset(chunk, 0, sizeof(*chunk));
+    NewList((struct List *)&text->lines);
+    NewList((struct List *)&line->chunklist);
+    AddTail((struct List *)&text->lines, (struct Node *)line);
+    AddTail((struct List *)&line->chunklist, (struct Node *)chunk);
+    line->align = ZTL_LEFT;
+    chunk->str = (char *)content;
+    chunk->clen = len;
+    chunk->pen = chunk->dripen = -1;
+    chunk->backpen = 0xff000000;
+    text->plain = TRUE;
+    return TRUE;
+}
+
 ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
     int argtype, TEXT argbyte)
 {

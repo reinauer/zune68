@@ -41,6 +41,7 @@ BOOL zune_imspec_askminmax(struct MUI_ImageSpec_intern *spec,
     struct MUI_MinMax *minmax);
 void zune_imspec_show(struct MUI_ImageSpec_intern *spec, Object *obj);
 void zune_imspec_hide(struct MUI_ImageSpec_intern *spec);
+BOOL zune_imspec_is_solid(struct MUI_ImageSpec_intern *spec);
 void zune_imspec_draw(struct MUI_ImageSpec_intern *img,
     struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
     LONG height, LONG xoffset, LONG yoffset, LONG state);
