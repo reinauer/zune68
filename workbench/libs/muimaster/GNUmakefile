@@ -111,7 +111,7 @@ $(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERA
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 MUI5_PROBES = data selection menu menu_input string string_input image ibrowse title text list \
-  panel requesters process keyadjust text_escape rtg marking list_format
+  panel requesters process keyadjust text_escape rtg memory marking list_format
 MUI5_PROBE_BINS = $(addprefix $(BUILD)/mui5-,$(addsuffix -probe,$(MUI5_PROBES)))
 
 $(MUI5_PROBE_BINS): $(BUILD)/mui5-%-probe: ../../../tests/native/mui5_%_probe.c $(GENERATED)
@@ -177,6 +177,8 @@ check-core: $(MUI5_PROBE_BINS) $(BUILD)/mui5-version_gate-probe core $(BUILD)/co
 	$(PYTHON) ../../../tests/check_clipping.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_textengine.py \
+	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
+	$(PYTHON) ../../../tests/check_textdata.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_numeric.py \
 	  $(BUILD)/zunemaster.library $(BUILD)/muimaster.library

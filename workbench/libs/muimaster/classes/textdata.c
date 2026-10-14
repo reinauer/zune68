@@ -87,11 +87,18 @@ static APTR basic_convert(struct TextdataData *d, ULONG from, ULONG to)
 {
     const UBYTE *s = d->text, *end;
     UBYTE *result, *out;
-    ULONG len, c;
+    ULONG len, c, units, factor, terminator;
     if (!basic_encoding(from) || !basic_encoding(to)) return NULL;
     len = d->bytes < 0 ? source_length(s, from) : d->bytes;
-    if (len > (0x7fffffffUL - 4) / 4) return NULL;
-    result = AllocVec(len * 4 + 4, MEMF_ANY | MEMF_CLEAR);
+    /* Bound destination bytes by the input encoding. UTF-16 contributes
+     * at most one scalar per code unit; UTF-8 never expands when narrowed
+     * to Latin-1. Avoid reserving four bytes for every source byte. */
+    BOOL wide_source = from == 1000 || from == 1013 || from == 1015;
+    units = wide_source ? len / 2 : len;
+    factor = to == 4 ? 1 : to == 106 ? (from == 4 ? 2 : 3) : 2;
+    terminator = to == 4 || to == 106 ? 1 : 2;
+    if (units > (0x7fffffffUL - terminator) / factor) return NULL;
+    result = AllocVec(units * factor + terminator, MEMF_ANY);
     if (!result) return NULL;
     out = result;
     end = s + len;
@@ -122,6 +129,8 @@ static APTR basic_convert(struct TextdataData *d, ULONG from, ULONG to)
             *out++ = c >> 8; *out++ = c;
         }
     }
+    *out++ = 0;
+    if (terminator == 2) *out = 0;
     return result;
 }
 static ULONG default_encoding(struct TextdataData *d)
