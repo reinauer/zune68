@@ -3,6 +3,7 @@
 
 */
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -46,7 +47,11 @@ struct MUI_ConfigdataData
     struct MUI_InputHandlerNode fsNotifyIHN;
     struct NotifyRequest        fsNotifyRequest;
     struct List                 pubscreens;
+    struct IClass             *init_dataspace;
 };
+
+IPTR Dataspace__MUIM_Find(struct IClass *cl, Object *obj,
+    struct MUIP_Dataspace_Find *msg);
 
 /* A Configdata is built for every application and reads about 80
  * settings at creation; ask the dataspace, our superclass, for each
@@ -56,21 +61,18 @@ static APTR cfg_find(struct IClass *cl, Object *obj, ULONG id)
 {
     struct MUIP_Dataspace_Find msg = { MUIM_Dataspace_Find, id };
 
+    struct MUI_ConfigdataData *data = INST_DATA(cl, obj);
+
+    /* The constructor holds the dataspace lock across all initial reads. */
+    if (data->init_dataspace)
+        return (APTR)Dataspace__MUIM_Find(data->init_dataspace, obj, &msg);
     return (APTR) DoSuperMethodA(cl, obj, (Msg) &msg);
 }
 
 static ULONG cfg_ulong(struct IClass *cl, Object *obj, ULONG id);
 static CONST_STRPTR cfg_string(struct IClass *cl, Object *obj, ULONG id);
 
-static inline CONST_STRPTR GetConfigString(Object *obj, ULONG id)
-{
-    return cfg_string(OCLASS(obj), obj, id);
-}
 
-static inline ULONG GetConfigULong(Object *obj, ULONG id)
-{
-    return cfg_ulong(OCLASS(obj), obj, id);
-}
 
 
 /**************************************************************************
@@ -135,7 +137,8 @@ const static struct spec_cfg DefImspecValues[] =
 };
 
 /* called by Configdata_New */
-static void init_imspecs(Object *obj, struct MUI_ConfigdataData *data)
+static void init_imspecs(struct IClass *cl, Object *obj,
+    struct MUI_ConfigdataData *data)
 {
     int i;
 
@@ -144,7 +147,7 @@ static void init_imspecs(Object *obj, struct MUI_ConfigdataData *data)
         CONST_STRPTR imspec;
         const struct spec_cfg *img = DefImspecValues + i;
 
-        imspec = cfg_find(OCLASS(obj), obj, img->cfgid);
+        imspec = cfg_find(cl, obj, img->cfgid);
         if (!imspec)
             imspec = img->defspec;
 /*          D(bug("init_imspecs: %ld %lx %s ...\n", img->muiv, img->cfgid, imspec)); */
@@ -182,7 +185,8 @@ const static struct spec_cfg DefFramespecValues[] =
 };
 
 /* called by Configdata_New */
-static void init_framespecs(Object *obj, struct MUI_ConfigdataData *data)
+static void init_framespecs(struct IClass *cl, Object *obj,
+    struct MUI_ConfigdataData *data)
 {
     int i;
 
@@ -191,7 +195,7 @@ static void init_framespecs(Object *obj, struct MUI_ConfigdataData *data)
         CONST_STRPTR framespec;
         const struct spec_cfg *fcfg = DefFramespecValues + i;
 
-        framespec = cfg_find(OCLASS(obj), obj, fcfg->cfgid);
+        framespec = cfg_find(cl, obj, fcfg->cfgid);
         if (!framespec)
             framespec = fcfg->defspec;
         zune_frame_spec_to_intern(framespec,
@@ -207,58 +211,66 @@ struct def_ulval
 {
     ULONG id;
     ULONG val;
+    UWORD offset;
+    UWORD size;
 };
 
+#define PREF_DEFAULT(id, value, field) \
+    {id, value, offsetof(struct ZunePrefsNew, field), \
+     sizeof(((struct ZunePrefsNew *)0)->field)}
+
 const static struct def_ulval DefULValues[] = {
-    {MUICFG_Window_Spacing_Left, 4},
-    {MUICFG_Window_Spacing_Right, 4},
-    {MUICFG_Window_Spacing_Top, 4},
+    PREF_DEFAULT(MUICFG_Window_Spacing_Left, 4, window_inner_left),
+    PREF_DEFAULT(MUICFG_Window_Spacing_Right, 4, window_inner_right),
+    PREF_DEFAULT(MUICFG_Window_Spacing_Top, 4, window_inner_top),
 #ifdef ZUNE68_GCC_NATIVE
-    {MUICFG_Window_Buttons, MUIV_Window_Button_MUI | MUIV_Window_Button_Iconify},
+    PREF_DEFAULT(MUICFG_Window_Buttons, MUIV_Window_Button_MUI | MUIV_Window_Button_Iconify, window_buttons),
 #else
-    {MUICFG_Window_Buttons, 0},
+    PREF_DEFAULT(MUICFG_Window_Buttons, 0, window_buttons),
 #endif
-    {MUICFG_Window_Spacing_Bottom, 4},
-    {MUICFG_Window_Positions, WINDOW_POSITION_FORGET_ON_EXIT},
-    {MUICFG_Window_Redraw, WINDOW_REDRAW_WITHOUT_CLEAR},
-    {MUICFG_Window_Refresh, WINDOW_REFRESH_SIMPLE},
-    {MUICFG_Radio_HSpacing, 4},
-    {MUICFG_Radio_VSpacing, 1},
-    {MUICFG_Group_HSpacing, 4},
-    {MUICFG_Group_VSpacing, 4},
-    {MUICFG_Cycle_MenuCtrl_Position, CYCLE_MENU_POSITION_BELOW},
-    {MUICFG_Cycle_MenuCtrl_Level, 2},
-    {MUICFG_Cycle_MenuCtrl_Speed, 0},
-    {MUICFG_Cycle_Menu_Recessed, FALSE},
-    {MUICFG_Listview_Font_Leading, 1},
-    {MUICFG_Listview_Smoothed, FALSE},
-    {MUICFG_Listview_SmoothVal, 0},
-    {MUICFG_Listview_Refresh, LISTVIEW_REFRESH_MIXED},
-    {MUICFG_Listview_Multi, LISTVIEW_MULTI_SHIFTED},
-    {MUICFG_GroupTitle_Position, GROUP_TITLE_POSITION_CENTERED},
-    {MUICFG_GroupTitle_Color, GROUP_TITLE_COLOR_HILITE},
-    {MUICFG_Scrollbar_Type, SCROLLBAR_TYPE_STANDARD},
-    {MUICFG_Scrollbar_Arrangement, SCROLLBAR_ARRANGEMENT_TOP},
-    {MUICFG_Balance_Look, BALANCING_SHOW_FRAMES},
-    {MUICFG_Dragndrop_Look, DND_LOOK_GHOSTED_ON_BOX},
-    {MUICFG_Drag_Autostart, TRUE},
-    {MUICFG_Drag_Autostart_Length, 3},
-    {MUICFG_Drag_LeftButton, TRUE},
-    {MUICFG_Drag_MiddleButton, FALSE},
-    {MUICFG_Register_TruncateTitles, FALSE},
-    {MUICFG_Screen_Mode, 0},
-    {MUICFG_Screen_Mode_ID, -1},
-    {MUICFG_Screen_Width, 0},
-    {MUICFG_Screen_Height, 0},
-    {MUICFG_PublicScreen_PopToFront, TRUE},
-    {MUICFG_Iconification_ShowIcon, TRUE},
-    {MUICFG_Iconification_ShowMenu, FALSE},
-    {MUICFG_Iconification_OnStartup, FALSE},
-    {MUICFG_Interfaces_EnableARexx, TRUE},
-    {MUICFG_BubbleHelp_FirstDelay, 30},
-    {MUICFG_BubbleHelp_NextDelay, 10},
-    {0, 0},
+    PREF_DEFAULT(MUICFG_Window_Spacing_Bottom, 4, window_inner_bottom),
+    PREF_DEFAULT(MUICFG_Window_Positions, WINDOW_POSITION_FORGET_ON_EXIT, window_position),
+    PREF_DEFAULT(MUICFG_Window_Redraw, WINDOW_REDRAW_WITHOUT_CLEAR, window_redraw),
+    PREF_DEFAULT(MUICFG_Window_Refresh, WINDOW_REFRESH_SIMPLE, window_refresh),
+    PREF_DEFAULT(MUICFG_Radio_HSpacing, 4, radiobutton_hspacing),
+    PREF_DEFAULT(MUICFG_Radio_VSpacing, 1, radiobutton_vspacing),
+    PREF_DEFAULT(MUICFG_Group_HSpacing, 4, group_hspacing),
+    PREF_DEFAULT(MUICFG_Group_VSpacing, 4, group_vspacing),
+    PREF_DEFAULT(MUICFG_Cycle_MenuCtrl_Position, CYCLE_MENU_POSITION_BELOW, cycle_menu_position),
+    PREF_DEFAULT(MUICFG_Cycle_MenuCtrl_Level, 2, cycle_menu_min_entries),
+    PREF_DEFAULT(MUICFG_Cycle_MenuCtrl_Speed, 0, cycle_menu_speed),
+    PREF_DEFAULT(MUICFG_Cycle_Menu_Recessed, FALSE, cycle_menu_recessed_entries),
+    PREF_DEFAULT(MUICFG_Listview_Font_Leading, 1, list_linespacing),
+    PREF_DEFAULT(MUICFG_Listview_Smoothed, FALSE, list_smoothed),
+    PREF_DEFAULT(MUICFG_Listview_SmoothVal, 0, list_smoothval),
+    PREF_DEFAULT(MUICFG_Listview_Refresh, LISTVIEW_REFRESH_MIXED, list_refresh),
+    PREF_DEFAULT(MUICFG_Listview_Multi, LISTVIEW_MULTI_SHIFTED, list_multi),
+    PREF_DEFAULT(MUICFG_GroupTitle_Position, GROUP_TITLE_POSITION_CENTERED, group_title_position),
+    PREF_DEFAULT(MUICFG_GroupTitle_Color, GROUP_TITLE_COLOR_HILITE, group_title_color),
+    PREF_DEFAULT(MUICFG_Scrollbar_Type, SCROLLBAR_TYPE_STANDARD, scrollbar_type),
+    PREF_DEFAULT(MUICFG_Scrollbar_Arrangement, SCROLLBAR_ARRANGEMENT_TOP, scrollbar_arrangement),
+    PREF_DEFAULT(MUICFG_Balance_Look, BALANCING_SHOW_FRAMES, balancing_look),
+    PREF_DEFAULT(MUICFG_Dragndrop_Look, DND_LOOK_GHOSTED_ON_BOX, drag_look),
+    PREF_DEFAULT(MUICFG_Drag_Autostart, TRUE, drag_autostart),
+    PREF_DEFAULT(MUICFG_Drag_Autostart_Length, 3, drag_autostart_length),
+    PREF_DEFAULT(MUICFG_Drag_LeftButton, TRUE, drag_left_button),
+    PREF_DEFAULT(MUICFG_Drag_MiddleButton, FALSE, drag_middle_button),
+    PREF_DEFAULT(MUICFG_Register_TruncateTitles, FALSE, register_truncate_titles),
+    PREF_DEFAULT(MUICFG_Screen_Mode, 0, screenmode),
+    PREF_DEFAULT(MUICFG_Screen_Mode_ID, -1, screenmodeid),
+    PREF_DEFAULT(MUICFG_Screen_Width, 0, screen_width),
+    PREF_DEFAULT(MUICFG_Screen_Height, 0, screen_height),
+    PREF_DEFAULT(MUICFG_PublicScreen_PopToFront, TRUE, publicscreen_pop_to_front),
+    PREF_DEFAULT(MUICFG_Iconification_ShowIcon, TRUE, iconification_show_icon),
+    PREF_DEFAULT(MUICFG_Iconification_ShowMenu, FALSE, iconification_show_menu),
+    PREF_DEFAULT(MUICFG_Iconification_OnStartup, FALSE, iconification_on_startup),
+    PREF_DEFAULT(MUICFG_Interfaces_EnableARexx, TRUE, interfaces_enable_arexx),
+    PREF_DEFAULT(MUICFG_BubbleHelp_FirstDelay, 30, bubblehelp_first_delay),
+    PREF_DEFAULT(MUICFG_BubbleHelp_NextDelay, 10, bubblehelp_next_delay),
+    {0, 0, 0, 0},
 };
+
+#undef PREF_DEFAULT
 
 /**************************************************************************
  Default string values
@@ -328,10 +340,9 @@ static inline void Configdata__SetKey(ZuneKeySpec *key, CONST_STRPTR val)
 }
 
 /* Always assign a !persistent! string stored in dataspace (or default) to ZunePrefsNew fields */
-static void Configdata_SynchronizeString(Object *obj, ULONG id)
+static void Configdata_StoreString(struct MUI_ConfigdataData *data,
+    ULONG id, CONST_STRPTR val)
 {
-    struct MUI_ConfigdataData *data = INST_DATA(OCLASS(obj), obj);
-    CONST_STRPTR val = GetConfigString(obj, id);
 
     switch (id) {
     case MUICFG_Font_Normal:
@@ -559,6 +570,13 @@ static void Configdata_SynchronizeString(Object *obj, ULONG id)
     }
 }
 
+static void Configdata_SynchronizeString(struct IClass *cl, Object *obj,
+    ULONG id)
+{
+    Configdata_StoreString(INST_DATA(cl, obj), id,
+        cfg_string(cl, obj, id));
+}
+
 /**************************************************************************
  OM_NEW
  Load global (and maybe application-specific) prefs files into the dataspace,
@@ -654,157 +672,87 @@ IPTR Configdata__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
+    /* Only bypass dispatch for the builtin object during construction.
+     * Subclasses retain their inherited lookup and semaphore methods. */
+    if (OCLASS(obj) == cl && cl->cl_Super->cl_ID &&
+        !strcmp(cl->cl_Super->cl_ID, MUIC_Dataspace))
+    {
+        DoMethod(obj, MUIM_Semaphore_ObtainShared);
+        data->init_dataspace = cl->cl_Super;
+    }
+
     /*---------- init strings ----------*/
     for (i = 0; DefStrValues[i].id; i++)
     {
-        Configdata_SynchronizeString(obj,  DefStrValues[i].id);
+        CONST_STRPTR value = cfg_find(cl, obj, DefStrValues[i].id);
+        Configdata_StoreString(data, DefStrValues[i].id,
+            value ? value : DefStrValues[i].val);
     }
 
     /*---------- images stuff ----------*/
 
-    init_imspecs(obj, data);
+    init_imspecs(cl, obj, data);
 
     /*---------- frame stuff ----------*/
 
-    init_framespecs(obj, data);
+    init_framespecs(cl, obj, data);
 
-    /*---------- system stuff ----------*/
-    data->prefs.publicscreen_pop_to_front =
-        GetConfigULong(obj, MUICFG_PublicScreen_PopToFront);
-    data->prefs.iconification_show_icon =
-        GetConfigULong(obj, MUICFG_Iconification_ShowIcon);
-    data->prefs.iconification_show_menu =
-        GetConfigULong(obj, MUICFG_Iconification_ShowMenu);
-    data->prefs.iconification_on_startup =
-        GetConfigULong(obj, MUICFG_Iconification_OnStartup);
-    data->prefs.interfaces_enable_arexx =
-        GetConfigULong(obj, MUICFG_Interfaces_EnableARexx);
-    data->prefs.bubblehelp_first_delay =
-        GetConfigULong(obj, MUICFG_BubbleHelp_FirstDelay);
-    data->prefs.bubblehelp_next_delay =
-        GetConfigULong(obj, MUICFG_BubbleHelp_NextDelay);
-
-    /*---------- window stuff ----------*/
-
-    data->prefs.window_inner_left =
-        GetConfigULong(obj, MUICFG_Window_Spacing_Left);
-    data->prefs.window_inner_right =
-        GetConfigULong(obj, MUICFG_Window_Spacing_Right);
-    data->prefs.window_inner_top =
-        GetConfigULong(obj, MUICFG_Window_Spacing_Top);
-    data->prefs.window_inner_bottom =
-        GetConfigULong(obj, MUICFG_Window_Spacing_Bottom);
-    data->prefs.window_position =
-        GetConfigULong(obj, MUICFG_Window_Positions);
-    data->prefs.window_redraw = GetConfigULong(obj, MUICFG_Window_Redraw);
-    data->prefs.window_refresh = GetConfigULong(obj, MUICFG_Window_Refresh);
-    data->prefs.screenmode = GetConfigULong(obj, MUICFG_Screen_Mode);
-    data->prefs.screenmodeid = GetConfigULong(obj, MUICFG_Screen_Mode_ID);
-    data->prefs.screen_width = GetConfigULong(obj, MUICFG_Screen_Width);
-    data->prefs.screen_height = GetConfigULong(obj, MUICFG_Screen_Height);
-    data->prefs.window_buttons = GetConfigULong(obj, MUICFG_Window_Buttons);
-
-    /*---------- group stuff ----------*/
-
-    data->prefs.group_title_position =
-        GetConfigULong(obj, MUICFG_GroupTitle_Position);
-    data->prefs.group_title_color =
-        GetConfigULong(obj, MUICFG_GroupTitle_Color);
-    data->prefs.group_hspacing = GetConfigULong(obj, MUICFG_Group_HSpacing);
-    data->prefs.group_vspacing = GetConfigULong(obj, MUICFG_Group_VSpacing);
-
-    /*---------- registers ----------*/
-
+    /* Walk defaults once, storing each value in its native field width. */
+    for (i = 0; DefULValues[i].id; i++)
+    {
+        const struct def_ulval *def = &DefULValues[i];
+        ULONG *stored = cfg_find(cl, obj, def->id);
+        ULONG value = stored ? AROS_BE2LONG(*stored) : def->val;
+        APTR target = (UBYTE *)&data->prefs + def->offset;
+        if (def->size == sizeof(UWORD))
+            *(UWORD *)target = value;
+        else
+            *(ULONG *)target = value;
+    }
     data->prefs.register_look = REGISTER_LOOK_TRADITIONAL;
-    data->prefs.register_truncate_titles =
-        GetConfigULong(obj, MUICFG_Register_TruncateTitles);
-
-    /*---------- Buttons ----------*/
-
-    data->prefs.radiobutton_hspacing =
-        GetConfigULong(obj, MUICFG_Radio_HSpacing);
-    data->prefs.radiobutton_vspacing =
-        GetConfigULong(obj, MUICFG_Radio_VSpacing);
-
-    /*---------- Cycles ----------*/
-
-    data->prefs.cycle_menu_position =
-        GetConfigULong(obj, MUICFG_Cycle_MenuCtrl_Position);
-    data->prefs.cycle_menu_min_entries =
-        GetConfigULong(obj, MUICFG_Cycle_MenuCtrl_Level);
-    data->prefs.cycle_menu_speed =
-        GetConfigULong(obj, MUICFG_Cycle_MenuCtrl_Speed);
-    data->prefs.cycle_menu_recessed_entries =
-        GetConfigULong(obj, MUICFG_Cycle_Menu_Recessed);
-
-    /*---------- Sliders ----------*/
-    /* all taken care of in frames and images */
-
-    /*---------- Scrollbars ----------*/
-
-    data->prefs.scrollbar_type = GetConfigULong(obj, MUICFG_Scrollbar_Type);
-    data->prefs.scrollbar_arrangement =
-        GetConfigULong(obj, MUICFG_Scrollbar_Arrangement);
-
-    /*---------- Lists ----------*/
-
-    data->prefs.list_linespacing =
-        GetConfigULong(obj, MUICFG_Listview_Font_Leading);
-    data->prefs.list_smoothed =
-        GetConfigULong(obj, MUICFG_Listview_Smoothed);
-    data->prefs.list_smoothval =
-        GetConfigULong(obj, MUICFG_Listview_SmoothVal);
-    data->prefs.list_multi = GetConfigULong(obj, MUICFG_Listview_Multi);
-    data->prefs.list_refresh = GetConfigULong(obj, MUICFG_Listview_Refresh);
-
-    /*---------- Navigation ----------*/
-
-    data->prefs.drag_left_button =
-        GetConfigULong(obj, MUICFG_Drag_LeftButton);
-    data->prefs.drag_middle_button =
-        GetConfigULong(obj, MUICFG_Drag_MiddleButton);
-    data->prefs.drag_autostart = GetConfigULong(obj, MUICFG_Drag_Autostart);
-    data->prefs.drag_autostart_length =
-        GetConfigULong(obj, MUICFG_Drag_Autostart_Length);
-    data->prefs.drag_look = GetConfigULong(obj, MUICFG_Dragndrop_Look);
-    data->prefs.balancing_look = GetConfigULong(obj, MUICFG_Balance_Look);
 
     /*---------- CustomFrames ----------*/
     data->prefs.customframe_config_1 =
-        GetConfigString(obj, MUICFG_CustomFrame_1);
+        cfg_find(cl, obj, MUICFG_CustomFrame_1);
     data->prefs.customframe_config_2 =
-        GetConfigString(obj, MUICFG_CustomFrame_2);
+        cfg_find(cl, obj, MUICFG_CustomFrame_2);
     data->prefs.customframe_config_3 =
-        GetConfigString(obj, MUICFG_CustomFrame_3);
+        cfg_find(cl, obj, MUICFG_CustomFrame_3);
     data->prefs.customframe_config_4 =
-        GetConfigString(obj, MUICFG_CustomFrame_4);
+        cfg_find(cl, obj, MUICFG_CustomFrame_4);
     data->prefs.customframe_config_5 =
-        GetConfigString(obj, MUICFG_CustomFrame_5);
+        cfg_find(cl, obj, MUICFG_CustomFrame_5);
     data->prefs.customframe_config_6 =
-        GetConfigString(obj, MUICFG_CustomFrame_6);
+        cfg_find(cl, obj, MUICFG_CustomFrame_6);
     data->prefs.customframe_config_7 =
-        GetConfigString(obj, MUICFG_CustomFrame_7);
+        cfg_find(cl, obj, MUICFG_CustomFrame_7);
     data->prefs.customframe_config_8 =
-        GetConfigString(obj, MUICFG_CustomFrame_8);
+        cfg_find(cl, obj, MUICFG_CustomFrame_8);
     data->prefs.customframe_config_9 =
-        GetConfigString(obj, MUICFG_CustomFrame_9);
+        cfg_find(cl, obj, MUICFG_CustomFrame_9);
     data->prefs.customframe_config_10 =
-        GetConfigString(obj, MUICFG_CustomFrame_10);
+        cfg_find(cl, obj, MUICFG_CustomFrame_10);
     data->prefs.customframe_config_11 =
-        GetConfigString(obj, MUICFG_CustomFrame_11);
+        cfg_find(cl, obj, MUICFG_CustomFrame_11);
     data->prefs.customframe_config_12 =
-        GetConfigString(obj, MUICFG_CustomFrame_12);
+        cfg_find(cl, obj, MUICFG_CustomFrame_12);
     data->prefs.customframe_config_13 =
-        GetConfigString(obj, MUICFG_CustomFrame_13);
+        cfg_find(cl, obj, MUICFG_CustomFrame_13);
     data->prefs.customframe_config_14 =
-        GetConfigString(obj, MUICFG_CustomFrame_14);
+        cfg_find(cl, obj, MUICFG_CustomFrame_14);
     data->prefs.customframe_config_15 =
-        GetConfigString(obj, MUICFG_CustomFrame_15);
+        cfg_find(cl, obj, MUICFG_CustomFrame_15);
     data->prefs.customframe_config_16 =
-        GetConfigString(obj, MUICFG_CustomFrame_16);
+        cfg_find(cl, obj, MUICFG_CustomFrame_16);
 
     /*---------- Special ----------*/
     /* all taken care of in frames and images */
+
+    if (data->init_dataspace)
+    {
+        data->init_dataspace = NULL;
+        DoMethod(obj, MUIM_Semaphore_Release);
+    }
 
     return (IPTR) obj;
 }
@@ -1119,14 +1067,14 @@ IPTR Configdata__MUIM_SetString(struct IClass *cl, Object *obj,
             if (!strcmp(DefStrValues[i].val, msg->string))
             {
                 DoMethod(obj, MUIM_Dataspace_Remove, msg->id);
-                Configdata_SynchronizeString(obj, msg->id);
+                Configdata_SynchronizeString(cl, obj, msg->id);
                 return 0;
             }
     }
 
     DoMethod(obj, MUIM_Dataspace_Add, (IPTR) msg->string,
         strlen(msg->string) + 1, msg->id);
-    Configdata_SynchronizeString(obj, msg->id);
+    Configdata_SynchronizeString(cl, obj, msg->id);
 
     return 0;
 }
