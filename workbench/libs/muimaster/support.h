@@ -78,6 +78,8 @@ void ZuneResetWindowPointer(Object *window);
 IPTR DoLayoutMethod(Object *obj);
 IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
     ULONG flags);
+IPTR ZuneLayoutObject(Object *obj, LONG left, LONG top, LONG width,
+    LONG height, ULONG flags);
 
 /* returns next node of this node */
 void *Node_Next(APTR node);
