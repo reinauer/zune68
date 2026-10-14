@@ -1,0 +1,1433 @@
+=== baseline/0-zune68-plain.txt ===
+profile library=21.227 eclock=709379 trace=0
+timing create median=88387 min=88158 max=89032 n=15
+timing dispose median=18954 min=18681 max=22158 n=15
+list width=106 height=270 visible=30 entries=200
+timing active-scroll50 median=1625234 min=1624619 max=1627908 n=15
+timing active-visible50 median=258867 min=258591 max=261273 n=15
+timing active-closed50 median=58366 min=57749 max=60163 n=15
+rc=0
+ALLDONE
+
+=== baseline/0-zune68-trace.txt ===
+profile library=21.227 eclock=709379 trace=1
+trace phase=create overflow=0 underflow=0
+stat Text.mui method=00000103 calls=3 inclusive=1074 exclusive=261
+stat Text.mui method=00000101 calls=20 inclusive=13197 exclusive=3859
+stat Semaphore.mui method=80421f2d calls=160 inclusive=6405 exclusive=6405
+stat Text.mui method=00000105 calls=20 inclusive=6779 exclusive=1466
+stat String.mui method=90421d00 calls=1 inclusive=323 exclusive=75
+stat Text.mui method=90421d00 calls=20 inclusive=6462 exclusive=1483
+stat String.mui method=00000101 calls=1 inclusive=701 exclusive=143
+stat String.mui method=00000105 calls=1 inclusive=338 exclusive=73
+stat Cycle.mui method=00000109 calls=2 inclusive=2501 exclusive=139
+stat Cycle.mui method=00000105 calls=1 inclusive=478 exclusive=69
+stat Cycle.mui method=00000104 calls=4 inclusive=1371 exclusive=284
+stat Cycle.mui method=00000101 calls=1 inclusive=16057 exclusive=951
+stat Radio.mui method=90421d00 calls=1 inclusive=5206 exclusive=70
+stat Cycle.mui method=90421d00 calls=1 inclusive=2966 exclusive=69
+stat Radio.mui method=00000101 calls=1 inclusive=24956 exclusive=1365
+stat Radio.mui method=00000104 calls=4 inclusive=1369 exclusive=284
+stat Radio.mui method=00000105 calls=1 inclusive=478 exclusive=70
+stat Radio.mui method=00000109 calls=3 inclusive=3755 exclusive=210
+stat Image.mui method=00000105 calls=9 inclusive=3015 exclusive=633
+stat Image.mui method=00000104 calls=4 inclusive=1376 exclusive=288
+stat Image.mui method=00000103 calls=6 inclusive=2197 exclusive=494
+stat Image.mui method=00000101 calls=9 inclusive=7246 exclusive=2266
+stat Numeric.mui method=90421d00 calls=2 inclusive=637 exclusive=140
+stat Image.mui method=90421d00 calls=9 inclusive=2873 exclusive=631
+stat Numeric.mui method=00000105 calls=2 inclusive=714 exclusive=138
+stat Numeric.mui method=00000101 calls=2 inclusive=1232 exclusive=201
+stat Slider.mui method=90421d00 calls=2 inclusive=925 exclusive=142
+stat Slider.mui method=00000101 calls=2 inclusive=1569 exclusive=190
+stat Slider.mui method=00000105 calls=2 inclusive=1001 exclusive=142
+stat Notify.mui method=00000101 calls=76 inclusive=11669 exclusive=11669
+stat Notify.mui method=00000103 calls=20 inclusive=1059 exclusive=1059
+stat Notify.mui method=00000104 calls=6 inclusive=323 exclusive=323
+stat Notify.mui method=00000105 calls=55 inclusive=2860 exclusive=2860
+stat Family.mui method=00000104 calls=27 inclusive=1138 exclusive=1138
+stat Notify.mui method=90421d00 calls=56 inclusive=2025 exclusive=2025
+stat Family.mui method=00000101 calls=19 inclusive=5121 exclusive=1618
+stat Family.mui method=00000109 calls=55 inclusive=28117 exclusive=4410
+stat Application.mui method=00000109 calls=1 inclusive=29182 exclusive=116
+stat Application.mui method=00000101 calls=1 inclusive=236235 exclusive=4018
+stat Application.mui method=00000104 calls=1 inclusive=46 exclusive=46
+stat Window.mui method=90421d00 calls=1 inclusive=28589 exclusive=115
+stat Window.mui method=00000105 calls=1 inclusive=192 exclusive=73
+stat Window.mui method=00000103 calls=2 inclusive=420 exclusive=188
+stat Window.mui method=00000101 calls=1 inclusive=1030 exclusive=247
+stat Area.mui method=00000104 calls=79 inclusive=4555 exclusive=3824
+stat Area.mui method=00000105 calls=54 inclusive=10718 exclusive=4117
+stat Area.mui method=00000101 calls=55 inclusive=21954 exclusive=9331
+stat Area.mui method=00000103 calls=18 inclusive=3761 exclusive=1574
+stat Rectangle.mui method=90421d00 calls=2 inclusive=636 exclusive=140
+stat Configdata.mui method=80421f2d calls=160 inclusive=54724 exclusive=11896
+stat Area.mui method=90421d00 calls=55 inclusive=9899 exclusive=4168
+stat Rectangle.mui method=00000101 calls=2 inclusive=965 exclusive=190
+stat Rectangle.mui method=00000103 calls=1 inclusive=338 exclusive=69
+stat Rectangle.mui method=00000105 calls=2 inclusive=665 exclusive=138
+stat Group.mui method=00000109 calls=54 inclusive=56073 exclusive=7659
+stat Group.mui method=00000104 calls=77 inclusive=15848 exclusive=6617
+stat Group.mui method=00000105 calls=17 inclusive=5937 exclusive=1266
+stat Group.mui method=00000103 calls=5 inclusive=13830 exclusive=1432
+stat Group.mui method=00000101 calls=18 inclusive=73705 exclusive=6472
+stat Dataspace.mui method=80421f2d calls=160 inclusive=30642 exclusive=12041
+stat Group.mui method=90421d00 calls=18 inclusive=100212 exclusive=4949
+stat Semaphore.mui method=00000101 calls=1 inclusive=148 exclusive=148
+stat List.mui method=00000104 calls=10 inclusive=1710 exclusive=620
+stat List.mui method=00000105 calls=1 inclusive=489 exclusive=77
+stat List.mui method=00000103 calls=1 inclusive=5842 exclusive=93
+stat List.mui method=00000101 calls=1 inclusive=44410 exclusive=1299
+stat Listview.mui method=90421d00 calls=1 inclusive=5914 exclusive=71
+stat List.mui method=00000109 calls=3 inclusive=4103 exclusive=228
+stat Listview.mui method=00000109 calls=1 inclusive=1418 exclusive=72
+stat List.mui method=90421d00 calls=1 inclusive=5171 exclusive=78
+stat Listview.mui method=00000101 calls=1 inclusive=3143 exclusive=107
+stat Listview.mui method=00000105 calls=1 inclusive=480 exclusive=72
+stat Listview.mui method=00000104 calls=2 inclusive=698 exclusive=153
+stat Prop.mui method=00000101 calls=2 inclusive=1228 exclusive=219
+stat Prop.mui method=00000103 calls=3 inclusive=1155 exclusive=266
+stat Prop.mui method=00000104 calls=2 inclusive=82 exclusive=82
+stat Prop.mui method=00000105 calls=2 inclusive=672 exclusive=141
+stat Scrollbar.mui method=90421d00 calls=2 inclusive=3866 exclusive=140
+stat Scrollbar.mui method=00000105 calls=2 inclusive=957 exclusive=138
+stat Scrollbar.mui method=00000104 calls=10 inclusive=3736 exclusive=709
+stat Prop.mui method=90421d00 calls=2 inclusive=638 exclusive=140
+stat Scrollbar.mui method=00000101 calls=2 inclusive=20156 exclusive=1267
+stat Scrollbar.mui method=00000103 calls=3 inclusive=6654 exclusive=250
+stat Scrollbar.mui method=00000109 calls=6 inclusive=7716 exclusive=613
+stat Gauge.mui method=00000101 calls=1 inclusive=485 exclusive=97
+stat Gauge.mui method=00000105 calls=1 inclusive=338 exclusive=71
+stat Configdata.mui method=00000104 calls=1 inclusive=1397 exclusive=77
+stat Gauge.mui method=90421d00 calls=1 inclusive=322 exclusive=70
+stat Configdata.mui method=00000101 calls=1 inclusive=200602 exclusive=25584
+stat Dataspace.mui method=00000101 calls=1 inclusive=336 exclusive=112
+stat Image.mui method=8042c9cb calls=7 inclusive=2971 exclusive=490
+stat Configdata.mui method=8042ea02 calls=160 inclusive=56435 exclusive=11890
+stat Cycle.mui method=8042c9cb calls=1 inclusive=1003 exclusive=70
+stat Dataspace.mui method=8042ea02 calls=160 inclusive=32280 exclusive=12880
+stat Text.mui method=8042c9cb calls=3 inclusive=1276 exclusive=221
+stat Application.mui method=8042f099 calls=1 inclusive=46 exclusive=46
+stat Semaphore.mui method=8042ea02 calls=160 inclusive=6681 exclusive=6681
+stat Group.mui method=8042c9cb calls=6 inclusive=7470 exclusive=1054
+stat Area.mui method=8042c9cb calls=16 inclusive=4510 exclusive=1237
+stat Configdata.mui method=8042832c calls=1 inclusive=1095 exclusive=71
+stat Dataspace.mui method=8042832c calls=160 inclusive=155158 exclusive=18651
+stat Notify.mui method=8042c9cb calls=16 inclusive=2184 exclusive=2184
+stat Scrollbar.mui method=8042c9cb calls=2 inclusive=5149 exclusive=138
+stat Configdata.mui method=90420907 calls=4 inclusive=7730 exclusive=7730
+stat Configdata.mui method=9042092a calls=1 inclusive=1245 exclusive=73
+stat Prop.mui method=8042c9cb calls=2 inclusive=865 exclusive=143
+stat List.mui method=8042c9cb calls=3 inclusive=2176 exclusive=231
+trace phase=dispose overflow=0 underflow=0
+stat Text.mui method=00000102 calls=20 inclusive=8884 exclusive=2272
+stat String.mui method=90421d01 calls=2 inclusive=642 exclusive=150
+stat Text.mui method=90421d01 calls=40 inclusive=13793 exclusive=2966
+stat String.mui method=00000102 calls=1 inclusive=405 exclusive=100
+stat Cycle.mui method=00000102 calls=1 inclusive=3969 exclusive=69
+stat Radio.mui method=90421d01 calls=2 inclusive=10167 exclusive=140
+stat Cycle.mui method=90421d01 calls=2 inclusive=5897 exclusive=138
+stat Radio.mui method=00000102 calls=1 inclusive=7367 exclusive=93
+stat Image.mui method=00000102 calls=9 inclusive=4298 exclusive=879
+stat Numeric.mui method=90421d01 calls=4 inclusive=1267 exclusive=284
+stat Image.mui method=90421d01 calls=18 inclusive=5690 exclusive=1271
+stat Numeric.mui method=00000102 calls=2 inclusive=810 exclusive=139
+stat Slider.mui method=90421d01 calls=4 inclusive=1839 exclusive=284
+stat Slider.mui method=00000102 calls=2 inclusive=1104 exclusive=150
+stat Notify.mui method=00000102 calls=76 inclusive=9081 exclusive=9081
+stat Notify.mui method=00000106 calls=1 inclusive=53 exclusive=53
+stat Notify.mui method=90421d01 calls=112 inclusive=4742 exclusive=4742
+stat Family.mui method=00000104 calls=38 inclusive=1597 exclusive=1597
+stat Family.mui method=00000102 calls=19 inclusive=129303 exclusive=4161
+stat Family.mui method=0000010a calls=1 inclusive=28860 exclusive=114
+stat Application.mui method=0000010a calls=1 inclusive=58102 exclusive=115
+stat Application.mui method=00000102 calls=1 inclusive=101671 exclusive=1606
+stat Window.mui method=90421d01 calls=2 inclusive=57406 exclusive=231
+stat Window.mui method=00000106 calls=1 inclusive=194 exclusive=73
+stat Window.mui method=00000102 calls=1 inclusive=39369 exclusive=175
+stat Area.mui method=00000102 calls=55 inclusive=15305 exclusive=4821
+stat Rectangle.mui method=90421d01 calls=4 inclusive=1259 exclusive=282
+stat Area.mui method=90421d01 calls=110 inclusive=20417 exclusive=8277
+stat Rectangle.mui method=00000102 calls=2 inclusive=772 exclusive=148
+stat Group.mui method=00000102 calls=18 inclusive=139039 exclusive=2445
+stat Group.mui method=90421d01 calls=36 inclusive=199955 exclusive=9064
+stat Semaphore.mui method=00000102 calls=1 inclusive=94 exclusive=94
+stat List.mui method=00000102 calls=1 inclusive=7778 exclusive=209
+stat Listview.mui method=90421d01 calls=2 inclusive=11782 exclusive=143
+stat List.mui method=90421d01 calls=2 inclusive=10298 exclusive=154
+stat Listview.mui method=00000102 calls=1 inclusive=8813 exclusive=70
+stat Prop.mui method=00000102 calls=2 inclusive=983 exclusive=172
+stat Scrollbar.mui method=90421d01 calls=4 inclusive=7718 exclusive=276
+stat Prop.mui method=90421d01 calls=4 inclusive=1317 exclusive=295
+stat Scrollbar.mui method=00000102 calls=2 inclusive=5614 exclusive=140
+stat Gauge.mui method=00000102 calls=1 inclusive=388 exclusive=74
+stat Gauge.mui method=90421d01 calls=2 inclusive=635 exclusive=140
+stat Configdata.mui method=00000102 calls=1 inclusive=1417 exclusive=934
+stat Application.mui method=8042e7af calls=1 inclusive=42 exclusive=42
+stat Dataspace.mui method=00000102 calls=1 inclusive=296 exclusive=125
+timing create median=389461 min=389461 max=389461 n=1
+timing dispose median=101785 min=101785 max=101785 n=1
+list width=106 height=270 visible=30 entries=200
+trace phase=active-scroll50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=692 inclusive=256084 exclusive=57345
+stat Notify.mui method=00000103 calls=1607 inclusive=459315 exclusive=97149
+stat List.mui method=80426f3f calls=57 inclusive=1542260 exclusive=1186290
+stat Family.mui method=00000104 calls=535 inclusive=22509 exclusive=22509
+stat Area.mui method=00000103 calls=1607 inclusive=716972 exclusive=145654
+stat Rectangle.mui method=00000103 calls=132 inclusive=46376 exclusive=9117
+stat Group.mui method=00000103 calls=437 inclusive=1745699 exclusive=131099
+stat List.mui method=90421404 calls=98 inclusive=3828 exclusive=3828
+stat List.mui method=00000103 calls=132 inclusive=3567993 exclusive=25651
+stat Prop.mui method=00000103 calls=346 inclusive=257728 exclusive=152738
+stat Scrollbar.mui method=00000103 calls=305 inclusive=675018 exclusive=25196
+stat Area.mui method=80426f3f calls=57 inclusive=2684 exclusive=2684
+stat Group.mui method=80426f3f calls=57 inclusive=24256 exclusive=11171
+stat Group.mui method=804238ca calls=49 inclusive=162875 exclusive=4146
+stat Area.mui method=804238ca calls=49 inclusive=155292 exclusive=155292
+stat List.mui method=8042baab calls=49 inclusive=2480 exclusive=2480
+stat Image.mui method=8042216f calls=82 inclusive=66005 exclusive=5726
+stat Notify.mui method=8042216f calls=164 inclusive=285698 exclusive=13338
+stat List.mui method=80425377 calls=1246 inclusive=59087 exclusive=59087
+stat Group.mui method=8042216f calls=41 inclusive=353376 exclusive=10272
+stat Area.mui method=8042216f calls=164 inclusive=309544 exclusive=12818
+stat List.mui method=804238ca calls=49 inclusive=170043 exclusive=3732
+stat Prop.mui method=8042216f calls=41 inclusive=158969 exclusive=2869
+stat Scrollbar.mui method=8042216f calls=41 inclusive=359091 exclusive=2834
+timing active-scroll50 median=2727801 min=2727801 max=2727801 n=1
+trace phase=active-visible50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=200 inclusive=74867 exclusive=16629
+stat Notify.mui method=00000103 calls=500 inclusive=29596 exclusive=29596
+stat List.mui method=80426f3f calls=98 inclusive=274851 exclusive=177176
+stat Family.mui method=00000104 calls=248 inclusive=10954 exclusive=10954
+stat Area.mui method=00000103 calls=500 inclusive=109550 exclusive=45713
+stat Rectangle.mui method=00000103 calls=50 inclusive=18161 exclusive=3460
+stat Group.mui method=00000103 calls=150 inclusive=486892 exclusive=43184
+stat List.mui method=90421404 calls=98 inclusive=3999 exclusive=3999
+stat List.mui method=00000103 calls=50 inclusive=604128 exclusive=17634
+stat Prop.mui method=00000103 calls=100 inclusive=38042 exclusive=8857
+stat Scrollbar.mui method=00000103 calls=100 inclusive=219171 exclusive=8176
+stat Area.mui method=80426f3f calls=98 inclusive=4616 exclusive=4616
+stat Group.mui method=80426f3f calls=98 inclusive=42612 exclusive=19088
+stat Group.mui method=804238ca calls=49 inclusive=24956 exclusive=3981
+stat Area.mui method=804238ca calls=49 inclusive=17536 exclusive=17536
+stat List.mui method=8042baab calls=49 inclusive=2315 exclusive=2315
+stat List.mui method=80425377 calls=98 inclusive=4535 exclusive=4535
+stat List.mui method=804238ca calls=49 inclusive=32290 exclusive=3899
+timing active-visible50 median=608812 min=608812 max=608812 n=1
+trace phase=active-closed50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=200 inclusive=75830 exclusive=16686
+stat Notify.mui method=00000103 calls=500 inclusive=30562 exclusive=30562
+stat Family.mui method=00000104 calls=150 inclusive=6474 exclusive=6474
+stat Area.mui method=00000103 calls=500 inclusive=110643 exclusive=44486
+stat Rectangle.mui method=00000103 calls=50 inclusive=18469 exclusive=3452
+stat Group.mui method=00000103 calls=150 inclusive=487492 exclusive=43239
+stat List.mui method=90421404 calls=98 inclusive=3833 exclusive=3833
+stat List.mui method=00000103 calls=50 inclusive=309329 exclusive=9718
+stat Prop.mui method=00000103 calls=100 inclusive=37826 exclusive=8641
+stat Scrollbar.mui method=00000103 calls=100 inclusive=219960 exclusive=8978
+timing active-closed50 median=313964 min=313964 max=313964 n=1
+rc=0
+ALLDONE
+
+=== baseline/0-mui38-plain.txt ===
+profile library=19.35 eclock=709379 trace=0
+timing create median=52708 min=52303 max=53311 n=15
+timing dispose median=21932 min=21568 max=25108 n=15
+list width=92 height=285 visible=31 entries=200
+timing active-scroll50 median=751645 min=748572 max=754305 n=15
+timing active-visible50 median=158686 min=158222 max=161080 n=15
+timing active-closed50 median=8220 min=8052 max=8893 n=15
+rc=0
+ALLDONE
+
+=== baseline/0-mui38-trace.txt ===
+profile library=19.35 eclock=709379 trace=1
+trace phase=create overflow=0 underflow=0
+stat Text.mui method=00000103 calls=15 inclusive=6326 exclusive=1925
+stat Text.mui method=00000101 calls=18 inclusive=6999 exclusive=6060
+stat Semaphore.mui method=80421f2d calls=1 inclusive=41 exclusive=41
+stat String.mui method=00000101 calls=1 inclusive=2504 exclusive=1948
+stat String.mui method=00000103 calls=1 inclusive=277 exclusive=114
+stat Cycle.mui method=00000101 calls=1 inclusive=3687 exclusive=285
+stat Cycle.mui method=00000103 calls=1 inclusive=1494 exclusive=895
+stat Group.mui method=8042549a calls=2 inclusive=8577 exclusive=170
+stat Radio.mui method=00000103 calls=3 inclusive=21784 exclusive=336
+stat Radio.mui method=00000101 calls=1 inclusive=28082 exclusive=1526
+stat Image.mui method=00000104 calls=2 inclusive=390 exclusive=132
+stat Image.mui method=00000103 calls=11 inclusive=5881 exclusive=1287
+stat Image.mui method=00000101 calls=7 inclusive=1519 exclusive=1519
+stat Numeric.mui method=00000101 calls=2 inclusive=671 exclusive=200
+stat Notify.mui method=8042549a calls=2 inclusive=8274 exclusive=148
+stat Slider.mui method=00000101 calls=2 inclusive=1006 exclusive=187
+stat Notify.mui method=00000101 calls=2 inclusive=743 exclusive=743
+stat Notify.mui method=00000105 calls=54 inclusive=2537 exclusive=2537
+stat Notify.mui method=8042d532 calls=1 inclusive=37 exclusive=37
+stat Application.mui method=00000109 calls=1 inclusive=1088 exclusive=112
+stat Application.mui method=00000101 calls=1 inclusive=135836 exclusive=7292
+stat Application.mui method=00000104 calls=1 inclusive=43 exclusive=43
+stat Application.mui method=00000105 calls=1 inclusive=189 exclusive=74
+stat Window.mui method=00000105 calls=1 inclusive=188 exclusive=73
+stat Window.mui method=00000101 calls=1 inclusive=396 exclusive=202
+stat Window.mui method=8042d532 calls=1 inclusive=650 exclusive=158
+stat Area.mui method=00000104 calls=2 inclusive=118 exclusive=118
+stat Area.mui method=00000105 calls=52 inclusive=9732 exclusive=3803
+stat Area.mui method=00000101 calls=6 inclusive=955 exclusive=955
+stat Area.mui method=00000103 calls=11 inclusive=1158 exclusive=1158
+stat Rectangle.mui method=00000101 calls=4 inclusive=723 exclusive=723
+stat Rectangle.mui method=00000103 calls=9 inclusive=2172 exclusive=602
+stat Group.mui method=8042d532 calls=1 inclusive=207 exclusive=207
+stat Radio.mui method=8042549a calls=2 inclusive=8849 exclusive=132
+stat Group.mui method=00000109 calls=3 inclusive=1006 exclusive=240
+stat Group.mui method=00000104 calls=1 inclusive=76 exclusive=76
+stat Group.mui method=00000103 calls=22 inclusive=28938 exclusive=4465
+stat Semaphore.mui method=804276f0 calls=1 inclusive=40 exclusive=40
+stat Group.mui method=00000101 calls=18 inclusive=18916 exclusive=6296
+stat Semaphore.mui method=00000101 calls=2 inclusive=195 exclusive=195
+stat Semaphore.mui method=00000103 calls=1 inclusive=42 exclusive=42
+stat Application.mui method=80425e4b calls=1 inclusive=185 exclusive=75
+stat Notify.mui method=80425e4b calls=1 inclusive=44 exclusive=44
+stat List.mui method=00000101 calls=1 inclusive=1148 exclusive=915
+stat Listview.mui method=00000109 calls=1 inclusive=474 exclusive=69
+stat Listview.mui method=00000101 calls=1 inclusive=9056 exclusive=414
+stat Dataspace.mui method=80420dfb calls=2 inclusive=254 exclusive=254
+stat Prop.mui method=00000101 calls=1 inclusive=825 exclusive=172
+stat Prop.mui method=00000103 calls=1 inclusive=346 exclusive=143
+stat Prop.mui method=00000104 calls=1 inclusive=43 exclusive=43
+stat Configdata.mui method=80420dfb calls=1 inclusive=269 exclusive=66
+stat Scrollbar.mui method=00000104 calls=1 inclusive=212 exclusive=65
+stat Scrollbar.mui method=00000101 calls=1 inclusive=4561 exclusive=459
+stat Scrollbar.mui method=00000109 calls=2 inclusive=941 exclusive=130
+stat Gauge.mui method=00000101 calls=1 inclusive=336 exclusive=99
+stat Configdata.mui method=00000103 calls=1 inclusive=359 exclusive=81
+stat Configdata.mui method=00000101 calls=1 inclusive=925 exclusive=134
+stat Dataspace.mui method=00000101 calls=2 inclusive=558 exclusive=212
+stat Dataspace.mui method=00000103 calls=1 inclusive=202 exclusive=84
+stat Application.mui method=8042c862 calls=1 inclusive=124531 exclusive=11599
+stat Image.mui method=8042c9cb calls=5 inclusive=1976 exclusive=330
+stat Text.mui method=8042c9cb calls=3 inclusive=1189 exclusive=198
+stat Configdata.mui method=8042539a calls=150 inclusive=100672 exclusive=21519
+stat Group.mui method=8042c9cb calls=1 inclusive=1252 exclusive=310
+stat Area.mui method=8042c9cb calls=11 inclusive=2816 exclusive=804
+stat Configdata.mui method=8042832c calls=300 inclusive=55206 exclusive=20010
+stat Dataspace.mui method=8042832c calls=300 inclusive=12063 exclusive=12063
+stat Notify.mui method=8042c9cb calls=11 inclusive=1275 exclusive=1275
+stat Scrollbar.mui method=8042c9cb calls=1 inclusive=1387 exclusive=66
+stat List.mui method=8042c9cb calls=3 inclusive=1158 exclusive=220
+trace phase=dispose overflow=0 underflow=0
+stat Text.mui method=00000102 calls=18 inclusive=1650 exclusive=1650
+stat Semaphore.mui method=80421f2d calls=1 inclusive=41 exclusive=41
+stat Configdata.mui method=80425e8e calls=1 inclusive=1298 exclusive=66
+stat String.mui method=00000102 calls=1 inclusive=344 exclusive=198
+stat Dataspace.mui method=80425e8e calls=2 inclusive=2310 exclusive=2310
+stat Cycle.mui method=00000102 calls=1 inclusive=785 exclusive=70
+stat Radio.mui method=00000102 calls=1 inclusive=3690 exclusive=169
+stat Image.mui method=00000102 calls=7 inclusive=847 exclusive=847
+stat Numeric.mui method=00000102 calls=2 inclusive=426 exclusive=136
+stat Slider.mui method=00000102 calls=2 inclusive=713 exclusive=142
+stat Notify.mui method=00000102 calls=2 inclusive=185 exclusive=185
+stat Notify.mui method=00000103 calls=1 inclusive=49 exclusive=49
+stat Notify.mui method=00000106 calls=2 inclusive=96 exclusive=96
+stat Application.mui method=0000010a calls=1 inclusive=670 exclusive=112
+stat Application.mui method=00000102 calls=1 inclusive=84960 exclusive=1129
+stat Application.mui method=80429d2f calls=1 inclusive=42 exclusive=42
+stat Application.mui method=00000106 calls=1 inclusive=189 exclusive=74
+stat Window.mui method=00000106 calls=1 inclusive=189 exclusive=73
+stat Window.mui method=00000104 calls=1 inclusive=47 exclusive=47
+stat Window.mui method=00000103 calls=1 inclusive=231 exclusive=114
+stat Window.mui method=00000102 calls=1 inclusive=13601 exclusive=119
+stat Area.mui method=00000102 calls=5 inclusive=434 exclusive=434
+stat Rectangle.mui method=00000102 calls=4 inclusive=294 exclusive=294
+stat Group.mui method=00000102 calls=18 inclusive=44668 exclusive=4094
+stat Semaphore.mui method=804276f0 calls=1 inclusive=40 exclusive=40
+stat Semaphore.mui method=00000101 calls=2 inclusive=195 exclusive=195
+stat Semaphore.mui method=00000103 calls=1 inclusive=42 exclusive=42
+stat Semaphore.mui method=00000102 calls=4 inclusive=311 exclusive=311
+stat List.mui method=00000102 calls=1 inclusive=365 exclusive=365
+stat Listview.mui method=00000102 calls=1 inclusive=1969 exclusive=70
+stat Dataspace.mui method=80420dfb calls=1 inclusive=127 exclusive=127
+stat Prop.mui method=00000102 calls=1 inclusive=279 exclusive=72
+stat Configdata.mui method=80420dfb calls=1 inclusive=269 exclusive=66
+stat Scrollbar.mui method=00000102 calls=1 inclusive=1138 exclusive=65
+stat Gauge.mui method=00000102 calls=1 inclusive=218 exclusive=74
+stat Configdata.mui method=00000103 calls=1 inclusive=360 exclusive=81
+stat Configdata.mui method=00000102 calls=2 inclusive=738 exclusive=132
+stat Configdata.mui method=00000101 calls=1 inclusive=922 exclusive=133
+stat Dataspace.mui method=00000101 calls=2 inclusive=555 exclusive=208
+stat Dataspace.mui method=00000102 calls=4 inclusive=906 exclusive=292
+stat Dataspace.mui method=00000103 calls=1 inclusive=203 exclusive=84
+stat Application.mui method=8042df8a calls=1 inclusive=67696 exclusive=62643
+timing create median=202521 min=202521 max=202521 n=1
+timing dispose median=85241 min=85241 max=85241 n=1
+list width=92 height=285 visible=31 entries=200
+trace phase=active-scroll50 overflow=0 underflow=0
+stat Area.mui method=8042549a calls=41 inclusive=17564 exclusive=3001
+stat Group.mui method=8042549a calls=41 inclusive=235496 exclusive=3496
+stat Image.mui method=00000103 calls=82 inclusive=10417 exclusive=10417
+stat Notify.mui method=8042549a calls=82 inclusive=240693 exclusive=6240
+stat List.mui method=80426f3f calls=90 inclusive=566687 exclusive=566687
+stat Area.mui method=00000103 calls=41 inclusive=32665 exclusive=6193
+stat Group.mui method=00000103 calls=41 inclusive=217195 exclusive=11376
+stat List.mui method=8042549a calls=41 inclusive=23392 exclusive=2995
+stat Scrollbar.mui method=8042549a calls=41 inclusive=241049 exclusive=2678
+stat List.mui method=00000103 calls=132 inclusive=1605603 exclusive=27835
+stat Prop.mui method=00000103 calls=41 inclusive=186211 exclusive=150624
+stat Scrollbar.mui method=00000103 calls=41 inclusive=222702 exclusive=2628
+stat List.mui method=8042baab calls=49 inclusive=756412 exclusive=4363
+timing active-scroll50 median=856139 min=856139 max=856139 n=1
+trace phase=active-visible50 overflow=0 underflow=0
+stat List.mui method=80426f3f calls=49 inclusive=151151 exclusive=151151
+stat List.mui method=00000103 calls=50 inclusive=173443 exclusive=12330
+stat List.mui method=8042baab calls=49 inclusive=2599 exclusive=2599
+timing active-visible50 median=178131 min=178131 max=178131 n=1
+trace phase=active-closed50 overflow=0 underflow=0
+stat List.mui method=00000103 calls=50 inclusive=16066 exclusive=10370
+stat List.mui method=8042baab calls=49 inclusive=2013 exclusive=2013
+timing active-closed50 median=20748 min=20748 max=20748 n=1
+rc=0
+ALLDONE
+
+=== baseline/1-mui38-plain.txt ===
+profile library=19.35 eclock=709379 trace=0
+timing create median=52901 min=51744 max=56056 n=15
+timing dispose median=21943 min=21731 max=22740 n=15
+list width=92 height=285 visible=31 entries=200
+timing active-scroll50 median=751815 min=749767 max=754415 n=15
+timing active-visible50 median=158794 min=157996 max=161092 n=15
+timing active-closed50 median=8220 min=8052 max=8894 n=15
+rc=0
+ALLDONE
+
+=== baseline/1-mui38-trace.txt ===
+profile library=19.35 eclock=709379 trace=1
+trace phase=create overflow=0 underflow=0
+stat Text.mui method=00000103 calls=15 inclusive=6276 exclusive=1925
+stat Text.mui method=00000101 calls=18 inclusive=6992 exclusive=6054
+stat Semaphore.mui method=80421f2d calls=1 inclusive=40 exclusive=40
+stat String.mui method=00000101 calls=1 inclusive=2484 exclusive=1933
+stat String.mui method=00000103 calls=1 inclusive=274 exclusive=112
+stat Cycle.mui method=00000101 calls=1 inclusive=2914 exclusive=281
+stat Cycle.mui method=00000103 calls=1 inclusive=682 exclusive=88
+stat Group.mui method=8042549a calls=2 inclusive=8286 exclusive=169
+stat Radio.mui method=00000103 calls=3 inclusive=21963 exclusive=333
+stat Radio.mui method=00000101 calls=1 inclusive=28507 exclusive=1507
+stat Image.mui method=00000104 calls=2 inclusive=386 exclusive=131
+stat Image.mui method=00000103 calls=11 inclusive=5630 exclusive=1283
+stat Image.mui method=00000101 calls=7 inclusive=1517 exclusive=1517
+stat Numeric.mui method=00000101 calls=2 inclusive=666 exclusive=197
+stat Notify.mui method=8042549a calls=2 inclusive=7985 exclusive=145
+stat Slider.mui method=00000101 calls=2 inclusive=996 exclusive=182
+stat Notify.mui method=00000101 calls=2 inclusive=739 exclusive=739
+stat Notify.mui method=00000105 calls=54 inclusive=2553 exclusive=2553
+stat Notify.mui method=8042d532 calls=1 inclusive=36 exclusive=36
+stat Application.mui method=00000109 calls=1 inclusive=1080 exclusive=113
+stat Application.mui method=00000101 calls=1 inclusive=134150 exclusive=7329
+stat Application.mui method=00000104 calls=1 inclusive=42 exclusive=42
+stat Application.mui method=00000105 calls=1 inclusive=187 exclusive=73
+stat Window.mui method=00000105 calls=1 inclusive=185 exclusive=72
+stat Window.mui method=00000101 calls=1 inclusive=392 exclusive=199
+stat Window.mui method=8042d532 calls=1 inclusive=645 exclusive=155
+stat Area.mui method=00000104 calls=2 inclusive=120 exclusive=120
+stat Area.mui method=00000105 calls=52 inclusive=10014 exclusive=3943
+stat Area.mui method=00000101 calls=6 inclusive=952 exclusive=952
+stat Area.mui method=00000103 calls=11 inclusive=952 exclusive=952
+stat Rectangle.mui method=00000101 calls=4 inclusive=553 exclusive=553
+stat Rectangle.mui method=00000103 calls=9 inclusive=1947 exclusive=594
+stat Group.mui method=8042d532 calls=1 inclusive=206 exclusive=206
+stat Radio.mui method=8042549a calls=2 inclusive=8554 exclusive=131
+stat Group.mui method=00000109 calls=3 inclusive=1003 exclusive=237
+stat Group.mui method=00000104 calls=1 inclusive=75 exclusive=75
+stat Group.mui method=00000103 calls=22 inclusive=30469 exclusive=4407
+stat Semaphore.mui method=804276f0 calls=1 inclusive=39 exclusive=39
+stat Group.mui method=00000101 calls=18 inclusive=19373 exclusive=6454
+stat Semaphore.mui method=00000101 calls=2 inclusive=173 exclusive=173
+stat Semaphore.mui method=00000103 calls=1 inclusive=41 exclusive=41
+stat Application.mui method=80425e4b calls=1 inclusive=182 exclusive=73
+stat Notify.mui method=80425e4b calls=1 inclusive=43 exclusive=43
+stat List.mui method=00000101 calls=1 inclusive=965 exclusive=733
+stat Listview.mui method=00000109 calls=1 inclusive=472 exclusive=67
+stat Listview.mui method=00000101 calls=1 inclusive=9172 exclusive=412
+stat Dataspace.mui method=80420dfb calls=2 inclusive=254 exclusive=254
+stat Prop.mui method=00000101 calls=1 inclusive=821 exclusive=170
+stat Prop.mui method=00000103 calls=1 inclusive=343 exclusive=142
+stat Prop.mui method=00000104 calls=1 inclusive=42 exclusive=42
+stat Configdata.mui method=80420dfb calls=1 inclusive=267 exclusive=65
+stat Scrollbar.mui method=00000104 calls=1 inclusive=212 exclusive=66
+stat Scrollbar.mui method=00000101 calls=1 inclusive=4535 exclusive=456
+stat Scrollbar.mui method=00000109 calls=2 inclusive=939 exclusive=131
+stat Gauge.mui method=00000101 calls=1 inclusive=333 exclusive=97
+stat Configdata.mui method=00000103 calls=1 inclusive=357 exclusive=81
+stat Configdata.mui method=00000101 calls=1 inclusive=902 exclusive=131
+stat Dataspace.mui method=00000101 calls=2 inclusive=529 exclusive=205
+stat Dataspace.mui method=00000103 calls=1 inclusive=200 exclusive=83
+stat Application.mui method=8042c862 calls=1 inclusive=122868 exclusive=11558
+stat Image.mui method=8042c9cb calls=5 inclusive=1963 exclusive=329
+stat Text.mui method=8042c9cb calls=3 inclusive=1187 exclusive=200
+stat Configdata.mui method=8042539a calls=150 inclusive=99350 exclusive=21417
+stat Group.mui method=8042c9cb calls=1 inclusive=1243 exclusive=308
+stat Area.mui method=8042c9cb calls=11 inclusive=2811 exclusive=799
+stat Configdata.mui method=8042832c calls=300 inclusive=54810 exclusive=19797
+stat Dataspace.mui method=8042832c calls=300 inclusive=12254 exclusive=12254
+stat Notify.mui method=8042c9cb calls=11 inclusive=1275 exclusive=1275
+stat Scrollbar.mui method=8042c9cb calls=1 inclusive=1378 exclusive=66
+stat List.mui method=8042c9cb calls=3 inclusive=1151 exclusive=217
+trace phase=dispose overflow=0 underflow=0
+stat Text.mui method=00000102 calls=18 inclusive=1647 exclusive=1647
+stat Semaphore.mui method=80421f2d calls=1 inclusive=41 exclusive=41
+stat Configdata.mui method=80425e8e calls=1 inclusive=1283 exclusive=65
+stat String.mui method=00000102 calls=1 inclusive=333 exclusive=188
+stat Dataspace.mui method=80425e8e calls=2 inclusive=2287 exclusive=2287
+stat Cycle.mui method=00000102 calls=1 inclusive=609 exclusive=69
+stat Radio.mui method=00000102 calls=1 inclusive=3653 exclusive=169
+stat Image.mui method=00000102 calls=7 inclusive=844 exclusive=844
+stat Numeric.mui method=00000102 calls=2 inclusive=421 exclusive=135
+stat Slider.mui method=00000102 calls=2 inclusive=700 exclusive=138
+stat Notify.mui method=00000102 calls=2 inclusive=182 exclusive=182
+stat Notify.mui method=00000103 calls=1 inclusive=47 exclusive=47
+stat Notify.mui method=00000106 calls=2 inclusive=94 exclusive=94
+stat Application.mui method=0000010a calls=1 inclusive=663 exclusive=112
+stat Application.mui method=00000102 calls=1 inclusive=35701 exclusive=1099
+stat Application.mui method=80429d2f calls=1 inclusive=40 exclusive=40
+stat Application.mui method=00000106 calls=1 inclusive=189 exclusive=75
+stat Window.mui method=00000106 calls=1 inclusive=185 exclusive=72
+stat Window.mui method=00000104 calls=1 inclusive=46 exclusive=46
+stat Window.mui method=00000103 calls=1 inclusive=229 exclusive=113
+stat Window.mui method=00000102 calls=1 inclusive=13444 exclusive=116
+stat Area.mui method=00000102 calls=5 inclusive=431 exclusive=431
+stat Rectangle.mui method=00000102 calls=4 inclusive=295 exclusive=295
+stat Group.mui method=00000102 calls=18 inclusive=43823 exclusive=4025
+stat Semaphore.mui method=804276f0 calls=1 inclusive=39 exclusive=39
+stat Semaphore.mui method=00000101 calls=2 inclusive=178 exclusive=178
+stat Semaphore.mui method=00000103 calls=1 inclusive=42 exclusive=42
+stat Semaphore.mui method=00000102 calls=4 inclusive=281 exclusive=281
+stat List.mui method=00000102 calls=1 inclusive=359 exclusive=359
+stat Listview.mui method=00000102 calls=1 inclusive=1944 exclusive=68
+stat Dataspace.mui method=80420dfb calls=1 inclusive=126 exclusive=126
+stat Prop.mui method=00000102 calls=1 inclusive=278 exclusive=71
+stat Configdata.mui method=80420dfb calls=1 inclusive=266 exclusive=65
+stat Scrollbar.mui method=00000102 calls=1 inclusive=1128 exclusive=65
+stat Gauge.mui method=00000102 calls=1 inclusive=219 exclusive=74
+stat Configdata.mui method=00000103 calls=1 inclusive=356 exclusive=80
+stat Configdata.mui method=00000102 calls=2 inclusive=889 exclusive=130
+stat Configdata.mui method=00000101 calls=1 inclusive=899 exclusive=129
+stat Dataspace.mui method=00000101 calls=2 inclusive=531 exclusive=202
+stat Dataspace.mui method=00000102 calls=4 inclusive=1043 exclusive=285
+stat Dataspace.mui method=00000103 calls=1 inclusive=200 exclusive=82
+stat Application.mui method=8042df8a calls=1 inclusive=18665 exclusive=13525
+timing create median=200602 min=200602 max=200602 n=1
+timing dispose median=35813 min=35813 max=35813 n=1
+list width=92 height=285 visible=31 entries=200
+trace phase=active-scroll50 overflow=0 underflow=0
+stat Area.mui method=8042549a calls=41 inclusive=17178 exclusive=2955
+stat Group.mui method=8042549a calls=41 inclusive=233341 exclusive=3492
+stat Image.mui method=00000103 calls=82 inclusive=10361 exclusive=10361
+stat Notify.mui method=8042549a calls=82 inclusive=238685 exclusive=6105
+stat List.mui method=80426f3f calls=90 inclusive=567277 exclusive=567277
+stat Area.mui method=00000103 calls=41 inclusive=32291 exclusive=6155
+stat Group.mui method=00000103 calls=41 inclusive=215429 exclusive=10591
+stat List.mui method=8042549a calls=41 inclusive=23097 exclusive=2964
+stat Scrollbar.mui method=8042549a calls=41 inclusive=239870 exclusive=2883
+stat List.mui method=00000103 calls=132 inclusive=1605715 exclusive=27882
+stat Prop.mui method=00000103 calls=41 inclusive=184379 exclusive=149177
+stat Scrollbar.mui method=00000103 calls=41 inclusive=220967 exclusive=2707
+stat List.mui method=8042baab calls=49 inclusive=756942 exclusive=4288
+timing active-scroll50 median=855439 min=855439 max=855439 n=1
+trace phase=active-visible50 overflow=0 underflow=0
+stat List.mui method=80426f3f calls=49 inclusive=151571 exclusive=151571
+stat List.mui method=00000103 calls=50 inclusive=173494 exclusive=11915
+stat List.mui method=8042baab calls=49 inclusive=2599 exclusive=2599
+timing active-visible50 median=178197 min=178197 max=178197 n=1
+trace phase=active-closed50 overflow=0 underflow=0
+stat List.mui method=00000103 calls=50 inclusive=15695 exclusive=9997
+stat List.mui method=8042baab calls=49 inclusive=2006 exclusive=2006
+timing active-closed50 median=20569 min=20569 max=20569 n=1
+rc=0
+ALLDONE
+
+=== baseline/1-zune68-plain.txt ===
+profile library=21.227 eclock=709379 trace=0
+timing create median=88376 min=88291 max=88885 n=15
+timing dispose median=19016 min=18846 max=22134 n=15
+list width=106 height=270 visible=30 entries=200
+timing active-scroll50 median=1633369 min=1631868 max=1635677 n=15
+timing active-visible50 median=259844 min=259609 max=262092 n=15
+timing active-closed50 median=59060 min=58396 max=60884 n=15
+rc=0
+ALLDONE
+
+=== baseline/1-zune68-trace.txt ===
+profile library=21.227 eclock=709379 trace=1
+trace phase=create overflow=0 underflow=0
+stat Text.mui method=00000103 calls=3 inclusive=1054 exclusive=261
+stat Text.mui method=00000101 calls=20 inclusive=12554 exclusive=3597
+stat Semaphore.mui method=80421f2d calls=160 inclusive=6618 exclusive=6618
+stat Text.mui method=00000105 calls=20 inclusive=7498 exclusive=1463
+stat String.mui method=90421d00 calls=1 inclusive=318 exclusive=73
+stat Text.mui method=90421d00 calls=20 inclusive=6356 exclusive=1442
+stat String.mui method=00000101 calls=1 inclusive=523 exclusive=142
+stat String.mui method=00000105 calls=1 inclusive=335 exclusive=74
+stat Cycle.mui method=00000109 calls=2 inclusive=2468 exclusive=139
+stat Cycle.mui method=00000105 calls=1 inclusive=472 exclusive=70
+stat Cycle.mui method=00000104 calls=4 inclusive=1352 exclusive=286
+stat Cycle.mui method=00000101 calls=1 inclusive=15779 exclusive=937
+stat Radio.mui method=90421d00 calls=1 inclusive=4979 exclusive=71
+stat Cycle.mui method=90421d00 calls=1 inclusive=2928 exclusive=70
+stat Radio.mui method=00000101 calls=1 inclusive=25073 exclusive=1348
+stat Radio.mui method=00000104 calls=4 inclusive=1357 exclusive=285
+stat Radio.mui method=00000105 calls=1 inclusive=471 exclusive=69
+stat Radio.mui method=00000109 calls=3 inclusive=3709 exclusive=207
+stat Image.mui method=00000105 calls=9 inclusive=2969 exclusive=624
+stat Image.mui method=00000104 calls=4 inclusive=1368 exclusive=284
+stat Image.mui method=00000103 calls=6 inclusive=2324 exclusive=486
+stat Image.mui method=00000101 calls=9 inclusive=6190 exclusive=2181
+stat Numeric.mui method=90421d00 calls=2 inclusive=633 exclusive=142
+stat Image.mui method=90421d00 calls=9 inclusive=3010 exclusive=623
+stat Numeric.mui method=00000105 calls=2 inclusive=662 exclusive=140
+stat Numeric.mui method=00000101 calls=2 inclusive=1197 exclusive=202
+stat Slider.mui method=90421d00 calls=2 inclusive=1086 exclusive=142
+stat Slider.mui method=00000101 calls=2 inclusive=1533 exclusive=190
+stat Slider.mui method=00000105 calls=2 inclusive=948 exclusive=142
+stat Notify.mui method=00000101 calls=76 inclusive=9677 exclusive=9677
+stat Notify.mui method=00000103 calls=20 inclusive=1053 exclusive=1053
+stat Notify.mui method=00000104 calls=6 inclusive=325 exclusive=325
+stat Notify.mui method=00000105 calls=55 inclusive=2812 exclusive=2812
+stat Family.mui method=00000104 calls=27 inclusive=1168 exclusive=1168
+stat Notify.mui method=90421d00 calls=56 inclusive=1970 exclusive=1970
+stat Family.mui method=00000101 calls=19 inclusive=4762 exclusive=1601
+stat Family.mui method=00000109 calls=55 inclusive=28520 exclusive=4547
+stat Application.mui method=00000109 calls=1 inclusive=28807 exclusive=113
+stat Application.mui method=00000101 calls=1 inclusive=234563 exclusive=3825
+stat Application.mui method=00000104 calls=1 inclusive=46 exclusive=46
+stat Window.mui method=90421d00 calls=1 inclusive=28224 exclusive=113
+stat Window.mui method=00000105 calls=1 inclusive=188 exclusive=71
+stat Window.mui method=00000103 calls=2 inclusive=615 exclusive=181
+stat Window.mui method=00000101 calls=1 inclusive=1217 exclusive=247
+stat Area.mui method=00000104 calls=79 inclusive=4563 exclusive=3836
+stat Area.mui method=00000105 calls=54 inclusive=10395 exclusive=4110
+stat Area.mui method=00000101 calls=55 inclusive=20455 exclusive=9550
+stat Area.mui method=00000103 calls=18 inclusive=3858 exclusive=1542
+stat Rectangle.mui method=90421d00 calls=2 inclusive=629 exclusive=139
+stat Configdata.mui method=80421f2d calls=160 inclusive=54264 exclusive=11737
+stat Area.mui method=90421d00 calls=55 inclusive=9933 exclusive=4128
+stat Rectangle.mui method=00000101 calls=2 inclusive=941 exclusive=188
+stat Rectangle.mui method=00000103 calls=1 inclusive=333 exclusive=68
+stat Rectangle.mui method=00000105 calls=2 inclusive=656 exclusive=136
+stat Group.mui method=00000109 calls=54 inclusive=57166 exclusive=8260
+stat Group.mui method=00000104 calls=77 inclusive=15838 exclusive=6491
+stat Group.mui method=00000105 calls=17 inclusive=5694 exclusive=1277
+stat Group.mui method=00000103 calls=5 inclusive=13345 exclusive=1398
+stat Group.mui method=00000101 calls=18 inclusive=73270 exclusive=6212
+stat Dataspace.mui method=80421f2d calls=160 inclusive=30522 exclusive=11888
+stat Group.mui method=90421d00 calls=18 inclusive=98934 exclusive=4470
+stat Semaphore.mui method=00000101 calls=1 inclusive=147 exclusive=147
+stat List.mui method=00000104 calls=10 inclusive=1696 exclusive=622
+stat List.mui method=00000105 calls=1 inclusive=481 exclusive=76
+stat List.mui method=00000103 calls=1 inclusive=5531 exclusive=93
+stat List.mui method=00000101 calls=1 inclusive=42931 exclusive=1265
+stat Listview.mui method=90421d00 calls=1 inclusive=5847 exclusive=71
+stat List.mui method=00000109 calls=3 inclusive=4056 exclusive=227
+stat Listview.mui method=00000109 calls=1 inclusive=1566 exclusive=72
+stat List.mui method=90421d00 calls=1 inclusive=5110 exclusive=76
+stat Listview.mui method=00000101 calls=1 inclusive=3249 exclusive=106
+stat Listview.mui method=00000105 calls=1 inclusive=474 exclusive=71
+stat Listview.mui method=00000104 calls=2 inclusive=690 exclusive=153
+stat Prop.mui method=00000101 calls=2 inclusive=1367 exclusive=220
+stat Prop.mui method=00000103 calls=3 inclusive=1084 exclusive=263
+stat Prop.mui method=00000104 calls=2 inclusive=82 exclusive=82
+stat Prop.mui method=00000105 calls=2 inclusive=660 exclusive=140
+stat Scrollbar.mui method=90421d00 calls=2 inclusive=3822 exclusive=138
+stat Scrollbar.mui method=00000105 calls=2 inclusive=943 exclusive=136
+stat Scrollbar.mui method=00000104 calls=10 inclusive=3691 exclusive=713
+stat Prop.mui method=90421d00 calls=2 inclusive=634 exclusive=142
+stat Scrollbar.mui method=00000101 calls=2 inclusive=19104 exclusive=1455
+stat Scrollbar.mui method=00000103 calls=3 inclusive=6492 exclusive=244
+stat Scrollbar.mui method=00000109 calls=6 inclusive=7416 exclusive=414
+stat Gauge.mui method=00000101 calls=1 inclusive=478 exclusive=97
+stat Gauge.mui method=00000105 calls=1 inclusive=330 exclusive=70
+stat Configdata.mui method=00000104 calls=1 inclusive=1382 exclusive=78
+stat Gauge.mui method=90421d00 calls=1 inclusive=315 exclusive=70
+stat Configdata.mui method=00000101 calls=1 inclusive=199519 exclusive=25633
+stat Dataspace.mui method=00000101 calls=1 inclusive=335 exclusive=113
+stat Image.mui method=8042c9cb calls=7 inclusive=2854 exclusive=486
+stat Configdata.mui method=8042ea02 calls=160 inclusive=58051 exclusive=14335
+stat Cycle.mui method=8042c9cb calls=1 inclusive=990 exclusive=70
+stat Dataspace.mui method=8042ea02 calls=160 inclusive=31540 exclusive=11705
+stat Text.mui method=8042c9cb calls=3 inclusive=1407 exclusive=216
+stat Application.mui method=8042f099 calls=1 inclusive=46 exclusive=46
+stat Semaphore.mui method=8042ea02 calls=160 inclusive=6771 exclusive=6771
+stat Group.mui method=8042c9cb calls=6 inclusive=7344 exclusive=1043
+stat Area.mui method=8042c9cb calls=16 inclusive=4465 exclusive=1233
+stat Configdata.mui method=8042832c calls=1 inclusive=1083 exclusive=72
+stat Dataspace.mui method=8042832c calls=160 inclusive=155758 exclusive=18621
+stat Notify.mui method=8042c9cb calls=16 inclusive=2161 exclusive=2161
+stat Scrollbar.mui method=8042c9cb calls=2 inclusive=5075 exclusive=138
+stat Configdata.mui method=90420907 calls=4 inclusive=4918 exclusive=4918
+stat Configdata.mui method=9042092a calls=1 inclusive=1230 exclusive=73
+stat Prop.mui method=8042c9cb calls=2 inclusive=829 exclusive=142
+stat List.mui method=8042c9cb calls=3 inclusive=2130 exclusive=228
+trace phase=dispose overflow=0 underflow=0
+stat Text.mui method=00000102 calls=20 inclusive=8826 exclusive=2186
+stat String.mui method=90421d01 calls=2 inclusive=635 exclusive=146
+stat Text.mui method=90421d01 calls=40 inclusive=13661 exclusive=2884
+stat String.mui method=00000102 calls=1 inclusive=404 exclusive=100
+stat Cycle.mui method=00000102 calls=1 inclusive=3914 exclusive=70
+stat Radio.mui method=90421d01 calls=2 inclusive=10242 exclusive=138
+stat Cycle.mui method=90421d01 calls=2 inclusive=5843 exclusive=140
+stat Radio.mui method=00000102 calls=1 inclusive=6994 exclusive=90
+stat Image.mui method=00000102 calls=9 inclusive=4167 exclusive=850
+stat Numeric.mui method=90421d01 calls=4 inclusive=1258 exclusive=285
+stat Image.mui method=90421d01 calls=18 inclusive=5640 exclusive=1241
+stat Numeric.mui method=00000102 calls=2 inclusive=785 exclusive=140
+stat Slider.mui method=90421d01 calls=4 inclusive=1826 exclusive=284
+stat Slider.mui method=00000102 calls=2 inclusive=1245 exclusive=148
+stat Notify.mui method=00000102 calls=76 inclusive=8439 exclusive=8439
+stat Notify.mui method=00000106 calls=1 inclusive=51 exclusive=51
+stat Notify.mui method=90421d01 calls=112 inclusive=3841 exclusive=3841
+stat Family.mui method=00000104 calls=38 inclusive=1638 exclusive=1638
+stat Family.mui method=00000102 calls=19 inclusive=126571 exclusive=4129
+stat Family.mui method=0000010a calls=1 inclusive=29161 exclusive=114
+stat Application.mui method=0000010a calls=1 inclusive=57536 exclusive=114
+stat Application.mui method=00000102 calls=1 inclusive=99888 exclusive=1492
+stat Window.mui method=90421d01 calls=2 inclusive=56851 exclusive=229
+stat Window.mui method=00000106 calls=1 inclusive=189 exclusive=71
+stat Window.mui method=00000102 calls=1 inclusive=38509 exclusive=167
+stat Area.mui method=00000102 calls=55 inclusive=14774 exclusive=4756
+stat Rectangle.mui method=90421d01 calls=4 inclusive=1251 exclusive=276
+stat Area.mui method=90421d01 calls=110 inclusive=20165 exclusive=9067
+stat Rectangle.mui method=00000102 calls=2 inclusive=762 exclusive=149
+stat Group.mui method=00000102 calls=18 inclusive=135703 exclusive=2232
+stat Group.mui method=90421d01 calls=36 inclusive=200211 exclusive=9103
+stat Semaphore.mui method=00000102 calls=1 inclusive=85 exclusive=85
+stat List.mui method=00000102 calls=1 inclusive=7477 exclusive=184
+stat Listview.mui method=90421d01 calls=2 inclusive=11630 exclusive=141
+stat List.mui method=90421d01 calls=2 inclusive=10156 exclusive=153
+stat Listview.mui method=00000102 calls=1 inclusive=8487 exclusive=69
+stat Prop.mui method=00000102 calls=2 inclusive=941 exclusive=172
+stat Scrollbar.mui method=90421d01 calls=4 inclusive=7596 exclusive=274
+stat Prop.mui method=90421d01 calls=4 inclusive=1260 exclusive=284
+stat Scrollbar.mui method=00000102 calls=2 inclusive=5572 exclusive=136
+stat Gauge.mui method=00000102 calls=1 inclusive=380 exclusive=74
+stat Gauge.mui method=90421d01 calls=2 inclusive=627 exclusive=140
+stat Configdata.mui method=00000102 calls=1 inclusive=1373 exclusive=910
+stat Application.mui method=8042e7af calls=1 inclusive=42 exclusive=42
+stat Dataspace.mui method=00000102 calls=1 inclusive=279 exclusive=118
+timing create median=385136 min=385136 max=385136 n=1
+timing dispose median=100001 min=100001 max=100001 n=1
+list width=106 height=270 visible=30 entries=200
+trace phase=active-scroll50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=692 inclusive=260193 exclusive=58492
+stat Notify.mui method=00000103 calls=1607 inclusive=452009 exclusive=96823
+stat List.mui method=80426f3f calls=57 inclusive=1538247 exclusive=1182889
+stat Family.mui method=00000104 calls=535 inclusive=24701 exclusive=24701
+stat Area.mui method=00000103 calls=1607 inclusive=705925 exclusive=145793
+stat Rectangle.mui method=00000103 calls=132 inclusive=45205 exclusive=9173
+stat Group.mui method=00000103 calls=437 inclusive=1735681 exclusive=124615
+stat List.mui method=90421404 calls=98 inclusive=3919 exclusive=3919
+stat List.mui method=00000103 calls=132 inclusive=3546533 exclusive=25517
+stat Prop.mui method=00000103 calls=346 inclusive=253133 exclusive=151632
+stat Scrollbar.mui method=00000103 calls=305 inclusive=674444 exclusive=26072
+stat Area.mui method=80426f3f calls=57 inclusive=2693 exclusive=2693
+stat Group.mui method=80426f3f calls=57 inclusive=24208 exclusive=10888
+stat Group.mui method=804238ca calls=49 inclusive=161859 exclusive=3922
+stat Area.mui method=804238ca calls=49 inclusive=154454 exclusive=154454
+stat List.mui method=8042baab calls=49 inclusive=2355 exclusive=2355
+stat Image.mui method=8042216f calls=82 inclusive=65998 exclusive=5829
+stat Notify.mui method=8042216f calls=164 inclusive=278396 exclusive=13297
+stat List.mui method=80425377 calls=1246 inclusive=58986 exclusive=58986
+stat Group.mui method=8042216f calls=41 inclusive=346146 exclusive=10410
+stat Area.mui method=8042216f calls=164 inclusive=301932 exclusive=12668
+stat List.mui method=804238ca calls=49 inclusive=169083 exclusive=3846
+stat Prop.mui method=8042216f calls=41 inclusive=151966 exclusive=2878
+stat Scrollbar.mui method=8042216f calls=41 inclusive=351937 exclusive=2962
+timing active-scroll50 median=2715010 min=2715010 max=2715010 n=1
+trace phase=active-visible50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=200 inclusive=74737 exclusive=16652
+stat Notify.mui method=00000103 calls=500 inclusive=30246 exclusive=30246
+stat List.mui method=80426f3f calls=98 inclusive=271199 exclusive=175276
+stat Family.mui method=00000104 calls=248 inclusive=10686 exclusive=10686
+stat Area.mui method=00000103 calls=500 inclusive=109049 exclusive=44463
+stat Rectangle.mui method=00000103 calls=50 inclusive=17038 exclusive=3414
+stat Group.mui method=00000103 calls=150 inclusive=490156 exclusive=43201
+stat List.mui method=90421404 calls=98 inclusive=3925 exclusive=3925
+stat List.mui method=00000103 calls=50 inclusive=600590 exclusive=16936
+stat Prop.mui method=00000103 calls=100 inclusive=39530 exclusive=9479
+stat Scrollbar.mui method=00000103 calls=100 inclusive=221720 exclusive=9023
+stat Area.mui method=80426f3f calls=98 inclusive=4632 exclusive=4632
+stat Group.mui method=80426f3f calls=98 inclusive=41355 exclusive=18891
+stat Group.mui method=804238ca calls=49 inclusive=25059 exclusive=4090
+stat Area.mui method=804238ca calls=49 inclusive=17538 exclusive=17538
+stat List.mui method=8042baab calls=49 inclusive=2527 exclusive=2527
+stat List.mui method=80425377 calls=98 inclusive=4611 exclusive=4611
+stat List.mui method=804238ca calls=49 inclusive=32123 exclusive=3683
+timing active-visible50 median=605131 min=605131 max=605131 n=1
+trace phase=active-closed50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=200 inclusive=75627 exclusive=16666
+stat Notify.mui method=00000103 calls=500 inclusive=29628 exclusive=29628
+stat Family.mui method=00000104 calls=150 inclusive=6477 exclusive=6477
+stat Area.mui method=00000103 calls=500 inclusive=109141 exclusive=46174
+stat Rectangle.mui method=00000103 calls=50 inclusive=16985 exclusive=3409
+stat Group.mui method=00000103 calls=150 inclusive=482852 exclusive=42247
+stat List.mui method=90421404 calls=98 inclusive=4008 exclusive=4008
+stat List.mui method=00000103 calls=50 inclusive=305596 exclusive=9655
+stat Prop.mui method=00000103 calls=100 inclusive=38162 exclusive=8619
+stat Scrollbar.mui method=00000103 calls=100 inclusive=217764 exclusive=8209
+timing active-closed50 median=310131 min=310131 max=310131 n=1
+rc=0
+ALLDONE
+
+=== baseline/2-zune68-plain.txt ===
+profile library=21.227 eclock=709379 trace=0
+timing create median=88314 min=88270 max=91167 n=15
+timing dispose median=18935 min=18764 max=19802 n=15
+list width=106 height=270 visible=30 entries=200
+timing active-scroll50 median=1626771 min=1626210 max=1629428 n=15
+timing active-visible50 median=259104 min=259048 max=261556 n=15
+timing active-closed50 median=58759 min=58094 max=61201 n=15
+rc=0
+ALLDONE
+
+=== baseline/2-zune68-trace.txt ===
+profile library=21.227 eclock=709379 trace=1
+trace phase=create overflow=0 underflow=0
+stat Text.mui method=00000103 calls=3 inclusive=1073 exclusive=265
+stat Text.mui method=00000101 calls=20 inclusive=12660 exclusive=3651
+stat Semaphore.mui method=80421f2d calls=160 inclusive=6413 exclusive=6413
+stat Text.mui method=00000105 calls=20 inclusive=6826 exclusive=1480
+stat String.mui method=90421d00 calls=1 inclusive=323 exclusive=75
+stat Text.mui method=90421d00 calls=20 inclusive=6473 exclusive=1483
+stat String.mui method=00000101 calls=1 inclusive=527 exclusive=140
+stat String.mui method=00000105 calls=1 inclusive=342 exclusive=76
+stat Cycle.mui method=00000109 calls=2 inclusive=2710 exclusive=141
+stat Cycle.mui method=00000105 calls=1 inclusive=479 exclusive=70
+stat Cycle.mui method=00000104 calls=4 inclusive=1370 exclusive=292
+stat Cycle.mui method=00000101 calls=1 inclusive=16031 exclusive=952
+stat Radio.mui method=90421d00 calls=1 inclusive=5052 exclusive=70
+stat Cycle.mui method=90421d00 calls=1 inclusive=2973 exclusive=70
+stat Radio.mui method=00000101 calls=1 inclusive=24778 exclusive=1525
+stat Radio.mui method=00000104 calls=4 inclusive=1362 exclusive=284
+stat Radio.mui method=00000105 calls=1 inclusive=480 exclusive=71
+stat Radio.mui method=00000109 calls=3 inclusive=3925 exclusive=211
+stat Image.mui method=00000105 calls=9 inclusive=3028 exclusive=631
+stat Image.mui method=00000104 calls=4 inclusive=1385 exclusive=292
+stat Image.mui method=00000103 calls=6 inclusive=2369 exclusive=499
+stat Image.mui method=00000101 calls=9 inclusive=6345 exclusive=2232
+stat Numeric.mui method=90421d00 calls=2 inclusive=645 exclusive=142
+stat Image.mui method=90421d00 calls=9 inclusive=2882 exclusive=641
+stat Numeric.mui method=00000105 calls=2 inclusive=675 exclusive=140
+stat Numeric.mui method=00000101 calls=2 inclusive=1210 exclusive=201
+stat Slider.mui method=90421d00 calls=2 inclusive=931 exclusive=142
+stat Slider.mui method=00000101 calls=2 inclusive=1548 exclusive=190
+stat Slider.mui method=00000105 calls=2 inclusive=959 exclusive=141
+stat Notify.mui method=00000101 calls=76 inclusive=10017 exclusive=10017
+stat Notify.mui method=00000103 calls=20 inclusive=1051 exclusive=1051
+stat Notify.mui method=00000104 calls=6 inclusive=323 exclusive=323
+stat Notify.mui method=00000105 calls=55 inclusive=2862 exclusive=2862
+stat Family.mui method=00000104 calls=27 inclusive=1136 exclusive=1136
+stat Notify.mui method=90421d00 calls=56 inclusive=1972 exclusive=1972
+stat Family.mui method=00000101 calls=19 inclusive=5160 exclusive=1790
+stat Family.mui method=00000109 calls=55 inclusive=29011 exclusive=4455
+stat Application.mui method=00000109 calls=1 inclusive=29220 exclusive=116
+stat Application.mui method=00000101 calls=1 inclusive=236138 exclusive=3853
+stat Application.mui method=00000104 calls=1 inclusive=45 exclusive=45
+stat Window.mui method=90421d00 calls=1 inclusive=28626 exclusive=116
+stat Window.mui method=00000105 calls=1 inclusive=193 exclusive=74
+stat Window.mui method=00000103 calls=2 inclusive=418 exclusive=184
+stat Window.mui method=00000101 calls=1 inclusive=1032 exclusive=247
+stat Area.mui method=00000104 calls=79 inclusive=4731 exclusive=3999
+stat Area.mui method=00000105 calls=54 inclusive=10820 exclusive=4337
+stat Area.mui method=00000101 calls=55 inclusive=20558 exclusive=9274
+stat Area.mui method=00000103 calls=18 inclusive=3922 exclusive=1574
+stat Rectangle.mui method=90421d00 calls=2 inclusive=806 exclusive=140
+stat Configdata.mui method=80421f2d calls=160 inclusive=55583 exclusive=11854
+stat Area.mui method=90421d00 calls=55 inclusive=10090 exclusive=4189
+stat Rectangle.mui method=00000101 calls=2 inclusive=955 exclusive=189
+stat Rectangle.mui method=00000103 calls=1 inclusive=337 exclusive=69
+stat Rectangle.mui method=00000105 calls=2 inclusive=671 exclusive=138
+stat Group.mui method=00000109 calls=54 inclusive=58234 exclusive=8592
+stat Group.mui method=00000104 calls=77 inclusive=16007 exclusive=6609
+stat Group.mui method=00000105 calls=17 inclusive=5960 exclusive=1275
+stat Group.mui method=00000103 calls=5 inclusive=13737 exclusive=1439
+stat Group.mui method=00000101 calls=18 inclusive=73955 exclusive=6347
+stat Dataspace.mui method=80421f2d calls=160 inclusive=31724 exclusive=12667
+stat Group.mui method=90421d00 calls=18 inclusive=100514 exclusive=4635
+stat Semaphore.mui method=00000101 calls=1 inclusive=147 exclusive=147
+stat List.mui method=00000104 calls=10 inclusive=1713 exclusive=627
+stat List.mui method=00000105 calls=1 inclusive=486 exclusive=75
+stat List.mui method=00000103 calls=1 inclusive=5800 exclusive=93
+stat List.mui method=00000101 calls=1 inclusive=44348 exclusive=1282
+stat Listview.mui method=90421d00 calls=1 inclusive=6089 exclusive=71
+stat List.mui method=00000109 calls=3 inclusive=4326 exclusive=229
+stat Listview.mui method=00000109 calls=1 inclusive=1412 exclusive=72
+stat List.mui method=90421d00 calls=1 inclusive=5344 exclusive=76
+stat Listview.mui method=00000101 calls=1 inclusive=3167 exclusive=106
+stat Listview.mui method=00000105 calls=1 inclusive=481 exclusive=72
+stat Listview.mui method=00000104 calls=2 inclusive=697 exclusive=155
+stat Prop.mui method=00000101 calls=2 inclusive=1210 exclusive=217
+stat Prop.mui method=00000103 calls=3 inclusive=1108 exclusive=272
+stat Prop.mui method=00000104 calls=2 inclusive=82 exclusive=82
+stat Prop.mui method=00000105 calls=2 inclusive=674 exclusive=142
+stat Scrollbar.mui method=90421d00 calls=2 inclusive=3872 exclusive=140
+stat Scrollbar.mui method=00000105 calls=2 inclusive=961 exclusive=140
+stat Scrollbar.mui method=00000104 calls=10 inclusive=3732 exclusive=715
+stat Prop.mui method=90421d00 calls=2 inclusive=642 exclusive=142
+stat Scrollbar.mui method=00000101 calls=2 inclusive=19806 exclusive=1272
+stat Scrollbar.mui method=00000103 calls=3 inclusive=6602 exclusive=251
+stat Scrollbar.mui method=00000109 calls=6 inclusive=8327 exclusive=419
+stat Gauge.mui method=00000101 calls=1 inclusive=478 exclusive=98
+stat Gauge.mui method=00000105 calls=1 inclusive=336 exclusive=71
+stat Configdata.mui method=00000104 calls=1 inclusive=1398 exclusive=77
+stat Gauge.mui method=90421d00 calls=1 inclusive=319 exclusive=71
+stat Configdata.mui method=00000101 calls=1 inclusive=200635 exclusive=26249
+stat Dataspace.mui method=00000101 calls=1 inclusive=337 exclusive=115
+stat Image.mui method=8042c9cb calls=7 inclusive=2890 exclusive=491
+stat Configdata.mui method=8042ea02 calls=160 inclusive=56295 exclusive=11921
+stat Cycle.mui method=8042c9cb calls=1 inclusive=1002 exclusive=71
+stat Dataspace.mui method=8042ea02 calls=160 inclusive=32352 exclusive=12201
+stat Text.mui method=8042c9cb calls=3 inclusive=1258 exclusive=222
+stat Application.mui method=8042f099 calls=1 inclusive=45 exclusive=45
+stat Semaphore.mui method=8042ea02 calls=160 inclusive=6763 exclusive=6763
+stat Group.mui method=8042c9cb calls=6 inclusive=7438 exclusive=1067
+stat Area.mui method=8042c9cb calls=16 inclusive=4367 exclusive=1234
+stat Configdata.mui method=8042832c calls=1 inclusive=1100 exclusive=73
+stat Dataspace.mui method=8042832c calls=160 inclusive=157131 exclusive=18812
+stat Notify.mui method=8042c9cb calls=16 inclusive=2024 exclusive=2024
+stat Scrollbar.mui method=8042c9cb calls=2 inclusive=5138 exclusive=140
+stat Configdata.mui method=90420907 calls=4 inclusive=4961 exclusive=4961
+stat Configdata.mui method=9042092a calls=1 inclusive=1246 exclusive=72
+stat Prop.mui method=8042c9cb calls=2 inclusive=842 exclusive=142
+stat List.mui method=8042c9cb calls=3 inclusive=2154 exclusive=228
+trace phase=dispose overflow=0 underflow=0
+stat Text.mui method=00000102 calls=20 inclusive=8730 exclusive=2226
+stat String.mui method=90421d01 calls=2 inclusive=641 exclusive=150
+stat Text.mui method=90421d01 calls=40 inclusive=13050 exclusive=2962
+stat String.mui method=00000102 calls=1 inclusive=407 exclusive=100
+stat Cycle.mui method=00000102 calls=1 inclusive=3963 exclusive=71
+stat Radio.mui method=90421d01 calls=2 inclusive=10041 exclusive=141
+stat Cycle.mui method=90421d01 calls=2 inclusive=5914 exclusive=140
+stat Radio.mui method=00000102 calls=1 inclusive=7226 exclusive=91
+stat Image.mui method=00000102 calls=9 inclusive=4160 exclusive=860
+stat Numeric.mui method=90421d01 calls=4 inclusive=1272 exclusive=285
+stat Image.mui method=90421d01 calls=18 inclusive=5703 exclusive=1280
+stat Numeric.mui method=00000102 calls=2 inclusive=792 exclusive=140
+stat Slider.mui method=90421d01 calls=4 inclusive=1844 exclusive=284
+stat Slider.mui method=00000102 calls=2 inclusive=1088 exclusive=153
+stat Notify.mui method=00000102 calls=76 inclusive=8372 exclusive=8372
+stat Notify.mui method=00000106 calls=1 inclusive=51 exclusive=51
+stat Notify.mui method=90421d01 calls=112 inclusive=3833 exclusive=3833
+stat Family.mui method=00000104 calls=38 inclusive=1599 exclusive=1599
+stat Family.mui method=00000102 calls=19 inclusive=127599 exclusive=4283
+stat Family.mui method=0000010a calls=1 inclusive=29709 exclusive=116
+stat Application.mui method=0000010a calls=1 inclusive=58438 exclusive=116
+stat Application.mui method=00000102 calls=1 inclusive=101393 exclusive=1692
+stat Window.mui method=90421d01 calls=2 inclusive=57744 exclusive=403
+stat Window.mui method=00000106 calls=1 inclusive=191 exclusive=73
+stat Window.mui method=00000102 calls=1 inclusive=38896 exclusive=169
+stat Area.mui method=00000102 calls=55 inclusive=14800 exclusive=4801
+stat Rectangle.mui method=90421d01 calls=4 inclusive=1433 exclusive=280
+stat Area.mui method=90421d01 calls=110 inclusive=19859 exclusive=8703
+stat Rectangle.mui method=00000102 calls=2 inclusive=766 exclusive=149
+stat Group.mui method=00000102 calls=18 inclusive=137084 exclusive=2339
+stat Group.mui method=90421d01 calls=36 inclusive=201885 exclusive=9188
+stat Semaphore.mui method=00000102 calls=1 inclusive=86 exclusive=86
+stat List.mui method=00000102 calls=1 inclusive=7417 exclusive=183
+stat Listview.mui method=90421d01 calls=2 inclusive=12092 exclusive=144
+stat List.mui method=90421d01 calls=2 inclusive=10602 exclusive=152
+stat Listview.mui method=00000102 calls=1 inclusive=8442 exclusive=70
+stat Prop.mui method=00000102 calls=2 inclusive=943 exclusive=173
+stat Scrollbar.mui method=90421d01 calls=4 inclusive=7849 exclusive=279
+stat Prop.mui method=90421d01 calls=4 inclusive=1269 exclusive=282
+stat Scrollbar.mui method=00000102 calls=2 inclusive=5482 exclusive=139
+stat Gauge.mui method=00000102 calls=1 inclusive=554 exclusive=74
+stat Gauge.mui method=90421d01 calls=2 inclusive=633 exclusive=142
+stat Configdata.mui method=00000102 calls=1 inclusive=1383 exclusive=914
+stat Application.mui method=8042e7af calls=1 inclusive=42 exclusive=42
+stat Dataspace.mui method=00000102 calls=1 inclusive=283 exclusive=120
+timing create median=388769 min=388769 max=388769 n=1
+timing dispose median=101506 min=101506 max=101506 n=1
+list width=106 height=270 visible=30 entries=200
+trace phase=active-scroll50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=692 inclusive=259184 exclusive=58766
+stat Notify.mui method=00000103 calls=1607 inclusive=454129 exclusive=96537
+stat List.mui method=80426f3f calls=57 inclusive=1540494 exclusive=1180891
+stat Family.mui method=00000104 calls=535 inclusive=23480 exclusive=23480
+stat Area.mui method=00000103 calls=1607 inclusive=709547 exclusive=144640
+stat Rectangle.mui method=00000103 calls=132 inclusive=45978 exclusive=9161
+stat Group.mui method=00000103 calls=437 inclusive=1735974 exclusive=128953
+stat List.mui method=90421404 calls=98 inclusive=4814 exclusive=4814
+stat List.mui method=00000103 calls=132 inclusive=3557014 exclusive=25731
+stat Prop.mui method=00000103 calls=346 inclusive=250922 exclusive=150048
+stat Scrollbar.mui method=00000103 calls=305 inclusive=672017 exclusive=25167
+stat Area.mui method=80426f3f calls=57 inclusive=2679 exclusive=2679
+stat Group.mui method=80426f3f calls=57 inclusive=25090 exclusive=11834
+stat Group.mui method=804238ca calls=49 inclusive=163740 exclusive=3935
+stat Area.mui method=804238ca calls=49 inclusive=156317 exclusive=156317
+stat List.mui method=8042baab calls=49 inclusive=2308 exclusive=2308
+stat Image.mui method=8042216f calls=82 inclusive=66785 exclusive=5935
+stat Notify.mui method=8042216f calls=164 inclusive=280068 exclusive=13665
+stat List.mui method=80425377 calls=1246 inclusive=58973 exclusive=58973
+stat Group.mui method=8042216f calls=41 inclusive=348802 exclusive=10943
+stat Area.mui method=8042216f calls=164 inclusive=303959 exclusive=12982
+stat List.mui method=804238ca calls=49 inclusive=170923 exclusive=3744
+stat Prop.mui method=8042216f calls=41 inclusive=151809 exclusive=3042
+stat Scrollbar.mui method=8042216f calls=41 inclusive=354517 exclusive=2887
+timing active-scroll50 median=2720676 min=2720676 max=2720676 n=1
+trace phase=active-visible50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=200 inclusive=74854 exclusive=16800
+stat Notify.mui method=00000103 calls=500 inclusive=30384 exclusive=30384
+stat List.mui method=80426f3f calls=98 inclusive=275397 exclusive=176880
+stat Family.mui method=00000104 calls=248 inclusive=10817 exclusive=10817
+stat Area.mui method=00000103 calls=500 inclusive=109544 exclusive=44563
+stat Rectangle.mui method=00000103 calls=50 inclusive=18301 exclusive=3470
+stat Group.mui method=00000103 calls=150 inclusive=485885 exclusive=43090
+stat List.mui method=90421404 calls=98 inclusive=3828 exclusive=3828
+stat List.mui method=00000103 calls=50 inclusive=604361 exclusive=17846
+stat Prop.mui method=00000103 calls=100 inclusive=38176 exclusive=8977
+stat Scrollbar.mui method=00000103 calls=100 inclusive=218665 exclusive=8381
+stat Area.mui method=80426f3f calls=98 inclusive=4611 exclusive=4611
+stat Group.mui method=80426f3f calls=98 inclusive=42619 exclusive=19130
+stat Group.mui method=804238ca calls=49 inclusive=25765 exclusive=3936
+stat Area.mui method=804238ca calls=49 inclusive=17526 exclusive=17526
+stat List.mui method=8042baab calls=49 inclusive=2475 exclusive=2475
+stat List.mui method=80425377 calls=98 inclusive=4688 exclusive=4688
+stat List.mui method=804238ca calls=49 inclusive=32945 exclusive=3733
+timing active-visible50 median=609007 min=609007 max=609007 n=1
+trace phase=active-closed50 overflow=0 underflow=0
+stat Image.mui method=00000103 calls=200 inclusive=75124 exclusive=16652
+stat Notify.mui method=00000103 calls=500 inclusive=29282 exclusive=29282
+stat Family.mui method=00000104 calls=150 inclusive=7489 exclusive=7489
+stat Area.mui method=00000103 calls=500 inclusive=107596 exclusive=44090
+stat Rectangle.mui method=00000103 calls=50 inclusive=17139 exclusive=3468
+stat Group.mui method=00000103 calls=150 inclusive=489369 exclusive=43670
+stat List.mui method=90421404 calls=98 inclusive=3825 exclusive=3825
+stat List.mui method=00000103 calls=50 inclusive=309353 exclusive=9818
+stat Prop.mui method=00000103 calls=100 inclusive=37663 exclusive=8803
+stat Scrollbar.mui method=00000103 calls=100 inclusive=220929 exclusive=8414
+timing active-closed50 median=314501 min=314501 max=314501 n=1
+rc=0
+ALLDONE
+
+=== baseline/2-mui38-plain.txt ===
+profile library=19.35 eclock=709379 trace=0
+timing create median=53030 min=52421 max=55445 n=15
+timing dispose median=22121 min=21881 max=22913 n=15
+list width=92 height=285 visible=31 entries=200
+timing active-scroll50 median=751697 min=747684 max=754047 n=15
+timing active-visible50 median=158723 min=157951 max=160995 n=15
+timing active-closed50 median=8221 min=8051 max=8893 n=15
+rc=0
+ALLDONE
+
+=== baseline/2-mui38-trace.txt ===
+profile library=19.35 eclock=709379 trace=1
+trace phase=create overflow=0 underflow=0
+stat Text.mui method=00000103 calls=15 inclusive=6248 exclusive=1926
+stat Text.mui method=00000101 calls=18 inclusive=6995 exclusive=6058
+stat Semaphore.mui method=80421f2d calls=1 inclusive=42 exclusive=42
+stat String.mui method=00000101 calls=1 inclusive=2488 exclusive=1942
+stat String.mui method=00000103 calls=1 inclusive=271 exclusive=111
+stat Cycle.mui method=00000101 calls=1 inclusive=2845 exclusive=278
+stat Cycle.mui method=00000103 calls=1 inclusive=678 exclusive=86
+stat Group.mui method=8042549a calls=2 inclusive=8230 exclusive=166
+stat Radio.mui method=00000103 calls=3 inclusive=21193 exclusive=327
+stat Radio.mui method=00000101 calls=1 inclusive=28317 exclusive=1492
+stat Image.mui method=00000104 calls=2 inclusive=381 exclusive=128
+stat Image.mui method=00000103 calls=11 inclusive=5602 exclusive=1286
+stat Image.mui method=00000101 calls=7 inclusive=1518 exclusive=1518
+stat Numeric.mui method=00000101 calls=2 inclusive=666 exclusive=198
+stat Notify.mui method=8042549a calls=2 inclusive=7935 exclusive=144
+stat Slider.mui method=00000101 calls=2 inclusive=990 exclusive=180
+stat Notify.mui method=00000101 calls=2 inclusive=739 exclusive=739
+stat Notify.mui method=00000105 calls=54 inclusive=2596 exclusive=2596
+stat Notify.mui method=8042d532 calls=1 inclusive=36 exclusive=36
+stat Application.mui method=00000109 calls=1 inclusive=1064 exclusive=108
+stat Application.mui method=00000101 calls=1 inclusive=132698 exclusive=7175
+stat Application.mui method=00000104 calls=1 inclusive=43 exclusive=43
+stat Application.mui method=00000105 calls=1 inclusive=187 exclusive=73
+stat Window.mui method=00000105 calls=1 inclusive=184 exclusive=71
+stat Window.mui method=00000101 calls=1 inclusive=392 exclusive=199
+stat Window.mui method=8042d532 calls=1 inclusive=638 exclusive=152
+stat Area.mui method=00000104 calls=2 inclusive=118 exclusive=118
+stat Area.mui method=00000105 calls=52 inclusive=9704 exclusive=3827
+stat Area.mui method=00000101 calls=6 inclusive=954 exclusive=954
+stat Area.mui method=00000103 calls=11 inclusive=959 exclusive=959
+stat Rectangle.mui method=00000101 calls=4 inclusive=553 exclusive=553
+stat Rectangle.mui method=00000103 calls=9 inclusive=1927 exclusive=568
+stat Group.mui method=8042d532 calls=1 inclusive=207 exclusive=207
+stat Radio.mui method=8042549a calls=2 inclusive=8494 exclusive=128
+stat Group.mui method=00000109 calls=3 inclusive=994 exclusive=238
+stat Group.mui method=00000104 calls=1 inclusive=77 exclusive=77
+stat Group.mui method=00000103 calls=22 inclusive=28244 exclusive=4407
+stat Semaphore.mui method=804276f0 calls=1 inclusive=40 exclusive=40
+stat Group.mui method=00000101 calls=18 inclusive=18791 exclusive=6234
+stat Semaphore.mui method=00000101 calls=2 inclusive=180 exclusive=180
+stat Semaphore.mui method=00000103 calls=1 inclusive=41 exclusive=41
+stat Application.mui method=80425e4b calls=1 inclusive=180 exclusive=72
+stat Notify.mui method=80425e4b calls=1 inclusive=44 exclusive=44
+stat List.mui method=00000101 calls=1 inclusive=975 exclusive=745
+stat Listview.mui method=00000109 calls=1 inclusive=465 exclusive=65
+stat Listview.mui method=00000101 calls=1 inclusive=8893 exclusive=404
+stat Dataspace.mui method=80420dfb calls=2 inclusive=254 exclusive=254
+stat Prop.mui method=00000101 calls=1 inclusive=813 exclusive=167
+stat Prop.mui method=00000103 calls=1 inclusive=341 exclusive=141
+stat Prop.mui method=00000104 calls=1 inclusive=43 exclusive=43
+stat Configdata.mui method=80420dfb calls=1 inclusive=265 exclusive=64
+stat Scrollbar.mui method=00000104 calls=1 inclusive=209 exclusive=63
+stat Scrollbar.mui method=00000101 calls=1 inclusive=4486 exclusive=447
+stat Scrollbar.mui method=00000109 calls=2 inclusive=924 exclusive=126
+stat Gauge.mui method=00000101 calls=1 inclusive=333 exclusive=97
+stat Configdata.mui method=00000103 calls=1 inclusive=350 exclusive=78
+stat Configdata.mui method=00000101 calls=1 inclusive=899 exclusive=129
+stat Dataspace.mui method=00000101 calls=2 inclusive=538 exclusive=211
+stat Dataspace.mui method=00000103 calls=1 inclusive=197 exclusive=81
+stat Application.mui method=8042c862 calls=1 inclusive=121596 exclusive=11426
+stat Image.mui method=8042c9cb calls=5 inclusive=1945 exclusive=320
+stat Text.mui method=8042c9cb calls=3 inclusive=1983 exclusive=192
+stat Configdata.mui method=8042539a calls=150 inclusive=98033 exclusive=21079
+stat Group.mui method=8042c9cb calls=1 inclusive=1229 exclusive=305
+stat Area.mui method=8042c9cb calls=11 inclusive=3598 exclusive=775
+stat Configdata.mui method=8042832c calls=300 inclusive=54145 exclusive=20346
+stat Dataspace.mui method=8042832c calls=300 inclusive=11868 exclusive=11868
+stat Notify.mui method=8042c9cb calls=11 inclusive=1291 exclusive=1291
+stat Scrollbar.mui method=8042c9cb calls=1 inclusive=1360 exclusive=63
+stat List.mui method=8042c9cb calls=3 inclusive=1131 exclusive=210
+trace phase=dispose overflow=0 underflow=0
+stat Text.mui method=00000102 calls=18 inclusive=1651 exclusive=1651
+stat Semaphore.mui method=80421f2d calls=1 inclusive=41 exclusive=41
+stat Configdata.mui method=80425e8e calls=1 inclusive=1292 exclusive=64
+stat String.mui method=00000102 calls=1 inclusive=337 exclusive=194
+stat Dataspace.mui method=80425e8e calls=2 inclusive=2306 exclusive=2306
+stat Cycle.mui method=00000102 calls=1 inclusive=606 exclusive=68
+stat Radio.mui method=00000102 calls=1 inclusive=3817 exclusive=167
+stat Image.mui method=00000102 calls=7 inclusive=850 exclusive=850
+stat Numeric.mui method=00000102 calls=2 inclusive=422 exclusive=134
+stat Slider.mui method=00000102 calls=2 inclusive=697 exclusive=134
+stat Notify.mui method=00000102 calls=2 inclusive=181 exclusive=181
+stat Notify.mui method=00000103 calls=1 inclusive=49 exclusive=49
+stat Notify.mui method=00000106 calls=2 inclusive=97 exclusive=97
+stat Application.mui method=0000010a calls=1 inclusive=656 exclusive=108
+stat Application.mui method=00000102 calls=1 inclusive=35550 exclusive=1091
+stat Application.mui method=80429d2f calls=1 inclusive=42 exclusive=42
+stat Application.mui method=00000106 calls=1 inclusive=185 exclusive=72
+stat Window.mui method=00000106 calls=1 inclusive=184 exclusive=71
+stat Window.mui method=00000104 calls=1 inclusive=46 exclusive=46
+stat Window.mui method=00000103 calls=1 inclusive=229 exclusive=114
+stat Window.mui method=00000102 calls=1 inclusive=13413 exclusive=116
+stat Area.mui method=00000102 calls=5 inclusive=433 exclusive=433
+stat Rectangle.mui method=00000102 calls=4 inclusive=292 exclusive=292
+stat Group.mui method=00000102 calls=18 inclusive=44079 exclusive=3871
+stat Semaphore.mui method=804276f0 calls=1 inclusive=40 exclusive=40
+stat Semaphore.mui method=00000101 calls=2 inclusive=188 exclusive=188
+stat Semaphore.mui method=00000103 calls=1 inclusive=41 exclusive=41
+stat Semaphore.mui method=00000102 calls=4 inclusive=292 exclusive=292
+stat List.mui method=00000102 calls=1 inclusive=363 exclusive=363
+stat Listview.mui method=00000102 calls=1 inclusive=1944 exclusive=67
+stat Dataspace.mui method=80420dfb calls=1 inclusive=127 exclusive=127
+stat Prop.mui method=00000102 calls=1 inclusive=274 exclusive=69
+stat Configdata.mui method=80420dfb calls=1 inclusive=265 exclusive=64
+stat Scrollbar.mui method=00000102 calls=1 inclusive=1124 exclusive=64
+stat Gauge.mui method=00000102 calls=1 inclusive=215 exclusive=72
+stat Configdata.mui method=00000103 calls=1 inclusive=350 exclusive=78
+stat Configdata.mui method=00000102 calls=2 inclusive=714 exclusive=128
+stat Configdata.mui method=00000101 calls=1 inclusive=899 exclusive=128
+stat Dataspace.mui method=00000101 calls=2 inclusive=545 exclusive=208
+stat Dataspace.mui method=00000102 calls=4 inclusive=877 exclusive=284
+stat Dataspace.mui method=00000103 calls=1 inclusive=197 exclusive=81
+stat Application.mui method=8042df8a calls=1 inclusive=18579 exclusive=13592
+timing create median=198664 min=198664 max=198664 n=1
+timing dispose median=35662 min=35662 max=35662 n=1
+list width=92 height=285 visible=31 entries=200
+trace phase=active-scroll50 overflow=0 underflow=0
+stat Area.mui method=8042549a calls=41 inclusive=16996 exclusive=2870
+stat Group.mui method=8042549a calls=41 inclusive=233316 exclusive=3410
+stat Image.mui method=00000103 calls=82 inclusive=11287 exclusive=11287
+stat Notify.mui method=8042549a calls=82 inclusive=238694 exclusive=5946
+stat List.mui method=80426f3f calls=90 inclusive=567098 exclusive=567098
+stat Area.mui method=00000103 calls=41 inclusive=31891 exclusive=6070
+stat Group.mui method=00000103 calls=41 inclusive=215907 exclusive=10425
+stat List.mui method=8042549a calls=41 inclusive=22785 exclusive=3044
+stat Scrollbar.mui method=8042549a calls=41 inclusive=239039 exclusive=2927
+stat List.mui method=00000103 calls=132 inclusive=1603720 exclusive=27336
+stat Prop.mui method=00000103 calls=41 inclusive=184160 exclusive=149436
+stat Scrollbar.mui method=00000103 calls=41 inclusive=221287 exclusive=2583
+stat List.mui method=8042baab calls=49 inclusive=756483 exclusive=5145
+timing active-scroll50 median=854809 min=854809 max=854809 n=1
+trace phase=active-visible50 overflow=0 underflow=0
+stat List.mui method=80426f3f calls=49 inclusive=150569 exclusive=150569
+stat List.mui method=00000103 calls=50 inclusive=173147 exclusive=11896
+stat List.mui method=8042baab calls=49 inclusive=2600 exclusive=2600
+timing active-visible50 median=177777 min=177777 max=177777 n=1
+trace phase=active-closed50 overflow=0 underflow=0
+stat List.mui method=00000103 calls=50 inclusive=15743 exclusive=10154
+stat List.mui method=8042baab calls=49 inclusive=1963 exclusive=1963
+timing active-closed50 median=20744 min=20744 max=20744 n=1
+rc=0
+ALLDONE
+
+=== focus/0-zune68-trace.txt ===
+profile library=21.227 eclock=709379 trace=1
+focus=Application,Configdata new/dispose
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=52653 exclusive=7454
+stat Configdata.mui method=00000101 calls=1 inclusive=45135 exclusive=45135
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19306 exclusive=18233
+stat Configdata.mui method=00000102 calls=1 inclusive=1009 exclusive=1009
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53474 exclusive=8249
+stat Configdata.mui method=00000101 calls=1 inclusive=45161 exclusive=45161
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19872 exclusive=18798
+stat Configdata.mui method=00000102 calls=1 inclusive=1010 exclusive=1010
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53799 exclusive=7446
+stat Configdata.mui method=00000101 calls=1 inclusive=46289 exclusive=46289
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=20043 exclusive=18800
+stat Configdata.mui method=00000102 calls=1 inclusive=1180 exclusive=1180
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53301 exclusive=7446
+stat Configdata.mui method=00000101 calls=1 inclusive=45791 exclusive=45791
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19273 exclusive=18199
+stat Configdata.mui method=00000102 calls=1 inclusive=1010 exclusive=1010
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53429 exclusive=7619
+stat Configdata.mui method=00000101 calls=1 inclusive=45746 exclusive=45746
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19393 exclusive=18319
+stat Configdata.mui method=00000102 calls=1 inclusive=1009 exclusive=1009
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53312 exclusive=7447
+stat Configdata.mui method=00000101 calls=1 inclusive=45799 exclusive=45799
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19463 exclusive=18201
+stat Configdata.mui method=00000102 calls=1 inclusive=1198 exclusive=1198
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53253 exclusive=7444
+stat Configdata.mui method=00000101 calls=1 inclusive=45745 exclusive=45745
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=20041 exclusive=18966
+stat Configdata.mui method=00000102 calls=1 inclusive=1011 exclusive=1011
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53306 exclusive=7445
+stat Configdata.mui method=00000101 calls=1 inclusive=45797 exclusive=45797
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19877 exclusive=18802
+stat Configdata.mui method=00000102 calls=1 inclusive=1011 exclusive=1011
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53252 exclusive=7445
+stat Configdata.mui method=00000101 calls=1 inclusive=45743 exclusive=45743
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19881 exclusive=18806
+stat Configdata.mui method=00000102 calls=1 inclusive=1011 exclusive=1011
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53547 exclusive=7457
+stat Configdata.mui method=00000101 calls=1 inclusive=46025 exclusive=46025
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=21920 exclusive=19896
+stat Configdata.mui method=00000102 calls=1 inclusive=1960 exclusive=1960
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=54715 exclusive=7418
+stat Configdata.mui method=00000101 calls=1 inclusive=47232 exclusive=47232
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19183 exclusive=18130
+stat Configdata.mui method=00000102 calls=1 inclusive=987 exclusive=987
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53464 exclusive=7610
+stat Configdata.mui method=00000101 calls=1 inclusive=45790 exclusive=45790
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19367 exclusive=18289
+stat Configdata.mui method=00000102 calls=1 inclusive=1014 exclusive=1014
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=52870 exclusive=7619
+stat Configdata.mui method=00000101 calls=1 inclusive=45187 exclusive=45187
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=20141 exclusive=19064
+stat Configdata.mui method=00000102 calls=1 inclusive=1013 exclusive=1013
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53521 exclusive=7501
+stat Configdata.mui method=00000101 calls=1 inclusive=45956 exclusive=45956
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19613 exclusive=18537
+stat Configdata.mui method=00000102 calls=1 inclusive=1012 exclusive=1012
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=53669 exclusive=7827
+stat Configdata.mui method=00000101 calls=1 inclusive=45778 exclusive=45778
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=19444 exclusive=18368
+stat Configdata.mui method=00000102 calls=1 inclusive=1012 exclusive=1012
+timing create median=94278 min=93693 max=95642 n=15
+timing dispose median=19729 min=19299 max=22036 n=15
+list width=106 height=270 visible=30 entries=200
+trace phase=active-scroll50 overflow=0 underflow=0
+timing active-scroll50 median=1633666 min=1633666 max=1633666 n=1
+trace phase=active-visible50 overflow=0 underflow=0
+timing active-visible50 median=259456 min=259456 max=259456 n=1
+trace phase=active-closed50 overflow=0 underflow=0
+timing active-closed50 median=58020 min=58020 max=58020 n=1
+rc=0
+ALLDONE
+
+=== focus/0-mui38-trace.txt ===
+profile library=19.35 eclock=709379 trace=1
+focus=Application,Configdata new/dispose
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=33512 exclusive=33213
+stat Configdata.mui method=00000101 calls=1 inclusive=235 exclusive=235
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22280 exclusive=21681
+stat Configdata.mui method=00000102 calls=2 inclusive=172 exclusive=172
+stat Configdata.mui method=00000101 calls=1 inclusive=234 exclusive=234
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=33375 exclusive=33074
+stat Configdata.mui method=00000101 calls=1 inclusive=237 exclusive=237
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22270 exclusive=21666
+stat Configdata.mui method=00000102 calls=2 inclusive=175 exclusive=175
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32698 exclusive=32397
+stat Configdata.mui method=00000101 calls=1 inclusive=237 exclusive=237
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22266 exclusive=21664
+stat Configdata.mui method=00000102 calls=2 inclusive=174 exclusive=174
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32716 exclusive=32415
+stat Configdata.mui method=00000101 calls=1 inclusive=237 exclusive=237
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22385 exclusive=21783
+stat Configdata.mui method=00000102 calls=2 inclusive=174 exclusive=174
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32541 exclusive=32239
+stat Configdata.mui method=00000101 calls=1 inclusive=238 exclusive=238
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22307 exclusive=21705
+stat Configdata.mui method=00000102 calls=2 inclusive=176 exclusive=176
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32857 exclusive=32556
+stat Configdata.mui method=00000101 calls=1 inclusive=237 exclusive=237
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22238 exclusive=21636
+stat Configdata.mui method=00000102 calls=2 inclusive=174 exclusive=174
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32779 exclusive=32478
+stat Configdata.mui method=00000101 calls=1 inclusive=237 exclusive=237
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=23134 exclusive=22363
+stat Configdata.mui method=00000102 calls=2 inclusive=174 exclusive=174
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=33088 exclusive=32787
+stat Configdata.mui method=00000101 calls=1 inclusive=237 exclusive=237
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22250 exclusive=21647
+stat Configdata.mui method=00000102 calls=2 inclusive=174 exclusive=174
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32146 exclusive=31845
+stat Configdata.mui method=00000101 calls=1 inclusive=237 exclusive=237
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=110123 exclusive=109528
+stat Configdata.mui method=00000102 calls=2 inclusive=171 exclusive=171
+stat Configdata.mui method=00000101 calls=1 inclusive=232 exclusive=232
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32261 exclusive=31962
+stat Configdata.mui method=00000101 calls=1 inclusive=235 exclusive=235
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22830 exclusive=22230
+stat Configdata.mui method=00000102 calls=2 inclusive=173 exclusive=173
+stat Configdata.mui method=00000101 calls=1 inclusive=235 exclusive=235
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32247 exclusive=31945
+stat Configdata.mui method=00000101 calls=1 inclusive=238 exclusive=238
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22394 exclusive=21794
+stat Configdata.mui method=00000102 calls=2 inclusive=173 exclusive=173
+stat Configdata.mui method=00000101 calls=1 inclusive=235 exclusive=235
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32579 exclusive=32276
+stat Configdata.mui method=00000101 calls=1 inclusive=238 exclusive=238
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22944 exclusive=22342
+stat Configdata.mui method=00000102 calls=2 inclusive=174 exclusive=174
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32314 exclusive=32012
+stat Configdata.mui method=00000101 calls=1 inclusive=238 exclusive=238
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22419 exclusive=21816
+stat Configdata.mui method=00000102 calls=2 inclusive=173 exclusive=173
+stat Configdata.mui method=00000101 calls=1 inclusive=235 exclusive=235
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32769 exclusive=32467
+stat Configdata.mui method=00000101 calls=1 inclusive=238 exclusive=238
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22284 exclusive=21684
+stat Configdata.mui method=00000102 calls=2 inclusive=173 exclusive=173
+stat Configdata.mui method=00000101 calls=1 inclusive=235 exclusive=235
+trace phase=create overflow=0 underflow=0
+stat Application.mui method=00000101 calls=1 inclusive=32546 exclusive=32243
+stat Configdata.mui method=00000101 calls=1 inclusive=236 exclusive=236
+trace phase=dispose overflow=0 underflow=0
+stat Application.mui method=00000102 calls=1 inclusive=22154 exclusive=21554
+stat Configdata.mui method=00000102 calls=2 inclusive=173 exclusive=173
+stat Configdata.mui method=00000101 calls=1 inclusive=235 exclusive=235
+timing create median=60496 min=59346 max=60888 n=15
+timing dispose median=22499 min=22267 max=110236 n=15
+list width=92 height=285 visible=31 entries=200
+trace phase=active-scroll50 overflow=0 underflow=0
+timing active-scroll50 median=752065 min=752065 max=752065 n=1
+trace phase=active-visible50 overflow=0 underflow=0
+timing active-visible50 median=158728 min=158728 max=158728 n=1
+trace phase=active-closed50 overflow=0 underflow=0
+timing active-closed50 median=8230 min=8230 max=8230 n=1
+rc=0
+ALLDONE
+
+=== noforward/0-zune68-plain.txt ===
+profile library=21.227 eclock=709379 trace=0
+experiment=active sets with Group_Forward=FALSE
+timing create median=88194 min=88033 max=91654 n=15
+timing dispose median=19273 min=19103 max=19987 n=15
+list width=106 height=270 visible=30 entries=200
+timing active-scroll50 median=1583344 min=1582346 max=1585766 n=15
+experiment-state active-scroll50 active=143 first=114
+timing active-visible50 median=212413 min=211790 max=214289 n=15
+experiment-state active-visible50 active=1 first=0
+timing active-closed50 median=11226 min=11056 max=11895 n=15
+experiment-state active-closed50 active=1 first=0
+rc=0
+ALLDONE
+
+=== noforward/1-zune68-plain.txt ===
+profile library=21.227 eclock=709379 trace=0
+experiment=active sets with Group_Forward=FALSE
+timing create median=88780 min=88531 max=91327 n=15
+timing dispose median=19099 min=18844 max=19871 n=15
+list width=106 height=270 visible=30 entries=200
+timing active-scroll50 median=1574024 min=1573372 max=1576464 n=15
+experiment-state active-scroll50 active=143 first=114
+timing active-visible50 median=211767 min=211462 max=214177 n=15
+experiment-state active-visible50 active=1 first=0
+timing active-closed50 median=11145 min=10976 max=11814 n=15
+experiment-state active-closed50 active=1 first=0
+rc=0
+ALLDONE
+
+=== noforward/2-zune68-plain.txt ===
+profile library=21.227 eclock=709379 trace=0
+experiment=active sets with Group_Forward=FALSE
+timing create median=88537 min=88154 max=90996 n=15
+timing dispose median=19390 min=19038 max=20228 n=15
+list width=106 height=270 visible=30 entries=200
+timing active-scroll50 median=1583280 min=1582264 max=1585797 n=15
+experiment-state active-scroll50 active=143 first=114
+timing active-visible50 median=212334 min=211529 max=214118 n=15
+experiment-state active-visible50 active=1 first=0
+timing active-closed50 median=11306 min=11136 max=12003 n=15
+experiment-state active-closed50 active=1 first=0
+rc=0
+ALLDONE

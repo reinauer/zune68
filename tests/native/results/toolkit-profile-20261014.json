@@ -1,0 +1,725 @@
+{
+  "baseline": {
+    "config_sha256": "eeb3a0b0080a367aed0e57bade28144591f743fff9c5c935bff8f1fba080bd34",
+    "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+    "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+    "binary_sha256": "74a9ac60f39a21c614dca845d1b2c0914882c32bea8bb0d4f9c3e25f2c078319",
+    "runs": [
+      {
+        "trial": 0,
+        "profile": "zune68",
+        "mode": "plain",
+        "transcript": "0-zune68-plain.txt",
+        "sha256": "282d85ef0e42b8974db4c953fa2156caf57d812d9472df62bd21b6ecb0d6d31d",
+        "timing": {
+          "create": {
+            "median": 88387,
+            "min": 88158,
+            "max": 89032,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 18954,
+            "min": 18681,
+            "max": 22158,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 1625234,
+            "min": 1624619,
+            "max": 1627908,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 258867,
+            "min": 258591,
+            "max": 261273,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 58366,
+            "min": 57749,
+            "max": 60163,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 0,
+        "profile": "zune68",
+        "mode": "trace",
+        "transcript": "0-zune68-trace.txt",
+        "sha256": "f9bd29093e4a75ea8662776dcb7d2816f708541e9a32a81c8f5bfd875f2fd2cc",
+        "timing": {
+          "create": {
+            "median": 389461,
+            "min": 389461,
+            "max": 389461,
+            "repetitions": 1
+          },
+          "dispose": {
+            "median": 101785,
+            "min": 101785,
+            "max": 101785,
+            "repetitions": 1
+          },
+          "active-scroll50": {
+            "median": 2727801,
+            "min": 2727801,
+            "max": 2727801,
+            "repetitions": 1
+          },
+          "active-visible50": {
+            "median": 608812,
+            "min": 608812,
+            "max": 608812,
+            "repetitions": 1
+          },
+          "active-closed50": {
+            "median": 313964,
+            "min": 313964,
+            "max": 313964,
+            "repetitions": 1
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 0,
+        "profile": "mui38",
+        "mode": "plain",
+        "transcript": "0-mui38-plain.txt",
+        "sha256": "0ebe40f6829a155da589041f70d2280a3bc60a3f715fce6a0f71cb7f30d24506",
+        "timing": {
+          "create": {
+            "median": 52708,
+            "min": 52303,
+            "max": 53311,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 21932,
+            "min": 21568,
+            "max": 25108,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 751645,
+            "min": 748572,
+            "max": 754305,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 158686,
+            "min": 158222,
+            "max": 161080,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 8220,
+            "min": 8052,
+            "max": 8893,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "bc5b864133afa00234ccdf57362b0ea0686a11391cb5b5881e9efdcef7863c77",
+        "library_sha256": "22ba0a4e36cc9f9bd7baa2946340164f21c8d8feedf6c4738fb8533fd24ca8d1"
+      },
+      {
+        "trial": 0,
+        "profile": "mui38",
+        "mode": "trace",
+        "transcript": "0-mui38-trace.txt",
+        "sha256": "d63a225444f44a34cd3828c25f23b14eadde7aef5ed89dba9d4c786269e301d9",
+        "timing": {
+          "create": {
+            "median": 202521,
+            "min": 202521,
+            "max": 202521,
+            "repetitions": 1
+          },
+          "dispose": {
+            "median": 85241,
+            "min": 85241,
+            "max": 85241,
+            "repetitions": 1
+          },
+          "active-scroll50": {
+            "median": 856139,
+            "min": 856139,
+            "max": 856139,
+            "repetitions": 1
+          },
+          "active-visible50": {
+            "median": 178131,
+            "min": 178131,
+            "max": 178131,
+            "repetitions": 1
+          },
+          "active-closed50": {
+            "median": 20748,
+            "min": 20748,
+            "max": 20748,
+            "repetitions": 1
+          }
+        },
+        "toolkit_manifest_sha256": "bc5b864133afa00234ccdf57362b0ea0686a11391cb5b5881e9efdcef7863c77",
+        "library_sha256": "22ba0a4e36cc9f9bd7baa2946340164f21c8d8feedf6c4738fb8533fd24ca8d1"
+      },
+      {
+        "trial": 1,
+        "profile": "mui38",
+        "mode": "plain",
+        "transcript": "1-mui38-plain.txt",
+        "sha256": "65454bf5e95f1e7fc902f481ab11424d7a32d4a27d2779ce519adf9fc4ecd207",
+        "timing": {
+          "create": {
+            "median": 52901,
+            "min": 51744,
+            "max": 56056,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 21943,
+            "min": 21731,
+            "max": 22740,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 751815,
+            "min": 749767,
+            "max": 754415,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 158794,
+            "min": 157996,
+            "max": 161092,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 8220,
+            "min": 8052,
+            "max": 8894,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "bc5b864133afa00234ccdf57362b0ea0686a11391cb5b5881e9efdcef7863c77",
+        "library_sha256": "22ba0a4e36cc9f9bd7baa2946340164f21c8d8feedf6c4738fb8533fd24ca8d1"
+      },
+      {
+        "trial": 1,
+        "profile": "mui38",
+        "mode": "trace",
+        "transcript": "1-mui38-trace.txt",
+        "sha256": "4e81c4c9c7fbef74b9f22721883f8fd886f8562d8f935c993339b5c736fe4033",
+        "timing": {
+          "create": {
+            "median": 200602,
+            "min": 200602,
+            "max": 200602,
+            "repetitions": 1
+          },
+          "dispose": {
+            "median": 35813,
+            "min": 35813,
+            "max": 35813,
+            "repetitions": 1
+          },
+          "active-scroll50": {
+            "median": 855439,
+            "min": 855439,
+            "max": 855439,
+            "repetitions": 1
+          },
+          "active-visible50": {
+            "median": 178197,
+            "min": 178197,
+            "max": 178197,
+            "repetitions": 1
+          },
+          "active-closed50": {
+            "median": 20569,
+            "min": 20569,
+            "max": 20569,
+            "repetitions": 1
+          }
+        },
+        "toolkit_manifest_sha256": "bc5b864133afa00234ccdf57362b0ea0686a11391cb5b5881e9efdcef7863c77",
+        "library_sha256": "22ba0a4e36cc9f9bd7baa2946340164f21c8d8feedf6c4738fb8533fd24ca8d1"
+      },
+      {
+        "trial": 1,
+        "profile": "zune68",
+        "mode": "plain",
+        "transcript": "1-zune68-plain.txt",
+        "sha256": "9cd60b64b6d63ea8eb09e5c508b9d039c73908dd750db7de2f30868cbafd5afb",
+        "timing": {
+          "create": {
+            "median": 88376,
+            "min": 88291,
+            "max": 88885,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 19016,
+            "min": 18846,
+            "max": 22134,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 1633369,
+            "min": 1631868,
+            "max": 1635677,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 259844,
+            "min": 259609,
+            "max": 262092,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 59060,
+            "min": 58396,
+            "max": 60884,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 1,
+        "profile": "zune68",
+        "mode": "trace",
+        "transcript": "1-zune68-trace.txt",
+        "sha256": "704d06e75e223816766cab34483421bb4afe3ecd1bbee787c38791629610289f",
+        "timing": {
+          "create": {
+            "median": 385136,
+            "min": 385136,
+            "max": 385136,
+            "repetitions": 1
+          },
+          "dispose": {
+            "median": 100001,
+            "min": 100001,
+            "max": 100001,
+            "repetitions": 1
+          },
+          "active-scroll50": {
+            "median": 2715010,
+            "min": 2715010,
+            "max": 2715010,
+            "repetitions": 1
+          },
+          "active-visible50": {
+            "median": 605131,
+            "min": 605131,
+            "max": 605131,
+            "repetitions": 1
+          },
+          "active-closed50": {
+            "median": 310131,
+            "min": 310131,
+            "max": 310131,
+            "repetitions": 1
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 2,
+        "profile": "zune68",
+        "mode": "plain",
+        "transcript": "2-zune68-plain.txt",
+        "sha256": "43d3c402bd4f5e362cf8ec21eb64542799664f67e513bdc4818ca41d22607b4f",
+        "timing": {
+          "create": {
+            "median": 88314,
+            "min": 88270,
+            "max": 91167,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 18935,
+            "min": 18764,
+            "max": 19802,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 1626771,
+            "min": 1626210,
+            "max": 1629428,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 259104,
+            "min": 259048,
+            "max": 261556,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 58759,
+            "min": 58094,
+            "max": 61201,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 2,
+        "profile": "zune68",
+        "mode": "trace",
+        "transcript": "2-zune68-trace.txt",
+        "sha256": "a59e265d1d1c727dd367cf95ca7fd29214b3b1572c841e0d6db1ce3d0fcdc5c2",
+        "timing": {
+          "create": {
+            "median": 388769,
+            "min": 388769,
+            "max": 388769,
+            "repetitions": 1
+          },
+          "dispose": {
+            "median": 101506,
+            "min": 101506,
+            "max": 101506,
+            "repetitions": 1
+          },
+          "active-scroll50": {
+            "median": 2720676,
+            "min": 2720676,
+            "max": 2720676,
+            "repetitions": 1
+          },
+          "active-visible50": {
+            "median": 609007,
+            "min": 609007,
+            "max": 609007,
+            "repetitions": 1
+          },
+          "active-closed50": {
+            "median": 314501,
+            "min": 314501,
+            "max": 314501,
+            "repetitions": 1
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 2,
+        "profile": "mui38",
+        "mode": "plain",
+        "transcript": "2-mui38-plain.txt",
+        "sha256": "34cbfe57a42b682d7387a779b03dc0e10842b6f251a17d8f6f27b485f0ff8b3d",
+        "timing": {
+          "create": {
+            "median": 53030,
+            "min": 52421,
+            "max": 55445,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 22121,
+            "min": 21881,
+            "max": 22913,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 751697,
+            "min": 747684,
+            "max": 754047,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 158723,
+            "min": 157951,
+            "max": 160995,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 8221,
+            "min": 8051,
+            "max": 8893,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "bc5b864133afa00234ccdf57362b0ea0686a11391cb5b5881e9efdcef7863c77",
+        "library_sha256": "22ba0a4e36cc9f9bd7baa2946340164f21c8d8feedf6c4738fb8533fd24ca8d1"
+      },
+      {
+        "trial": 2,
+        "profile": "mui38",
+        "mode": "trace",
+        "transcript": "2-mui38-trace.txt",
+        "sha256": "000ab448d0c7b82084033f16cdcb8510afff378d104e6e5df019ffaf269e12be",
+        "timing": {
+          "create": {
+            "median": 198664,
+            "min": 198664,
+            "max": 198664,
+            "repetitions": 1
+          },
+          "dispose": {
+            "median": 35662,
+            "min": 35662,
+            "max": 35662,
+            "repetitions": 1
+          },
+          "active-scroll50": {
+            "median": 854809,
+            "min": 854809,
+            "max": 854809,
+            "repetitions": 1
+          },
+          "active-visible50": {
+            "median": 177777,
+            "min": 177777,
+            "max": 177777,
+            "repetitions": 1
+          },
+          "active-closed50": {
+            "median": 20744,
+            "min": 20744,
+            "max": 20744,
+            "repetitions": 1
+          }
+        },
+        "toolkit_manifest_sha256": "bc5b864133afa00234ccdf57362b0ea0686a11391cb5b5881e9efdcef7863c77",
+        "library_sha256": "22ba0a4e36cc9f9bd7baa2946340164f21c8d8feedf6c4738fb8533fd24ca8d1"
+      }
+    ]
+  },
+  "focus": {
+    "config_sha256": "eeb3a0b0080a367aed0e57bade28144591f743fff9c5c935bff8f1fba080bd34",
+    "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+    "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+    "binary_sha256": "8f5d0fd444b1e16a939562c869bf995d5c7f54d4e21e1d208deed1e5cac72cd7",
+    "runs": [
+      {
+        "trial": 0,
+        "profile": "zune68",
+        "mode": "trace",
+        "transcript": "0-zune68-trace.txt",
+        "sha256": "3715b45df591c4206a932804279ab2a49c85be1cd339b0171ec8bf0849ca533f",
+        "timing": {
+          "create": {
+            "median": 94278,
+            "min": 93693,
+            "max": 95642,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 19729,
+            "min": 19299,
+            "max": 22036,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 1633666,
+            "min": 1633666,
+            "max": 1633666,
+            "repetitions": 1
+          },
+          "active-visible50": {
+            "median": 259456,
+            "min": 259456,
+            "max": 259456,
+            "repetitions": 1
+          },
+          "active-closed50": {
+            "median": 58020,
+            "min": 58020,
+            "max": 58020,
+            "repetitions": 1
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 0,
+        "profile": "mui38",
+        "mode": "trace",
+        "transcript": "0-mui38-trace.txt",
+        "sha256": "0afffaa973e7ef08715ab228929678e8dd316f2e5427f37d9249a5b09fef4a01",
+        "timing": {
+          "create": {
+            "median": 60496,
+            "min": 59346,
+            "max": 60888,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 22499,
+            "min": 22267,
+            "max": 110236,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 752065,
+            "min": 752065,
+            "max": 752065,
+            "repetitions": 1
+          },
+          "active-visible50": {
+            "median": 158728,
+            "min": 158728,
+            "max": 158728,
+            "repetitions": 1
+          },
+          "active-closed50": {
+            "median": 8230,
+            "min": 8230,
+            "max": 8230,
+            "repetitions": 1
+          }
+        },
+        "toolkit_manifest_sha256": "bc5b864133afa00234ccdf57362b0ea0686a11391cb5b5881e9efdcef7863c77",
+        "library_sha256": "22ba0a4e36cc9f9bd7baa2946340164f21c8d8feedf6c4738fb8533fd24ca8d1"
+      }
+    ]
+  },
+  "noforward": {
+    "config_sha256": "eeb3a0b0080a367aed0e57bade28144591f743fff9c5c935bff8f1fba080bd34",
+    "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+    "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+    "binary_sha256": "8c71d4e4c75240e7c51276e1f482e0ff2fcc22c84b23179cfbf909265d4f3746",
+    "runs": [
+      {
+        "trial": 0,
+        "profile": "zune68",
+        "mode": "plain",
+        "transcript": "0-zune68-plain.txt",
+        "sha256": "02573913eb5942cfbf1b2372149db31ca5405be8e69fa60aec93331babc04280",
+        "timing": {
+          "create": {
+            "median": 88194,
+            "min": 88033,
+            "max": 91654,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 19273,
+            "min": 19103,
+            "max": 19987,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 1583344,
+            "min": 1582346,
+            "max": 1585766,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 212413,
+            "min": 211790,
+            "max": 214289,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 11226,
+            "min": 11056,
+            "max": 11895,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 1,
+        "profile": "zune68",
+        "mode": "plain",
+        "transcript": "1-zune68-plain.txt",
+        "sha256": "dc9a6f3176247277b6f30bde4e6b3539cfe7cd96e1f6a22b0140c270fd2ef47e",
+        "timing": {
+          "create": {
+            "median": 88780,
+            "min": 88531,
+            "max": 91327,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 19099,
+            "min": 18844,
+            "max": 19871,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 1574024,
+            "min": 1573372,
+            "max": 1576464,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 211767,
+            "min": 211462,
+            "max": 214177,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 11145,
+            "min": 10976,
+            "max": 11814,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      },
+      {
+        "trial": 2,
+        "profile": "zune68",
+        "mode": "plain",
+        "transcript": "2-zune68-plain.txt",
+        "sha256": "4dd523185e1e11f097c8697c0b74661fd821f2c41561accf8ed4965fb6322d6e",
+        "timing": {
+          "create": {
+            "median": 88537,
+            "min": 88154,
+            "max": 90996,
+            "repetitions": 15
+          },
+          "dispose": {
+            "median": 19390,
+            "min": 19038,
+            "max": 20228,
+            "repetitions": 15
+          },
+          "active-scroll50": {
+            "median": 1583280,
+            "min": 1582264,
+            "max": 1585797,
+            "repetitions": 15
+          },
+          "active-visible50": {
+            "median": 212334,
+            "min": 211529,
+            "max": 214118,
+            "repetitions": 15
+          },
+          "active-closed50": {
+            "median": 11306,
+            "min": 11136,
+            "max": 12003,
+            "repetitions": 15
+          }
+        },
+        "toolkit_manifest_sha256": "94fe7da67f3c67953d78f299f994b358cf0a2fa68d4be5ee40b547f51f7dfc6b",
+        "library_sha256": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e"
+      }
+    ]
+  },
+  "probe_source_sha256": "d0a25d17b1f3c8b7ebdc0b59896ede7f32db056ccfe666a3fc7ad5db243e1b8d",
+  "tree_source_sha256": "ddfd0add7df7ec3438d120f4bc4c1724683c36119a719ec1159d881c8f168fb0"
+}

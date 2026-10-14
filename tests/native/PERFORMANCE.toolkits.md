@@ -33,6 +33,10 @@ comparison also identifies creation, drawing and group-change costs
 relative to MUI 3.8. Use the separate Zune68 before/after measurements to
 assess the cost of our MUI 5 additions.
 
+The follow-up [profiling report](PROFILING.toolkits.md) separates creation
+from disposal, selection from scrolling, and dispatcher work from drawing.
+It records method counts and a controlled tag-forwarding experiment.
+
 ## Method and limits
 
 All implementations run the identical benchmark executable on the same

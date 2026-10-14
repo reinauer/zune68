@@ -1,5 +1,10 @@
 # MUI 5 compatibility probes
 
+For creation/List performance investigation, see
+[PROFILING.toolkits.md](PROFILING.toolkits.md). Its test-only dispatcher
+wrappers require a disposable guest and are separate from compatibility
+and uninstrumented performance measurements.
+
 `make -C workbench/libs/muimaster check-core` builds the probes against
 Zune's generated headers. Compilation is not a guest runtime test.
 The existing linked-code String tests also exercise full 64-bit getters
