@@ -152,6 +152,7 @@ IPTR Title__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     data = INST_DATA(cl, obj);
+    muiAreaData(obj)->mad_Flags2 |= MADF2_ISTITLE;
 
     layout_hook->h_Data = data;
     data->layout_hook = layout_hook;

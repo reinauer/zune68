@@ -269,17 +269,11 @@ static IPTR Group__MUIM_AddObject(struct IClass *cl, Object *obj, Msg msg)
 
     DoMethodA(data->family, (Msg) msg);
     data->num_children++;
-    if (data->num_children == 1)
+    if (data->num_children == 1 &&
+        (muiAreaData(msgint->obj)->mad_Flags2 & MADF2_ISTITLE))
     {
-        struct IClass *childclass = OCLASS(msgint->obj);
-        for (; childclass; childclass = childclass->cl_Super)
-            if (childclass->cl_ID &&
-                !strcmp((char *)childclass->cl_ID, MUIC_Title))
-            {
-                data->titlegroup = msgint->obj;
-                data->flags |= GROUP_PAGEMODE;
-                break;
-            }
+        data->titlegroup = msgint->obj;
+        data->flags |= GROUP_PAGEMODE;
     }
 
     if ((data->flags & GROUP_CHANGING) != 0)

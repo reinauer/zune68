@@ -53,6 +53,20 @@ AROS_LH6(BOOL, MUI_LayoutObj,
 
 IPTR DoLayoutMethod(Object *obj)
 {
-    return MUI_LayoutObj(obj, _left(obj), _top(obj), _width(obj),
-        _height(obj), 0);
+    /* Internal callers already installed the window-relative box. Keep
+     * public Group subclass dispatch without repeating coordinate stores
+     * and crossing the library vector for every ordinary child. */
+    if (muiAreaData(obj)->mad_Flags2 & MADF2_ISGROUP)
+    {
+        struct MUIP_Layout method = {
+            MUIM_Layout, _left(obj), _top(obj), _width(obj), _height(obj), 0
+        };
+        return DoMethodA(obj, (Msg)&method) != 0;
+    }
+    muiAreaData(obj)->mad_VirtualTop = _top(obj);
+    if (_width(obj) < _minwidth(obj) || _width(obj) > _maxwidth(obj) ||
+        _height(obj) < _minheight(obj) || _height(obj) > _maxheight(obj))
+        return FALSE;
+    static const struct MUIP_Zune_Layout method = {MUIM_Zune_Layout};
+    return DoMethodA(obj, (Msg)&method);
 }

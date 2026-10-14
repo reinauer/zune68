@@ -623,6 +623,7 @@ struct MUI_AreaData
 #define MADF2_CUSTOMBACKFILL   (1UL << 0)
 #define MADF2_BACKFILL_ACTIVE  (1UL << 1)
 #define MADF2_ISGROUP          (1UL << 2)
+#define MADF2_ISTITLE          (1UL << 3)
 
 #define MADF_DRAWOBJECT        (1<< 0)  /* draw object completely */
 #define MADF_DRAWUPDATE        (1<< 1)  /* update object */
