@@ -141,6 +141,8 @@ IPTR Dirlist__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     obj = (Object *) DoSuperNewTags
         (cl, obj, NULL,
+        MUIA_List_MaxColumns, MAX(6, GetTagData(MUIA_List_MaxColumns,
+            6, msg->ops_AttrList)),
         format ? TAG_IGNORE : MUIA_List_Format, (IPTR) ",P=\33r,,,,",
         TAG_MORE, (IPTR) msg->ops_AttrList);
 
@@ -258,27 +260,26 @@ static void ReadDirectory(Object *obj, struct Dirlist_DATA *data)
                             }
                         }
 
-                        if (isdir)
-                        {
-                            set(obj, MUIA_Dirlist_NumDrawers,
-                                ++data->numdrawers);
-                        }
-                        else
-                        {
-                            set(obj, MUIA_Dirlist_NumFiles,
-                                ++data->numfiles);
-                            data->numbytes64 += (ULONG)fib->fib_Size;
-                            data->numbytes = data->numbytes64 > 0x7fffffffULL ?
-                                0x7fffffff : (ULONG)data->numbytes64;
-                            set(obj, MUIA_Dirlist_NumBytes, data->numbytes);
-                            set(obj, MUIA_Dirlist_NumBytes64, &data->numbytes64);
-                        }
+                    } /* standard filters */
 
-                        DoMethod(obj, MUIM_List_InsertSingle, (IPTR) fib,
-                            MUIV_List_Insert_Bottom);
+                    if (isdir)
+                    {
+                        set(obj, MUIA_Dirlist_NumDrawers,
+                            ++data->numdrawers);
+                    }
+                    else
+                    {
+                        set(obj, MUIA_Dirlist_NumFiles,
+                            ++data->numfiles);
+                        data->numbytes64 += (ULONG)fib->fib_Size;
+                        data->numbytes = data->numbytes64 > 0x7fffffffULL ?
+                            0x7fffffff : (ULONG)data->numbytes64;
+                        set(obj, MUIA_Dirlist_NumBytes, data->numbytes);
+                        set(obj, MUIA_Dirlist_NumBytes64, &data->numbytes64);
+                    }
 
-                    }           /* no filterhook */
-
+                    DoMethod(obj, MUIM_List_InsertSingle, (IPTR) fib,
+                        MUIV_List_Insert_Bottom);
                 }               /* for(;;) */
 
                 set(obj, MUIA_Dirlist_Status, MUIV_Dirlist_Status_Valid);

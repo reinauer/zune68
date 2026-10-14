@@ -32,8 +32,9 @@ extern struct Library *MUIMasterBase;
 
 #define ENTRY_TITLE (-1)
 
-#define FORMAT_TEMPLATE "DELTA=D/N,PREPARSE=P/K,WEIGHT=W/N,MINWIDTH=MIW/N," \
-    "MAXWIDTH=MAW/N,COL=C/N,BAR/S,HIDDEN/S,SORTABLE/S,ORDER/K"
+#define FORMAT_TEMPLATE "DELTA=D/K/N,PREPARSE=P/K,WEIGHT=W/K/N,MINWIDTH=MIW/K," \
+    "MAXWIDTH=MAW/K,COL=C/K/N,BAR/S,H=HIDDEN/S,SORTABLE/S,ORDER/K," \
+    "ISOBJECT/S,ELIDE=E/K,FIXWIDTH/K/N"
 
 #define BAR_WIDTH 2
 
@@ -53,6 +54,9 @@ enum
     ARG_HIDDEN,
     ARG_SORTABLE,
     ARG_ORDER,
+    ARG_ISOBJECT,
+    ARG_ELIDE,
+    ARG_FIXWIDTH,
     ARG_CNT
 };
 
@@ -83,6 +87,8 @@ struct ColumnInfo
     int entries_width; /* width of the entries (maximum of all widths) */
     BOOL hidden, sortable, descending;
     int order_id;
+    BOOL min_pixels, max_pixels, is_object, layout_hidden;
+    LONG elide, layout_width, layout_max;
 };
 
 struct MUI_ImageSpec_intern;
@@ -228,6 +234,7 @@ struct MUI_ListData
     CONST_STRPTR *title_array;
     LONG title_columns;
     STRPTR *mapped_strings;
+    BOOL format_layout, max_columns_explicit;
 };
 
 #define MOUSE_CLICK_ENTRY 1     /* on entry clicked */
@@ -242,6 +249,72 @@ struct MUI_ListData
 #define LIST_CHANGED    (1<<6)
 #define LIST_HORIZCHECK (1<<7)  /* check the horizontal scroller when quiet ends */
 
+
+static inline __attribute__((always_inline)) LONG ColumnWidth(struct MUI_ListData *data, LONG column)
+{
+    return data->format_layout ? data->ci[column].layout_width :
+        data->ci[column].entries_width;
+}
+static inline __attribute__((always_inline)) BOOL ColumnHidden(struct MUI_ListData *data, LONG column)
+{
+    return data->ci[column].hidden || data->ci[column].layout_hidden;
+}
+
+/* Keep natural text widths separate from the current allocation. Resizing
+ * can shrink and grow columns without measuring every entry again. */
+static void LayoutColumns(struct MUI_ListData *data)
+{
+    LONG available, used = 0, last = -1, extra;
+    if (!data->format_layout || !data->area) return;
+    available = MAX(0, _mwidth(data->area));
+    for (LONG i = 0; i < data->columns; i++)
+    {
+        struct ColumnInfo *ci = &data->ci[i];
+        ci->layout_hidden = FALSE;
+        ci->layout_width = 0;
+        if (ci->hidden) continue;
+        LONG minimum = ci->min_width < 0 ? ci->entries_width :
+            ci->min_pixels ? ci->min_width : available * ci->min_width / 100;
+        LONG maximum = ci->max_width < 0 ? ci->entries_width :
+            ci->max_pixels ? ci->max_width : available * ci->max_width / 100;
+        ci->layout_max = MAX(minimum, maximum);
+        LONG gap = last < 0 ? 0 : data->ci[last].delta +
+            (data->ci[last].bar ? BAR_WIDTH : 0);
+        if (last >= 0 && used + gap + minimum > available)
+        { ci->layout_hidden = TRUE; continue; }
+        ci->layout_width = minimum;
+        used += gap + minimum;
+        last = i;
+    }
+    extra = available - used;
+    /* Redistribute space left by columns which hit their maximum. */
+    while (extra > 0)
+    {
+        LONG weights = 0, remaining = extra;
+        for (LONG i = 0; i < data->columns; i++)
+            if (!ColumnHidden(data, i) && data->ci[i].layout_width < data->ci[i].layout_max)
+                weights += data->ci[i].weight;
+        if (!weights) break;
+        for (LONG i = 0; i < data->columns; i++)
+        {
+            struct ColumnInfo *ci = &data->ci[i];
+            if (ColumnHidden(data, i) || ci->layout_width >= ci->layout_max || !ci->weight) continue;
+            LONG share = MAX(1, remaining * ci->weight / weights);
+            share = MIN(extra, MIN(share, ci->layout_max - ci->layout_width));
+            ci->layout_width += share; extra -= share;
+        }
+        if (extra == remaining) break;
+    }
+}
+
+static LONG ParseColumnWidth(CONST_STRPTR value, BOOL *pixels)
+{
+    char *end;
+    LONG width = strtol((const char *)value, &end, 10);
+    *pixels = !Stricmp(end, "px");
+    if (end == (const char *)value || (*end && !*pixels)) return -1;
+    return MAX(-1, MIN(width, 32767));
+}
 
 static IPTR ListEndEdit(struct IClass *cl, Object *obj, ULONG mode, BOOL force);
 static IPTR ListEdit(struct IClass *cl, Object *obj, LONG row, LONG column);
@@ -663,6 +736,7 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
     ptr = format;
 
     FreeListFormat(data);
+    data->format_layout = FALSE;
 
     new_columns = 1;
 
@@ -671,8 +745,8 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
         if (c == ',')
             new_columns++;
 
-    if (!*format && data->max_columns > new_columns)
-        new_columns = data->max_columns;
+
+    if (new_columns > data->max_columns) return FALSE;
 
     if (!(data->preparses =
             AllocVec((MAX(new_columns, data->max_columns) + 10) * sizeof(STRPTR), MEMF_CLEAR)))
@@ -742,15 +816,30 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
                     if (args[ARG_COL])
                         data->ci[i].colno = *(LONG *) args[ARG_COL];
                     if (args[ARG_WEIGHT])
-                        data->ci[i].weight = *(LONG *) args[ARG_WEIGHT];
+                        data->ci[i].weight = MAX(0, MIN(10000, *(LONG *)args[ARG_WEIGHT]));
                     if (args[ARG_DELTA])
-                        data->ci[i].delta = *(LONG *) args[ARG_DELTA];
+                        data->ci[i].delta = MAX(0, MIN(32767, *(LONG *)args[ARG_DELTA]));
                     if (args[ARG_MINWIDTH])
                         data->ci[i].min_width =
-                            *(LONG *) args[ARG_MINWIDTH];
+                            ParseColumnWidth((STRPTR)args[ARG_MINWIDTH], &data->ci[i].min_pixels);
                     if (args[ARG_MAXWIDTH])
                         data->ci[i].max_width =
-                            *(LONG *) args[ARG_MAXWIDTH];
+                            ParseColumnWidth((STRPTR)args[ARG_MAXWIDTH], &data->ci[i].max_pixels);
+                    if (args[ARG_FIXWIDTH])
+                    {
+                        data->ci[i].min_width = data->ci[i].max_width =
+                            MAX(0, MIN(32767, *(LONG *)args[ARG_FIXWIDTH]));
+                        data->ci[i].min_pixels = data->ci[i].max_pixels = TRUE;
+                    }
+                    data->format_layout |= args[ARG_MINWIDTH] || args[ARG_MAXWIDTH] || args[ARG_FIXWIDTH];
+                    data->ci[i].is_object = !!args[ARG_ISOBJECT];
+                    if (args[ARG_ELIDE])
+                    {
+                        STRPTR elide = (STRPTR)args[ARG_ELIDE];
+                        data->ci[i].elide = !Stricmp(elide, "left") ? MUIV_Text_Shorten_ElideLeft :
+                            !Stricmp(elide, "center") ? MUIV_Text_Shorten_ElideCenter :
+                            !Stricmp(elide, "right") ? MUIV_Text_Shorten_ElideRight : MUIV_Text_Shorten_Cutoff;
+                    }
                     data->ci[i].bar = args[ARG_BAR];
                     data->ci[i].hidden = !!args[ARG_HIDDEN];
                     data->ci[i].sortable = !!args[ARG_SORTABLE];
@@ -802,7 +891,7 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
             data->ci[i].colno = i;
         if (data->ci[i].colno != i && !data->mapped_strings)
         {
-            data->mapped_strings = AllocVec(new_columns * sizeof(STRPTR), MEMF_ANY);
+            data->mapped_strings = AllocVec(2 * new_columns * sizeof(STRPTR), MEMF_ANY);
             if (!data->mapped_strings) return FALSE;
         }
     }
@@ -817,8 +906,12 @@ static void MapColumns(struct MUI_ListData *data)
 {
     if (!data->mapped_strings) return;
     for (LONG i = 0; i < data->columns; i++)
+    {
         data->mapped_strings[i] = data->strings[data->ci[i].colno];
+        data->mapped_strings[data->columns + i] = data->preparses[data->ci[i].colno];
+    }
     memcpy(data->strings, data->mapped_strings, data->columns * sizeof(STRPTR));
+    memcpy(data->preparses, data->mapped_strings + data->columns, data->columns * sizeof(STRPTR));
 }
 static BOOL SetColumnOrder(struct MUI_ListData *data, const UBYTE *order)
 {
@@ -833,7 +926,7 @@ static BOOL SetColumnOrder(struct MUI_ListData *data, const UBYTE *order)
     columns = AllocVec(data->columns * sizeof(*columns), MEMF_ANY);
     if (!columns) return FALSE;
     if (!data->mapped_strings)
-        data->mapped_strings = AllocVec(data->columns * sizeof(STRPTR), MEMF_ANY);
+        data->mapped_strings = AllocVec(2 * data->columns * sizeof(STRPTR), MEMF_ANY);
     if (!data->mapped_strings) { FreeVec(columns); return FALSE; }
     for (LONG i = 0; i < data->columns; i++)
         for (LONG j = 0; j < data->columns; j++)
@@ -853,8 +946,15 @@ static void DisplayEntry(struct IClass *cl, Object *obj, int entry_pos)
     APTR entry_data;
     int col;
 
-    for (col = 0; col < data->columns; col++)
-        data->preparses[col] = data->ci[col].preparse;
+    if (data->mapped_strings)
+    {
+        memset(data->preparses, 0, data->max_columns * sizeof(STRPTR));
+        for (col = 0; col < data->columns; col++)
+            data->preparses[data->ci[col].colno] = data->ci[col].preparse;
+    }
+    else
+        for (col = 0; col < data->columns; col++)
+            data->preparses[col] = data->ci[col].preparse;
 
     if (entry_pos == ENTRY_TITLE)
     {
@@ -885,6 +985,57 @@ static void DisplayEntry(struct IClass *cl, Object *obj, int entry_pos)
     MapColumns(data);
 }
 
+/* ISOBJECT cells borrow application objects. Balance temporary setup and
+ * parent connections before the entry's destructor can release them. This
+ * also permits an object to be reused in several rows without duplicate
+ * cleanup/disposal ownership. */
+static ULONG BeginCellObject(Object *list, Object *cell, struct MUI_MinMax *mm)
+{
+    ULONG state = 4;
+    if (!cell) return 0;
+    if (_parent(cell) && _parent(cell) != list) return 0;
+    if (!_parent(cell))
+    { DoMethod(cell, MUIM_ConnectParent, list); state |= 1; }
+    if (!(_flags(cell) & MADF_SETUP))
+    {
+        if (!DoSetupMethod(cell, muiRenderInfo(list)))
+        { if (state & 1) DoMethod(cell, MUIM_DisconnectParent); return 0; }
+        state |= 2;
+    }
+    struct MUIP_AskMinMax ask = {MUIM_AskMinMax, mm};
+    DoMethodA(cell, (Msg)&ask);
+    if (ask.MinMaxInfo)
+    {
+        __area_finish_minmax(cell, ask.MinMaxInfo);
+        *mm = *ask.MinMaxInfo;
+    }
+    return state;
+}
+static void EndCellObject(Object *cell, ULONG state)
+{
+    if (state & 2) DoMethod(cell, MUIM_Cleanup);
+    if (state & 1) DoMethod(cell, MUIM_DisconnectParent);
+}
+static void DrawCellObject(Object *list, Object *cell, LONG left, LONG top,
+    LONG width, LONG height)
+{
+    struct MUI_MinMax mm = {0};
+    ULONG state = BeginCellObject(list, cell, &mm);
+    if (!state) return;
+    BOOL shown = !!(_flags(cell) & MADF_CANDRAW);
+    LONG w = MIN(width, mm.MaxWidth), h = MIN(height, mm.MaxHeight);
+    if (w > 0 && h > 0)
+    {
+        APTR clip = MUI_AddClipping(muiRenderInfo(list), left, top, width, height);
+        MUI_LayoutObj(cell, left, top + (height - h) / 2, w, h, 0);
+        if (!shown) DoShowMethod(cell);
+        MUI_Redraw(cell, MADF_DRAWOBJECT | MADF_DRAWFRAME);
+        if (!shown) DoHideMethod(cell);
+        if (clip != (APTR)-1) MUI_RemoveClipping(muiRenderInfo(list), clip);
+    }
+    EndCellObject(cell, state);
+}
+
 /**************************************************************************
  Determine the dims of a single entry and adapt the columninfo according
  to it. pos might be ENTRY_TITLE. Returns 0 if pos entry needs to
@@ -911,6 +1062,22 @@ static int CalcDimsOfEntry(struct IClass *cl, Object *obj, int pos)
 
     for (j = 0; j < data->columns; j++)
     {
+        if (data->ci[j].is_object && pos != ENTRY_TITLE)
+        {
+            Object *cell = (Object *)data->strings[j];
+            struct MUI_MinMax mm = {0};
+            ULONG state = BeginCellObject(obj, cell, &mm);
+            if (state)
+            {
+                LONG height = mm.DefHeight + data->prefs_linespacing;
+                if (height > entry->height) { entry->height = height; ret = 1; }
+                entry->widths[j] = mm.DefWidth;
+                if (mm.DefWidth > data->ci[j].entries_width)
+                { data->ci[j].entries_width = mm.DefWidth; ret = 1; }
+                EndCellObject(cell, state);
+            }
+            continue;
+        }
         ZText *text =
             zune_text_new(data->preparses[j], data->strings[j],
             ZTEXT_ARG_NONE, 0);
@@ -1244,8 +1411,9 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data = INST_DATA(cl, obj);
 
     data->columns = 1;
-    data->max_columns = GetTagData(MUIA_List_MaxColumns, 0, msg->ops_AttrList);
-    if (data->max_columns < 0 || data->max_columns > 4096)
+    data->max_columns = GetTagData(MUIA_List_MaxColumns, 64, msg->ops_AttrList);
+    data->max_columns_explicit = FindTagItem(MUIA_List_MaxColumns, msg->ops_AttrList) != NULL;
+    if (data->max_columns < 1 || data->max_columns > 256)
     { CoerceMethod(cl, obj, OM_DISPOSE); return 0; }
     data->entries_active = MUIV_List_Active_Off;
     data->intern_puddle_size = 2008;
@@ -1461,7 +1629,9 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
         if ((tag->ti_Tag == MUIA_List_HideColumn || tag->ti_Tag == MUIA_List_ShowColumn)
             && tag->ti_Data < data->columns)
-            data->ci[tag->ti_Data].hidden = tag->ti_Tag == MUIA_List_HideColumn;
+            for (LONG i = 0; i < data->columns; i++)
+                    if (data->ci[i].order_id == tag->ti_Data)
+                        data->ci[i].hidden = tag->ti_Tag == MUIA_List_HideColumn;
 
     /* This is necessary for at least the title */
     if (!SetListSize(data, 0))
@@ -1479,7 +1649,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     CONST_STRPTR *titles = (APTR)GetTagData(MUIA_List_TitleArray, 0, msg->ops_AttrList);
     if (titles)
     {
-        ULONG count = data->max_columns ? data->max_columns : data->columns;
+        ULONG count = data->max_columns_explicit ? data->max_columns : data->columns;
         data->title_array = titles;
         data->title_columns = count;
         data->title = (STRPTR)1;
@@ -1590,7 +1760,9 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         case MUIA_List_ShowColumn:
             if (tag->ti_Data < data->columns)
             {
-                data->ci[tag->ti_Data].hidden = tag->ti_Tag == MUIA_List_HideColumn;
+                for (LONG i = 0; i < data->columns; i++)
+                    if (data->ci[i].order_id == tag->ti_Data)
+                        data->ci[i].hidden = tag->ti_Tag == MUIA_List_HideColumn;
                 if (_flags(obj) & MADF_CANDRAW)
                 {
                     DoMethod(obj, MUIM_Group_InitChange);
@@ -1636,7 +1808,7 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
         case MUIA_List_TitleArray:
             data->title_array = (APTR)tag->ti_Data;
-            data->title_columns = data->max_columns ? data->max_columns : data->columns;
+            data->title_columns = data->max_columns_explicit ? data->max_columns : data->columns;
             data->title = data->title_array ? (STRPTR)1 : NULL;
             DoMethod(obj, MUIM_List_Redraw, MUIV_List_Redraw_All);
             break;
@@ -2084,11 +2256,12 @@ static WORD List_TitleStrip(Object *obj, struct MUI_ListData *data)
  * matches MUI 3.9 on xSysInfo's register pages) */
 static LONG List_ContentWidth(struct MUI_ListData *data)
 {
+    LayoutColumns(data);
     LONG width = 0, last = -1;
     for (LONG j = 0; j < data->columns; j++)
-        if (!data->ci[j].hidden)
+        if (!ColumnHidden(data, j))
         {
-            width += data->ci[j].entries_width + data->ci[j].delta +
+            width += ColumnWidth(data, j) + data->ci[j].delta +
                 (data->ci[j].bar ? BAR_WIDTH : 0);
             last = j;
         }
@@ -2318,6 +2491,7 @@ IPTR List__MUIM_Layout(struct IClass *cl, Object *obj,
     ULONG rc = DoSuperMethodA(cl, obj, (Msg) msg);
     LONG new_entries_first = data->entries_first;
 
+    LayoutColumns(data);
     /* Calc the numbers of entries visible */
     CalcVertVisible(cl, obj);
 
@@ -2412,8 +2586,15 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
 
     for (col = 0; col < data->columns; col++) {
         ZText *text;
-        if (data->ci[col].hidden) continue;
-        x2 = x1 + data->ci[col].entries_width;
+        if (ColumnHidden(data, col)) continue;
+        x2 = x1 + ColumnWidth(data, col);
+        if (data->ci[col].is_object && entry_pos != ENTRY_TITLE)
+        {
+            DrawCellObject(obj, (Object *)data->strings[col], x1, y,
+                ColumnWidth(data, col), row_height);
+            x1 = x2 + data->ci[col].delta + (data->ci[col].bar ? BAR_WIDTH : 0);
+            continue;
+        }
 
         if ((text =
                 zune_text_new(data->preparses[col], data->strings[col],
@@ -2432,7 +2613,20 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
             /* Note, this was MPEN_SHADOW before */
             SetAPen(_rp(obj), muiRenderInfo(obj)->mri_Pens[MPEN_TEXT]);
 
-            zune_text_draw(text, obj, x1, x2, y_offset);
+            if (data->ci[col].elide)
+            {
+                text->truncate = TRUE;
+                LONG right = MIN(x2 - 1, _mright(data->area));
+                if (data->ci[col].elide >= MUIV_Text_Shorten_Hide)
+                    zune_text_draw_shortened(text, obj, x1, right, y_offset, data->ci[col].elide);
+                else zune_text_draw(text, obj, x1, right, y_offset);
+            }
+            else if (data->format_layout)
+            {
+                text->truncate = TRUE;
+                zune_text_draw(text, obj, x1, MIN(x2 - 1, _mright(data->area)), y_offset);
+            }
+            else zune_text_draw(text, obj, x1, x2, y_offset);
             zune_text_destroy(text);
         }
         x1 = x2 + data->ci[col].delta + (data->ci[col].bar ? BAR_WIDTH : 0);
@@ -2462,10 +2656,10 @@ static void List_DrawTitleStrip(struct IClass *cl, Object *obj)
     for (col = 0; col < data->columns && x0 <= right; col++)
     {
         ULONG halfdelta = data->ci[col].delta / 2;
-        if (data->ci[col].hidden) continue;
+        if (ColumnHidden(data, col)) continue;
         LONG end;
 
-        x1 += data->ci[col].entries_width + halfdelta;
+        x1 += ColumnWidth(data, col) + halfdelta;
         /* a column ends where its bar is or would be; an empty button
          * fills the row after the last column */
         end = x1;
@@ -2527,6 +2721,8 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     if (data->area_replaced)
         return ret;
 
+    LayoutColumns(data);
+
     /* Calculate the title height */
     if (List_TitleStrip(obj, data))
     {
@@ -2544,6 +2740,7 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
         data->title_height = 0;
     }
 
+    LayoutColumns(data);
     /* Calc the numbers of entries visible */
     CalcVertVisible(cl, obj);
 
@@ -2709,8 +2906,8 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
         for (col = 0; col < data->columns; col++)
         {
             ULONG halfdelta = data->ci[col].delta / 2;
-            if (data->ci[col].hidden) continue;
-            x1 += data->ci[col].entries_width + halfdelta;
+            if (ColumnHidden(data, col)) continue;
+            x1 += ColumnWidth(data, col) + halfdelta;
 
             if (x1 + (data->ci[col].bar ? BAR_WIDTH : 0) > _mright(data->area))
                 break;
@@ -2739,8 +2936,8 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     for (col = 0; col < data->columns; col++)
     {
         ULONG halfdelta = data->ci[col].delta / 2;
-        if (data->ci[col].hidden) continue;
-        x1 += data->ci[col].entries_width + halfdelta;
+        if (ColumnHidden(data, col)) continue;
+        x1 += ColumnWidth(data, col) + halfdelta;
 
         if (x1 + (data->ci[col].bar ? BAR_WIDTH : 0) > _mright(data->area))
             break;
@@ -3743,10 +3940,12 @@ IPTR List__MUIM_Compare(struct IClass *cl, Object *obj,
     if ((IPTR)data->compare_hook == MUIV_List_CompareHook_StringArray)
     {
         LONG column = msg->column;
+        if (column >= 0 && column < data->columns)
+            column = data->ci[column].colno;
         if (column < 0 || column >= data->max_columns) column = 0;
         CONST_STRPTR a = ((CONST_STRPTR *)msg->entry1)[column];
         CONST_STRPTR b = ((CONST_STRPTR *)msg->entry2)[column];
-        return Stricmp(a ? a : "", b ? b : "");
+        return Stricmp(a ? a : (CONST_STRPTR)"", b ? b : (CONST_STRPTR)"");
     }
     if (!data->compare_hook || (IPTR)data->compare_hook == MUIV_List_CompareHook_String)
         return Stricmp(msg->entry1, msg->entry2);
@@ -4348,16 +4547,16 @@ IPTR List__MUIM_TestPos(struct IClass *cl, Object *obj,
                 LONG width_sum = 0;
                 for (i = 0; i < data->columns; i++)
                 {
-                    if (data->ci[i].hidden) continue;
+                    if (ColumnHidden(data, i)) continue;
                     col = i;
                     result->xoffset = mx + data->horiz_first - width_sum;
                     width_sum +=
-                        data->ci[i].entries_width +
+                        ColumnWidth(data, i) +
                         data->ci[i].delta +
                         (data->ci[i].bar ? BAR_WIDTH : 0);
                     D(bug("[List/MUIM_TestPos] i %d "
                         "width %d width_sum %d mx %d\n",
-                        i, data->ci[i].entries_width, width_sum, mx));
+                        i, ColumnWidth(data, i), width_sum, mx));
                     if (mx + data->horiz_first < width_sum)
                     {
                         col = i;
@@ -5028,10 +5227,10 @@ static void ListLayoutEditor(Object *obj, struct MUI_ListData *data)
     LONG top = data->entries_top_pixel + (data->edit_row - data->entries_first) * data->entry_maxheight;
     if (!data->edit_object) return;
     for (LONG column = 0; column < data->edit_column; column++)
-        if (!data->ci[column].hidden)
-            left += data->ci[column].entries_width + data->ci[column].delta +
+        if (!ColumnHidden(data, column))
+            left += ColumnWidth(data, column) + data->ci[column].delta +
                 (data->ci[column].bar ? BAR_WIDTH : 0);
-    LONG width = MIN(data->ci[data->edit_column].entries_width,
+    LONG width = MIN(ColumnWidth(data, data->edit_column),
         _mright(data->area) - left + 1);
     MUI_LayoutObj(data->edit_object, left, top, MAX(1, width),
         MAX(data->entry_maxheight, _minheight(data->edit_object)), 0);
@@ -5046,7 +5245,7 @@ static IPTR ListEdit(struct IClass *cl, Object *obj, LONG row, LONG column)
     if (!data->editable || !(_flags(obj) & MADF_CANDRAW) || row < 0 ||
         row >= data->entries_num || column < 0 || column >= data->columns) return FALSE;
     if (data->ci[column].hidden)
-        set(obj, MUIA_List_ShowColumn, column);
+        set(obj, MUIA_List_ShowColumn, data->ci[column].order_id);
     if (data->edit_object && !ListEndEdit(cl, obj, MUIV_List_EndEdit_Done, FALSE)) return FALSE;
     editor = (Object *)DoMethod(obj, MUIM_List_CreateEditObject, row, column, data->entries[row]->data);
     if (!editor) return FALSE;
@@ -5056,7 +5255,9 @@ static IPTR ListEdit(struct IClass *cl, Object *obj, LONG row, LONG column)
         DoMethod(editor, MUIM_DisconnectParent); MUI_DisposeObject(editor);
         return FALSE;
     }
-    DoMethod(editor, MUIM_AskMinMax, &minmax);
+    struct MUIP_AskMinMax ask = {MUIM_AskMinMax, &minmax};
+    DoMethodA(editor, (Msg)&ask);
+    if (ask.MinMaxInfo) __area_finish_minmax(editor, ask.MinMaxInfo);
     data->edit_object = editor; data->edit_row = row; data->edit_column = column;
     data->edit_entry = data->entries[row]->data;
     data->edit_focus = (Object *)XGET(_win(obj), MUIA_Window_ActiveObject);
