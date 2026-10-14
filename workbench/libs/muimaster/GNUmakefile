@@ -57,6 +57,7 @@ SOURCES = \
   classes/crawling.c classes/cycle.c classes/dataspace.c classes/datamap.c \
   classes/dirlist.c classes/dtpic.c classes/family.c classes/floattext.c \
   classes/frameadjust.c classes/framedisplay.c classes/gauge.c \
+  classes/selectorpanel.c classes/filepanel.c classes/fontpanel.c \
   classes/group.c classes/selectgroup.c classes/image.c classes/imageadjust.c \
   classes/imagedisplay.c classes/knob.c classes/levelmeter.c \
   classes/list.c classes/listview.c classes/mccprefs.c classes/menuitem.c \
@@ -109,7 +110,8 @@ $(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERA
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
-MUI5_PROBES = data selection menu menu_input string string_input image ibrowse title text list
+MUI5_PROBES = data selection menu menu_input string string_input image ibrowse title text list \
+  panel marking list_format
 MUI5_PROBE_BINS = $(addprefix $(BUILD)/mui5-,$(addsuffix -probe,$(MUI5_PROBES)))
 
 $(MUI5_PROBE_BINS): $(BUILD)/mui5-%-probe: ../../../tests/native/mui5_%_probe.c $(GENERATED)

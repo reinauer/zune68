@@ -338,6 +338,7 @@ struct MUI_AlphaData
 #ifndef _MUI_CLASSES_GROUP_H
 #include "classes/group.h"
 #include "classes/selectgroup.h"
+#include "classes/selectorpanel.h"
 #endif
 
 #ifndef _MUI_CLASSES_RECTANGLE_H

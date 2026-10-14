@@ -13,6 +13,8 @@
 #define MenuObject          MUIOBJMACRO_START(MUIC_Menu)
 #define MenuObjectT(name)   MUIOBJMACRO_START(MUIC_Menu), MUIA_Menu_Title, name
 #define MenuitemObject      MUIOBJMACRO_START(MUIC_Menuitem)
+#define FilepanelObject     MUIOBJMACRO_START(MUIC_Filepanel)
+#define FontpanelObject     MUIOBJMACRO_START(MUIC_Fontpanel)
 #define WindowObject        MUIOBJMACRO_START(MUIC_Window)
 #define ImageObject         MUIOBJMACRO_START(MUIC_Image)
 #define ImagedisplayObject  MUIOBJMACRO_START(MUIC_Imagedisplay)
