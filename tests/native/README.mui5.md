@@ -148,9 +148,52 @@ Observed reference differences are explicit in the probes:
 - TextColor and Relayout are V22 APIs, tested as Zune behavior without a
   matching V22 reference runtime. Opacity storage is compared on OS3.
 
-Filepanel/Fontpanel, marking and additional Text formats, menu copying,
-remaining List format interactions and broader application coverage are
-still open. These results do not establish complete MUI 5 compatibility.
+## Selector, marking and menu/List extension probes
+
+The following probes exercise the development implementation added on
+14 October. Compile them with the same SDK and flags as the probes above.
+
+| Probe | Coverage |
+| --- | --- |
+| `mui5_panel_probe` | Filepanel filtering, ASL aliases, pattern changes, Fontpanel inventory and mutable font/style/pen/draw-mode settings, accept/cancel/close-request and repeated opening. |
+| `mui5_marking_probe` | Forward/reverse mouse marking, visible selection, formatted chunks, elided suffixes, multiline clipboard text and reopening. |
+| `mui5_list_format_probe` | Pixel column widths, reordering and logical hiding, borrowed object cells, balanced setup/cleanup and caller-owned disposal. |
+| `mui5_menu_probe` | Menuitem copying, independent owned strings and shared BOOPSI image lifetime in addition to the previous menu checks. |
+| `mui5_menu_input_probe` | Actual input.device events: case-sensitive shortcuts, popup selection/images, four nested branches, cancellation, parent closure and native WillOpen closing its window. |
+
+Filepanel and Fontpanel are real selector groups, separate from AROS's
+collapsible Panel class. The current Panel_Run path runs a modal input
+loop in the caller's task and leaves the caller-owned window open.
+It is not yet the separate-process requester path described by MUI's
+Panel documentation. Native ASL wrappers still use asl.library; multi-file
+results are not yet exported through an ASL replacement requester.
+Fontpanel supports installed fonts, styles, colors and draw modes; user
+font-family editing and all engine-specific font options remain open.
+
+Text marking copies parsed text, excluding formatting codes, embedded
+objects and synthetic ellipses. Its optional selection state is allocated
+only for objects created with MUIA_Text_Marking. The marking probe sends
+IntuiMessage events directly to the event handler; the menu input probe
+uses input.device events.
+
+Menu copies retain destination identity and children. Arbitrary BOOPSI
+images have no generic clone method: copies share a reference-counted
+lifetime and release the image once. The original 21.227 reference
+accepted borrowed-string copying but hung in the owned-string copy probe;
+those ownership checks are therefore Zune-specific assertions. WillOpen
+is a V22 method, tested without a matching V22 reference runtime.
+
+List column tests also contain Zune-specific assertions. Original 21.227
+reported different fixed-column hit boundaries and retained slot widths
+after reordering; it did not draw the probe's object cell. Zune follows the
+SDK's object-column contract and moves column formatting with the column.
+Hiding refers to the original column identity after reordering; TestPos
+and edit callbacks use current column positions. Further application and
+reference comparisons are needed before claiming identical List behavior.
+
+Additional Text escape formats, Textdata_SourceEncoding, newer preference
+classes, String edit-hook internals and broader application coverage remain
+open. These checks do not establish complete MUI 5 compatibility.
 
 ## Classic-workload performance
 
