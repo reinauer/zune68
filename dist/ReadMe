@@ -61,6 +61,13 @@ rename that backup back to the original name to restore it. A newer
 resident library can remain active until reboot; the installer reports
 the resident version separately and does not expunge libraries in use.
 
+To return normal MUI applications to your previous MUI installation,
+restore LIBS:muimaster.library from muimaster.library.zune68-old (after
+checking that the backup is the MUI version you want), or reinstall that
+MUI version. Close applications and reboot. Removing zunemaster.library
+alone does not restore muimaster.library: they are independent builds.
+If you also replaced MCCs, restore their saved versions as needed.
+
 Catalogs and the Prefs icon have short .old backups. Saved preferences
 are not replaced. Tests/opentest, Examples, SDK, Docs, and Source.tar.gz
 remain in the extracted package. No SDK assigns are changed, and nothing
