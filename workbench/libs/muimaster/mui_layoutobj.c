@@ -3,6 +3,7 @@
 
 #include "mui.h"
 #include "support.h"
+#include "support_classes.h"
 
 /* Public methods enter here after subclass dispatch, so the old callback
  * can run without re-entering the public method on the same object. */
@@ -53,10 +54,14 @@ AROS_LH6(BOOL, MUI_LayoutObj,
 
 IPTR DoLayoutMethod(Object *obj)
 {
-    /* Internal callers already installed the window-relative box. Keep
-     * public Group subclass dispatch without repeating coordinate stores
-     * and crossing the library vector for every ordinary child. */
-    if (muiAreaData(obj)->mad_Flags2 & MADF2_ISGROUP)
+    /* Internal callers already installed the window-relative box. Built-in
+     * groups inherit Area's public wrapper unchanged; enter their private
+     * layout method directly. Custom groups must see public dispatch. */
+    if ((muiAreaData(obj)->mad_Flags2 & MADF2_ISGROUP)
+#if !defined(__AROS__) && !defined(__amigaos4__) && !defined(__MAXON__)
+        && OCLASS(obj)->cl_Dispatcher.h_Entry != (HOOKFUNC)builtinDispatcher
+#endif
+        )
     {
         struct MUIP_Layout method = {
             MUIM_Layout, _left(obj), _top(obj), _width(obj), _height(obj), 0

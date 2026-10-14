@@ -19,6 +19,11 @@
 
 #include "support.h"
 
+#if !defined(__AROS__) && !defined(__amigaos4__) && !defined(__MAXON__)
+IPTR builtinDispatcher(Class *cl __asm("a0"),
+    Object *obj __asm("a2"), Msg msg __asm("a1"));
+#endif
+
 #if ZUNE_BUILTIN_ABOUTMUI
 #   define ZUNE_ABOUTMUI_DESC (&_MUI_Aboutmui_desc),
 #else

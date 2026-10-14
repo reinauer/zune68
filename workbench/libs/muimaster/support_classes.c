@@ -24,9 +24,6 @@
 #if !defined(__AROS__) && !defined(__amigaos4__) && !defined(__MAXON__)
 #include "classes/area.h"
 
-IPTR builtinDispatcher(Class *cl __asm("a0"),
-    Object *obj __asm("a2"), Msg msg __asm("a1"));
-
 static IPTR __attribute__((noinline, used)) builtinDraw(Class *cl __asm("a0"),
     Object *obj __asm("a2"), Msg msg __asm("a1"))
 {
@@ -206,7 +203,8 @@ static Class *ZUNE_FindBuiltinClass(CONST_STRPTR classid, struct Library *MUIMas
 
     ForeachNode(&intZuneBase->BuiltinClasses, cl2)
     {
-        if (!strcmp(cl2->cl_ID, classid))
+        if (cl2->cl_ID == classid ||
+            (cl2->cl_ID[0] == classid[0] && !strcmp(cl2->cl_ID, classid)))
         {
             cl = cl2;
             break;
