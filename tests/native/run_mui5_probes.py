@@ -20,6 +20,9 @@ def main():
     parser.add_argument('--libraries', type=Path,
                         help='optional replacement libraries; omit for reference MUI')
     parser.add_argument('--timeout', type=int, default=600)
+    parser.add_argument('--argument', default='screen',
+                        choices=('screen', 'muimaster.library', 'zunemaster.library'),
+                        help='probe argument; older ABI probes take a library name')
     parser.add_argument('probes', nargs='+')
     args = parser.parse_args()
     if any(not name.replace('_', '').isalnum() for name in args.probes):
@@ -48,7 +51,8 @@ def main():
                 binary = 'mui5-' + name + '-probe'
                 shutil.copy2(args.build / binary, guest / binary)
                 commands += ['Echo START:' + name + ' >>Bench:native-results.txt',
-                             'Bench:' + binary + ' screen >>Bench:native-results.txt',
+                             'Bench:' + binary + ' ' + args.argument +
+                             ' >>Bench:native-results.txt',
                              'Echo RC:$RC >>Bench:native-results.txt']
             commands += ['Wait 3', 'Echo ALLDONE >>Bench:native-results.txt']
             script.write_text('\n'.join(commands) + '\n')
