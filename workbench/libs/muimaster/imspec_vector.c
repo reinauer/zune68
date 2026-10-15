@@ -23,6 +23,79 @@ extern struct Library *MUIMasterBase;
 /* MUI 3.8/3.9 built-in arrows are chevrons with two pixel wide strokes:
  * 10x5 pointing up or down and 4x8 pointing left or right. Larger areas
  * centre the same shape. */
+/* Glyphs as blitter templates. A radio image or an arrow was a dozen
+ * RectFill/WritePixel calls, each 0.1-0.3 ms on a 68020 whatever its
+ * size (tests/native/gfxprims.c); a BltTemplate paints a whole pen's
+ * pixels in one call. Templates are built from the same geometry on first
+ * use, in chip memory, and freed at expunge. Rows are 32 bits wide. */
+#define VTEMPLATES 32
+static struct { const void *key; LONG sub; ULONG *data; LONG rows; }
+    vtemplates[VTEMPLATES];
+static int nvtemplates;
+
+static ULONG *template_find(const void *key, LONG sub)
+{
+    int i;
+
+    for (i = 0; i < nvtemplates; i++)
+        if (vtemplates[i].key == key && vtemplates[i].sub == sub)
+            return vtemplates[i].data;
+    return NULL;
+}
+
+static ULONG *template_add(const void *key, LONG sub, LONG rows)
+{
+    ULONG *data = NULL;
+
+    Forbid();
+    if (!(data = template_find(key, sub)) && nvtemplates < VTEMPLATES
+        && (data = AllocMem(rows * sizeof(ULONG), MEMF_CHIP | MEMF_CLEAR)))
+    {
+        vtemplates[nvtemplates].key = key;
+        vtemplates[nvtemplates].sub = sub;
+        vtemplates[nvtemplates].data = data;
+        vtemplates[nvtemplates].rows = rows;
+        nvtemplates++;
+    }
+    Permit();
+    return data;
+}
+
+void zune_vector_free_templates(void)
+{
+    while (nvtemplates > 0)
+    {
+        nvtemplates--;
+        FreeMem(vtemplates[nvtemplates].data,
+            vtemplates[nvtemplates].rows * sizeof(ULONG));
+    }
+}
+
+static void template_blit(struct RastPort *rp, const ULONG *data, LONG x,
+    LONG y, LONG width, LONG height, LONG pen)
+{
+    UBYTE mode = rp->DrawMode;
+
+    SetAPen(rp, pen);
+    if (mode != JAM1)
+        SetDrMd(rp, JAM1);
+    BltTemplate((CONST PLANEPTR) data, 0, sizeof(ULONG), rp, x, y, width,
+        height);
+    if (mode != JAM1)
+        SetDrMd(rp, mode);
+}
+
+/* Set the bits [x0, x1] of a 32-bit row, clipped to the row */
+static void template_span(ULONG *row, LONG x0, LONG x1)
+{
+    if (x0 < 0)
+        x0 = 0;
+    if (x1 > 31)
+        x1 = 31;
+    for (; x0 <= x1; x0++)
+        *row |= 0x80000000UL >> x0;
+}
+
 static void arrow_span(struct RastPort *rp, LONG x, LONG y, LONG minx,
     LONG maxx)
 {
@@ -45,6 +118,27 @@ static void arrow_vertical(struct MUI_RenderInfo *mri, LONG left, LONG top,
     if (n < 1)
         return;
     y0 = top + (height - n) / 2;
+    /* The spans cover [cx - n, cx + n - 1] x [y0, y0 + n - 1], inside the
+     * box: one template per size and direction */
+    if (2 * n <= 32)
+    {
+        ULONG *data = template_find(arrow_vertical, n * 2 + up);
+
+        if (!data && (data = template_add(arrow_vertical, n * 2 + up, n)))
+            for (r = 0; r < n; r++)
+            {
+                LONG y = up ? r : n - 1 - r;
+
+                template_span(&data[y], n - 1 - r, n - r);
+                template_span(&data[y], n - 1 + r, n + r);
+            }
+        if (data)
+        {
+            template_blit(rport, data, cx - n, y0, 2 * n, n,
+                mri->mri_Pens[MPEN_TEXT]);
+            return;
+        }
+    }
     SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
     for (r = 0; r < n; r++)
     {
@@ -65,6 +159,31 @@ static void arrow_horizontal(struct MUI_RenderInfo *mri, LONG left,
         return;
     x0 = left + (width - n) / 2;
     y0 = top + (height - 2 * n) / 2;
+    /* The spans are clipped to [x0, x0 + n - 1] x [y0, y0 + 2n - 1] */
+    if (n <= 32)
+    {
+        ULONG *data = template_find(arrow_horizontal, n * 2 + leftwards);
+
+        if (!data
+            && (data = template_add(arrow_horizontal, n * 2 + leftwards, 2 * n)))
+            for (r = 0; r < n; r++)
+            {
+                LONG x = leftwards ? n - 1 - r : r - 1;
+                LONG xa = x < 0 ? 0 : x, xb = x + 1 > n - 1 ? n - 1 : x + 1;
+
+                if (xa <= xb)
+                {
+                    template_span(&data[r], xa, xb);
+                    template_span(&data[2 * n - 1 - r], xa, xb);
+                }
+            }
+        if (data)
+        {
+            template_blit(rport, data, x0, y0, n, 2 * n,
+                mri->mri_Pens[MPEN_TEXT]);
+            return;
+        }
+    }
     SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
     for (r = 0; r < n; r++)
     {
@@ -108,6 +227,21 @@ static void glyph_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG x0 = left + (width - gw) / 2, y0 = top + (height - gh) / 2;
     LONG y, x, start;
 
+    if (gw <= 16 && x0 >= left && x0 + gw <= left + width && y0 >= top
+        && y0 + gh <= top + height)
+    {
+        ULONG *data = template_find(rows, gh);
+
+        if (!data && (data = template_add(rows, gh, gh)))
+            for (y = 0; y < gh; y++)
+                data[y] = (ULONG) rows[y] << 16;
+        if (data)
+        {
+            template_blit(rport, data, x0, y0, gw, gh,
+                mri->mri_Pens[MPEN_TEXT]);
+            return;
+        }
+    }
     SetAPen(rport, mri->mri_Pens[MPEN_TEXT]);
     for (y = 0; y < gh; y++)
     {
@@ -250,6 +384,45 @@ void mx_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
 
     if (mx_count[selected] < 0)
         mx_build(selected);
+    /* One template per pen when the 17x9 image lies inside the box */
+    if (x0 >= left && x0 + 17 <= left + width && y0 >= top
+        && y0 + 9 <= top + height)
+    {
+        static const char pens[] = "TBFI";
+        BOOL ok = TRUE;
+        int p;
+
+        for (p = 0; p < 4 && ok; p++)
+        {
+            LONG penid = mx_pen(pens[p], selected);
+            ULONG *data = template_find(mx_map, selected * 4 + p);
+            int y, x, any = 0, q;
+
+            /* letters sharing a pen are drawn by the first of them */
+            for (q = 0; q < p; q++)
+                if (mx_pen(pens[q], selected) == penid)
+                    break;
+            if (q < p)
+                continue;
+            if (!data && (data = template_add(mx_map, selected * 4 + p, 9)))
+                for (y = 0; y < 9; y++)
+                    for (x = 0; x < 17; x++)
+                        if (mx_pen(mx_map[y][x], selected) == penid)
+                            data[y] |= 0x80000000UL >> x;
+            if (!data)
+                ok = FALSE;
+            else
+            {
+                for (y = 0; y < 9; y++)
+                    any |= data[y] != 0;
+                if (any)
+                    template_blit(rport, data, x0, y0, 17, 9,
+                        mri->mri_Pens[penid]);
+            }
+        }
+        if (ok)
+            return;
+    }
     for (i = 0; i < mx_count[selected]; i++)
     {
         const struct mx_rect *r = &mx_rects[selected][i];

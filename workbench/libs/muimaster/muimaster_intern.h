@@ -91,6 +91,7 @@ struct MUIMasterBase_intern
 
 
 #undef MUIMB
+void zune_vector_free_templates(void); /* imspec_vector.c, at expunge */
 #define MUIMB(b)	((struct MUIMasterBase_intern *)b)
 
 #ifndef __AROS__

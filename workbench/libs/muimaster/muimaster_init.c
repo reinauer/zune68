@@ -59,6 +59,7 @@ void L_ExpungeLib(struct Library *library)
     struct MUIMasterBase_intern *base = MUIMB(library);
     unsigned i = sizeof(dependencies) / sizeof(dependencies[0]);
     MUIGfx_Remove();
+    zune_vector_free_templates();
     if (CyberGfxBase) CloseLibrary(CyberGfxBase);
     CyberGfxBase = NULL;
     Locale_Deinitialize();
