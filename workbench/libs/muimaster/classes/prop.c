@@ -302,15 +302,18 @@ IPTR Prop__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         calcscale16(data);
 
         /* Rendering will happen here! This could make problems with
-         * virtual groups, forward this to MUIM_Draw??? */
-        SetAttrs(data->prop_object, ICA_TARGET, NULL, TAG_DONE);
+         * virtual groups, forward this to MUIM_Draw???
+         * The gadget keeps its ICTARGET_IDCMP: propgclass sends no
+         * notification for attributes a program sets (tests/native/
+         * propnotify.c, listscrollmsgs.c), and MUI 3.8 updates it with
+         * this one call too. Clearing and restoring the target cost two
+         * more attribute passes per scroll. */
         if (SetGadgetAttrs((struct Gadget *)data->prop_object, _window(obj),
                 NULL, PGA_Top, downscale(data, data->first), PGA_Visible,
                 downscale(data, data->visible), PGA_Total, downscale(data,
                     data->entries), TAG_DONE))
             RefreshGList((struct Gadget *)data->prop_object, _window(obj),
                 NULL, 1);
-        SetAttrs(data->prop_object, ICA_TARGET, ICTARGET_IDCMP, TAG_DONE);
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
@@ -1019,7 +1022,7 @@ IPTR Prop__MUIM_Show(struct IClass *cl, Object *obj, struct MUIP_Show *msg)
         {
             data->gadgetid = ((struct Gadget *)data->prop_object)->GadgetID;
 
-            SetAttrs(data->prop_object, ICA_TARGET, NULL, TAG_DONE);
+            /* As in OM_SET: the gadget keeps its ICTARGET_IDCMP */
             if (SetGadgetAttrs((struct Gadget *)data->prop_object,
                     _window(obj), NULL, PGA_Top, downscale(data,
                         data->first), PGA_Visible, downscale(data,
@@ -1029,8 +1032,6 @@ IPTR Prop__MUIM_Show(struct IClass *cl, Object *obj, struct MUIP_Show *msg)
                 RefreshGList((struct Gadget *)data->prop_object,
                     _window(obj), NULL, 1);
             }
-            SetAttrs(data->prop_object, ICA_TARGET, ICTARGET_IDCMP,
-                TAG_DONE);
         }
     }
 
