@@ -71,18 +71,39 @@ void zune_vector_free_templates(void)
     }
 }
 
+/* Paint the set bits of a template placed at (x, y), width x height,
+ * clipped to the box [cl, cr] x [ct, cb]: the same pixels as the clipped
+ * rectangle drawing it replaces */
+static void template_blit_clipped(struct RastPort *rp, const ULONG *data,
+    LONG x, LONG y, LONG width, LONG height, LONG pen, LONG cl, LONG ct,
+    LONG cr, LONG cb)
+{
+    LONG l = MAX(x, cl), r = MIN(x + width - 1, cr);
+    LONG t = MAX(y, ct), b = MIN(y + height - 1, cb);
+    UBYTE mode = rp->DrawMode;
+    const UWORD *src;
+    LONG sx;
+
+    if (l > r || t > b)
+        return;
+    /* BltTemplate takes a bit offset below 16 in the first source word */
+    sx = l - x;
+    src = (const UWORD *) (data + (t - y)) + sx / 16;
+    if (rp->FgPen != (BYTE) pen)
+        SetAPen(rp, pen);
+    if (mode != JAM1)
+        SetDrMd(rp, JAM1);
+    BltTemplate((CONST PLANEPTR) src, sx & 15, sizeof(ULONG), rp, l, t,
+        r - l + 1, b - t + 1);
+    if (mode != JAM1)
+        SetDrMd(rp, mode);
+}
+
 static void template_blit(struct RastPort *rp, const ULONG *data, LONG x,
     LONG y, LONG width, LONG height, LONG pen)
 {
-    UBYTE mode = rp->DrawMode;
-
-    SetAPen(rp, pen);
-    if (mode != JAM1)
-        SetDrMd(rp, JAM1);
-    BltTemplate((CONST PLANEPTR) data, 0, sizeof(ULONG), rp, x, y, width,
-        height);
-    if (mode != JAM1)
-        SetDrMd(rp, mode);
+    template_blit_clipped(rp, data, x, y, width, height, pen, x, y,
+        x + width - 1, y + height - 1);
 }
 
 /* Set the bits [x0, x1] of a 32-bit row, clipped to the row */
@@ -227,8 +248,7 @@ static void glyph_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
     LONG x0 = left + (width - gw) / 2, y0 = top + (height - gh) / 2;
     LONG y, x, start;
 
-    if (gw <= 16 && x0 >= left && x0 + gw <= left + width && y0 >= top
-        && y0 + gh <= top + height)
+    if (gw <= 16)
     {
         ULONG *data = template_find(rows, gh);
 
@@ -237,8 +257,9 @@ static void glyph_draw(struct MUI_RenderInfo *mri, LONG left, LONG top,
                 data[y] = (ULONG) rows[y] << 16;
         if (data)
         {
-            template_blit(rport, data, x0, y0, gw, gh,
-                mri->mri_Pens[MPEN_TEXT]);
+            template_blit_clipped(rport, data, x0, y0, gw, gh,
+                mri->mri_Pens[MPEN_TEXT], left, top, left + width - 1,
+                top + height - 1);
             return;
         }
     }
@@ -384,9 +405,7 @@ void mx_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
 
     if (mx_count[selected] < 0)
         mx_build(selected);
-    /* One template per pen when the 17x9 image lies inside the box */
-    if (x0 >= left && x0 + 17 <= left + width && y0 >= top
-        && y0 + 9 <= top + height)
+    /* One template per pen, clipped to the box like the rectangles */
     {
         static const char pens[] = "TBFI";
         BOOL ok = TRUE;
@@ -416,8 +435,9 @@ void mx_draw(struct MUI_RenderInfo *mri, LONG left, LONG top, LONG width,
                 for (y = 0; y < 9; y++)
                     any |= data[y] != 0;
                 if (any)
-                    template_blit(rport, data, x0, y0, 17, 9,
-                        mri->mri_Pens[penid]);
+                    template_blit_clipped(rport, data, x0, y0, 17, 9,
+                        mri->mri_Pens[penid], left, top, left + width - 1,
+                        top + height - 1);
             }
         }
         if (ok)
