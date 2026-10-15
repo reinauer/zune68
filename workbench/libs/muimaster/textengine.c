@@ -34,6 +34,16 @@
 //#define MYDEBUG 1
 #include "debug.h"
 
+/* AddTail without the exec call: the text engine builds a list per text
+ * and per line on every parse, a dozen nodes for a list row */
+static inline void zt_addtail(struct MinList *list, struct MinNode *node)
+{
+    node->mln_Succ = (struct MinNode *)&list->mlh_Tail;
+    node->mln_Pred = list->mlh_TailPred;
+    list->mlh_TailPred->mln_Succ = node;
+    list->mlh_TailPred = node;
+}
+
 extern struct Library *MUIMasterBase;
 
 /* A bit of explanation:
@@ -261,8 +271,8 @@ BOOL zune_text_init_plain(ZText *text, ZTextLine *line, ZTextChunk *chunk,
     memset(chunk, 0, sizeof(*chunk));
     NewList((struct List *)&text->lines);
     NewList((struct List *)&line->chunklist);
-    AddTail((struct List *)&text->lines, (struct Node *)line);
-    AddTail((struct List *)&line->chunklist, (struct Node *)chunk);
+    zt_addtail(&text->lines, (struct MinNode *)line);
+    zt_addtail(&line->chunklist, (struct MinNode *)chunk);
     line->align = ZTL_LEFT;
     chunk->str = (char *)content;
     chunk->clen = len;
@@ -317,7 +327,7 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
         ZTextLine *line = ztext_alloc(text, sizeof(*line));
         NewList((struct List *)&line->chunklist);
         line->align = ZTL_LEFT;
-        AddTail((struct List *)&text->lines, (struct Node *)line);
+        zt_addtail(&text->lines, (struct MinNode *)line);
         if (content_len)
         {
             ZTextChunk *chunk = ztext_alloc(text, sizeof(*chunk) + content_len + 1);
@@ -326,7 +336,7 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
             chunk->pen = chunk->dripen = -1;
             chunk->backpen = 0xff000000;
             memcpy(chunk->str, content, content_len + 1);
-            AddTail((struct List *)&line->chunklist, (struct Node *)chunk);
+            zt_addtail(&line->chunklist, (struct MinNode *)chunk);
         }
         return text;
     }
@@ -373,7 +383,7 @@ ZText *zune_text_new(CONST_STRPTR preparse, CONST_STRPTR content,
         struct ZTextLine *ztl =
             zune_text_parse_line(&buf, &zc, &argtype, arg);
         if (ztl)
-            AddTail((struct List *)&text->lines, (struct Node *)ztl);
+            zt_addtail(&text->lines, (struct MinNode *)ztl);
         else
             break;
         if (*buf == '\n')
@@ -533,7 +543,7 @@ void zune_text_chunk_new(struct zune_context *zc)
         ztc->spec = zc->imspec;
         zc->imspec = NULL;
 
-        AddTail((struct List *)&zc->line->chunklist, (struct Node *)ztc);
+        zt_addtail(&zc->line->chunklist, (struct MinNode *)ztc);
     }
     else if (zc->obj)
     {
@@ -542,20 +552,20 @@ void zune_text_chunk_new(struct zune_context *zc)
         zc->object_width = 0;
         zc->obj = NULL;
 
-        AddTail((struct List *)&zc->line->chunklist, (struct Node *)ztc);
+        zt_addtail(&zc->line->chunklist, (struct MinNode *)ztc);
     }
     else if (zc->alpha_data)
     {
         ztc->alpha_data = zc->alpha_data;
         zc->alpha_data = NULL;
 
-        AddTail((struct List *)&zc->line->chunklist, (struct Node *)ztc);
+        zt_addtail(&zc->line->chunklist, (struct MinNode *)ztc);
     }
     else
     {
         D(bug("zune_text_chunk_new: string %s\n", ztc->str));
 
-        AddTail((struct List *)&zc->line->chunklist, (struct Node *)ztc);
+        zt_addtail(&zc->line->chunklist, (struct MinNode *)ztc);
     }
 }
 
@@ -1269,7 +1279,7 @@ static void text_shortened(ZText *text, Object *obj, WORD left,
         struct RastPort rp = *_rp(obj);
         LONG count = 0, used = 0, suffix, i, budget, width;
         NewList((struct List *)&view.lines);
-        AddTail((struct List *)&view.lines, (struct Node *)&line.node);
+        zt_addtail(&view.lines, (struct MinNode *)&line.node);
         view.height = line.lheight;
         if (source->lwidth <= available)
             visit(&view, obj, left, right, top, state);
@@ -1298,14 +1308,14 @@ static void text_shortened(ZText *text, Object *obj, WORD left,
                 {
                     width = elide_chunk(&rp, chunk, &chunks[used], budget, FALSE);
                     if (!width) break;
-                    AddTail((struct List *)&line.chunklist, (struct Node *)&chunks[used++].node);
+                    zt_addtail(&line.chunklist, (struct MinNode *)&chunks[used++].node);
                     budget -= width; line.lwidth += width;
                     if (width < chunk->cwidth) break;
                 }
                 chunks[used].str = "..."; chunks[used].clen = 3;
                 chunks[used].cwidth = dots; chunks[used].cheight = rp.TxHeight;
                 chunks[used].dripen = TEXTPEN; chunks[used].pen = -1;
-                AddTail((struct List *)&line.chunklist, (struct Node *)&chunks[used++].node);
+                zt_addtail(&line.chunklist, (struct MinNode *)&chunks[used++].node);
                 line.lwidth += dots;
                 budget = mode == MUIV_Text_Shorten_ElideRight ? 0 :
                     remaining - (line.lwidth - dots);
@@ -1319,7 +1329,7 @@ static void text_shortened(ZText *text, Object *obj, WORD left,
                     if (width < chunk->cwidth) break;
                 }
                 for (i = used - 1; i >= suffix; i--)
-                    AddTail((struct List *)&line.chunklist, (struct Node *)&chunks[i].node);
+                    zt_addtail(&line.chunklist, (struct MinNode *)&chunks[i].node);
                 view.width = line.lwidth; view.truncate = TRUE;
                 visit(&view, obj, left, right, top, state);
                 FreeVec(chunks);
