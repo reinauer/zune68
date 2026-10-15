@@ -1761,18 +1761,29 @@ static BOOL WindowResize(struct MUI_WindowData *data)
     WORD dx = data->wd_Width - win->Width + hborders;
     WORD dy = data->wd_Height - win->Height + vborders;
 
-    /* Temporarily disable window limits to let SizeWindow below work
-       regardless of the previous limits */
-    WindowLimits(win, 1, 1, -1, -1);
+    if (dx || dy)
+    {
+        /* Temporarily disable window limits to let SizeWindow below work
+           regardless of the previous limits */
+        WindowLimits(win, 1, 1, -1, -1);
 /*      D(bug("_zune_window_resize : dx=%d, dy=%d\n", dx, dy)); */
-    SizeWindow(win, dx, dy);
+        SizeWindow(win, dx, dy);
+    }
 
-    /* Set new window limits */
-    WindowLimits
-        (win, data->wd_MinMax.MinWidth + hborders,
-        data->wd_MinMax.MinHeight + vborders,
-        data->wd_MinMax.MaxWidth + hborders,
-        data->wd_MinMax.MaxHeight + vborders);
+    /* Set new window limits. A zero-delta SizeWindow would still make
+     * Intuition refresh the frame, title and system gadgets; MUI 3.8
+     * resizes nothing when the size is unchanged, and WindowLimits is
+     * only needed when the limits changed (relayout cycles). */
+    if (dx || dy
+        || win->MinWidth != data->wd_MinMax.MinWidth + hborders
+        || win->MinHeight != data->wd_MinMax.MinHeight + vborders
+        || win->MaxWidth != data->wd_MinMax.MaxWidth + hborders
+        || win->MaxHeight != data->wd_MinMax.MaxHeight + vborders)
+        WindowLimits
+            (win, data->wd_MinMax.MinWidth + hborders,
+            data->wd_MinMax.MinHeight + vborders,
+            data->wd_MinMax.MaxWidth + hborders,
+            data->wd_MinMax.MaxHeight + vborders);
 
     return dx || dy;
 }
@@ -4688,12 +4699,25 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
     // to not always relayout the whole window
 
     D(bug("RecalcDisplay on %p\n", current_obj));
+    /* One MinMax pass over the whole tree, as MUI 3.8 does; the fit test
+     * below reads the fresh values of the originator chain instead of
+     * asking them a second time. Groups skip hidden children, so an
+     * object inside a hidden subtree is still asked itself. */
+    WindowMinMax(obj, data);
     while (current_obj != NULL)
     {
-        DoMethod(current_obj, MUIM_AskMinMax,
-            (IPTR) & muiAreaData(current_obj)->mad_MinMax);
-        __area_finish_minmax(current_obj,
-            &muiAreaData(current_obj)->mad_MinMax);
+        Object *o;
+
+        for (o = current_obj; o && o != data->wd_RootObject; o = _parent(o))
+            if (!(_flags(o) & MADF_SHOWME))
+                break;
+        if (o && o != data->wd_RootObject)
+        {
+            DoMethod(current_obj, MUIM_AskMinMax,
+                (IPTR) & muiAreaData(current_obj)->mad_MinMax);
+            __area_finish_minmax(current_obj,
+                &muiAreaData(current_obj)->mad_MinMax);
+        }
 
         D(bug("size w = %d, h = %d\n", _width(current_obj),
                 _height(current_obj)));
@@ -4718,8 +4742,6 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
 
     if (!current_obj)
         current_obj = data->wd_RootObject;
-
-    WindowMinMax(obj, data);
 
     /* Important: current_obj could be hidden, like in an inactive page! */
     if (_flags(current_obj) & MADF_CANDRAW)
