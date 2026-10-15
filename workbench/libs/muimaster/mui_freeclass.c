@@ -46,10 +46,20 @@
 *****************************************************************************/
 {
     if (!cl) return;
-    ObtainSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
+    /* Built-in classes stay in the list until expunge (which runs under
+       Forbid); their reference count needs no semaphore, see
+       ZUNE_GetBuiltinClass. */
+    Forbid();
     if (cl->cl_Flags & CLF_INLIST) {
         /* A dispatcher can still be returning through a superclass. Keep
            cached classes until expunge proves the entire chain idle. */
+        if (cl->cl_UserData) --cl->cl_UserData;
+        Permit();
+        return;
+    }
+    Permit();
+    ObtainSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
+    if (cl->cl_Flags & CLF_INLIST) {
         if (cl->cl_UserData) --cl->cl_UserData;
         ReleaseSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
     } else {

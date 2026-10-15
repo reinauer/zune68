@@ -66,7 +66,8 @@ class Harness:
                            (552, self.open_library), (564, self.obtain),
                            (570, self.release), (576, self.attempt),
                            (684, self.alloc_vec),
-                           (690, self.free_vec), (210, self.free_mem)]:
+                           (690, self.free_vec), (210, self.free_mem),
+                           (132, lambda: None), (138, lambda: None)]:  # Forbid, Permit
             self.trap(EXEC - offset, fn)
         for offset, fn in [(678, self.make_class), (714, self.free_class),
                            (636, self.new_object), (642, self.dispose_object)]:

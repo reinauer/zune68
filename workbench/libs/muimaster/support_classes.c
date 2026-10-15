@@ -288,6 +288,20 @@ Class *ZUNE_GetBuiltinClass(CONST_STRPTR id, struct Library *base)
 {
     Class *cl;
     if (!id || !*id) return NULL;
+    /* Cache hits need no semaphore: the class list only changes under
+     * the semaphore inside Forbid (ZUNE_AddBuiltinClass, expunge), so a
+     * Forbid section sees a consistent cache entry and reference count.
+     * Two semaphore operations per object (here and in MUI_FreeClass)
+     * were a visible share of tree creation. */
+    Forbid();
+    cl = MUIMB(base)->BuiltinClassCache[((UBYTE)id[0] ^ (UBYTE)id[1]) & 31];
+    if (cl && (cl->cl_ID == id || !strcmp(cl->cl_ID, id)))
+    {
+        ++cl->cl_UserData;
+        Permit();
+        return cl;
+    }
+    Permit();
     ObtainSemaphore(&MUIMB(base)->ZuneSemaphore);
     cl = ZUNE_FindBuiltinClass(id, base);
     if (!cl) {

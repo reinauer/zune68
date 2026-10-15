@@ -250,11 +250,15 @@ Class *ZUNE_GetBuiltinClass(CONST_STRPTR className, struct Library *mb);
 Class *ZUNE_GetExternalClass(CONST_STRPTR className, struct Library *mb);
 
 
+/* Under Forbid as well as the semaphore: ZUNE_GetBuiltinClass and
+ * MUI_FreeClass touch cached classes inside a Forbid section only. */
 #define ZUNE_AddBuiltinClass(cl, mb)                                         \
 do                                                                           \
 {                                                                            \
+    Forbid();                                                                \
     AddTail((struct List *)&MUIMB(mb)->BuiltinClasses, (struct Node *)(cl)); \
     (cl)->cl_Flags |= CLF_INLIST;                                            \
+    Permit();                                                                \
 } while (0)
 
 #define ZUNE_RemoveBuiltinClass(cl, mb) \
