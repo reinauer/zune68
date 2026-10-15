@@ -89,6 +89,39 @@ BOOL zune_imspec_is_solid(struct MUI_ImageSpec_intern *spec)
     return spec && spec->type == IST_COLOR;
 }
 
+/* StrToLong for the short numbers in image specs, without the
+ * dos.library call: leading blanks, an optional sign, decimal digits.
+ * *val is left alone when there are no digits, as StrToLong does. */
+static void spec_parse_long(CONST_STRPTR s, LONG *val)
+{
+    LONG v = 0;
+    BOOL neg = FALSE, digits = FALSE;
+
+    while (*s == ' ' || *s == '\t')
+        s++;
+    if (*s == '-' || *s == '+')
+        neg = *s++ == '-';
+    while (*s >= '0' && *s <= '9')
+    {
+        v = v * 10 + (*s++ - '0');
+        digits = TRUE;
+    }
+    if (digits)
+        *val = neg ? -v : v;
+}
+
+/* Pattern specs hold no screen resources (their pens are looked up when
+ * drawing), so all objects share one constant per pattern instead of an
+ * allocation per object per window open. zune_imspec_free leaves them. */
+static struct MUI_ImageSpec_intern
+    pattern_specs[MUII_MARKBACKGROUND - MUII_SHADOWBACK + 1];
+
+static BOOL is_shared_spec(const struct MUI_ImageSpec_intern *spec)
+{
+    return spec >= &pattern_specs[0]
+        && spec < &pattern_specs[MUII_MARKBACKGROUND - MUII_SHADOWBACK + 1];
+}
+
 static struct MUI_ImageSpec_intern *get_pattern_imspec(LONG in)
 {
     struct MUI_ImageSpec_intern *spec = NULL;
@@ -114,11 +147,10 @@ static struct MUI_ImageSpec_intern *get_pattern_imspec(LONG in)
     }
     else if (in >= MUII_SHADOWBACK && in <= MUII_MARKBACKGROUND)
     {
-        if ((spec = mui_alloc_struct(struct MUI_ImageSpec_intern)))
-        {
-            spec->type = IST_PATTERN;
-            spec->u.pattern = in - MUII_SHADOWBACK;
-        }
+        spec = &pattern_specs[in - MUII_SHADOWBACK];
+        /* Idempotent: every caller writes the same two values */
+        spec->type = IST_PATTERN;
+        spec->u.pattern = in - MUII_SHADOWBACK;
         return spec;
     }
     return NULL;
@@ -362,7 +394,7 @@ static struct MUI_ImageSpec_intern *zune_image_spec_to_structure(IPTR in)
         case '0':              /* builtin pattern */
             {
                 LONG pat = -1;
-                StrToLong(s + 2, &pat);
+                spec_parse_long(s + 2, &pat);
                 spec = get_pattern_imspec(pat);
                 break;
             }
@@ -370,7 +402,7 @@ static struct MUI_ImageSpec_intern *zune_image_spec_to_structure(IPTR in)
         case '1':              /* builtin standard image, obsoleted by 6: */
             {
                 LONG vect = -1;
-                StrToLong(s + 2, &vect);
+                spec_parse_long(s + 2, &vect);
                 spec = zune_imspec_create_vector(vect);
                 break;
             }
@@ -402,7 +434,7 @@ static struct MUI_ImageSpec_intern *zune_image_spec_to_structure(IPTR in)
         case '6':              /* preconfigured image or background */
             {
                 LONG img = -1;
-                StrToLong(s + 2, &img);
+                spec_parse_long(s + 2, &img);
 
                 if (img >= MUII_WindowBack && img < MUII_Count)
                     spec = get_config_imspec(img);
@@ -444,7 +476,7 @@ static struct MUI_ImageSpec_intern *zune_imspec_copy(struct
 
 static void zune_imspec_free(struct MUI_ImageSpec_intern *spec)
 {
-    if (!spec)
+    if (!spec || is_shared_spec(spec))
         return;
     D(bug("zune_imspec_free(0x%p) [%s]\n",
             spec, zune_imspec_to_string(spec)));
@@ -484,6 +516,31 @@ struct MUI_ImageSpec_intern *zune_imspec_setup(IPTR s,
     {
         D(bug("zune_imspec_setup: param error: mri=%p\n", mri));
         return NULL;
+    }
+
+    /* A configured image ("6:n" or the MUII_ value n) names a spec in the
+     * preferences. Resolve it here instead of allocating a config spec
+     * only to free it again below (one per object per window open). */
+    {
+        LONG img = -1;
+
+        if (s < MUII_Count)
+            img = s;
+        else if (s >= MUII_BACKGROUND && s < MUII_LASTPAT)
+            img = -1;
+        else if (((CONST_STRPTR) s)[0] == '6' && ((CONST_STRPTR) s)[1])
+            spec_parse_long((CONST_STRPTR) s + 2, &img);
+        if (img >= (LONG) MUII_WindowBack && img < (LONG) MUII_Count)
+        {
+            struct ZunePrefsNew *prefs =
+                muiGlobalInfo(mri->mri_WindowObject)->mgi_Prefs;
+            CONST_STRPTR desc = prefs->imagespecs[img];
+
+            /* potential for deadloop if Zune prefs images contain a 6: */
+            if (!desc || desc[0] == '6')
+                return NULL;
+            s = (IPTR) desc;
+        }
     }
 
     spec = zune_image_spec_to_structure(s);

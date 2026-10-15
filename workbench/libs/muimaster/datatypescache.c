@@ -706,30 +706,26 @@ void dispose_custom_frame(struct dt_frame_image *fi)
 struct dt_frame_image *load_custom_frame(CONST_STRPTR filename,
     struct Screen *scr)
 {
-    struct dt_frame_image *fi =
-        AllocVec(sizeof(struct dt_frame_image), MEMF_ANY | MEMF_CLEAR);
+    struct dt_frame_image *fi;
+    STRPTR part;
 
-    if (fi)
+    /* Every window open tries all 16 custom frame slots; most are empty.
+     * Decide on the name before allocating anything. */
+    if (!filename || !filename[0])
+        return NULL;
+    /* Keep nested library calls separate: FilePart uses DOSBase,
+     * while the outer inline Stricmp needs UtilityBase in A6. */
+    part = FilePart(filename);
+    if (Stricmp(part, "frame.config") != 0)
+        return NULL;
+    fi = AllocVec(sizeof(struct dt_frame_image), MEMF_ANY | MEMF_CLEAR);
+    if (fi && !ReadFrameConfig(filename, fi, scr))
     {
-        /* Keep nested library calls separate: FilePart uses DOSBase,
-         * while the outer inline Stricmp needs UtilityBase in A6. */
-        STRPTR part = FilePart(filename);
-        if (Stricmp(part, "frame.config") == 0)
-        {
-            if (ReadFrameConfig(filename, fi, scr))
-            {
-                return fi;
-            }
-            else
-            {
-                FreeFrameConfig(fi);
-                FreeVec(fi);
-                return NULL;
-            }
-        }
+        FreeFrameConfig(fi);
         FreeVec(fi);
+        fi = NULL;
     }
-    return NULL;
+    return fi;
 }
 
 struct dt_node *dt_load_picture(CONST_STRPTR filename, struct Screen *scr)
