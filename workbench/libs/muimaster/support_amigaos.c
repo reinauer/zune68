@@ -5,6 +5,8 @@
 #include <graphics/rastport.h>
 #include <proto/exec.h>
 #include <proto/intuition.h>
+#include <proto/dos.h>
+#include <dos/dos.h>
 #include <clib/alib_protos.h>
 #include "support_amigaos.h"
 APTR AllocVecPooled(APTR pool, ULONG size)
@@ -72,4 +74,26 @@ struct RastPort *ZuneCloneRastPort(const struct RastPort *rp)
     struct RastPort *copy = AllocVec(sizeof(*copy), MEMF_PUBLIC);
     if (copy) *copy = *rp;
     return copy;
+}
+
+/* File notifications are started when an application first waits for
+ * input, not at construction. A file written in between would send no
+ * notification, so the caller compares its date with the construction
+ * time once, right after starting the notification. */
+BOOL zune_file_written_since(CONST_STRPTR name, const struct DateStamp *since)
+{
+    struct FileInfoBlock *fib;
+    BPTR lock;
+    BOOL newer = FALSE;
+
+    if (!(lock = Lock(name, SHARED_LOCK)))
+        return FALSE;
+    if ((fib = AllocDosObject(DOS_FIB, NULL)))
+    {
+        if (Examine(lock, fib))
+            newer = CompareDates(&fib->fib_Date, (struct DateStamp *)since) <= 0;
+        FreeDosObject(DOS_FIB, fib);
+    }
+    UnLock(lock);
+    return newer;
 }

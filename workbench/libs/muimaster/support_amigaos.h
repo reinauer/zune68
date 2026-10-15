@@ -82,6 +82,9 @@ typedef void (*VOID_FUNC)(void);
 LONG HexToIPTR(CONST_STRPTR str, IPTR *value);
 LONG HexToLong(CONST_STRPTR str, ULONG *value);
 char *StrDup(const char *str);
+struct DateStamp;
+/* TRUE when the file exists and was written at or after *since */
+BOOL zune_file_written_since(CONST_STRPTR name, const struct DateStamp *since);
 int stricmp(const char *left, const char *right);
 size_t strlcat(char *dst, const char *src, size_t size);
 Object *DoSuperNewTagList(Class *cl, Object *obj, void *unused,

@@ -43,6 +43,7 @@ struct MUI_ConfigdataData
     struct ZunePrefsNew         prefs;
     struct SignalSemaphore      psLock;
     struct MsgPort             *fsNotifyPort;
+    struct DateStamp            created;   /* public screens read before this */
     struct MsgPort             *signalPort;
     struct MUI_InputHandlerNode fsNotifyIHN;
     struct NotifyRequest        fsNotifyRequest;
@@ -622,6 +623,53 @@ static void Configdata_SynchronizeString(struct IClass *cl, Object *obj,
  Load global (and maybe application-specific) prefs files into the dataspace,
  then fill the prefs struct with dataspace or default values
 **************************************************************************/
+/**************************************************************************
+ MUIM_Configdata_SetupNotify: watch the public screen file. Called by the
+ application when it first waits for input.
+**************************************************************************/
+static IPTR Configdata_LoadPubScreens(struct IClass *cl, Object *obj,
+    Msg msg);
+
+static IPTR Configdata__MUIM_SetupNotify(struct IClass *cl, Object *obj,
+    Msg msg)
+{
+    struct MUI_ConfigdataData *data = INST_DATA(cl, obj);
+
+    if (data->fsNotifyPort || !data->app)
+        return 0;
+    /* Shares the application's signal when it gave us one */
+    data->fsNotifyPort = ZuneCreateSharedPort(data->signalPort);
+    if (data->fsNotifyPort) {
+        /* Setup filesystem notification handler ---------------------------*/
+        data->fsNotifyIHN.ihn_Signals = 1UL << data->fsNotifyPort->mp_SigBit;
+        data->fsNotifyIHN.ihn_Object  = obj;
+        data->fsNotifyIHN.ihn_Method  = MUIM_Configdata_PubScreensChanged;
+
+        DoMethod(data->app, MUIM_Application_AddInputHandler, (IPTR)&data->fsNotifyIHN);
+
+        data->fsNotifyRequest.nr_Name                 = PUBSCREEN_FILE;
+        data->fsNotifyRequest.nr_Flags                = NRF_SEND_MESSAGE;
+        data->fsNotifyRequest.nr_stuff.nr_Msg.nr_Port = data->fsNotifyPort;
+        if (StartNotify(&data->fsNotifyRequest)) {
+            DFSN(bug("[MUI:Cfg] %s: FileSystem-Notification setup for '%s'\n", __func__, data->fsNotifyRequest.nr_Name));
+        } else {
+            DFSN(bug("[MUI:Cfg] %s: FAILED to setup FileSystem-Notification for '%s'\n", __func__, data->fsNotifyRequest.nr_Name));
+            DoMethod(data->app, MUIM_Application_RemInputHandler, (IPTR)&data->fsNotifyIHN);
+            if (data->signalPort)
+                ZuneDeleteSharedPort(data->fsNotifyPort);
+            else
+                DeleteMsgPort(data->fsNotifyPort);
+            data->fsNotifyPort = NULL;
+        }
+    }
+
+    /* Catch a public screen file written before the notification */
+    if (data->fsNotifyPort
+        && zune_file_written_since(PUBSCREEN_FILE, &data->created))
+        Configdata_LoadPubScreens(cl, obj, msg);
+    return data->fsNotifyPort != NULL;
+}
+
 IPTR Configdata__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     struct MUI_ConfigdataData *data;
@@ -640,6 +688,7 @@ IPTR Configdata__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     NEWLIST(&data->pubscreens);
     InitSemaphore(&data->psLock);
+    DateStamp(&data->created);
 
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
     {
@@ -699,31 +748,10 @@ IPTR Configdata__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
-    /* Shares the application's signal when it gave us one */
-    data->fsNotifyPort = ZuneCreateSharedPort(data->signalPort);
-    if (data->fsNotifyPort) {
-        /* Setup filesystem notification handler ---------------------------*/
-        data->fsNotifyIHN.ihn_Signals = 1UL << data->fsNotifyPort->mp_SigBit;
-        data->fsNotifyIHN.ihn_Object  = obj;
-        data->fsNotifyIHN.ihn_Method  = MUIM_Configdata_PubScreensChanged;
-
-        DoMethod(data->app, MUIM_Application_AddInputHandler, (IPTR)&data->fsNotifyIHN);
-
-        data->fsNotifyRequest.nr_Name                 = PUBSCREEN_FILE;
-        data->fsNotifyRequest.nr_Flags                = NRF_SEND_MESSAGE;
-        data->fsNotifyRequest.nr_stuff.nr_Msg.nr_Port = data->fsNotifyPort;
-        if (StartNotify(&data->fsNotifyRequest)) {
-            DFSN(bug("[MUI:Cfg] %s: FileSystem-Notification setup for '%s'\n", __func__, data->fsNotifyRequest.nr_Name));
-        } else {
-            DFSN(bug("[MUI:Cfg] %s: FAILED to setup FileSystem-Notification for '%s'\n", __func__, data->fsNotifyRequest.nr_Name));
-            DoMethod(data->app, MUIM_Application_RemInputHandler, (IPTR)&data->fsNotifyIHN);
-            if (data->signalPort)
-                ZuneDeleteSharedPort(data->fsNotifyPort);
-            else
-                DeleteMsgPort(data->fsNotifyPort);
-            data->fsNotifyPort = NULL;
-        }
-    }
+    /* The public screen file notification starts when the application
+     * first waits for input (MUIM_Configdata_SetupNotify): a DOS
+     * notification costs a handler round trip, which create/dispose
+     * cycles and non-interactive uses never need. */
 
     /* Only bypass dispatch for the builtin object during construction.
      * Subclasses retain their inherited lookup and semaphore methods. */
@@ -1485,6 +1513,8 @@ BOOPSI_DISPATCHER(IPTR, Configdata_Dispatcher, cl, obj, msg)
         return Configdata_LoadPubScreens(cl, obj, (APTR) msg);
     case MUIM_Configdata_PubScreensChanged:
         return Configdata_PubScreensChanged(cl, obj, (APTR) msg);
+    case MUIM_Configdata_SetupNotify:
+        return Configdata__MUIM_SetupNotify(cl, obj, (APTR) msg);
     }
 
     return DoSuperMethodA(cl, obj, msg);

@@ -272,6 +272,8 @@ struct MUIP_Configdata_SetString
     (MUIB_Configdata | 0x00000002)  /* ZV1: i..  Object * */
 #define MUIA_Configdata_SignalPort  /* PRIV */ \
     (MUIB_Configdata | 0x00000003)  /* ZV1: PRIV i..  struct MsgPort * */
+#define MUIM_Configdata_SetupNotify  /* PRIV: start the public screen file notification */ \
+    (MUIB_Configdata | 0x0000002D)
 #define MUIM_Configdata_PubScreensChanged  /* PRIV */ \
     (MUIB_Configdata | 0x0000002C)
 

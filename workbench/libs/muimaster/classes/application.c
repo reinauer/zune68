@@ -116,6 +116,8 @@ struct MUI_ApplicationData
     struct MsgPort          *app_CfgNotifyPort;   /* notification of changes to the prefs file */
     struct NotifyRequest    app_CfgNotifyRequest;
     STRPTR                  app_CfgNotifyName;
+    BOOL                    app_NotifyStarted;  /* file notifications set up */
+    struct DateStamp        app_Created;        /* prefs older than this were read */
 };
 
 struct timerequest_ext
@@ -414,6 +416,29 @@ static void Application_SetupConfigNotify(struct IClass *cl, Object *obj)
     }
 }
 
+/* The prefs file notification and the Configdata's public screen file
+ * notification each cost a DOS handler round trip (about 4 ms on a
+ * 68020). They matter only to an application that waits for input, so
+ * they start at the first MUIM_Application_NewInput rather than at
+ * construction; create/dispose cycles and MUI_Request-only uses then pay
+ * nothing. MUI 3.8 starts no notification at all. */
+static void Application_StartNotifications(struct IClass *cl, Object *obj)
+{
+    struct MUI_ApplicationData *data = INST_DATA(cl, obj);
+
+    if (data->app_NotifyStarted)
+        return;
+    data->app_NotifyStarted = TRUE;
+    Application_SetupConfigNotify(cl, obj);
+    if (data->app_GlobalInfo.mgi_Configdata)
+        DoMethod(data->app_GlobalInfo.mgi_Configdata,
+            MUIM_Configdata_SetupNotify);
+    /* Catch a prefs file written before the notification started */
+    if (data->app_CfgNotifyName
+        && zune_file_written_since(data->app_CfgNotifyName, &data->app_Created))
+        Application_ReloadConfigdata(cl, obj);
+}
+
 /**************************************************************************
  OM_NEW
 **************************************************************************/
@@ -523,8 +548,9 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
     get(data->app_GlobalInfo.mgi_Configdata, MUIA_Configdata_ZunePrefs,
         &data->app_GlobalInfo.mgi_Prefs);
 
-    /* watch the prefs file so settings changes are applied live */
-    Application_SetupConfigNotify(cl, obj);
+    /* The prefs file notification starts when the application first
+     * waits for input (Application_StartNotifications); see there. */
+    DateStamp(&data->app_Created);
 
 //    D(bug("muimaster.library/application.c: Message Port created at 0x%p\n",
 //    data->app_GlobalInfo.mgi_WindowPort));
@@ -1911,6 +1937,8 @@ static IPTR application_input(struct IClass *cl, Object *obj,
     while (application_do_pushed_method(data))
         /* nothing */ ;
 
+    Application_StartNotifications(cl, obj);
+
     /* query the signal for the handlers */
     for (mn = data->app_IHList.mlh_Head; mn->mln_Succ; mn = mn->mln_Succ)
     {
@@ -2449,6 +2477,9 @@ static IPTR Application__MUIM_SetConfigdata(struct IClass *cl, Object *obj,
     data->app_GlobalInfo.mgi_Configdata = msg->configdata;
     get(data->app_GlobalInfo.mgi_Configdata, MUIA_Configdata_ZunePrefs,
         &data->app_GlobalInfo.mgi_Prefs);
+    if (data->app_NotifyStarted)
+        DoMethod(data->app_GlobalInfo.mgi_Configdata,
+            MUIM_Configdata_SetupNotify);
 
     QueueOpenWindows(obj, data, windows);
     return 0;
