@@ -2840,8 +2840,13 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
             0, data->entries_first * data->entry_maxheight, 0);
     }
 
-    clip = MUI_AddClipping(muiRenderInfo(obj), _mleft(data->area),
-        _mtop(data->area), _mwidth(data->area), entries_height);
+    /* An empty list without a title draws nothing in the entry area;
+     * installing a clip there would only rebuild the layer's cliprects */
+    if (data->entries_num == 0 && !(data->title_height && data->title))
+        clip = (APTR)-1;
+    else
+        clip = MUI_AddClipping(muiRenderInfo(obj), _mleft(data->area),
+            _mtop(data->area), _mwidth(data->area), entries_height);
 
     if ((msg->flags & MADF_DRAWUPDATE) == 0 || data->update == UPDATEMODE_ALL)
     {

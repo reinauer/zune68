@@ -1140,6 +1140,10 @@ static IPTR Area__MUIM_CustomBackfill(struct IClass *cl, Object *obj,
  */
 static BOOL area_parent_background_is_pen(Object *obj, LONG muipen);
 
+/* Area_Draw_handle_background has filled the frame's top rows (the title
+ * gap) with the parent background; returned beside FRAME_CORNER_* */
+#define AREA_TITLE_GAP_FILLED 0x80
+
 /* Returns the FRAME_CORNER_* bevel corner pixels it painted with
  * MPEN_BACKGROUND, so that the frame need not paint them again */
 static UBYTE Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
@@ -1329,6 +1333,8 @@ static UBYTE Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
              * (which is the case if MADF_DRAWALL is setted) */
             DoMethod(obj, MUIM_DrawParentBackground, bgleft, _top(obj), bgw,
                      bgtop - _top(obj), bgleft, _top(obj), data->mad_Flags);
+            if (!zframe->customframe && zframe->border_radius == 0)
+                corners |= AREA_TITLE_GAP_FILLED;
             /* That covered the top-right corner of the frame */
             if (plain && area_parent_background_is_pen(obj, MPEN_BACKGROUND))
                 corners |= FRAME_CORNER_TR;
@@ -1367,7 +1373,8 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
         struct dt_frame_image *frame_img =
             zune_frame_prepare_for_drawing(zframe, framespec, &temp_frame);
         if (frame_img == &temp_frame)
-            temp_frame.corners_bg = corners;
+            temp_frame.corners_bg = corners
+                & (FRAME_CORNER_TR | FRAME_CORNER_BL);
         zframe->draw(frame_img, muiRenderInfo(obj), _left(obj), _top(obj),
                      _width(obj), _height(obj), _left(obj), _top(obj), _width(obj),
                      _height(obj));
@@ -1398,7 +1405,12 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
     frame_top = _top(obj) + data->mad_TitleHeightAbove;
     frame_height = _height(obj) - frame_top + _top(obj);
 
-    if ((region = NewRegion())) {
+    /* When the frame rows were just filled with the parent background,
+     * draw the frame unclipped and fill its line behind the title again
+     * below: the same pixels as clipping it out, without building and
+     * installing a region (each install rebuilds the layer's cliprects) */
+    region = NULL;
+    if (!(corners & AREA_TITLE_GAP_FILLED) && (region = NewRegion())) {
         struct Rectangle rect;
         /* MUI 3.9 keeps the frame two pixels clear of the title (measured
          * with its 9 pixel title font) */
@@ -1437,6 +1449,19 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
         /*              DisposeRegion(region);*/ /* sba: DisposeRegion happens
                                                     in MUI_RemoveClipRegion,
                                                     this seems wrong to me */
+    }
+    if (corners & AREA_TITLE_GAP_FILLED) {
+        /* The frame's top rows behind the title, as the clip above leaves
+         * them: the region excluded the title box widened by 2 pixels */
+        LONG x0 = MAX(tx - 2, _left(obj));
+        LONG x1 = MIN(tx + tw - 1 + 2, _right(obj));
+        LONG y1 = MIN(frame_top + zframe->itop - 1,
+            _top(obj) + _font(obj)->tf_YSize - 1);
+
+        if (x0 <= x1 && frame_top <= y1)
+            DoMethod(obj, MUIM_DrawParentBackground, x0, frame_top,
+                x1 - x0 + 1, y1 - frame_top + 1, x0, frame_top,
+                data->mad_Flags);
     }
 
     /* Title text drawing */
