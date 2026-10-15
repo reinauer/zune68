@@ -239,6 +239,14 @@ IPTR Notify__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg);
 /*
  * OM_NEW
  */
+static struct MUI_NotifyAttributes *notify_attributes(
+    struct MUI_NotifyData *data)
+{
+    if (!data->mnd_Attributes)
+        data->mnd_Attributes = mui_alloc_struct(struct MUI_NotifyAttributes);
+    return data->mnd_Attributes;
+}
+
 IPTR Notify__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
     struct MUI_NotifyData *data;
@@ -251,23 +259,22 @@ IPTR Notify__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     data = INST_DATA(cl, obj);
 
-    data->mnd_Attributes = mui_alloc_struct(struct MUI_NotifyAttributes);
-    if (data->mnd_Attributes == NULL)
-    {
-        CoerceMethod(cl, obj, OM_DISPOSE);
-        return FALSE;
-    }
-
+    /* The Zune-private attribute block (help line/node, AppMessage) is
+     * allocated when one of those attributes is first set: most objects
+     * never set them, and the allocation per object was the largest
+     * single allocation count at tree creation. */
     while ((tag = NextTagItem(&tags)) != NULL)
     {
         switch (tag->ti_Tag)
         {
         case MUIA_HelpLine:
-            data->mnd_Attributes->na_HelpLine = (LONG) tag->ti_Data;
+            if (notify_attributes(data))
+                data->mnd_Attributes->na_HelpLine = (LONG) tag->ti_Data;
             break;
 
         case MUIA_HelpNode:
-            data->mnd_Attributes->na_HelpNode = (STRPTR) tag->ti_Data;
+            if (notify_attributes(data))
+                data->mnd_Attributes->na_HelpNode = (STRPTR) tag->ti_Data;
             break;
 
         case MUIA_ObjectID:
@@ -467,15 +474,18 @@ IPTR Notify__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         switch (tag->ti_Tag)
         {
       case MUIA_AppMessage:
-          data->mnd_Attributes->na_AppMessage = (struct AppMessage *)tag->ti_Data;
+          if (notify_attributes(data))
+              data->mnd_Attributes->na_AppMessage = (struct AppMessage *)tag->ti_Data;
           break;
 
         case MUIA_HelpLine:
-            data->mnd_Attributes->na_HelpLine = (LONG) tag->ti_Data;
+            if (notify_attributes(data))
+                data->mnd_Attributes->na_HelpLine = (LONG) tag->ti_Data;
             break;
 
         case MUIA_HelpNode:
-            data->mnd_Attributes->na_HelpNode = (STRPTR) tag->ti_Data;
+            if (notify_attributes(data))
+                data->mnd_Attributes->na_HelpNode = (STRPTR) tag->ti_Data;
             break;
 
         case MUIA_NoNotify:
@@ -570,15 +580,18 @@ IPTR Notify__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_AppMessage:
-        STORE = (IPTR) data->mnd_Attributes->na_AppMessage;
+        STORE = data->mnd_Attributes ?
+            (IPTR) data->mnd_Attributes->na_AppMessage : 0;
         return TRUE;
 
     case MUIA_HelpLine:
-        STORE = (IPTR) data->mnd_Attributes->na_HelpLine;
+        STORE = data->mnd_Attributes ?
+            (IPTR) data->mnd_Attributes->na_HelpLine : 0;
         return TRUE;
 
     case MUIA_HelpNode:
-        STORE = (IPTR) data->mnd_Attributes->na_HelpNode;
+        STORE = data->mnd_Attributes ?
+            (IPTR) data->mnd_Attributes->na_HelpNode : 0;
         return TRUE;
 
     case MUIA_ObjectID:
