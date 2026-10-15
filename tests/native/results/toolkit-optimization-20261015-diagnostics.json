@@ -1,0 +1,340 @@
+{
+  "short-memory": {
+    "binary_sha256": "c3fb4578c6400e6a4e0959ff5a13bbb197a2fbc9cf3a478c4a9e688a21fa3dc7",
+    "config_sha256": "8e620dd8887ca3a249623cc9044964d53b978d22b1f782be06efb6ef434f6f69",
+    "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+    "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+    "profiles": {
+      "candidate": {
+        "Libs/muimaster.library": "0e8b3183e654d80eb08638b1eb6c4ba2a7d25711acbadfd596d7ad75ada4dbf3",
+        "Libs/zunemaster.library": "a81132bd1d9683884ed0c8b0bb9aa3b3d2a44677760d55db967187f428c9fd8b"
+      },
+      "zune68": {
+        "Libs/muimaster.library": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e",
+        "Libs/zunemaster.library": "b9609369c6584884ba0a78e98f3b6d3c053b85f9206797d3c7235d0940f27954"
+      }
+    },
+    "runs": [
+      {
+        "trial": 0,
+        "profile": "candidate",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 617404
+        },
+        "host_seconds": 71.37
+      },
+      {
+        "trial": 0,
+        "profile": "zune68",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 704036
+        },
+        "host_seconds": 74.37
+      },
+      {
+        "trial": 1,
+        "profile": "zune68",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 685341
+        },
+        "host_seconds": 74.37
+      },
+      {
+        "trial": 1,
+        "profile": "candidate",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 1411520
+        },
+        "host_seconds": 71.42
+      }
+    ],
+    "observed_cpu_lines": [
+      "CPU=68000, FPU=0, MMU=0, JIT=0. ~memory-cycle-exact 24-bit"
+    ]
+  },
+  "short-memory-repeat": {
+    "binary_sha256": "c3fb4578c6400e6a4e0959ff5a13bbb197a2fbc9cf3a478c4a9e688a21fa3dc7",
+    "config_sha256": "dd4e763fb2b3cb2a59accf41c5f7d1781035217d93c1c4fad566e00943d929e5",
+    "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+    "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+    "profiles": {
+      "candidate": {
+        "Libs/muimaster.library": "0e8b3183e654d80eb08638b1eb6c4ba2a7d25711acbadfd596d7ad75ada4dbf3",
+        "Libs/zunemaster.library": "a81132bd1d9683884ed0c8b0bb9aa3b3d2a44677760d55db967187f428c9fd8b"
+      },
+      "zune68": {
+        "Libs/muimaster.library": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e",
+        "Libs/zunemaster.library": "b9609369c6584884ba0a78e98f3b6d3c053b85f9206797d3c7235d0940f27954"
+      }
+    },
+    "runs": [
+      {
+        "trial": 0,
+        "profile": "candidate",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 1166184
+        },
+        "host_seconds": 72.38
+      },
+      {
+        "trial": 0,
+        "profile": "zune68",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 700796
+        },
+        "host_seconds": 74.38
+      },
+      {
+        "trial": 1,
+        "profile": "zune68",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 697070
+        },
+        "host_seconds": 74.36
+      },
+      {
+        "trial": 1,
+        "profile": "candidate",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 596632
+        },
+        "host_seconds": 72.41
+      }
+    ],
+    "observed_cpu_lines": [
+      "CPU=68000, FPU=0, MMU=0, JIT=0. ~memory-cycle-exact 24-bit"
+    ]
+  },
+  "short-cycle-exact": {
+    "binary_sha256": "c3fb4578c6400e6a4e0959ff5a13bbb197a2fbc9cf3a478c4a9e688a21fa3dc7",
+    "config_sha256": "5cd56864505e9d50b5c99f6ef0a7046814b00d2ade17dc7a8c829c9f3f0479eb",
+    "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+    "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+    "profiles": {
+      "candidate": {
+        "Libs/muimaster.library": "0e8b3183e654d80eb08638b1eb6c4ba2a7d25711acbadfd596d7ad75ada4dbf3",
+        "Libs/zunemaster.library": "a81132bd1d9683884ed0c8b0bb9aa3b3d2a44677760d55db967187f428c9fd8b"
+      },
+      "zune68": {
+        "Libs/muimaster.library": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e",
+        "Libs/zunemaster.library": "b9609369c6584884ba0a78e98f3b6d3c053b85f9206797d3c7235d0940f27954"
+      }
+    },
+    "runs": [
+      {
+        "trial": 0,
+        "profile": "candidate",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 278675
+        },
+        "host_seconds": 42.22
+      },
+      {
+        "trial": 0,
+        "profile": "zune68",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 323627
+        },
+        "host_seconds": 43.3
+      },
+      {
+        "trial": 1,
+        "profile": "zune68",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 330671
+        },
+        "host_seconds": 43.24
+      },
+      {
+        "trial": 1,
+        "profile": "candidate",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 270634
+        },
+        "host_seconds": 42.28
+      }
+    ],
+    "observed_cpu_lines": [
+      "CPU=68000, FPU=0, MMU=0, JIT=0. prefetch and cycle-exact 24-bit"
+    ]
+  },
+  "focused": {
+    "binary_sha256": "76694dc8f576fed80df304f5bf4edfeb2064acf299b0f0f5aa5569b09ad913ac",
+    "config_sha256": "8e620dd8887ca3a249623cc9044964d53b978d22b1f782be06efb6ef434f6f69",
+    "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+    "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+    "profiles": {
+      "candidate": {
+        "Libs/muimaster.library": "0e8b3183e654d80eb08638b1eb6c4ba2a7d25711acbadfd596d7ad75ada4dbf3",
+        "Libs/zunemaster.library": "a81132bd1d9683884ed0c8b0bb9aa3b3d2a44677760d55db967187f428c9fd8b"
+      }
+    },
+    "runs": [
+      {
+        "trial": 0,
+        "profile": "candidate",
+        "mode": "create-cold",
+        "transcript": "0-candidate-create-cold.txt",
+        "sha256": "244613831ac8bd5bfae7b39e9986b867665172339b2757f5c9ec0e69a6cdfe6f"
+      },
+      {
+        "trial": 0,
+        "profile": "candidate",
+        "mode": "create-combined",
+        "transcript": "0-candidate-create-combined.txt",
+        "sha256": "50eff881c89ffea8d4c63df4cfc726377d0c44a6ae2b3b60488258d563ec16bd"
+      },
+      {
+        "trial": 0,
+        "profile": "candidate",
+        "mode": "create-combined-warm",
+        "transcript": "0-candidate-create-combined-warm.txt",
+        "sha256": "57995635755b2bcc7c67a3cc9070646c7f68531bbe76e3f2a669cb37c6d7a079"
+      }
+    ],
+    "observed_cpu_lines": [
+      "CPU=68000, FPU=0, MMU=0, JIT=0. ~memory-cycle-exact 24-bit"
+    ]
+  },
+  "short-memory-settled": {
+    "binary_sha256": "c3fb4578c6400e6a4e0959ff5a13bbb197a2fbc9cf3a478c4a9e688a21fa3dc7",
+    "config_sha256": "8e620dd8887ca3a249623cc9044964d53b978d22b1f782be06efb6ef434f6f69",
+    "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+    "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+    "profiles": {
+      "candidate": {
+        "Libs/muimaster.library": "0e8b3183e654d80eb08638b1eb6c4ba2a7d25711acbadfd596d7ad75ada4dbf3",
+        "Libs/zunemaster.library": "a81132bd1d9683884ed0c8b0bb9aa3b3d2a44677760d55db967187f428c9fd8b"
+      },
+      "zune68": {
+        "Libs/muimaster.library": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e",
+        "Libs/zunemaster.library": "b9609369c6584884ba0a78e98f3b6d3c053b85f9206797d3c7235d0940f27954"
+      }
+    },
+    "settle_seconds": 10,
+    "runs": [
+      {
+        "trial": 0,
+        "profile": "candidate",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 558679
+        },
+        "host_seconds": 71.4
+      },
+      {
+        "trial": 0,
+        "profile": "zune68",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 656927
+        },
+        "host_seconds": 74.36
+      },
+      {
+        "trial": 1,
+        "profile": "zune68",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 688512
+        },
+        "host_seconds": 74.4
+      },
+      {
+        "trial": 1,
+        "profile": "candidate",
+        "version": "21.227",
+        "eclock": 709379,
+        "geometry": null,
+        "ticks": {
+          "create+dispose": 584082
+        },
+        "host_seconds": 72.39
+      }
+    ],
+    "observed_cpu_lines": [
+      "CPU=68000, FPU=0, MMU=0, JIT=0. ~memory-cycle-exact 24-bit"
+    ]
+  },
+  "short_binary_changes": {
+    "original_sha256": "338caa6ccc35c10f97e91e3cc31368d64a7f3e98f22ef9e3900c7ae8cf79b1a5",
+    "patched_sha256": "c3fb4578c6400e6a4e0959ff5a13bbb197a2fbc9cf3a478c4a9e688a21fa3dc7",
+    "code_offsets": {
+      "0xb6e": {
+        "before": "4e94",
+        "after": "7000"
+      },
+      "0xb78": {
+        "before": "670001dc2f3c",
+        "after": "740060000358"
+      }
+    },
+    "description": "Skip later phases after reporting creation; clear app pointer before cleanup. Hunk sizes and relocations retained."
+  },
+  "debugger_observations": {
+    "benchmark_sha256": "338caa6ccc35c10f97e91e3cc31368d64a7f3e98f22ef9e3900c7ae8cf79b1a5",
+    "library_code_base": "0x0032bfe8",
+    "saved_D2_before_and_after_creation_disposal": "0x0235a56c",
+    "creation_samples_ticks": [
+      1673574,
+      1999076,
+      588365,
+      585864,
+      600178,
+      588451,
+      590106,
+      588141,
+      586904,
+      590652,
+      600064,
+      587612,
+      590828,
+      587597,
+      586604
+    ],
+    "eclock": 709379,
+    "purpose": "Debugger diagnostics only; not used for speed claims."
+  }
+}

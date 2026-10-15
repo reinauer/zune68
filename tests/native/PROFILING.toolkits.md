@@ -1,5 +1,9 @@
 # Creation and List profiling against MUI 3.8
 
+These measurements capture the baseline before the creation/List fixes.
+See [PERFORMANCE.optimizations.md](PERFORMANCE.optimizations.md) for the
+implemented follow-up and its measured results.
+
 This follows the larger gaps in [PERFORMANCE.toolkits.md](PERFORMANCE.toolkits.md).
 The library binaries are unchanged: Zune68 c70d226a (development version
 21.227) and original MUI 3.8 19.35, with the same frozen installations,

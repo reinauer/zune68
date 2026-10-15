@@ -1,0 +1,126 @@
+{
+  "binary_sha256": "338caa6ccc35c10f97e91e3cc31368d64a7f3e98f22ef9e3900c7ae8cf79b1a5",
+  "config_sha256": "8e620dd8887ca3a249623cc9044964d53b978d22b1f782be06efb6ef434f6f69",
+  "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+  "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+  "profiles": {
+    "zune68": {
+      "Libs/muimaster.library": "d890ad2973c4c60d3d96d64016c4361a1b57a00b4d48192cad8bd7dfecb8ab0e",
+      "Libs/zunemaster.library": "b9609369c6584884ba0a78e98f3b6d3c053b85f9206797d3c7235d0940f27954"
+    },
+    "candidate": {
+      "Libs/muimaster.library": "0e8b3183e654d80eb08638b1eb6c4ba2a7d25711acbadfd596d7ad75ada4dbf3",
+      "Libs/zunemaster.library": "a81132bd1d9683884ed0c8b0bb9aa3b3d2a44677760d55db967187f428c9fd8b"
+    }
+  },
+  "runs": [
+    {
+      "trial": 0,
+      "profile": "zune68",
+      "version": "21.227",
+      "eclock": 709379,
+      "geometry": "geometry window=232x421 root=224x408 list-visible=264",
+      "ticks": {
+        "create+dispose": 693946,
+        "open+close": 1213053,
+        "redraw x10": 3973881,
+        "relayout x5": 3028611,
+        "list insert200": 3754731,
+        "list active x50": 7536896,
+        "notify x100": 1769501,
+        "text set x100": 523850
+      },
+      "host_seconds": 543.21
+    },
+    {
+      "trial": 0,
+      "profile": "candidate",
+      "version": "21.227",
+      "eclock": 709379,
+      "geometry": "geometry window=232x421 root=224x408 list-visible=264",
+      "ticks": {
+        "create+dispose": 1474769,
+        "open+close": 1200663,
+        "redraw x10": 3973591,
+        "relayout x5": 2980383,
+        "list insert200": 3213576,
+        "list active x50": 3350169,
+        "notify x100": 1769929,
+        "text set x100": 524800
+      },
+      "host_seconds": 442.48
+    },
+    {
+      "trial": 1,
+      "profile": "candidate",
+      "version": "21.227",
+      "eclock": 709379,
+      "geometry": "geometry window=232x421 root=224x408 list-visible=264",
+      "ticks": {
+        "create+dispose": 1449334,
+        "open+close": 1203879,
+        "redraw x10": 3973519,
+        "relayout x5": 2981000,
+        "list insert200": 3209719,
+        "list active x50": 3350026,
+        "notify x100": 1770511,
+        "text set x100": 522625
+      },
+      "host_seconds": 437.78
+    },
+    {
+      "trial": 1,
+      "profile": "zune68",
+      "version": "21.227",
+      "eclock": 709379,
+      "geometry": "geometry window=232x421 root=224x408 list-visible=264",
+      "ticks": {
+        "create+dispose": 704040,
+        "open+close": 1226108,
+        "redraw x10": 3974203,
+        "relayout x5": 3029219,
+        "list insert200": 3809506,
+        "list active x50": 7624454,
+        "notify x100": 1768178,
+        "text set x100": 523914
+      },
+      "host_seconds": 545.59
+    },
+    {
+      "trial": 2,
+      "profile": "zune68",
+      "version": "21.227",
+      "eclock": 709379,
+      "geometry": "geometry window=232x421 root=224x408 list-visible=264",
+      "ticks": {
+        "create+dispose": 685301,
+        "open+close": 1224155,
+        "redraw x10": 3974573,
+        "relayout x5": 3029660,
+        "list insert200": 3785141,
+        "list active x50": 7586053,
+        "notify x100": 1769559,
+        "text set x100": 524169
+      },
+      "host_seconds": 543.81
+    },
+    {
+      "trial": 2,
+      "profile": "candidate",
+      "version": "21.227",
+      "eclock": 709379,
+      "geometry": "geometry window=232x421 root=224x408 list-visible=264",
+      "ticks": {
+        "create+dispose": 1534781,
+        "open+close": 1194316,
+        "redraw x10": 3972866,
+        "relayout x5": 2980616,
+        "list insert200": 3208303,
+        "list active x50": 3349902,
+        "notify x100": 1770460,
+        "text set x100": 524881
+      },
+      "host_seconds": 438.01
+    }
+  ]
+}

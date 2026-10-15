@@ -1,0 +1,232 @@
+=== memory-only/0-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  693946 ticks    978767 us/rep  ops=1
+open+close     median= 1213053 ticks   1710935 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 3973881 ticks   5604909 us/rep  ops=10
+relayout x5    median= 3028611 ticks   4271665 us/rep  ops=5
+list insert200 median= 3754731 ticks   5295812 us/rep  ops=200
+list-entries=200
+list active x50 median= 7536896 ticks  10630318 us/rep  ops=50
+notify x100    median= 1769501 ticks   2495770 us/rep  ops=100
+text set x100  median=  523850 ticks    738857 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== memory-only/0-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median= 1474769 ticks   2080069 us/rep  ops=1
+open+close     median= 1200663 ticks   1693459 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 3973591 ticks   5604500 us/rep  ops=10
+relayout x5    median= 2980383 ticks   4203643 us/rep  ops=5
+list insert200 median= 3213576 ticks   4532547 us/rep  ops=200
+list-entries=200
+list active x50 median= 3350169 ticks   4725203 us/rep  ops=50
+notify x100    median= 1769929 ticks   2496373 us/rep  ops=100
+text set x100  median=  524800 ticks    740197 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== memory-only/1-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median= 1449334 ticks   2044194 us/rep  ops=1
+open+close     median= 1203879 ticks   1697995 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 3973519 ticks   5604399 us/rep  ops=10
+relayout x5    median= 2981000 ticks   4204513 us/rep  ops=5
+list insert200 median= 3209719 ticks   4527107 us/rep  ops=200
+list-entries=200
+list active x50 median= 3350026 ticks   4725001 us/rep  ops=50
+notify x100    median= 1770511 ticks   2497194 us/rep  ops=100
+text set x100  median=  522625 ticks    737129 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== memory-only/1-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  704040 ticks    993004 us/rep  ops=1
+open+close     median= 1226108 ticks   1729348 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 3974203 ticks   5605363 us/rep  ops=10
+relayout x5    median= 3029219 ticks   4272523 us/rep  ops=5
+list insert200 median= 3809506 ticks   5373069 us/rep  ops=200
+list-entries=200
+list active x50 median= 7624454 ticks  10753813 us/rep  ops=50
+notify x100    median= 1768178 ticks   2493904 us/rep  ops=100
+text set x100  median=  523914 ticks    738947 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== memory-only/2-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  685301 ticks    966574 us/rep  ops=1
+open+close     median= 1224155 ticks   1726593 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 3974573 ticks   5605885 us/rep  ops=10
+relayout x5    median= 3029660 ticks   4273145 us/rep  ops=5
+list insert200 median= 3785141 ticks   5338703 us/rep  ops=200
+list-entries=200
+list active x50 median= 7586053 ticks  10699651 us/rep  ops=50
+notify x100    median= 1769559 ticks   2495851 us/rep  ops=100
+text set x100  median=  524169 ticks    739307 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== memory-only/2-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median= 1534781 ticks   2164712 us/rep  ops=1
+open+close     median= 1194316 ticks   1684507 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 3972866 ticks   5603478 us/rep  ops=10
+relayout x5    median= 2980616 ticks   4203971 us/rep  ops=5
+list insert200 median= 3208303 ticks   4525110 us/rep  ops=200
+list-entries=200
+list active x50 median= 3349902 ticks   4724826 us/rep  ops=50
+notify x100    median= 1770460 ticks   2497122 us/rep  ops=100
+text set x100  median=  524881 ticks    740311 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== short-memory/0-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  617404 ticks    870809 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory/0-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  704036 ticks    992998 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory/1-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  685341 ticks    966630 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory/1-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median= 1411520 ticks   1990860 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory-repeat/0-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median= 1166184 ticks   1644829 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory-repeat/0-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  700796 ticks    988428 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory-repeat/1-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  697070 ticks    983173 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory-repeat/1-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  596632 ticks    841511 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-cycle-exact/0-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  278675 ticks    393053 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-cycle-exact/0-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  323627 ticks    456455 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-cycle-exact/1-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  330671 ticks    466390 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-cycle-exact/1-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  270634 ticks    381712 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== focused/0-candidate-create-cold.txt ===
+profile library=21.227 eclock=709379 trace=0
+focus=Application,Configdata new/dispose
+creation-only combined=0 warmups=1
+timing create median=460379 min=446799 max=1636202 n=15
+timing dispose median=130282 min=125192 max=268393 n=15
+rc=0
+ALLDONE
+
+=== focused/0-candidate-create-combined.txt ===
+profile library=21.227 eclock=709379 trace=0
+focus=Application,Configdata new/dispose
+creation-only combined=1 warmups=1
+timing create+dispose median=571164 min=564456 max=1929343 n=15
+rc=0
+ALLDONE
+
+=== focused/0-candidate-create-combined-warm.txt ===
+profile library=21.227 eclock=709379 trace=0
+focus=Application,Configdata new/dispose
+creation-only combined=1 warmups=5
+timing create+dispose median=559069 min=554680 max=2046153 n=15
+rc=0
+ALLDONE
+
+=== short-memory-settled/0-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  558679 ticks    787981 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory-settled/0-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  656927 ticks    926554 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory-settled/1-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  688512 ticks    971102 us/rep  ops=1
+rc=0
+ALLDONE
+
+=== short-memory-settled/1-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  584082 ticks    823811 us/rep  ops=1
+rc=0
+ALLDONE

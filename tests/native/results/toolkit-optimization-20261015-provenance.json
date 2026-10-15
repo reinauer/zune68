@@ -1,0 +1,82 @@
+{
+  "source_head": "d108c3bada183c6e3308763d53d3ad76fe6ec06e",
+  "trace_source_commit": "d108c3bada183c6e3308763d53d3ad76fe6ec06e",
+  "machines": {
+    "68020": {
+      "cpu_model": "68020",
+      "cpu_type": "68020",
+      "cpu_compatible": "true",
+      "cpu_24bit_addressing": "false",
+      "cpu_speed": "real",
+      "cpu_multiplier": "4",
+      "cpu_cycle_exact": "false",
+      "cpu_memory_cycle_exact": "true",
+      "cycle_exact": "memory",
+      "blitter_cycle_exact": "true",
+      "chipset": "aga",
+      "chipset_compatible": "A1200",
+      "chipmem_size": "4",
+      "fastmem_size": "4",
+      "z3mem_size": "16",
+      "gfxcard_size": "4",
+      "gfxcard_type": "ZorroIII",
+      "rom": "A1200.47.115.rom",
+      "rom_sha256": "27ddaf0a460e2ee85935139cbac1df234c283b3979c50526d118e9a55c61100a",
+      "observed_cpu_lines": [
+        "CPU=68020, FPU=0, MMU=0, JIT=0. ~memory-cycle-exact"
+      ]
+    },
+    "68000": {
+      "cpu_model": "68000",
+      "cpu_type": "68000",
+      "cpu_compatible": "true",
+      "cpu_24bit_addressing": "true",
+      "cpu_speed": "real",
+      "cpu_multiplier": "4",
+      "cpu_cycle_exact": "true",
+      "cpu_memory_cycle_exact": "true",
+      "cycle_exact": "true",
+      "blitter_cycle_exact": "true",
+      "chipset": "ecs",
+      "chipset_compatible": "A600",
+      "chipmem_size": "4",
+      "fastmem_size": "4",
+      "z3mem_size": "0",
+      "gfxcard_size": "4",
+      "gfxcard_type": "ZorroIII",
+      "rom": "CDTVA500A600A2000.47.115.rom",
+      "rom_sha256": "e66823f4baaf2c93ea6ac600c07014ccddadc44cc58281c564baf165e2035b47",
+      "observed_cpu_lines": [
+        "CPU=68000, FPU=0, MMU=0, JIT=0. prefetch and cycle-exact 24-bit"
+      ]
+    }
+  },
+  "segments": {
+    "zune68": {
+      "CODE": 376872,
+      "DATA": 1260,
+      "BSS": 1300
+    },
+    "candidate": {
+      "CODE": 377728,
+      "DATA": 1260,
+      "BSS": 1300
+    }
+  },
+  "source_files": {
+    "workbench/libs/muimaster/classes/list.c": "5df38952152cfd80586e1f85368e09461332be47b76b1151937959a964d2de85",
+    "workbench/libs/muimaster/classes/configdata.c": "d7631fa3eaca5bd2788ad0a44040f721d3a9c9a78d869b520e0255eef5a9bf12",
+    "workbench/libs/muimaster/textengine.c": "a34cbd94b57cf23c1d4f54381e8b93c3b86a57f766525d17c514704e4a189c60",
+    "workbench/libs/muimaster/imspec.c": "ad5a70d1bbb7d20bcdc335e7d85ae6d3f9b9bc78be99d8e05823112a93e73977",
+    "tests/native/list_repaint_probe.c": "fac7e808f1ce9b55484594c1bd8066acb501f2a8cdc91193c6f265ff408a096c",
+    "tests/native/config_init_probe.c": "57a628856ee561a8aea0b2067d48b93a1682921e0684705a48ccabbc234f02c5",
+    "tests/native/perfbench.c": "ddfd0add7df7ec3438d120f4bc4c1724683c36119a719ec1159d881c8f168fb0"
+  },
+  "creation_diagnostic_probe": {
+    "binary_sha256": "76694dc8f576fed80df304f5bf4edfeb2064acf299b0f0f5aa5569b09ad913ac",
+    "source_sha256": "8e9fe1a4d0d4c1ad08a3054e165fa86760bd1f1e32487584b19e614efb84e73a",
+    "compiler": "m68k-amigaos-gcc 13.4",
+    "flags": "-m68000 -msoft-float -noixemul -Os -std=gnu17 -Wall -Wno-pointer-sign -DPROFILE_FOCUS=1 -Wl,-u,___stkinit -lamiga",
+    "byte_identical_to_measured_probe": true
+  }
+}

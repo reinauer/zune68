@@ -1,0 +1,21 @@
+{
+  "binary_sha256": "74a9ac60f39a21c614dca845d1b2c0914882c32bea8bb0d4f9c3e25f2c078319",
+  "config_sha256": "eeb3a0b0080a367aed0e57bade28144591f743fff9c5c935bff8f1fba080bd34",
+  "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+  "pristine_disk_sha256": "18f08a01e102d1aeaecedf61752d7dde40a397f0dfd060e8e0b27c1e7ee496c3",
+  "profiles": {
+    "candidate": {
+      "Libs/muimaster.library": "0e8b3183e654d80eb08638b1eb6c4ba2a7d25711acbadfd596d7ad75ada4dbf3",
+      "Libs/zunemaster.library": "a81132bd1d9683884ed0c8b0bb9aa3b3d2a44677760d55db967187f428c9fd8b"
+    }
+  },
+  "runs": [
+    {
+      "trial": 0,
+      "profile": "candidate",
+      "mode": "trace",
+      "transcript": "0-candidate-trace.txt",
+      "sha256": "3ede7e7aceaa95c35221bf7f55bcea4f60c4e0b7a55104a84e2667dfea0dcb58"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+=== pixels-020 ===
+scenario=0 visible=8 depth=2 mode=00000000
+scenario=1 visible=6 depth=2 mode=00000000
+scenario=2 visible=8 depth=2 mode=00000000
+scenario=3 visible=8 depth=2 mode=00000000
+scenario=4 visible=8 depth=2 mode=00000000
+scenario=5 visible=8 depth=2 mode=00000000
+scenario=6 visible=8 depth=2 mode=00000000
+PASS comparisons=189 failures=0
+ALLDONE
+
+=== pixels-000 ===
+scenario=0 visible=8 depth=2 mode=00000000
+scenario=1 visible=6 depth=2 mode=00000000
+scenario=2 visible=8 depth=2 mode=00000000
+scenario=3 visible=8 depth=2 mode=00000000
+scenario=4 visible=8 depth=2 mode=00000000
+scenario=5 visible=8 depth=2 mode=00000000
+scenario=6 visible=8 depth=2 mode=00000000
+PASS comparisons=189 failures=0
+ALLDONE
+
+=== pixels-rtg ===
+scenario=0 visible=8 depth=8 mode=50031000
+scenario=1 visible=6 depth=8 mode=50031000
+scenario=2 visible=8 depth=8 mode=50031000
+scenario=3 visible=8 depth=8 mode=50031000
+scenario=4 visible=8 depth=8 mode=50031000
+scenario=5 visible=8 depth=8 mode=50031000
+scenario=6 visible=8 depth=8 mode=50031000
+PASS comparisons=189 failures=0
+ALLDONE
+
+=== config-020 ===
+PASS failures=0
+ALLDONE
+
+=== config-000 ===
+PASS failures=0
+ALLDONE
+
+=== format-020 ===
+columns 4 54 114
+columns 4 54 114
+columns 4 54 -1
+columns 4 54 114
+object setups=4 cleanups=4 draws=2 entries=1
+PASS failures=0
+ALLDONE
+
+=== list-020 ===
+library=21.227
+sort col=1 get=1 stripes=1 edit=1 titleclick=0
+sort-array alpha,beta,gamma
+create row=0 col=0 entry=alpha
+done row=0 col=0 abort=0 veto=1
+done row=0 col=0 abort=0 veto=0
+create row=1 col=0 entry=beta
+done row=1 col=0 abort=1 veto=0
+create row=0 col=0 entry=edited
+done row=0 col=0 abort=0 veto=0
+return commits=2 aborts=1
+create row=1 col=0 entry=beta
+done row=1 col=0 abort=1 veto=0
+escape commits=2 aborts=2
+title hit 46,16 top=11 inner=15
+title click get=1 notify=1
+create row=1 col=0 entry=edited
+done row=1 col=0 abort=1 veto=0
+PASS failures=0 edits=5 commits=2 aborts=3
+ALLDONE

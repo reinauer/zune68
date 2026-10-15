@@ -3,7 +3,9 @@
 For creation/List performance investigation, see
 [PROFILING.toolkits.md](PROFILING.toolkits.md). Its test-only dispatcher
 wrappers require a disposable guest and are separate from compatibility
-and uninstrumented performance measurements.
+and uninstrumented performance measurements. The implemented fixes, pixel
+equivalence probes and before/after results are documented in
+[PERFORMANCE.optimizations.md](PERFORMANCE.optimizations.md).
 
 `make -C workbench/libs/muimaster check-core` builds the probes against
 Zune's generated headers. Compilation is not a guest runtime test.

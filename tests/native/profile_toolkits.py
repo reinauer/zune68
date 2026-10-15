@@ -17,7 +17,10 @@ def main():
     for name in ("fixture", "emulator", "binary", "output"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--profiles", nargs="+", required=True)
-    parser.add_argument("--modes", nargs="+", choices=("plain", "trace"),
+    parser.add_argument("--modes", nargs="+",
+                        choices=("plain", "trace", "create", "create-trace",
+                                 "create-cold", "create-combined",
+                                 "create-combined-warm"),
                         default=["plain", "trace"])
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--start-trial", type=int, default=0)
@@ -89,7 +92,9 @@ def main():
                                     proc.kill()
                                     proc.wait()
                         (args.output / (stem + ".txt")).write_text(result)
-                        if "rc=0" not in result or result.count("timing ") != 5:
+                        expected = (1 if "combined" in mode else
+                                    2 if mode.startswith("create") else 5)
+                        if "rc=0" not in result or result.count("timing ") != expected:
                             raise RuntimeError("incomplete profile: " + result[-1000:])
                         metadata["runs"].append({"trial": trial, "profile": profile,
                             "mode": mode, "transcript": stem + ".txt",

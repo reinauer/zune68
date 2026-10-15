@@ -1,0 +1,239 @@
+=== 68020/0-mui38.txt ===
+library 19.35 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=   74877 ticks    105609 us/rep  ops=1
+open+close     median=  383663 ticks    541132 us/rep  ops=1
+geometry window=238x419 root=230x406 list-visible=31
+redraw x10     median= 1112084 ticks   1568524 us/rep  ops=10
+relayout x5    median=  677767 ticks    955947 us/rep  ops=5
+list insert200 median= 1076753 ticks   1518692 us/rep  ops=200
+list-entries=200
+list active x50 median=  791458 ticks   1116301 us/rep  ops=50
+notify x100    median=  499848 ticks    705004 us/rep  ops=100
+text set x100  median=  127507 ticks    179840 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68020/0-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  108330 ticks    152792 us/rep  ops=1
+open+close     median=  412022 ticks    581131 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 1265635 ticks   1785098 us/rep  ops=10
+relayout x5    median=  803424 ticks   1133179 us/rep  ops=5
+list insert200 median=  819445 ticks   1155775 us/rep  ops=200
+list-entries=200
+list active x50 median= 1683326 ticks   2374225 us/rep  ops=50
+notify x100    median=  487455 ticks    687524 us/rep  ops=100
+text set x100  median=  126349 ticks    178207 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68020/0-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=   92413 ticks    130342 us/rep  ops=1
+open+close     median=  412066 ticks    581193 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 1264906 ticks   1784070 us/rep  ops=10
+relayout x5    median=  792593 ticks   1117902 us/rep  ops=5
+list insert200 median=  726335 ticks   1024449 us/rep  ops=200
+list-entries=200
+list active x50 median=  804926 ticks   1135297 us/rep  ops=50
+notify x100    median=  499262 ticks    704177 us/rep  ops=100
+text set x100  median=  126007 ticks    177724 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68020/1-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  105787 ticks    149205 us/rep  ops=1
+open+close     median=  412086 ticks    581221 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 1265878 ticks   1785441 us/rep  ops=10
+relayout x5    median=  802925 ticks   1132475 us/rep  ops=5
+list insert200 median=  818674 ticks   1154688 us/rep  ops=200
+list-entries=200
+list active x50 median= 1679985 ticks   2369513 us/rep  ops=50
+notify x100    median=  499958 ticks    705159 us/rep  ops=100
+text set x100  median=  126208 ticks    178008 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68020/1-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=   90995 ticks    128342 us/rep  ops=1
+open+close     median=  411756 ticks    580755 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 1265115 ticks   1784365 us/rep  ops=10
+relayout x5    median=  792501 ticks   1117772 us/rep  ops=5
+list insert200 median=  726425 ticks   1024576 us/rep  ops=200
+list-entries=200
+list active x50 median=  804542 ticks   1134755 us/rep  ops=50
+notify x100    median=  500032 ticks    705263 us/rep  ops=100
+text set x100  median=  125838 ticks    177486 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68020/1-mui38.txt ===
+library 19.35 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=   74307 ticks    104805 us/rep  ops=1
+open+close     median=  383599 ticks    541042 us/rep  ops=1
+geometry window=238x419 root=230x406 list-visible=31
+redraw x10     median= 1111501 ticks   1567702 us/rep  ops=10
+relayout x5    median=  677950 ticks    956205 us/rep  ops=5
+list insert200 median= 1076830 ticks   1518801 us/rep  ops=200
+list-entries=200
+list active x50 median=  791451 ticks   1116291 us/rep  ops=50
+notify x100    median=  500221 ticks    705530 us/rep  ops=100
+text set x100  median=  127586 ticks    179952 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68020/2-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=   92241 ticks    130100 us/rep  ops=1
+open+close     median=  412070 ticks    581198 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 1265337 ticks   1784678 us/rep  ops=10
+relayout x5    median=  792260 ticks   1117433 us/rep  ops=5
+list insert200 median=  725479 ticks   1023242 us/rep  ops=200
+list-entries=200
+list active x50 median=  805812 ticks   1136547 us/rep  ops=50
+notify x100    median=  486052 ticks    685545 us/rep  ops=100
+text set x100  median=  126761 ticks    178788 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68020/2-mui38.txt ===
+library 19.35 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=   75348 ticks    106273 us/rep  ops=1
+open+close     median=  383721 ticks    541214 us/rep  ops=1
+geometry window=238x419 root=230x406 list-visible=31
+redraw x10     median= 1112340 ticks   1568885 us/rep  ops=10
+relayout x5    median=  682005 ticks    961925 us/rep  ops=5
+list insert200 median= 1077861 ticks   1520255 us/rep  ops=200
+list-entries=200
+list active x50 median=  794460 ticks   1120535 us/rep  ops=50
+notify x100    median=  495925 ticks    699471 us/rep  ops=100
+text set x100  median=  126938 ticks    179038 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68020/2-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  108242 ticks    152668 us/rep  ops=1
+open+close     median=  412023 ticks    581132 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 1265839 ticks   1785386 us/rep  ops=10
+relayout x5    median=  803088 ticks   1132705 us/rep  ops=5
+list insert200 median=  821896 ticks   1159232 us/rep  ops=200
+list-entries=200
+list active x50 median= 1686582 ticks   2378818 us/rep  ops=50
+notify x100    median=  499818 ticks    704961 us/rep  ops=100
+text set x100  median=  126780 ticks    178815 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68000/0-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  335162 ticks    472724 us/rep  ops=1
+open+close     median=  639601 ticks    902117 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 2005419 ticks   2828517 us/rep  ops=10
+relayout x5    median= 1498883 ticks   2114080 us/rep  ops=5
+list insert200 median= 2024780 ticks   2855825 us/rep  ops=200
+list-entries=200
+list active x50 median= 4032585 ticks   5687708 us/rep  ops=50
+notify x100    median=  877945 ticks   1238286 us/rep  ops=100
+text set x100  median=  264282 ticks    372753 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68000/0-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  274319 ticks    386909 us/rep  ops=1
+open+close     median=  637817 ticks    899600 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 2007326 ticks   2831207 us/rep  ops=10
+relayout x5    median= 1474712 ticks   2079988 us/rep  ops=5
+list insert200 median= 1655951 ticks   2335614 us/rep  ops=200
+list-entries=200
+list active x50 median= 1737340 ticks   2450409 us/rep  ops=50
+notify x100    median=  877080 ticks   1237066 us/rep  ops=100
+text set x100  median=  264133 ticks    372543 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68000/1-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  270346 ticks    381306 us/rep  ops=1
+open+close     median=  631294 ticks    890400 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 2005685 ticks   2828892 us/rep  ops=10
+relayout x5    median= 1476568 ticks   2082606 us/rep  ops=5
+list insert200 median= 1652321 ticks   2330495 us/rep  ops=200
+list-entries=200
+list active x50 median= 1737045 ticks   2449992 us/rep  ops=50
+notify x100    median=  876984 ticks   1236930 us/rep  ops=100
+text set x100  median=  264260 ticks    372722 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68000/1-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  319959 ticks    451282 us/rep  ops=1
+open+close     median=  639343 ticks    901753 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 2008028 ticks   2832197 us/rep  ops=10
+relayout x5    median= 1498303 ticks   2113262 us/rep  ops=5
+list insert200 median= 1980355 ticks   2793166 us/rep  ops=200
+list-entries=200
+list active x50 median= 3960616 ticks   5586200 us/rep  ops=50
+notify x100    median=  878061 ticks   1238449 us/rep  ops=100
+text set x100  median=  264244 ticks    372699 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68000/2-zune68.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  326309 ticks    460238 us/rep  ops=1
+open+close     median=  639294 ticks    901684 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 2007015 ticks   2830768 us/rep  ops=10
+relayout x5    median= 1497686 ticks   2112392 us/rep  ops=5
+list insert200 median= 1977410 ticks   2789012 us/rep  ops=200
+list-entries=200
+list active x50 median= 3954059 ticks   5576952 us/rep  ops=50
+notify x100    median=  877210 ticks   1237249 us/rep  ops=100
+text set x100  median=  264192 ticks    372626 us/rep  ops=100
+rc=0
+ALLDONE
+
+=== 68000/2-candidate.txt ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+create+dispose median=  269002 ticks    379410 us/rep  ops=1
+open+close     median=  627114 ticks    884504 us/rep  ops=1
+geometry window=232x421 root=224x408 list-visible=264
+redraw x10     median= 2006196 ticks   2829613 us/rep  ops=10
+relayout x5    median= 1477236 ticks   2083548 us/rep  ops=5
+list insert200 median= 1652463 ticks   2330695 us/rep  ops=200
+list-entries=200
+list active x50 median= 1737146 ticks   2450135 us/rep  ops=50
+notify x100    median=  877846 ticks   1238146 us/rep  ops=100
+text set x100  median=  264653 ticks    373276 us/rep  ops=100
+rc=0
+ALLDONE

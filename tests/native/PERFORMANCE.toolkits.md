@@ -1,5 +1,9 @@
 # Zune68 versus original MUI 3.8 and MUI 5
 
+These measurements capture the baseline before the creation/List fixes.
+See [PERFORMANCE.optimizations.md](PERFORMANCE.optimizations.md) for the
+implemented follow-up and its measured results.
+
 ## Compared implementations
 
 - Original MUI 3.8, muimaster.library 19.35 (12 February 1997), freshly

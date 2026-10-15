@@ -32,10 +32,14 @@ def main():
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--profiles", nargs="+", required=True)
     parser.add_argument("--trials", type=int, default=3)
+    parser.add_argument("--start-trial", type=int, default=0)
     parser.add_argument("--timeout", type=int, default=900)
+    parser.add_argument("--settle-seconds", type=int, default=0,
+                        help="wait in the guest before launching the benchmark")
     args = parser.parse_args()
-    if args.trials < 1 or args.timeout < 1:
-        parser.error("trials and timeout must be positive")
+    if (args.trials < 1 or args.timeout < 1 or args.start_trial < 0
+            or args.settle_seconds < 0):
+        parser.error("positive trials/timeout and nonnegative start/settle required")
     if len(set(args.profiles)) != len(args.profiles) or any(
             not re.fullmatch(r"[a-z0-9_-]+", p) for p in args.profiles):
         parser.error("profiles must be unique lowercase directory names")
@@ -57,6 +61,7 @@ def main():
         "emulator_sha256": digest(args.emulator),
         "pristine_disk_sha256": digest(pristine),
         "profiles": {p: manifest(guest / p) for p in args.profiles},
+        "settle_seconds": args.settle_seconds,
         "runs": [],
     }
     with (root / "runner.lock").open("w") as lock:
@@ -65,7 +70,7 @@ def main():
                  (guest / "run-tests", guest / "perfbench")}
         try:
             shutil.copy2(args.binary, guest / "perfbench")
-            for trial in range(args.trials):
+            for trial in range(args.start_trial, args.start_trial + args.trials):
                 # Three profiles each occupy every boot-order position.
                 offset = trial % len(args.profiles)
                 order = args.profiles[offset:] + args.profiles[:offset]
@@ -75,12 +80,15 @@ def main():
                     shutil.copy2(pristine, disk)
                     result_path = guest / "perf-result.txt"
                     result_path.write_text("")
+                    settle = (f"Wait {args.settle_seconds} SECS\n"
+                              if args.settle_seconds else "")
                     (guest / "run-tests").write_text(
                         "FailAt 21\nStack 131072\n"
                         f"Assign MUI: Bench:{profile}\n"
                         f"Assign LIBS: Bench:{profile}/Libs\n"
                         "Assign LIBS: SYS:Libs ADD\n"
                         "Assign LIBS: SYS:Classes ADD\n"
+                        f"{settle}"
                         "Bench:perfbench screen-fixed >Bench:perf-result.txt\n"
                         "Echo ALLDONE >>Bench:perf-result.txt\n")
                     stem = f"{trial}-{profile}"

@@ -2,6 +2,9 @@
  * dispatchers untouched. The trace run temporarily wraps built-in dispatchers
  * and restores them before exit; never run it alongside other MUI clients.
  * Reuse the exact widget tree from perfbench, without changing its timings.
+ * The create modes stop after construction/disposal: create and create-trace
+ * use five warmups; create-cold uses one. create-combined times both operations
+ * together after one warmup; create-combined-warm uses five.
  */
 #define main perfbench_main
 #include "perfbench.c"
@@ -122,7 +125,12 @@ int main(int argc, char **argv)
 {
     struct timerequest tr;
     ULONG create[15], dispose[15], ticks[15], t, open = 0;
-    int trace = argc == 2 && !strcmp(argv[1], "trace"), rc = 20;
+    int create_only = argc == 2 && !strncmp(argv[1], "create", 6);
+    int combined = create_only && strstr(argv[1], "combined");
+    int extra_warmups = create_only && (!strcmp(argv[1], "create-cold") ||
+        !strcmp(argv[1], "create-combined")) ? 0 : 4;
+    int trace = argc == 2 && (!strcmp(argv[1], "trace") ||
+        !strcmp(argv[1], "create-trace")), rc = 20;
     setvbuf(stdout, NULL, _IONBF, 0);
     if (OpenDevice(TIMERNAME, UNIT_ECLOCK, (struct IORequest *)&tr, 0)) return 20;
     TimerBase = tr.tr_node.io_Device;
@@ -131,6 +139,8 @@ int main(int argc, char **argv)
         MUIMasterBase->lib_Version, MUIMasterBase->lib_Revision,
         (unsigned long)(now(), eclock_freq), trace);
     if (PROFILE_FOCUS) puts("focus=Application,Configdata new/dispose");
+    if (create_only) printf("creation-only combined=%d warmups=%d\n",
+        combined, extra_warmups + 1);
     if (PROFILE_NOFORWARD) puts("experiment=active sets with Group_Forward=FALSE");
     benchmark_screen = OpenScreenTags(NULL, SA_Width, 640, SA_Height, 480,
         SA_Depth, 2, TAG_DONE);
@@ -151,21 +161,30 @@ int main(int argc, char **argv)
     }
     /* The first few application lifetimes can include filesystem/cache
      * activity. Warm this separately from both timings and trace totals. */
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < extra_warmups; i++) {
         if (!(app = build())) goto done;
         MUI_DisposeObject(app); app = NULL;
     }
     for (int i = 0; i < (trace && !PROFILE_FOCUS ? 1 : 15); i++) {
         if (trace) trace_begin();
-        t = now(); app = build(); create[i] = now() - t;
+        t = now(); app = build();
+        if (combined) {
+            if (!app) goto done;
+            MUI_DisposeObject(app); app = NULL;
+            create[i] = now() - t;
+            continue;
+        }
+        create[i] = now() - t;
         if (trace) trace_end("create");
         if (!app) goto done;
         if (trace) trace_begin();
         t = now(); MUI_DisposeObject(app); dispose[i] = now() - t; app = NULL;
         if (trace) trace_end("dispose");
     }
-    timing("create", create, trace && !PROFILE_FOCUS ? 1 : 15);
-    timing("dispose", dispose, trace && !PROFILE_FOCUS ? 1 : 15);
+    timing(combined ? "create+dispose" : "create", create,
+        trace && !PROFILE_FOCUS ? 1 : 15);
+    if (!combined) timing("dispose", dispose, trace && !PROFILE_FOCUS ? 1 : 15);
+    if (create_only) { rc = 0; goto done; }
     if (!(app = build())) goto done;
     for (int i = 0; i < 20; i++)
         DoMethod(list, MUIM_List_Insert, entries, -1, MUIV_List_Insert_Bottom);
