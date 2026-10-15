@@ -34,6 +34,7 @@ extern struct Library *MUIMasterBase;
 #include "prefs.h"
 #include "support.h"
 #include "textengine.h"
+#include "support_classes.h"
 
 //  #define MYDEBUG 1
 #include "debug.h"
@@ -208,10 +209,10 @@ static void _zune_focus_destroy(Object *obj, int type)
         width = x2 - x1 + 1;
         height = y2 - y1 + 1;
 
-        DoMethod(parent, MUIM_DrawBackground, x1, y1, width, 1, x1, y1, 0);
-        DoMethod(parent, MUIM_DrawBackground, x2, y1, 1, height, x2, y1, 0);
-        DoMethod(parent, MUIM_DrawBackground, x1, y2, width, 1, x1, y2, 0);
-        DoMethod(parent, MUIM_DrawBackground, x1, y1, 1, height, x1, y1, 0);
+        zune_draw_background(parent, x1, y1, width, 1, x1, y1, 0);
+        zune_draw_background(parent, x2, y1, 1, height, x2, y1, 0);
+        zune_draw_background(parent, x1, y2, width, 1, x1, y2, 0);
+        zune_draw_background(parent, x1, y1, 1, height, x1, y1, 0);
     } else {
         struct Region *region;
         struct Rectangle rect;
@@ -1127,7 +1128,7 @@ static IPTR Area__MUIM_CustomBackfill(struct IClass *cl, Object *obj,
         return FALSE;
     /* Paint the plain background, not the custom callback again */
     data->mad_Flags2 |= MADF2_BACKFILL_ACTIVE;
-    DoMethod(obj, MUIM_DrawBackground, msg->left, msg->top,
+    zune_draw_background(obj, msg->left, msg->top,
         msg->right - msg->left + 1, msg->bottom - msg->top + 1,
         msg->left, msg->top, data->mad_Flags);
     data->mad_Flags2 = (data->mad_Flags2 & ~MADF2_BACKFILL_ACTIVE) | active;
@@ -1280,7 +1281,7 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
                    __LINE__)); */
             if (zframe->border_radius == 0) {
                 /* Non-rounded frames: draw background normally */
-                DoMethod(obj, MUIM_DrawBackground, rects[i].MinX, rects[i].MinY,
+                zune_draw_background(obj, rects[i].MinX, rects[i].MinY,
                          rects[i].MaxX - rects[i].MinX + 1,
                          rects[i].MaxY - rects[i].MinY + 1, rects[i].MinX,
                          rects[i].MinY, data->mad_Flags);
@@ -1544,11 +1545,19 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
 /**************************************************************************
 MUIM_DrawParentBackground
 **************************************************************************/
+static IPTR area_draw_parent_background(Object *obj,
+    struct MUI_AreaData *data, struct MUIP_DrawParentBackground *msg);
+
 static IPTR
 Area__MUIM_DrawParentBackground(struct IClass *cl, Object *obj,
                                 struct MUIP_DrawParentBackground *msg)
 {
-    struct MUI_AreaData *data = INST_DATA(cl, obj);
+    return area_draw_parent_background(obj, INST_DATA(cl, obj), msg);
+}
+
+static IPTR area_draw_parent_background(Object *obj,
+    struct MUI_AreaData *data, struct MUIP_DrawParentBackground *msg)
+{
     Object *parent = NULL;
 
     if (!(data->mad_Flags & MADF_CANDRAW)) /* not between show/hide */
@@ -1560,11 +1569,11 @@ Area__MUIM_DrawParentBackground(struct IClass *cl, Object *obj,
     while (parent && Group_PassesBackground(parent))
         parent = _parent(parent);
     if (parent) {
-        DoMethod(parent, MUIM_DrawBackground, msg->left, msg->top, msg->width,
+        zune_draw_background(parent, msg->left, msg->top, msg->width,
                  msg->height, msg->xoffset, msg->yoffset, msg->flags);
     } else {
         D(bug("Area_DrawParentBackground(%p) : MUIM_Window_DrawBackground\n", obj));
-        DoMethod(_win(obj), MUIM_Window_DrawBackground, msg->left, msg->top,
+        zune_window_draw_background(_win(obj), msg->left, msg->top,
                  msg->width, msg->height, msg->xoffset, msg->yoffset, msg->flags);
     }
     return TRUE;
@@ -1573,10 +1582,56 @@ Area__MUIM_DrawParentBackground(struct IClass *cl, Object *obj,
 /**************************************************************************
 MUIM_DrawBackground
 **************************************************************************/
+static IPTR area_draw_background(Object *obj, struct MUI_AreaData *data,
+                                 struct MUIP_DrawBackground *msg);
+
 static IPTR Area__MUIM_DrawBackground(struct IClass *cl, Object *obj,
                                       struct MUIP_DrawBackground *msg)
 {
-    struct MUI_AreaData *data = INST_DATA(cl, obj);
+    return area_draw_background(obj, INST_DATA(cl, obj), msg);
+}
+
+/* TRUE when the classes of obj from its own down to Area are all
+ * built-in, so MUIM_DrawBackground reaches Area's implementation (Group
+ * only adds virtual offsets). */
+static BOOL area_builtin_background(Object *obj)
+{
+    struct IClass *cl;
+
+    for (cl = obj ? OCLASS(obj) : NULL; cl; cl = cl->cl_Super)
+    {
+        if (cl->cl_Dispatcher.h_Entry != (HOOKFUNC) builtinDispatcher)
+            return FALSE;
+        if (cl->cl_Dispatcher.h_SubEntry
+            == (HOOKFUNC) _MUI_Area_desc.dispatcher)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+/* MUIM_DrawBackground without the dispatch chain. Built-in classes handle
+ * the method only in Area and in Group (virtual offsets), so when every
+ * class from the object's down to Area is built-in and the object is no
+ * virtual group, the Area implementation is the one the dispatch would
+ * reach. A background fill used to cost three to five dispatches per
+ * object (own class chain, then the parent walk, then the window). */
+IPTR zune_draw_background(Object *obj, LONG left, LONG top, LONG width,
+    LONG height, LONG xoffset, LONG yoffset, ULONG flags)
+{
+    if (area_builtin_background(obj) && !(_flags(obj) & MADF_ISVIRTUALGROUP))
+    {
+        struct MUIP_DrawBackground msg = { MUIM_DrawBackground, left, top,
+            width, height, xoffset, yoffset, flags };
+
+        return area_draw_background(obj, muiAreaData(obj), &msg);
+    }
+    return DoMethod(obj, MUIM_DrawBackground, left, top, width, height,
+        xoffset, yoffset, flags);
+}
+
+static IPTR area_draw_background(Object *obj, struct MUI_AreaData *data,
+                                 struct MUIP_DrawBackground *msg)
+{
     struct MUI_ImageSpec_intern *bg;
     LONG state;
 
@@ -1610,7 +1665,7 @@ static IPTR Area__MUIM_DrawBackground(struct IClass *cl, Object *obj,
          * class overrides: the parent walk directly, without a dispatch
          * through every class of the object (inherited backgrounds are
          * painted under each text update) */
-        return Area__MUIM_DrawParentBackground(cl, obj,
+        return area_draw_parent_background(obj, data,
             (struct MUIP_DrawParentBackground *)msg);
     }
     frame = get_intframe(obj, data, &tempframe);

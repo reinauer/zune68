@@ -1394,7 +1394,7 @@ static void group_fill_gaps(Object *obj, const struct Rectangle *kids,
             WORD gap_end = (j < nx) ? xs[j][0] - 1 : right;
 
             if (gap_end >= x)
-                DoMethod(obj, MUIM_DrawBackground, x, y0, gap_end - x + 1,
+                zune_draw_background(obj, x, y0, gap_end - x + 1,
                     y1 - y0 + 1, x, y0, _flags(obj));
             if (j < nx && xs[j][1] + 1 > x)
                 x = xs[j][1] + 1;
@@ -1495,15 +1495,15 @@ static void group_clear_ring(Object *obj)
         mb = _mbottom(obj);
 
     if (mt > t)
-        DoMethod(obj, MUIM_DrawBackground, l, t, r - l + 1, mt - t, l, t, 0);
+        zune_draw_background(obj, l, t, r - l + 1, mt - t, l, t, 0);
     if (mb < b)
-        DoMethod(obj, MUIM_DrawBackground, l, mb + 1, r - l + 1, b - mb,
+        zune_draw_background(obj, l, mb + 1, r - l + 1, b - mb,
             l, mb + 1, 0);
     if (ml > l && mb >= mt)
-        DoMethod(obj, MUIM_DrawBackground, l, mt, ml - l, mb - mt + 1,
+        zune_draw_background(obj, l, mt, ml - l, mb - mt + 1,
             l, mt, 0);
     if (mr < r && mb >= mt)
-        DoMethod(obj, MUIM_DrawBackground, mr + 1, mt, r - mr, mb - mt + 1,
+        zune_draw_background(obj, mr + 1, mt, r - mr, mb - mt + 1,
             mr + 1, mt, 0);
 }
 
@@ -1618,8 +1618,7 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
      * region limits actual painting, including on partial scrolls. */
     if (virtual && (msg->flags & MADF_DRAWOBJECT) &&
         !(msg->flags & MADF_DRAWUPDATE))
-        DoMethod(obj, MUIM_DrawBackground,
-            _mleft(obj), _mtop(obj), _mwidth(obj), _mheight(obj),
+        zune_draw_background(obj, _mleft(obj), _mtop(obj), _mwidth(obj), _mheight(obj),
             _mleft(obj), _mtop(obj), 0);
 
     if ((msg->flags & MADF_DRAWUPDATE) && data->update == 1)
@@ -1638,8 +1637,7 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
          * update is set when changing active page of a page group
          * need to redraw background ourself
          */
-        DoMethod(obj, MUIM_DrawBackground,
-            _mleft(obj), _mtop(obj), _mwidth(obj), _mheight(obj),
+        zune_draw_background(obj, _mleft(obj), _mtop(obj), _mwidth(obj), _mheight(obj),
             _mleft(obj), _mtop(obj), 0);
 
         if (r)

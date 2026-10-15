@@ -5192,6 +5192,30 @@ IPTR Window__MUIM_SetMenuState(struct IClass *cl, Object *obj,
  MUIM_Window_DrawBackground
 **************************************************************************/
 IPTR Window__MUIM_DrawBackground(struct IClass *cl, Object *obj,
+    struct MUIP_Window_DrawBackground *msg);
+
+/* The method is Zune-private, so the built-in implementation is the
+ * one a dispatch would reach whatever the window's subclass. */
+IPTR zune_window_draw_background(Object *win, LONG left, LONG top,
+    LONG width, LONG height, LONG xoffset, LONG yoffset, ULONG flags)
+{
+    struct IClass *cl;
+
+    for (cl = win ? OCLASS(win) : NULL; cl; cl = cl->cl_Super)
+        if (cl->cl_Dispatcher.h_SubEntry
+            == (HOOKFUNC) _MUI_Window_desc.dispatcher)
+        {
+            struct MUIP_Window_DrawBackground msg =
+                { MUIM_Window_DrawBackground, left, top, width, height,
+                  xoffset, yoffset, flags };
+
+            return Window__MUIM_DrawBackground(cl, win, &msg);
+        }
+    return DoMethod(win, MUIM_Window_DrawBackground, left, top, width,
+        height, xoffset, yoffset, flags);
+}
+
+IPTR Window__MUIM_DrawBackground(struct IClass *cl, Object *obj,
     struct MUIP_Window_DrawBackground *msg)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
