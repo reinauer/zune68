@@ -348,21 +348,27 @@ resolved through the link map; counts per phase):
 ## Findings and proposed fixes
 
 <!-- FIXES -->
-Status after the implementation pass of 15 October 2026 (uncommitted on
-mui5-dev). Times are the median of three fresh boots per toolkit, rotated
-order, 10 s settle, perfbench-equal on the 68020 fixture; every run was
-within 0.2% of the others.
+Status after the two implementation passes of 15 October 2026. Median of
+three fresh boots per toolkit, 10 s settle, perfbench-equal on the 68020
+fixture; every run was within 0.2% of the others. MUI 3.8 and MUI 5 were
+measured in one rotated three-way run, the final Zune68 library in three
+further boots on the same fixture (the other two libraries were
+unchanged). Milliseconds per batch:
 
-| Batch | MUI 3.8 ms | before ms | now ms | now vs MUI 3.8 |
-| --- | ---: | ---: | ---: | ---: |
-| create+dispose | 106.44 | 127.27 | 88.37 | -17.0% |
-| open+close | 540.70 | 561.75 | 540.83 | +0.0% |
-| redraw x10 | 1563.81 | 1782.13 | 1664.23 | +6.4% |
-| relayout x5 | 954.03 | 1116.75 | 987.48 | +3.5% |
-| list insert200 | 1516.68 | 1020.30 | 1015.13 | -33.1% |
-| list active x50 | 1114.88 | 1134.73 | 1132.56 | +1.6% |
-| notify x100 | 698.90 | 685.96 | 683.23 | -2.2% |
-| text set x100 | 179.51 | 178.02 | 178.32 | -0.7% |
+| Operation | MUI 3.8 | MUI 5 | Zune68 | vs 3.8 | vs 5 |
+|---|---:|---:|---:|---:|---:|
+| Create/dispose widget tree | 106.12 | 253.07 | 87.96 | −17.1% | −65.2% |
+| Open/close window | 540.76 | 866.35 | 540.73 | 0.0% | −37.6% |
+| Full redraw ×10 | 1564.01 | 2147.71 | 1541.01 | −1.5% | −28.2% |
+| Group change cycle ×5 | 953.94 | 1286.56 | 927.23 | −2.8% | −27.9% |
+| Insert 200 entries | 1516.96 | 4727.36 | 1012.38 | −33.3% | −78.6% |
+| Selection/autoscroll ×50 | 1115.42 | 2108.11 | 1124.05 | +0.8% | −46.7% |
+| Notification chain ×100 | 698.86 | 1228.56 | 669.18 | −4.2% | −45.5% |
+| Text update ×100 | 179.35 | 216.94 | 178.84 | −0.3% | −17.6% |
+
+Before both passes Zune68 took 127.27, 561.75, 1782.13 and 1116.75 ms
+for the first four batches (+19.6%, +3.9%, +14.0% and +17.1% against MUI
+3.8).
 
 ### Implemented
 
@@ -418,6 +424,30 @@ Redraw and relayout:
     SizeWindow only for a real size change and WindowLimits only when the
     limits changed.
 
+Second pass (redraw and relayout):
+
+13. **Plain pen fills directly.** A background fill with a plain pen under
+    a built-in frame type is SetAPen, only when the pen differs, and
+    RectFill; the frame lookup and three image spec layers per fill are
+    gone. Pen fills elsewhere skip redundant SetAPen calls too. The
+    built-in class test is cached in two Area flag bits until the next
+    MUIM_Setup.
+14. **No clip regions where nothing needs clipping.** A titled frame
+    drawn after its top rows were filled with the parent background is
+    drawn unclipped and its line behind the title filled again; an empty
+    list without a title installs no entry clip. In a redraw of the
+    perfbench tree Zune now makes two InstallClipRegion calls, both
+    inside Intuition's RefreshGList; MUI 3.8 makes four.
+15. **Gap fills merged** for plain pen and pattern backgrounds, where the
+    rectangle split does not change pixels.
+16. **Glyph templates clipped to their box**, so a radio image larger
+    than its box (the perfbench radio group) no longer falls back to 9
+    WritePixel and 23 RectFill per redraw.
+
+Per redraw of the perfbench tree Zune now makes 202 RectFill (MUI 3.8:
+287), 97 SetAPen (202), 6 corner WritePixel (0) and 2 InstallClipRegion
+(4).
+
 ### Rejected
 
 - **Dropping the bevel corner pixels.** MUI 3.9 paints the top-right and
@@ -431,11 +461,14 @@ Redraw and relayout:
 
 ### Verification
 
-- `make check-core` passes (linked 68000 checks). check_class_lifetime
-  now traps Forbid/Permit, which the class cache uses.
+- `make check-core` passes (linked 68000 checks) for the MUI 5 and the
+  classic build. check_class_lifetime traps Forbid/Permit, which the
+  class cache uses; check_custom_backfill checks only the backfill bits
+  of the Area flag word that now also caches the class test.
 - tests/native/pixdump.c: every pixel of a window with frames, glyphs,
-  pressed, disabled and hidden/shown objects, in seven states, is
-  identical to the build before this pass.
+  pressed, disabled and hidden/shown objects, titled frames and button
+  columns on white and pattern parents, in seven states, is identical to
+  the build before both passes.
 - tests/native/cornerbg.c matches MUI 3.9 in all objects and states.
 - list_repaint_probe: 189/189 comparisons pass. config_init_probe passes,
   including filesystem notification reload.
@@ -452,13 +485,10 @@ wrapper.
 
 ### Remaining
 
-- **Redraw (+6.4%, about 10 ms per redraw).** Zune installs eight
-  multi-rectangle clip regions per redraw against four plain ones; the top
-  bevel corner is still written where the parent's fill did not run
-  (DRAWALL redraws); the rest is spread over Zune's drawing code with no
-  single hotspot in the PC samples.
-- **Relayout (+3.5%)** carries the redraw difference.
-- **List active (+1.6%)** is outside this pass.
+- **Selection/autoscroll (+0.8%)** and text update (at parity) were
+  outside these passes.
+- Six corner WritePixel per redraw remain where Area's fill does not
+  cover the corner (titled frames, DRAWALL redraws).
 <!-- /FIXES -->
 
 ## Reproduction

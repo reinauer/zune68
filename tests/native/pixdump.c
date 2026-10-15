@@ -4,8 +4,9 @@
  * gauge and popup glyphs. Dumps the window after opening, after
  * MUI_Redraw of the root, after an InitChange/ExitChange relayout, after
  * toggling the selected states and while a button is hidden and shown,
- * which moves the frames below it. Compare two library builds (or
- * native and MUI 3.9) line by line; the output is about 400 KB.
+ * which moves the frames below it. Titled frames and button columns also
+ * sit on a white and on a pattern background. Compare two library builds
+ * (or native and MUI 3.9) line by line; the output is about 600 KB.
  * Build: m68k-amigaos-gcc -m68000 -noixemul -Os -I<SDK>/MUI/C/include \
  *        -Wl,-u,___stkinit pixdump.c -o pixdump -lamiga
  */
@@ -130,6 +131,22 @@ int main(int argc, char **argv)
                             Child, ImageObject, ImageButtonFrame,
                                 MUIA_Image_Spec, MUII_ArrowDown, End,
                             End,
+                        End,
+                    End,
+                Child, HGroup,
+                    Child, VGroup, MUIA_Background, MUII_SHINE,
+                        Child, VGroup, GroupFrameT("White"),
+                            Child, SimpleButton("W1"),
+                            Child, SimpleButton("W2"),
+                            End,
+                        Child, SimpleButton("W3"),
+                        End,
+                    Child, VGroup, MUIA_Background, MUII_SHADOWBACK,
+                        Child, VGroup, GroupFrameT("Pattern"),
+                            Child, SimpleButton("P1"),
+                            Child, SimpleButton("P2"),
+                            End,
+                        Child, SimpleButton("P3"),
                         End,
                     End,
                 Child, HGroup, GroupFrameT("Footer"),
