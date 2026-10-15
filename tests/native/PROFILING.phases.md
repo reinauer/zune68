@@ -348,23 +348,23 @@ resolved through the link map; counts per phase):
 ## Findings and proposed fixes
 
 <!-- FIXES -->
-Status after the two implementation passes of 15 October 2026. Median of
-three fresh boots per toolkit, 10 s settle, perfbench-equal on the 68020
-fixture; every run was within 0.2% of the others. MUI 3.8 and MUI 5 were
-measured in one rotated three-way run, the final Zune68 library in three
-further boots on the same fixture (the other two libraries were
-unchanged). Milliseconds per batch:
+Status after the three implementation passes of 15 and 16 October 2026.
+Median of three fresh boots per toolkit, 10 s settle, perfbench-equal on
+the 68020 fixture; every run was within 0.2% of the others. MUI 3.8 and
+MUI 5 were measured in one rotated three-way run, the final Zune68
+library in three further boots on the same fixture (the other two
+libraries were unchanged). Milliseconds per batch:
 
 | Operation | MUI 3.8 | MUI 5 | Zune68 | vs 3.8 | vs 5 |
 |---|---:|---:|---:|---:|---:|
-| Create/dispose widget tree | 106.12 | 253.07 | 87.96 | −17.1% | −65.2% |
-| Open/close window | 540.76 | 866.35 | 540.73 | 0.0% | −37.6% |
-| Full redraw ×10 | 1564.01 | 2147.71 | 1541.01 | −1.5% | −28.2% |
-| Group change cycle ×5 | 953.94 | 1286.56 | 927.23 | −2.8% | −27.9% |
-| Insert 200 entries | 1516.96 | 4727.36 | 1012.38 | −33.3% | −78.6% |
-| Selection/autoscroll ×50 | 1115.42 | 2108.11 | 1124.05 | +0.8% | −46.7% |
-| Notification chain ×100 | 698.86 | 1228.56 | 669.18 | −4.2% | −45.5% |
-| Text update ×100 | 179.35 | 216.94 | 178.84 | −0.3% | −17.6% |
+| Create/dispose widget tree | 106.12 | 253.07 | 88.55 | −16.6% | −65.0% |
+| Open/close window | 540.76 | 866.35 | 540.74 | 0.0% | −37.6% |
+| Full redraw ×10 | 1564.01 | 2147.71 | 1542.50 | −1.4% | −28.2% |
+| Group change cycle ×5 | 953.94 | 1286.56 | 929.40 | −2.6% | −27.8% |
+| Insert 200 entries | 1516.96 | 4727.36 | 990.71 | −34.7% | −79.0% |
+| Selection/autoscroll ×50 | 1115.42 | 2108.11 | 1071.06 | −4.0% | −49.2% |
+| Notification chain ×100 | 698.86 | 1228.56 | 672.11 | −3.8% | −45.3% |
+| Text update ×100 | 179.35 | 216.94 | 178.79 | −0.3% | −17.6% |
 
 Before both passes Zune68 took 127.27, 561.75, 1782.13 and 1116.75 ms
 for the first four batches (+19.6%, +3.9%, +14.0% and +17.1% against MUI
@@ -448,6 +448,25 @@ Per redraw of the perfbench tree Zune now makes 202 RectFill (MUI 3.8:
 287), 97 SetAPen (202), 6 corner WritePixel (0) and 2 InstallClipRegion
 (4).
 
+Third pass (selection and autoscroll):
+
+17. **One attribute pass per scrollbar update.** Prop cleared the
+    Intuition gadget's ICA_TARGET, set its values and restored the
+    target: three passes through PackStructureTags and the class tag
+    scans per scroll. propgclass sends no notification for attributes a
+    program sets (tests/native/propnotify.c; a list scrolled 50 times
+    queues no IDCMPUPDATE before or after, tests/native/listscrollmsgs.c),
+    and MUI 3.8 makes the one call too. Per 50 activations
+    PackStructureTags went from 126 to 42 calls and FindTagItem from 7560
+    to 2520, both as in MUI 3.8.
+18. **Inline list appends in the text engine**, 792 exec calls per 50
+    activations (two per drawn row), which also helps list insertion.
+
+The census probe has a list selection phase (perfcensus active50 and
+loop-active). Zune still installs one rectangle clip per activation for
+the list's entry area where MUI 3.8 truncates row text instead; making
+that clip lazy was not needed.
+
 ### Rejected
 
 - **Dropping the bevel corner pixels.** MUI 3.9 paints the top-right and
@@ -485,8 +504,8 @@ wrapper.
 
 ### Remaining
 
-- **Selection/autoscroll (+0.8%)** and text update (at parity) were
-  outside these passes.
+- Text update and open/close are at parity with MUI 3.8; every other
+  batch is faster.
 - Six corner WritePixel per redraw remain where Area's fill does not
   cover the corner (titled frames, DRAWALL redraws).
 <!-- /FIXES -->

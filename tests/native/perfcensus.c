@@ -1,5 +1,6 @@
 /* Test-only OS-call census for a disposable guest. It times the perfbench
- * creation, disposal, window open/close, redraw and relayout phases and,
+ * creation, disposal, window open/close, redraw, relayout and list
+ * selection phases and,
  * in the count/time modes, wraps every function of perfcensus_lvos.h with
  * SetFunction to count calls and attribute inclusive/exclusive time per OS
  * function. The trace mode wraps the built-in class dispatchers instead,
@@ -427,6 +428,23 @@ static void relayout5(void)
     }
 }
 
+/* perfbench's list phases: 200 entries, then 50 activations by 7 */
+static void fill200(void)
+{
+    int k;
+
+    for (k = 0; k < 20; k++)
+        DoMethod(list, MUIM_List_Insert, entries, -1, MUIV_List_Insert_Bottom);
+}
+
+static void active50(void)
+{
+    int j;
+
+    for (j = 0; j < 50; j++)
+        set(list, MUIA_List_Active, (j * 7) % 200);
+}
+
 int main(int argc, char **argv)
 {
     struct timerequest tr;
@@ -483,7 +501,8 @@ int main(int argc, char **argv)
         /* Repeat one phase for an external PC sampler: loop-<phase> */
         const char *phase = mode + 5;
         int n = !strcmp(phase, "create") ? 1500 : !strcmp(phase, "open") ? 300 :
-            !strcmp(phase, "redraw") ? 600 : !strcmp(phase, "relayout") ? 300 : 0;
+            !strcmp(phase, "redraw") ? 600 : !strcmp(phase, "relayout") ? 300 :
+            !strcmp(phase, "active") ? 150 : 0;
 
         if (!n)
             goto done;
@@ -496,6 +515,8 @@ int main(int argc, char **argv)
                 set(win, MUIA_Window_Open, TRUE);
                 DoMethod(app, MUIM_Application_InputBuffered);
             }
+            if (!strcmp(phase, "active"))
+                fill200();
         }
         printf("looping %s x%d\n", phase, n);
         Delay(400);
@@ -508,6 +529,8 @@ int main(int argc, char **argv)
                 open_close();
             else if (!strcmp(phase, "redraw"))
                 redraw10();
+            else if (!strcmp(phase, "active"))
+                active50();
             else
                 relayout5();
         }
@@ -596,6 +619,18 @@ int main(int argc, char **argv)
     }
     if (plain)
         timing("relayout5", ticks, 15);
+
+    fill200();
+    active50();
+    for (i = 0; i < (plain ? 15 : 1); i++) {
+        if (!plain) phase_begin();
+        t = now();
+        active50();
+        ticks[i] = now() - t;
+        if (!plain) phase_end("active50");
+    }
+    if (plain)
+        timing("active50", ticks, 15);
     rc = 0;
 done:
     active = 0;

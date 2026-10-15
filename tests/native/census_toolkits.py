@@ -97,7 +97,7 @@ def main():
                                     proc.wait()
                         (args.output / (stem + ".txt")).write_text(result)
                         key = "timing " if mode == "plain" else "phase "
-                        if "rc=0" not in result or result.count(key) != 5:
+                        if "rc=0" not in result or result.count(key) != 6:
                             raise RuntimeError("incomplete census: " + result[-1000:])
                         metadata["runs"].append({"trial": trial, "profile": profile,
                             "mode": mode, "transcript": stem + ".txt",
