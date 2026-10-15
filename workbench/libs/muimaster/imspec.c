@@ -702,6 +702,11 @@ void zune_imspec_cleanup(struct MUI_ImageSpec_intern *spec)
 }
 
 
+BOOL zune_imspec_is_position_free(const struct MUI_ImageSpec_intern *spec)
+{
+    return spec && (spec->type == IST_COLOR || spec->type == IST_PATTERN);
+}
+
 BOOL zune_imspec_fill_pen(const struct MUI_ImageSpec_intern *spec,
     LONG *pen)
 {

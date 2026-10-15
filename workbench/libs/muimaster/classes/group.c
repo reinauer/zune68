@@ -1369,36 +1369,78 @@ static void group_fill_gaps(Object *obj, const struct Rectangle *kids,
             WORD t = ys[j]; ys[j] = ys[j - 1]; ys[j - 1] = t;
         }
 
-    for (i = 0; i + 1 < ny; i++)
+    /* Gaps of consecutive bands with the same horizontal extent are
+     * painted as one rectangle: a fill costs about the same per call
+     * whatever its height, and the band sweep splits a margin beside a
+     * column of children at every child edge. The pending gaps are kept
+     * sorted by x like each band's gaps. */
     {
-        WORD y0 = ys[i], y1 = ys[i + 1] - 1, x = left;
-        int nx = 0;
+        struct { WORD x0, x1, y0, y1; } pend[GROUP_GAP_CHILDREN + 1],
+            cur[GROUP_GAP_CHILDREN + 1];
+        int npend = 0, ncur, p, c;
+        BOOL merge = zune_background_is_position_free(obj);
 
-        if (y0 > y1 || y0 < _mtop(obj) || y1 > _mbottom(obj))
-            continue;
-        /* Bands split at every child edge, so a child covers a band fully
-         * or not at all */
-        for (j = 0; j < n; j++)
-            if (kids[j].MinY <= y0 && kids[j].MaxY >= y1)
-            {
-                for (k = nx++; k > 0 && xs[k - 1][0] > kids[j].MinX; k--)
-                {
-                    xs[k][0] = xs[k - 1][0];
-                    xs[k][1] = xs[k - 1][1];
-                }
-                xs[k][0] = kids[j].MinX;
-                xs[k][1] = kids[j].MaxX;
-            }
-        for (j = 0; j <= nx; j++)
+        for (i = 0; i + 1 < ny; i++)
         {
-            WORD gap_end = (j < nx) ? xs[j][0] - 1 : right;
+            WORD y0 = ys[i], y1 = ys[i + 1] - 1, x = left;
+            int nx = 0;
 
-            if (gap_end >= x)
-                zune_draw_background(obj, x, y0, gap_end - x + 1,
-                    y1 - y0 + 1, x, y0, _flags(obj));
-            if (j < nx && xs[j][1] + 1 > x)
-                x = xs[j][1] + 1;
+            if (y0 > y1 || y0 < _mtop(obj) || y1 > _mbottom(obj))
+                continue;
+            /* Bands split at every child edge, so a child covers a band
+             * fully or not at all */
+            for (j = 0; j < n; j++)
+                if (kids[j].MinY <= y0 && kids[j].MaxY >= y1)
+                {
+                    for (k = nx++; k > 0 && xs[k - 1][0] > kids[j].MinX; k--)
+                    {
+                        xs[k][0] = xs[k - 1][0];
+                        xs[k][1] = xs[k - 1][1];
+                    }
+                    xs[k][0] = kids[j].MinX;
+                    xs[k][1] = kids[j].MaxX;
+                }
+            ncur = 0;
+            for (j = 0; j <= nx; j++)
+            {
+                WORD gap_end = (j < nx) ? xs[j][0] - 1 : right;
+
+                if (gap_end >= x)
+                {
+                    cur[ncur].x0 = x;
+                    cur[ncur].x1 = gap_end;
+                    cur[ncur].y0 = y0;
+                    cur[ncur].y1 = y1;
+                    ncur++;
+                }
+                if (j < nx && xs[j][1] + 1 > x)
+                    x = xs[j][1] + 1;
+            }
+            /* Continue pending gaps this band extends; paint the others */
+            for (p = 0; p < npend; p++)
+            {
+                for (c = 0; merge && c < ncur; c++)
+                    if (cur[c].x0 == pend[p].x0 && cur[c].x1 == pend[p].x1
+                        && cur[c].y0 == pend[p].y1 + 1)
+                        break;
+                if (!merge)
+                    c = ncur;
+                if (c < ncur)
+                    cur[c].y0 = pend[p].y0;
+                else
+                    zune_draw_background(obj, pend[p].x0, pend[p].y0,
+                        pend[p].x1 - pend[p].x0 + 1,
+                        pend[p].y1 - pend[p].y0 + 1, pend[p].x0, pend[p].y0,
+                        _flags(obj));
+            }
+            for (c = 0; c < ncur; c++)
+                pend[c] = cur[c];
+            npend = ncur;
         }
+        for (p = 0; p < npend; p++)
+            zune_draw_background(obj, pend[p].x0, pend[p].y0,
+                pend[p].x1 - pend[p].x0 + 1, pend[p].y1 - pend[p].y0 + 1,
+                pend[p].x0, pend[p].y0, _flags(obj));
     }
 }
 

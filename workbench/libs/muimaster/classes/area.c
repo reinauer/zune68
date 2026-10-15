@@ -1696,6 +1696,36 @@ static BOOL area_parent_background_is_pen(Object *obj, LONG muipen)
         muipen);
 }
 
+/* TRUE when the background a fill of obj paints (its own, or the one it
+ * inherits from its parents or the window) gives the same pixels however
+ * the filled area is cut into rectangles: plain pens and patterns, reached
+ * through built-in classes without custom backfills. Image backgrounds
+ * tile from each rectangle's corner. */
+BOOL zune_background_is_position_free(Object *obj)
+{
+    Object *o = obj;
+
+    if (!obj || (_flags(obj) & (MADF_SELECTED | MADF_SHOWSELSTATE))
+        == (MADF_SELECTED | MADF_SHOWSELSTATE))
+        return FALSE;
+    while (o)
+    {
+        struct MUI_AreaData *d;
+
+        if (!area_builtin_background(o))
+            return FALSE;
+        d = muiAreaData(o);
+        if (d->mad_Flags2 & MADF2_CUSTOMBACKFILL)
+            return FALSE;
+        if (d->mad_Background)
+            return zune_imspec_is_position_free(d->mad_Background);
+        o = _parent(o);
+        while (o && Group_PassesBackground(o))
+            o = _parent(o);
+    }
+    return zune_window_background_is_position_free(_win(obj));
+}
+
 /* MUIM_DrawBackground without the dispatch chain. Built-in classes handle
  * the method only in Area and in Group (virtual offsets), so when every
  * class from the object's down to Area is built-in and the object is no
