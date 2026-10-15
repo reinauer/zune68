@@ -5194,6 +5194,22 @@ IPTR Window__MUIM_SetMenuState(struct IClass *cl, Object *obj,
 IPTR Window__MUIM_DrawBackground(struct IClass *cl, Object *obj,
     struct MUIP_Window_DrawBackground *msg);
 
+/* TRUE when the window background is a plain fill with MUI pen muipen */
+BOOL zune_window_background_is_pen(Object *win, LONG muipen)
+{
+    struct IClass *cl;
+
+    for (cl = win ? OCLASS(win) : NULL; cl; cl = cl->cl_Super)
+        if (cl->cl_Dispatcher.h_SubEntry
+            == (HOOKFUNC) _MUI_Window_desc.dispatcher)
+        {
+            struct MUI_WindowData *data = INST_DATA(cl, win);
+
+            return zune_imspec_is_mui_pen(data->wd_Background, muipen);
+        }
+    return FALSE;
+}
+
 /* The method is Zune-private, so the built-in implementation is the
  * one a dispatch would reach whatever the window's subclass. */
 IPTR zune_window_draw_background(Object *win, LONG left, LONG top,

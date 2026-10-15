@@ -702,6 +702,14 @@ void zune_imspec_cleanup(struct MUI_ImageSpec_intern *spec)
 }
 
 
+BOOL zune_imspec_is_mui_pen(const struct MUI_ImageSpec_intern *spec,
+    LONG muipen)
+{
+    return spec && spec->type == IST_COLOR
+        && spec->u.penspec.p_type == PST_MUI
+        && spec->u.penspec.p_mui == muipen;
+}
+
 BOOL zune_imspec_askminmax(struct MUI_ImageSpec_intern *spec,
     struct MUI_MinMax *minmax)
 {

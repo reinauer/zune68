@@ -735,6 +735,7 @@ void __area_finish_minmax(Object *obj, struct MUI_MinMax *MinMaxInfo); /* PRIV *
 extern const struct __MUIBuiltinClass _MUI_Area_desc;   /* PRIV */
 
 IPTR zune_draw_background(Object *obj, LONG left, LONG top, LONG width, LONG height, LONG xoffset, LONG yoffset, ULONG flags); /* PRIV: MUIM_DrawBackground without the dispatch when no class could intercept it */
+BOOL zune_window_background_is_pen(Object *win, LONG muipen); /* PRIV */
 IPTR zune_window_draw_background(Object *win, LONG left, LONG top, LONG width, LONG height, LONG xoffset, LONG yoffset, ULONG flags); /* PRIV: MUIM_Window_DrawBackground likewise */
 
 #endif /* _MUI_CLASSES_AREA_H */

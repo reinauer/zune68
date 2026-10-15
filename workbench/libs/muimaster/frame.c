@@ -480,23 +480,34 @@ static void button_draw(struct dt_frame_image *fi, struct MUI_RenderInfo *mri,
     if (!rp || width <= 2 || height <= 2)
         return; /* Safety check - need minimum size and valid rastport */
 
-    /* Draw upper-left edges */
-    SetAPen(rp, mri->mri_Pens[ul_preset]);
+    /* Draw upper-left edges (the line helpers set the pen when it
+     * differs from the rastport's) */
     draw_vertical_line(rp, left, top, top + height - 2, mri->mri_Pens[ul_preset]);
     draw_horizontal_line(rp, left, left + width - 2, top,
                          mri->mri_Pens[ul_preset]);
 
-    /* Draw lower-right edges */
-    SetAPen(rp, mri->mri_Pens[lr_preset]);
-    draw_vertical_line(rp, left + width - 1, top, top + height - 1,
+    /* Draw lower-right edges, short of the top-right and bottom-left
+     * corners */
+    draw_vertical_line(rp, left + width - 1, top + 1, top + height - 1,
                        mri->mri_Pens[lr_preset]);
-    draw_horizontal_line(rp, left, left + width - 1, top + height - 1,
+    draw_horizontal_line(rp, left + 1, left + width - 1, top + height - 1,
                          mri->mri_Pens[lr_preset]);
 
-    /* Fix corner pixels with background color */
-    SetAPen(rp, mri->mri_Pens[MPEN_BACKGROUND]);
-    WritePixel(rp, left, top + height - 1);
-    WritePixel(rp, left + width - 1, top);
+    /* Those two corners are MPEN_BACKGROUND in MUI 3.9 even where another
+     * background lies beneath them (a pressed button's bottom-left corner,
+     * a white parent's top-right one: tests/native/cornerbg.c). Area tells
+     * when its background fill has just painted them with that pen. */
+    {
+        UBYTE known = fi ? fi->corners_bg : 0;
+
+        if ((known & (FRAME_CORNER_TR | FRAME_CORNER_BL))
+            != (FRAME_CORNER_TR | FRAME_CORNER_BL))
+            SetAPen(rp, mri->mri_Pens[MPEN_BACKGROUND]);
+        if (!(known & FRAME_CORNER_BL))
+            WritePixel(rp, left, top + height - 1);
+        if (!(known & FRAME_CORNER_TR))
+            WritePixel(rp, left + width - 1, top);
+    }
 }
 
 /**************************************************************************

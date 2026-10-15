@@ -37,6 +37,9 @@ struct MUI_ImageSpec_intern *zune_imspec_setup(IPTR s,
     struct MUI_RenderInfo *mri);
 struct MUI_ImageSpec_intern *zune_imspec_setup_dummy(IPTR s);
 void zune_imspec_cleanup(struct MUI_ImageSpec_intern *spec);
+/* TRUE for a plain fill with the MUI pen muipen (MPEN_*) */
+BOOL zune_imspec_is_mui_pen(const struct MUI_ImageSpec_intern *spec,
+    LONG muipen);
 BOOL zune_imspec_askminmax(struct MUI_ImageSpec_intern *spec,
     struct MUI_MinMax *minmax);
 void zune_imspec_show(struct MUI_ImageSpec_intern *spec, Object *obj);

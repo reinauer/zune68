@@ -1138,11 +1138,17 @@ static IPTR Area__MUIM_CustomBackfill(struct IClass *cl, Object *obj,
 /*
  * draw object background if MADF_FILLAREA.
  */
-static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
-                                        ULONG flags,
-                                        const struct ZuneFrameGfx *zframe,
-                                        BOOL drawframe)
+static BOOL area_parent_background_is_pen(Object *obj, LONG muipen);
+
+/* Returns the FRAME_CORNER_* bevel corner pixels it painted with
+ * MPEN_BACKGROUND, so that the frame need not paint them again */
+static UBYTE Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
+                                         ULONG flags,
+                                         const struct ZuneFrameGfx *zframe,
+                                         BOOL drawframe)
 {
+    UBYTE corners = 0;
+    BOOL plain;
     struct MUI_ImageSpec_intern *background;
     struct Rectangle r, r2, rects[4];
     int i, bgtop, bgleft, bgw, bgh, numrects;
@@ -1155,7 +1161,7 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
      */
     if ((data->mad_Flags & MADF_ISVIRTUALGROUP) &&
         !(flags & MADF_DRAWALL))
-        return;
+        return 0;
 
     /* Like MUI 3.9, only an object with its own background shows the
      * selected background; others keep their parent's. */
@@ -1164,6 +1170,15 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
         background = data->mad_Background;
     else
         background = data->mad_SelBack;
+
+    /* Corner hints only for a plain bevel drawn now, over an untitled
+     * box, by an object not showing a selected state and with no custom
+     * backfill (see the end of this function) */
+    plain = drawframe && !zframe->customframe && zframe->border_radius == 0
+        && !data->mad_FrameTitle
+        && (data->mad_Flags & (MADF_SELECTED | MADF_SHOWSELSTATE))
+            != (MADF_SELECTED | MADF_SHOWSELSTATE)
+        && !(data->mad_Flags2 & MADF2_CUSTOMBACKFILL);
 
     /* For rounded frames, draw parent background in corner areas first */
     if (zframe->border_radius > 0) {
@@ -1314,15 +1329,25 @@ static void Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
              * (which is the case if MADF_DRAWALL is setted) */
             DoMethod(obj, MUIM_DrawParentBackground, bgleft, _top(obj), bgw,
                      bgtop - _top(obj), bgleft, _top(obj), data->mad_Flags);
+            /* That covered the top-right corner of the frame */
+            if (plain && area_parent_background_is_pen(obj, MPEN_BACKGROUND))
+                corners |= FRAME_CORNER_TR;
         }
     }
+    /* The box fill below the top frame rows covered the bottom-left one */
+    if (plain && (data->mad_Flags & MADF_FILLAREA)
+        && (background ? zune_imspec_is_mui_pen(background, MPEN_BACKGROUND)
+            : area_parent_background_is_pen(obj, MPEN_BACKGROUND)))
+        corners |= FRAME_CORNER_BL;
+    return corners;
 }
 
 /*
  * draw object frame + title if not MADF_FRAMEPHANTOM.
  */
 static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
-                                   const struct ZuneFrameGfx *zframe)
+                                   const struct ZuneFrameGfx *zframe,
+                                   UBYTE corners)
 {
     APTR textdrawclip = (APTR)-1;
     struct Region *region;
@@ -1341,6 +1366,8 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
             get_intframe(obj, data, &tempframe);
         struct dt_frame_image *frame_img =
             zune_frame_prepare_for_drawing(zframe, framespec, &temp_frame);
+        if (frame_img == &temp_frame)
+            temp_frame.corners_bg = corners;
         zframe->draw(frame_img, muiRenderInfo(obj), _left(obj), _top(obj),
                      _width(obj), _height(obj), _left(obj), _top(obj), _width(obj),
                      _height(obj));
@@ -1455,6 +1482,7 @@ MUIM_Draw
 static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
                             struct MUIP_Draw *msg)
 {
+    UBYTE corners = 0;
     struct MUI_AreaData *data = INST_DATA(cl, obj);
     const struct ZuneFrameGfx *zframe;
     struct TextFont *obj_font = NULL;
@@ -1519,7 +1547,8 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
     if (frameonly)
         drawframe = TRUE;
     else
-        Area_Draw_handle_background(obj, data, msg->flags, zframe, drawframe);
+        corners = Area_Draw_handle_background(obj, data, msg->flags, zframe,
+            drawframe);
 
     /* Frame and frametitle drawing; only a title needs the title font */
     if (drawframe && !(data->mad_Flags & MADF_FRAMEPHANTOM)) {
@@ -1528,7 +1557,7 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
             _font(obj) = zune_font_get(obj, MUIV_Font_Title);
             SetFont(_rp(obj), _font(obj));
         }
-        Area_Draw_handle_frame(obj, data, zframe);
+        Area_Draw_handle_frame(obj, data, zframe, corners);
         if (data->mad_FrameTitle)
             _font(obj) = obj_font;
     }
@@ -1607,6 +1636,25 @@ static BOOL area_builtin_background(Object *obj)
             return TRUE;
     }
     return FALSE;
+}
+
+/* TRUE when the parent background obj inherits (what
+ * MUIM_DrawParentBackground paints) is a plain fill with MUI pen muipen.
+ * Only for an object that is not showing its selected state, which
+ * would let the owner choose its selected background. */
+static BOOL area_parent_background_is_pen(Object *obj, LONG muipen)
+{
+    Object *parent = _parent(obj);
+
+    while (parent && Group_PassesBackground(parent))
+        parent = _parent(parent);
+    if (!parent)
+        return zune_window_background_is_pen(_win(obj), muipen);
+    if (!area_builtin_background(parent)
+        || (muiAreaData(parent)->mad_Flags2 & MADF2_CUSTOMBACKFILL))
+        return FALSE;
+    return zune_imspec_is_mui_pen(muiAreaData(parent)->mad_Background,
+        muipen);
 }
 
 /* MUIM_DrawBackground without the dispatch chain. Built-in classes handle

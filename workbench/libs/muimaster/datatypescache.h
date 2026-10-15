@@ -41,7 +41,13 @@ struct dt_frame_image
     BOOL noalpha;
     short border_radius;    /* Corner radius for rounded frames */
     short frame_width;      /* Border width for clipping calculations */
+    UBYTE corners_bg;       /* FRAME_CORNER_* already MPEN_BACKGROUND */
 };
+
+/* Bevel corner pixels the caller has just painted with MPEN_BACKGROUND
+ * (classes/area.c); the frame then need not paint them itself */
+#define FRAME_CORNER_TR 1
+#define FRAME_CORNER_BL 2
 
 struct dt_node
 {
