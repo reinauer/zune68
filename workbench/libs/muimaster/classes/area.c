@@ -1781,10 +1781,9 @@ static IPTR area_draw_background(Object *obj, struct MUI_AreaData *data,
      * every fill. */
     LONG pen;
 
-    if (data->mad_Frame <= 100
+    if (bg && zune_imspec_fill_pen(bg, &pen) && data->mad_Frame <= 100
         && muiGlobalInfo(obj)->mgi_Prefs->frames[data->mad_Frame].type
-            < FST_CUSTOM1
-        && zune_imspec_fill_pen(bg, &pen))
+            < FST_CUSTOM1)
     {
         struct RastPort *rp = data->mad_RenderInfo->mri_RastPort;
 
