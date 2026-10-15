@@ -114,7 +114,19 @@ struct MUI_GroupData
     /* MUI4 group with tabs */
     Object *titlegroup;
     APTR paint_clip;            /* previous clipping during virtual painting */
+    struct MinList *children;   /* the family's list, fetched once; last to keep the other offsets */
 };
+
+/* The Family's list pointer, fetched once at OM_NEW and kept: asking for
+ * it through OM_GET cost a dispatch per group per draw, layout and minmax
+ * pass. A fake object in the linked checks may leave it unset. */
+static inline struct MinList *group_children(struct MUI_GroupData *data)
+{
+    if (!data->children)
+        get(data->family, MUIA_Family_List, &data->children);
+    return data->children;
+}
+
 
 /* Note:
  * The MUI4 feature of group with tabs is implemented based on behaviour of
@@ -341,6 +353,10 @@ IPTR Group__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         CoerceMethod(cl, obj, OM_DISPOSE);
         return 0;
     }
+    /* The list lives in the family object for its lifetime; asking for
+     * it through OM_GET at every walk cost a dispatch per group per
+     * draw, layout and minmax pass. */
+    get(data->family, MUIA_Family_List, &data->children);
 
     data->horiz_spacing = -1;
     data->vert_spacing = -1;
@@ -495,7 +511,7 @@ static void Group_ShiftChildren(struct IClass *cl, Object *obj,
     APTR state;
     Object *child;
 
-    get(data->family, MUIA_Family_List, &children);
+    children = group_children(data);
     if (!children)
         return;
     state = children->mlh_Head;
@@ -729,7 +745,8 @@ IPTR Group__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         STORE = data->active_page;
         return 1;
     case MUIA_Group_ChildList:
-        return GetAttr(MUIA_Family_List, data->family, msg->opg_Storage);
+        *msg->opg_Storage = (IPTR) group_children(data);
+        return TRUE;
     case MUIA_Group_Horiz:
         STORE = (data->flags & GROUP_HORIZ);
         return 1;
@@ -775,7 +792,7 @@ IPTR Group__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         Object *child;
         struct MinList *ChildList = NULL;
 
-        get(data->family, MUIA_Family_List, &(ChildList));
+        ChildList = group_children(data);
         cstate = ChildList->mlh_Head;
         while ((child = NextObject(&cstate)))
             if (DoMethodA(child, (Msg) msg))
@@ -866,7 +883,7 @@ IPTR Group__MUIM_ConnectParent(struct IClass *cl, Object *obj,
 
     DoSuperMethodA(cl, obj, (Msg) msg);
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -898,7 +915,7 @@ static IPTR Group__MUIM_GlobalSetup(struct IClass *cl, Object *obj,
 
     DoSuperMethodA(cl, obj, (Msg) msg);
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -922,7 +939,7 @@ IPTR Group__MUIM_DisconnectParent(struct IClass *cl, Object *obj,
     Object *child;
     struct MinList *ChildList = NULL;
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -1058,7 +1075,7 @@ static IPTR GroupMoveMember(struct IClass *cl, Object *obj,
     Object *state, *child, *after = NULL;
     LONG remaining = 0, pos;
     BOOL found = FALSE;
-    get(data->family, MUIA_Family_List, &list);
+    list = (struct List *) group_children(data);
     state = (Object *)list->lh_Head;
     while ((child = NextObject(&state)))
         if (child == msg->o) found = TRUE;
@@ -1130,7 +1147,7 @@ static ULONG Group_DispatchMsg(struct IClass *cl, Object *obj, Msg msg)
     if (data->dont_forward_methods)
         return TRUE;
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -1170,7 +1187,7 @@ IPTR Group__MUIM_Setup(struct IClass *cl, Object *obj,
         if (!(data->flags & GROUP_VSPACING))
             data->vert_spacing = MIN(data->vert_spacing, 2);
     }
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -1223,7 +1240,7 @@ IPTR Group__MUIM_Cleanup(struct IClass *cl, Object *obj, Msg msg)
             (IPTR) & data->ehn);
     }
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -1257,7 +1274,7 @@ static struct Region *group_children_clip_region(struct IClass *cl,
         rect.MaxY = _bottom(obj);
 
         OrRectRegion(region, &rect);
-        get(data->family, MUIA_Family_List, &ChildList);
+        ChildList = group_children(data);
         cstate = ChildList->mlh_Head;
         while ((child = NextObject(&cstate)))
         {
@@ -1301,7 +1318,7 @@ static int group_collect_children(struct IClass *cl, Object *obj,
     LONG page = -1;
     int n = 0;
 
-    get(data->family, MUIA_Family_List, &ChildList);
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -1633,7 +1650,7 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
 
     group_rect = muiRenderInfo(obj)->mri_ClipRect;
     page = -1;
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -2197,7 +2214,7 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
      */
     childMsg.MethodID = msg->MethodID;
     childMsg.MinMaxInfo = &childMinMax;
-    get(data->family, MUIA_Family_List, &(lm.lm_Children));
+    lm.lm_Children = group_children(data);
 
     /* every child counts again; the layout decides which disappear */
     cstate = lm.lm_Children->mlh_Head;
@@ -3486,7 +3503,7 @@ IPTR Group__MUIM_Layout(struct IClass *cl, Object *obj,
     struct MUI_LayoutMsg lm = { 0 };
     IPTR result = TRUE;
 
-    get(data->family, MUIA_Family_List, &(lm.lm_Children));
+    lm.lm_Children = group_children(data);
     if (data->flags & GROUP_PAGEMODE)
     {
         group_layout_pagemode(cl, obj, lm.lm_Children);
@@ -3583,7 +3600,7 @@ IPTR Group__MUIM_Show(struct IClass *cl, Object *obj,
     if (msg)
         DoSuperMethodA(cl, obj, (Msg) msg);
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
 
     if (data->flags & GROUP_PAGEMODE)
@@ -3632,7 +3649,7 @@ IPTR Group__MUIM_Hide(struct IClass *cl, Object *obj,
     Object *child;
     struct MinList *ChildList = NULL;
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
 
     if (data->flags & GROUP_PAGEMODE)
@@ -3753,7 +3770,7 @@ IPTR Group__MUIM_DragQueryExtended(struct IClass *cl, Object *obj,
     Object *found_obj;
     struct MinList *ChildList = NULL;
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -3932,7 +3949,7 @@ IPTR Group__MUIM_FindAreaObject(struct IClass *cl, Object *obj,
         return (IPTR) obj;
 
     // it's one of my children ?
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -3963,7 +3980,7 @@ static IPTR Group__MUIM_Export(struct IClass *cl, Object *obj,
     Object *child;
     struct MinList *ChildList = NULL;
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     if (!ChildList)
         return 0;
 
@@ -3988,7 +4005,7 @@ static IPTR Group__MUIM_Import(struct IClass *cl, Object *obj,
     Object *child;
     struct MinList *ChildList = NULL;
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     if (!ChildList)
         return 0;
 
@@ -4031,7 +4048,7 @@ STATIC IPTR Group_Notify(struct IClass *cl, Object *obj,
      * children now */
     data->dont_forward_get = 0;
 
-    get(data->family, MUIA_Family_List, (IPTR *) & (ChildList));
+    ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
@@ -4080,7 +4097,7 @@ STATIC IPTR Group_Notify(struct IClass *cl, Object *obj,
     }
     data->dont_forward_get = 0;
 
-    get(data->family, MUIA_Family_List, &(ChildList));
+    ChildList = group_children(data);
     if (!ChildList)
         return TRUE;
 
