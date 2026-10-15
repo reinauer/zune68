@@ -1,0 +1,8 @@
+
+/* Zune68: the varargs calls MUI_NewObject, MUI_MakeObject, MUI_Request,
+ * MUI_AllocAslRequestTags and MUI_AslRequestTags are real functions from
+ * libmui.a (link with -lmui), so the "XxxObject, ..., End" macros of
+ * libraries/mui.h work with every GCC. Define MUIMASTER_YES_INLINE_STDARG
+ * before including <proto/muimaster.h> to get the inline tag-array macros
+ * below instead; they cannot be closed by End, and with GCC 14 and later
+ * pointer tag values need an explicit (IPTR) cast. */

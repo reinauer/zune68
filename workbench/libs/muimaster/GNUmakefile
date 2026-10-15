@@ -221,9 +221,21 @@ $(BUILD)/muimaster.sfd: zunemaster_lib.sfd
 	@mkdir -p $(@D)
 	sed '/^==typedef /d' $< > $@
 
+# The tag-list varargs (MUI_NewObject, MUI_MakeObject, MUI_Request and
+# the ASL tag calls) are libmui.a stubs unless a program defines
+# MUIMASTER_YES_INLINE_STDARG, as on AROS. sfdc's macro form cannot be
+# closed by the End macro of the usual "XxxObject, ..., End" style, and
+# GCC 14 and later reject pointer tag values in its ULONG tag array.
 $(BUILD)/include/inline/muimaster.h: $(BUILD)/muimaster.sfd
 	@mkdir -p $(@D)
-	$(SFDC) --quiet --target=m68k-amigaos --mode=macros --output=$@ $<
+	$(SFDC) --quiet --target=m68k-amigaos --mode=macros --output=$@.tmp $<
+	sed -e 's|^#ifndef NO_INLINE_STDARG$$|#if defined(MUIMASTER_YES_INLINE_STDARG) \&\& !defined(NO_INLINE_STDARG)|' \
+	    -e 's|^#ifndef NO_INLINE_VARARGS$$|#if defined(MUIMASTER_YES_INLINE_STDARG) \&\& !defined(NO_INLINE_VARARGS)|' \
+	    -e '/^#define _INLINE_MUIMASTER_H$$/r inline_stdarg.txt' $@.tmp > $@.tmp2
+	@! grep -q '^#ifndef NO_INLINE_\(STDARG\|VARARGS\)$$' $@.tmp2 || \
+	  { echo 'sfdc output changed: varargs guards not rewritten' >&2; exit 1; }
+	rm -f $@.tmp
+	mv $@.tmp2 $@
 
 $(BUILD)/muiscreen.sfd: include/fd/muiscreen_lib.fd include/clib/muiscreen_protos.h
 	@mkdir -p $(@D)

@@ -85,6 +85,21 @@ Normal builds omit Zune drawing/input traces. The test still prints its
 own progress and results. Source builds can enable tracing with TRACE=1;
 that output is deliberately excluded from performance measurements.
 
+Developing with the SDK
+-----------------------
+Add SDK/include to the include path and link with -lmui, which the
+m68k-amigaos GCC toolchains supply, for example in SDK/examples:
+
+  m68k-amigaos-gcc -noixemul -Os -I../include -o HelloZune HelloZune.c -lmui
+
+MUI_NewObject, MUI_MakeObject, MUI_Request, MUI_AllocAslRequestTags and
+MUI_AslRequestTags are then libmui functions, so the usual
+"ApplicationObject, ..., End" style compiles with any GCC version.
+Defining MUIMASTER_YES_INLINE_STDARG selects inline tag-array macros
+instead; they cannot be closed by End, and GCC 14 and later need an
+(IPTR) cast for pointer tag values. As in MUI's SDK, CheckMark, KeyButton
+and the other old shortcut macros need MUI_OBSOLETE.
+
 Status and source
 -----------------
 This is the first beta release, dated [RELEASE]. Its muimaster.library
