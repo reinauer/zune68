@@ -329,14 +329,54 @@ const static struct def_strval DefStrValues[] = {
     {0, 0},
 };
 
-static inline void Configdata__SetKey(ZuneKeySpec *key, CONST_STRPTR val)
+/* ParseIX inverts the keymap and compares qualifier names: about 0.3 ms
+ * per binding, and every Configdata parses 24 of them. The default
+ * strings are constants shared by all applications, so their parsed
+ * expressions are kept here; saved bindings are parsed per object. */
+#define KEYCACHE 32
+static struct { CONST_STRPTR str; IX ix; LONG well; } keycache[KEYCACHE];
+static int keycache_count;
+
+static BOOL is_default_string(CONST_STRPTR val)
 {
-    if ((key->readable_hotkey = val) != NULL)
-        key->ix_well =
-            !ParseIX(key->readable_hotkey,
-            &key->ix);
-    else
+    int i;
+
+    for (i = 0; DefStrValues[i].id; i++)
+        if (DefStrValues[i].val == val)
+            return TRUE;
+    return FALSE;
+}
+
+static void Configdata__SetKey(ZuneKeySpec *key, CONST_STRPTR val)
+{
+    int i, count;
+
+    if ((key->readable_hotkey = val) == NULL)
+    {
         key->ix_well = 0;
+        return;
+    }
+    count = keycache_count;
+    for (i = 0; i < count; i++)
+        if (keycache[i].str == val)
+        {
+            key->ix = keycache[i].ix;
+            key->ix_well = keycache[i].well;
+            return;
+        }
+    key->ix_well = !ParseIX(key->readable_hotkey, &key->ix);
+    if (is_default_string(val))
+    {
+        Forbid();
+        if (keycache_count < KEYCACHE)
+        {
+            keycache[keycache_count].str = val;
+            keycache[keycache_count].ix = key->ix;
+            keycache[keycache_count].well = key->ix_well;
+            keycache_count++;
+        }
+        Permit();
+    }
 }
 
 /* Always assign a !persistent! string stored in dataspace (or default) to ZunePrefsNew fields */
@@ -623,7 +663,20 @@ IPTR Configdata__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         get(data->app, MUIA_Application_Base, &data->appbase);
     }
 
-    if (data->appbase)
+    /* Without a preference drawer there is nothing to load: one Lock
+     * replaces up to four failing Open calls (each a handler round
+     * trip) per application. ENV: is restored from ENVARC: at boot and
+     * the preferences program creates both drawers when it first saves. */
+    {
+        BPTR drawer = Lock("ENV:zune", SHARED_LOCK);
+
+        if (drawer)
+            UnLock(drawer);
+        else
+            res = -1;
+    }
+
+    if (data->appbase && res == 0)
     {
         char filename[255];
         snprintf(filename, 255, "ENV:zune/%s.prefs", data->appbase);
@@ -636,7 +689,7 @@ IPTR Configdata__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     // load only global prefs if no local app pref is found
-    if (!res)
+    if (res == 0)
     {
         if (!DoMethod(obj, MUIM_Configdata_Load,
                 (IPTR) "ENV:zune/global.prefs"))
