@@ -1625,17 +1625,31 @@ static IPTR Area__MUIM_DrawBackground(struct IClass *cl, Object *obj,
  * only adds virtual offsets). */
 static BOOL area_builtin_background(Object *obj)
 {
+    struct MUI_AreaData *data;
     struct IClass *cl;
+    ULONG builtin = 0;
 
-    for (cl = obj ? OCLASS(obj) : NULL; cl; cl = cl->cl_Super)
+    if (!obj)
+        return FALSE;
+    /* An object's classes do not change; the result is kept until the
+     * next MUIM_Setup, so a dispatcher patched between window opens is
+     * still honoured */
+    data = muiAreaData(obj);
+    if (data->mad_Flags2 & MADF2_BGCHECKED)
+        return (data->mad_Flags2 & MADF2_BUILTINBG) != 0;
+    for (cl = OCLASS(obj); cl; cl = cl->cl_Super)
     {
         if (cl->cl_Dispatcher.h_Entry != (HOOKFUNC) builtinDispatcher)
-            return FALSE;
+            break;
         if (cl->cl_Dispatcher.h_SubEntry
             == (HOOKFUNC) _MUI_Area_desc.dispatcher)
-            return TRUE;
+        {
+            builtin = MADF2_BUILTINBG;
+            break;
+        }
     }
-    return FALSE;
+    data->mad_Flags2 |= MADF2_BGCHECKED | builtin;
+    return builtin != 0;
 }
 
 /* TRUE when the parent background obj inherits (what
@@ -1705,6 +1719,26 @@ static IPTR area_draw_background(Object *obj, struct MUI_AreaData *data,
     const struct ZuneFrameGfx *zframe;
     const struct MUI_FrameSpec_intern *frame;
     struct MUI_FrameSpec_intern tempframe;
+
+    /* A plain pen fill with a built-in frame (no custom frame image to
+     * draw over it) is SetAPen and RectFill; the general path below
+     * looked up the frame and went through three image spec layers for
+     * every fill. */
+    LONG pen;
+
+    if (data->mad_Frame <= 100
+        && muiGlobalInfo(obj)->mgi_Prefs->frames[data->mad_Frame].type
+            < FST_CUSTOM1
+        && zune_imspec_fill_pen(bg, &pen))
+    {
+        struct RastPort *rp = data->mad_RenderInfo->mri_RastPort;
+
+        if (rp->FgPen != (BYTE) pen)
+            SetAPen(rp, pen);
+        RectFill(rp, msg->left, msg->top, msg->left + msg->width - 1,
+            msg->top + msg->height - 1);
+        return TRUE;
+    }
 
     if (!bg) {
         D(bug("Area_DrawBackground(%p) : MUIM_DrawParentBackground\n", obj));
@@ -1893,6 +1927,7 @@ static IPTR Area__MUIM_Setup(struct IClass *cl, Object *obj,
     struct MUI_FrameSpec_intern tempframe;
 
     muiRenderInfo(obj) = msg->RenderInfo;
+    data->mad_Flags2 &= ~(MADF2_BGCHECKED | MADF2_BUILTINBG);
 
     if (data->mad_Frame) {
         /* no frame allowed for root object (see Area.doc) */

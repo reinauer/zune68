@@ -702,6 +702,15 @@ void zune_imspec_cleanup(struct MUI_ImageSpec_intern *spec)
 }
 
 
+BOOL zune_imspec_fill_pen(const struct MUI_ImageSpec_intern *spec,
+    LONG *pen)
+{
+    if (!spec || spec->type != IST_COLOR)
+        return FALSE;
+    *pen = spec->u.penspec.p_pen;
+    return TRUE;
+}
+
 BOOL zune_imspec_is_mui_pen(const struct MUI_ImageSpec_intern *spec,
     LONG muipen)
 {

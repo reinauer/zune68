@@ -184,7 +184,8 @@ def check(path):
     assert len(h.events) == 1, h.events
     assert h.events[0][:9] == [OBJECT, BACKGROUND, 200, 15, 24, 24, 200, 15,
                                1 << 14], h.events[0]
-    assert h.mem.r32(OBJECT + 104) == 1, 'active flag restored'
+    # Only the backfill bits; Area also caches its class test in this word
+    assert h.mem.r32(OBJECT + 104) & 3 == 1, 'active flag restored'
     h.events.clear()
     h.mem.w_block(MESSAGE, struct.pack('>I6i', BACKFILL, 5, 5, 4, 9, 0, 0))
     assert h.call('DoMethodA', OBJECT, MESSAGE) == 0 and not h.events

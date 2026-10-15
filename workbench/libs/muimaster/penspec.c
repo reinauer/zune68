@@ -302,7 +302,8 @@ void zune_penspec_drawdirect(struct MUI_PenSpec_intern *psi,
         D(bug("drawing with 0x%p, pen=%ld, at %ld, %ld => %ld, %ld\n",
                 psi, psi->p_pen, left, top, right, bottom));
     }
-    SetAPen(rp, psi->p_pen);
+    if (rp->FgPen != (BYTE) psi->p_pen)
+        SetAPen(rp, psi->p_pen);
     RectFill(rp, left, top, right, bottom);
 }
 

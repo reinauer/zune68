@@ -624,6 +624,8 @@ struct MUI_AreaData
 #define MADF2_BACKFILL_ACTIVE  (1UL << 1)
 #define MADF2_ISGROUP          (1UL << 2)
 #define MADF2_ISTITLE          (1UL << 3)
+#define MADF2_BGCHECKED        (1UL << 4) /* PRIV: MADF2_BUILTINBG is valid */
+#define MADF2_BUILTINBG        (1UL << 5) /* PRIV: all classes down to Area built-in */
 
 #define MADF_DRAWOBJECT        (1<< 0)  /* draw object completely */
 #define MADF_DRAWUPDATE        (1<< 1)  /* update object */
