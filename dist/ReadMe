@@ -118,6 +118,12 @@ applications with Zune68 and report what works and what doesn't, with the
 application version, CPU/OS configuration, reproduction steps and any
 crash information.
 
+Windows use smart refresh by default, as in MUI 3.8; MUI 3.9 and 5 switched
+to simple refresh. Smart refresh keeps covered window contents, so
+applications that draw outside MUI's redraw (AmiPG's keyboard) stay intact,
+and uncovered windows come back faster. It needs memory for covered areas;
+choose Simple under Refresh on the Windows page to save it.
+
 The preferences editor includes the upstream PrefsWindow implementation
 and uses Rawimage/Pixmap for its built-in page icons. AROS-only external
 classes and muiscreen.library are not built; public-screen enumeration has

@@ -232,7 +232,10 @@ const static struct def_ulval DefULValues[] = {
     PREF_DEFAULT(MUICFG_Window_Spacing_Bottom, 4, window_inner_bottom),
     PREF_DEFAULT(MUICFG_Window_Positions, WINDOW_POSITION_FORGET_ON_EXIT, window_position),
     PREF_DEFAULT(MUICFG_Window_Redraw, WINDOW_REDRAW_WITHOUT_CLEAR, window_redraw),
-    PREF_DEFAULT(MUICFG_Window_Refresh, WINDOW_REFRESH_SIMPLE, window_refresh),
+    /* MUI 3.8's default; MUI 3.9 changed to simple refresh, which loses
+     * covered contents of applications that draw outside MUIM_Draw
+     * (AmiPG_MUI's keyboard) and repaints slower */
+    PREF_DEFAULT(MUICFG_Window_Refresh, WINDOW_REFRESH_SMART, window_refresh),
     PREF_DEFAULT(MUICFG_Radio_HSpacing, 4, radiobutton_hspacing),
     PREF_DEFAULT(MUICFG_Radio_VSpacing, 1, radiobutton_vspacing),
     PREF_DEFAULT(MUICFG_Group_HSpacing, 4, group_hspacing),
