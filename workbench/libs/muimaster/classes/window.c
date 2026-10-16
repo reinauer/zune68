@@ -1406,7 +1406,8 @@ static VOID RefreshWindow(Object *oWin, struct MUI_WindowData *data)
         DoShowMethod(data->wd_RootObject);
 
         if (muiGlobalInfo(oWin)->mgi_Prefs->window_redraw ==
-            WINDOW_REDRAW_WITH_CLEAR)
+            WINDOW_REDRAW_WITH_CLEAR
+            || (data->wd_Flags & MUIWF_ERASEAREA))
         {
             LONG left, top, width, height;
 
@@ -4854,8 +4855,13 @@ IPTR Window__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
     data->wd_Background =
         zune_imspec_setup(MUII_WindowBack, &data->wd_RenderInfo);
 
+    /* MUI 3.8 also clears smart refresh windows after a resize; IBrowse's
+     * toolbar leaves its box to the window background and otherwise kept
+     * the logo from the previous size (tests/native/resizeclear.c) */
     if (muiGlobalInfo(obj)->mgi_Prefs->window_redraw ==
-        WINDOW_REDRAW_WITH_CLEAR)
+        WINDOW_REDRAW_WITH_CLEAR
+        || muiGlobalInfo(obj)->mgi_Prefs->window_refresh ==
+        WINDOW_REFRESH_SMART)
         data->wd_Flags |= MUIWF_ERASEAREA;
 
     return TRUE;
