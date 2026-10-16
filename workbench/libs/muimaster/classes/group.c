@@ -1767,7 +1767,7 @@ static void group_minmax_horiz(struct IClass *cl, Object *obj,
     Object *child;
     struct MUI_MinMax tmp;
     WORD maxminwidth = 0;
-    BOOL found_nonzero_vweight = FALSE;
+    BOOL found_nonzero_vweight = FALSE, counted = FALSE;
 
     tmp.MinHeight = 0;
     tmp.DefHeight = 0;
@@ -1842,12 +1842,15 @@ static void group_minmax_horiz(struct IClass *cl, Object *obj,
          */
         tmp.MaxHeight = MIN(tmp.MaxHeight, _maxheight(child));
         data->horiz_weight_sum += _hweight(child);
+        counted = TRUE;
         if (_vweight(child) > 0)
         {
             found_nonzero_vweight = TRUE;
         }
     }
-    if (!found_nonzero_vweight)
+    /* an empty group keeps its full maximum, so MUIA_FixWidth and
+     * MUIA_FixHeight size it, as in MUI 3.9 (tests/native/emptyfixprobe.c) */
+    if (counted && !found_nonzero_vweight)
     {
         tmp.MaxHeight = tmp.MinHeight;
     }
@@ -1873,7 +1876,7 @@ static void group_minmax_vert(struct IClass *cl, Object *obj,
     Object *child;
     struct MUI_MinMax tmp;
     WORD maxminheight = 0;
-    BOOL found_nonzero_hweight = FALSE;
+    BOOL found_nonzero_hweight = FALSE, counted = FALSE;
 
     tmp.MinWidth = 0;
     tmp.DefWidth = 0;
@@ -1928,12 +1931,14 @@ static void group_minmax_vert(struct IClass *cl, Object *obj,
         tmp.DefWidth = MAX(tmp.DefWidth, _defwidth(child));
         tmp.MaxWidth = MIN(tmp.MaxWidth, _maxwidth(child));
         data->vert_weight_sum += _vweight(child);
+        counted = TRUE;
         if (_hweight(child) > 0)
         {
             found_nonzero_hweight = TRUE;
         }
     }
-    if (!found_nonzero_hweight)
+    /* see group_minmax_horiz */
+    if (counted && !found_nonzero_hweight)
     {
         tmp.MaxWidth = tmp.MinWidth;
     }
