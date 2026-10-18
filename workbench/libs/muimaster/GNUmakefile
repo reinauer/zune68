@@ -34,7 +34,20 @@ CPPFLAGS += -DMUIMASTER_YES_INLINE_STDARG= -DZUNE68_GCC_NATIVE \
   -DMUI_OBSOLETE -DMUIMASTER_LIBRARY_BUILD \
   -I$(BUILD)/include -I$(BUILD) -Igcc -Iinclude -I. -include include/clib/muimaster_protos.h \
   -include $(BUILD)/trace-config.h
-LIB_CFLAGS = $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) \
+# LTO=1: link-time optimization makes the library about 20 KB (5%)
+# smaller at the same speed, but the m68k-amigaos linker (binutils 2.46)
+# then writes wrong values for most hunk symbols, which the linked checks,
+# postmortems and profilers rely on, so it is off by default. The link
+# keeps RomTag, which exec finds by scanning, not by reference.
+LTO ?= 0
+ifneq ($(LTO),0)
+ifneq ($(LTO),1)
+$(error LTO must be 0 or 1)
+endif
+LTO_CFLAGS = -flto
+LTO_LDFLAGS = -flto $(LIB_CFLAGS) -Wl,-u,_RomTag
+endif
+LIB_CFLAGS = $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) $(LTO_CFLAGS) \
   -fno-common -fno-builtin -fno-strict-aliasing
 SOURCES = \
   gcc/format.c gcc/runtime.c muimaster_init.c datatypescache.c dragndrop.c font.c \
@@ -270,7 +283,7 @@ $(BUILD)/zunemaster_lib.o: zunemaster_lib.c $(GENERATED)
 
 # Keep start.o first regardless of the compiler's function ordering.
 $(BUILD)/%.library: $(BUILD)/start.o $(BUILD)/%_lib.o $(BUILD)/gates.o $(OBJECTS)
-	$(CC) $(CPUFLAGS) $(CRTFLAGS) -nostdlib $(LDFLAGS) \
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) -nostdlib $(LDFLAGS) $(LTO_LDFLAGS) \
 	  -Wl,-Map,$@.map -o $@ $^ $(LDLIBS)
 
 $(BUILD)/opentest: opentest.c $(GENERATED)

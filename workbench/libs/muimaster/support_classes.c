@@ -24,8 +24,12 @@
 #if !defined(__AROS__) && !defined(__amigaos4__) && !defined(__MAXON__)
 #include "classes/area.h"
 
-static IPTR __attribute__((noinline, used)) builtinDraw(Class *cl __asm("a0"),
-    Object *obj __asm("a2"), Msg msg __asm("a1"))
+/* Global and externally visible: only the trampoline's assembly below
+ * refers to it by name, and link-time optimization would otherwise
+ * rename a static function and leave _builtinDraw undefined. */
+IPTR __attribute__((noinline, used, externally_visible))
+builtinDraw(Class *cl __asm("a0"), Object *obj __asm("a2"),
+    Msg msg __asm("a1"))
 {
     typedef IPTR (*Dispatcher)(Class * __asm("a0"),
         Object * __asm("a2"), Msg __asm("a1"), APTR __asm("a6"));
