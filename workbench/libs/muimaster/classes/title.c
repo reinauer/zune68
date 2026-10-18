@@ -454,7 +454,8 @@ static IPTR TitleContextBuild(struct IClass *cl, Object *obj,
         get(tab, MUIA_Text_Contents, &label);
         snprintf(fallback, sizeof(fallback), "Page %ld", i + 1);
         Object *item = MUI_NewObject(MUIC_Menuitem,
-            MUIA_Menuitem_Title, label ? label : fallback,
+            MUIA_Menuitem_Title,
+            (IPTR)(label ? (CONST_STRPTR)label : (CONST_STRPTR)fallback),
             MUIA_Menuitem_CopyStrings, TRUE, MUIA_UserData, (IPTR)tab,
             MUIA_Menuitem_Checkit, TRUE,
             MUIA_Menuitem_Checked, i == data->activetab, TAG_DONE);
