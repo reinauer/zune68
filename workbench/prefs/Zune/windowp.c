@@ -160,7 +160,12 @@ static IPTR WindowP_New(struct IClass *cl, Object *obj, struct opSet *msg)
     data = INST_DATA(cl, obj);
     *data = d;
 
-    //set(data->positions_cycle, MUIA_Disabled, TRUE);
+    set(data->mui, MUIA_ShortHelp, "Show the application settings titlebar button.");
+    set(data->snapshot, MUIA_ShortHelp,
+        "Show the snapshot titlebar button. Click to save the window position;\n"
+        "double-click to forget it. Requires an application window ID.");
+    set(data->popup, MUIA_ShortHelp, "Show the window actions popup button.");
+    set(data->iconify, MUIA_ShortHelp, "Show the application iconify titlebar button.");
 
     return (IPTR)obj;
 }

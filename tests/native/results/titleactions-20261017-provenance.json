@@ -1,0 +1,40 @@
+{
+  "base_revision": "2aed03dc83822ed4f7abc18a017c39d8b2dce35a",
+  "working_tree_build": true,
+  "compiler": "m68k-amigaos-gcc (AmigaDev 0611596-dirty) 13.4.0b 20260811114005",
+  "options": "MUI5_TEST=1 TRACE=0 -m68000 -msoft-float -Os; default alignment; LTO=0",
+  "source_sha256": {
+    "workbench/libs/muimaster/classes/window.c": "060c4899aa44b147194479fef3e029f75e98318a683aa5bf57bdbadf1cd49214",
+    "workbench/libs/muimaster/classes/application.c": "a960e0af15e4f441fdfb735a66eb649e081c6f229591611e5256969d9fa62252",
+    "workbench/libs/muimaster/support.h": "ed97ad7882abb9f92dd653d9dceea49167d74c506809f357e655e1ef0911cd7b",
+    "workbench/prefs/Zune/windowp.c": "ad491b06c4e201bed2c284c46ea45b1f606c5e36784c4f002c74e94b4cc06185",
+    "tests/native/titleactions.c": "85c781e73ba6e28d0573cee4a0889af062f1b205ea71d776b1f9ca52bc90c749"
+  },
+  "binary_sha256": {
+    "muimaster.library": "0953e96c78d087b2d091352cae6799318381d0d58773710c05a12488c89864f4",
+    "zunemaster.library": "b14a35ba14ce4fcc6d547736740c46dcf67c168c5ed855776b200829c926b74e",
+    "titleactions": "e99c038f7961e7e160873493b2643b4ca465734c3383e2ec819103b40bb00e7f",
+    "prefs/Zune": "aef4428319fe57fc386766c781aa410a36230b20b40ab7a6b59b1af5a6860dee"
+  },
+  "emulator_sha256": "aca3ba9d6fff372b436a776bddd956ddcceab45c2b6b58dd5026c78d6f99ca47",
+  "validation": {
+    "68000": {
+      "pass_count": 50,
+      "result_sha256": "dcd75a0752f1759ad2feda7891a8d4b5ffc3eed17d8892e45122406d8fc2c88e",
+      "configuration_sha256": "52f68e48513b5c7af55876fdd2fa272078da732643d2ecab99e83db20abfe2a5",
+      "os": "AmigaOS 3.2.3",
+      "mode": "HIRESLACE 640x480 depth 2",
+      "physical_hardware": false
+    },
+    "68020": {
+      "pass_count": 50,
+      "result_sha256": "dcd75a0752f1759ad2feda7891a8d4b5ffc3eed17d8892e45122406d8fc2c88e",
+      "configuration_sha256": "3803c56c5c0e7d46759826b8e3db062e5a1bffcf38f1943046ee3c6d0f581431",
+      "os": "AmigaOS 3.2.3",
+      "mode": "HIRESLACE 640x480 depth 2",
+      "physical_hardware": false
+    },
+    "check-core": "passed",
+    "prefs_build": "passed"
+  }
+}

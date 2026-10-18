@@ -20,6 +20,7 @@
 #include <clib/alib_protos.h>
 #include <graphics/gfxmacros.h>
 #include <proto/exec.h>
+#include <proto/dos.h>
 #include <proto/intuition.h>
 #include <proto/utility.h>
 #include <proto/graphics.h>
@@ -181,6 +182,9 @@ struct MUI_WindowData
     LONG wd_PenHandles[MPEN_COUNT];
 #ifdef ZUNE68_GCC_NATIVE
     struct NativeTitleGadget *wd_TitleGadgets;
+    UWORD wd_TitleGadgetCount;
+    ULONG wd_SnapshotSeconds, wd_SnapshotMicros;
+    BOOL wd_SnapshotClick;
     Class *wd_TitleImageClass;
     WORD wd_TitleMinWidth;
 #endif
@@ -844,6 +848,12 @@ static void UndisplayWindow(Object *obj, struct MUI_WindowData *data);
 static struct ObjNode *FindObjNode(struct MinList *list, Object *obj);
 
 #ifdef ZUNE68_GCC_NATIVE
+static const ULONG NativeTitleActions[] = {
+    MUIV_Window_Button_MUI, MUIV_Window_Button_Iconify,
+    MUIV_Window_Button_Snapshot, MUIV_Window_Button_Popup
+};
+#define NATIVE_TITLE_COUNT (sizeof(NativeTitleActions) / sizeof(NativeTitleActions[0]))
+
 static LONG NativeWindowMinWidth(struct MUI_WindowData *data, LONG borders)
 {
     LONG width = data->wd_MinMax.MinWidth + borders;
@@ -894,7 +904,9 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
     LONG right = win->BorderRight, left = win->BorderLeft;
     LONG height = win->BorderTop, width = 2 * height + 1;
     LONG count = !!(buttons & MUIV_Window_Button_MUI) +
-        !!(buttons & MUIV_Window_Button_Iconify);
+        !!(buttons & MUIV_Window_Button_Iconify) +
+        !!(buttons & MUIV_Window_Button_Snapshot) +
+        !!(buttons & MUIV_Window_Button_Popup);
     LONG i, needed, added = 0;
 
     /* MUI 3.9 adds them to untitled windows too (tests/native/notitle.c) */
@@ -929,20 +941,24 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
         return;
     data->wd_TitleImageClass->cl_Dispatcher.h_Entry =
         (HOOKFUNC)NativeTitleImage_Dispatcher;
-    items = AllocVec(2 * sizeof(*items), MEMF_PUBLIC | MEMF_CLEAR);
+    data->wd_TitleGadgetCount = NATIVE_TITLE_COUNT;
+    while (!(buttons & NativeTitleActions[data->wd_TitleGadgetCount - 1]))
+        data->wd_TitleGadgetCount--;
+    items = AllocVec(data->wd_TitleGadgetCount * sizeof(*items),
+        MEMF_PUBLIC | MEMF_CLEAR);
     if (!items)
         return;
     data->wd_TitleGadgets = items;
     /* Keep the gadgets visible when resizing, unless they never fit */
     data->wd_TitleMinWidth = needed <= win->Width ? needed : 0;
-    for (i = 0; i < 2; i++)
+    for (i = 0; i < data->wd_TitleGadgetCount; i++)
     {
         struct NativeTitleGadget *item = &items[i];
         WORD *xy;
         WORD center = width / 2, top;
         WORD symbol_height = height < 10 ? 10 : height;
         UWORD *pens = data->wd_RenderInfo.mri_DrawInfo->dri_Pens;
-        ULONG bit = i ? MUIV_Window_Button_Iconify : MUIV_Window_Button_MUI;
+        ULONG bit = NativeTitleActions[i];
         ULONG id;
         int part, parts;
         if (!(buttons & bit))
@@ -993,7 +1009,7 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
             item->symbol[2].FrontPen = pens[SHINEPEN];
             parts = 3;
         }
-        else
+        else if (i == 1)
         {
             /* Iconify: a downward arrow above the Workbench icon. */
             top = (symbol_height - 8) / 2;
@@ -1021,6 +1037,28 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
             item->symbol[3].FrontPen = pens[SHINEPEN];
             parts = 4;
         }
+        else
+        {
+            /* Snapshot: a framed position marker. Popup: three menu rows. */
+            top = (symbol_height - 7) / 2;
+            NativeTitleRectangle(item->symbol_xy[0], center - 5, top,
+                center + 5, top + 6);
+            item->symbol[0].Count = 5;
+            parts = i == 2 ? 3 : 4;
+            for (part = 1; part < parts; part++)
+            {
+                xy = item->symbol_xy[part];
+                xy[0] = center - 3; xy[2] = center + 3;
+                xy[1] = xy[3] = top + (i == 2 ? 3 : part * 2 - 1);
+                if (i == 2 && part == 2)
+                {
+                    xy[0] = xy[2] = center;
+                    xy[1] = top + 1; xy[3] = top + 5;
+                }
+                item->symbol[part].Count = 2;
+                item->symbol[part].FrontPen = pens[TEXTPEN];
+            }
+        }
         item->symbol[0].FrontPen = item->symbol[1].FrontPen = pens[TEXTPEN];
         for (part = 0; part < parts; part++)
         {
@@ -1046,6 +1084,7 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
         g = item->image ? (struct Gadget *)NewObject(NULL, BUTTONGCLASS,
             GA_RelRight, -right, GA_Top, 0, GA_Width, width,
             GA_Height, height, GA_TopBorder, TRUE, GA_RelVerify, TRUE,
+            GA_Disabled, bit == MUIV_Window_Button_Snapshot && !data->wd_ID,
             GA_Highlight, GFLG_GADGHNONE, GA_Image, item->image,
             GA_ID, id, TAG_DONE) : NULL;
         if (!g)
@@ -1060,13 +1099,55 @@ static void CreateNativeTitleGadgets(Object *obj, struct MUI_WindowData *data,
     }
 }
 
+static void NativeTitlePopup(Object *obj, struct MUI_WindowData *data)
+{
+    struct ZuneWindowGuard guard = {0};
+    Object *menu, *group, *item, *app = _app(obj);
+    static CONST_STRPTR labels[] = {
+        "Settings...", "Snapshot", "Unsnapshot", "Iconify", "Send to back"
+    };
+    ULONG i, choice;
+    menu = MUI_NewObject(MUIC_Menustrip, TAG_DONE);
+    group = MUI_NewObject(MUIC_Menu, MUIA_Menu_Title, "Window", TAG_DONE);
+    if (!menu || !group)
+    {
+        if (menu) MUI_DisposeObject(menu);
+        if (group) MUI_DisposeObject(group);
+        return;
+    }
+    DoMethod(menu, OM_ADDMEMBER, group);
+    for (i = 0; i < 5; i++)
+    {
+        item = MUI_NewObject(MUIC_Menuitem, MUIA_Menuitem_Title, labels[i],
+            MUIA_UserData, i + 1, MUIA_Menuitem_Enabled,
+            (i != 1 && i != 2) || data->wd_ID != 0, TAG_DONE);
+        if (!item) { MUI_DisposeObject(menu); return; }
+        DoMethod(group, OM_ADDMEMBER, item);
+    }
+    ZuneWatchWindow(obj, &guard);
+    choice = DoMethod(menu, MUIM_Menustrip_Popup, data->wd_RootObject, 0,
+        data->wd_RenderInfo.mri_Window->MouseX - _left(data->wd_RootObject),
+        data->wd_RenderInfo.mri_Window->BorderTop - _top(data->wd_RootObject));
+    MUI_DisposeObject(menu);
+    if (guard.closed) return;
+    ZuneUnwatchWindow(obj, &guard);
+    switch (choice)
+    {
+    case 1: DoMethod(app, MUIM_Application_OpenConfigWindow); break;
+    case 2: DoMethod(obj, MUIM_Window_Snapshot, 1); break;
+    case 3: DoMethod(obj, MUIM_Window_Snapshot, 0); break;
+    case 4: set(app, MUIA_Application_Iconified, TRUE); break;
+    case 5: DoMethod(obj, MUIM_Window_ToBack); break;
+    }
+}
+
 static void FreeNativeTitleGadgets(Object *obj, struct MUI_WindowData *data)
 {
     if (data->wd_TitleGadgets)
     {
         int i;
         /* the window is closed, so the gadgets are no longer attached */
-        for (i = 0; i < 2; i++)
+        for (i = 0; i < data->wd_TitleGadgetCount; i++)
         {
             struct NativeTitleGadget *item = &data->wd_TitleGadgets[i];
 
@@ -1085,6 +1166,7 @@ static void FreeNativeTitleGadgets(Object *obj, struct MUI_WindowData *data)
         FreeClass(data->wd_TitleImageClass);
         data->wd_TitleImageClass = NULL;
     }
+    data->wd_TitleGadgetCount = 0;
     data->wd_TitleMinWidth = 0;
 }
 #endif
@@ -1318,7 +1400,7 @@ static void UndisplayWindow(Object *obj, struct MUI_WindowData *data)
 
     if (prefssnap)
     {
-        DoMethod(obj, MUIM_Window_Snapshot, 1);
+        ZuneRememberWindowPosition(obj);
     }
 
 
@@ -2458,7 +2540,6 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
         break;
 
     case IDCMP_MOUSEBUTTONS:
-        DoMethod(oWin, MUIM_Window_Snapshot, 0);
         KillHelpBubble(data, oWin, TRUE);
         is_handled = FALSE;
         break;
@@ -3122,10 +3203,10 @@ void _zune_window_message(struct IntuiMessage *imsg)
 #ifdef ZUNE68_GCC_NATIVE
             if (data->wd_TitleGadgets && imsg->IAddress)
             {
-                if (imsg->IAddress == data->wd_TitleGadgets[0].gadget)
-                    action = MUIV_Window_Button_MUI;
-                else if (imsg->IAddress == data->wd_TitleGadgets[1].gadget)
-                    action = MUIV_Window_Button_Iconify;
+                ULONG i;
+                for (i = 0; i < data->wd_TitleGadgetCount; i++)
+                    if (imsg->IAddress == data->wd_TitleGadgets[i].gadget)
+                        action = NativeTitleActions[i];
             }
 #elif defined(__AROS__)
             if (imsg->IAddress)
@@ -3139,12 +3220,27 @@ void _zune_window_message(struct IntuiMessage *imsg)
             if (action)
             {
                 Object *app = _app(oWin);
+                ULONG seconds = imsg->Seconds, micros = imsg->Micros;
                 /* Iconification can close this window and free its gadgets. */
                 ReplyMsg((struct Message *)imsg);
                 if (action == MUIV_Window_Button_MUI)
                     DoMethod(app, MUIM_Application_OpenConfigWindow);
-                else
+                else if (action == MUIV_Window_Button_Iconify)
                     set(app, MUIA_Application_Iconified, TRUE);
+#ifdef ZUNE68_GCC_NATIVE
+                else if (action == MUIV_Window_Button_Snapshot)
+                {
+                    BOOL undo = data->wd_SnapshotClick && DoubleClick(
+                        data->wd_SnapshotSeconds, data->wd_SnapshotMicros,
+                        seconds, micros);
+                    data->wd_SnapshotClick = !undo;
+                    data->wd_SnapshotSeconds = seconds;
+                    data->wd_SnapshotMicros = micros;
+                    DoMethod(oWin, MUIM_Window_Snapshot, !undo);
+                }
+                else if (action == MUIV_Window_Button_Popup)
+                    NativeTitlePopup(oWin, data);
+#endif
             }
             else
                 HandleInputEvent(oWin, data, imsg);
@@ -5349,74 +5445,109 @@ IPTR Window__MUIM_ActionIconify(struct IClass *cl, Object *obj, Msg msg)
 }
 
 
-/* Loads ENV: prefs, add a Window_ID chunk in the MUIW chunk, if no MUIW chunk
- * then create it at the same level as MUIC chunk, save prefs.
- * Do the same for ENVARC:
- * MUIW chunk layout:
- * 'MUIW'
- * 00 00 00 30 (chunk length for a single window, 0x30L big endian)
- * 'this window ID'
- * 00 00 00 28
- * xx xx yy yy  (X, Y)
- * ww ww hh hh  (Width, Height)
- * ax ax ay ay  (AltX, AltY)
- * aw aw ah ah  (AltWidth, AltHeight)
- * 00 00 00 00  (???)
- * 00 00 00 00
- * 00 00 00 00
- * 00 00 00 00
- * 00 01 00 00
- * 00 00 00 00
- */
-static void RememberWindowPosition(Object *winobj, ULONG id)
+/* Automatic remember-on-exit updates memory only. Explicit snapshots also
+ * update the application's preferences on disk. */
+void ZuneRememberWindowPosition(Object *obj)
 {
-    if (!id)
-        return;
+    struct MUI_WindowData *data = muiWindowData(obj);
+    struct Window *w = data->wd_RenderInfo.mri_Window;
+    struct windowpos pos = {0};
+    if (!data->wd_ID || !w) return;
+    pos.id = data->wd_ID;
+    pos.x1 = w->LeftEdge; pos.y1 = w->TopEdge;
+    pos.w1 = w->GZZWidth; pos.h1 = w->GZZHeight;
+    set(_app(obj), MUIA_Application_SetWinPos, &pos);
 }
 
-/* Loads ENV: prefs, remove our Window_ID chunk from the MUIW chunk,
- * save prefs.
- * Do the same for ENVARC:
- * This function shouldn't really be in window.c, but rather in a file dealing
- * with prefs file stuff.
- */
-static void ForgetWindowPosition(Object *winobj, ULONG id)
+#ifdef ZUNE68_GCC_NATIVE
+/* Edit only this ID in each saved position table. In particular, Save must
+ * not copy session-only appearance preferences from ENV into ENVARC. */
+static void SaveWindowSnapshot(Object *obj, ULONG id, BOOL remember)
 {
-    if (!id)
-        return;
+    Object *app = _app(obj), *config;
+    CONST_STRPTR base = NULL;
+    struct windowpos *current = NULL;
+    struct {
+        ULONG size;
+        struct windowpos entries[MAXWINS];
+    } *positions;
+    int file;
+    get(app, MUIA_Application_Base, &base);
+    if (!base || !*base) return;
+    set(app, MUIA_Application_SearchWinId, id);
+    get(app, MUIA_Application_GetWinPos, &current);
+    if (remember && !current) return;
+    positions = AllocVec(sizeof(*positions), MEMF_PUBLIC | MEMF_CLEAR);
+    config = MUI_NewObject(MUIC_Configdata, TAG_DONE);
+    if (!positions || !config) goto done;
+    for (file = 0; file < 2; file++)
+    {
+        char path[256];
+        ULONG *saved, bytes = 0, count = 0, i;
+        if (snprintf(path, sizeof(path), "%s:zune/%s.prefs",
+                file ? "ENVARC" : "ENV", base) >= sizeof(path)) continue;
+        BPTR existing = Lock(path, SHARED_LOCK);
+        if (existing) UnLock(existing);
+        DoMethod(config, MUIM_Dataspace_Clear);
+        if (!DoMethod(config, MUIM_Configdata_Load, path) && existing)
+            continue; /* Never replace an existing file that could not be read. */
+        saved = (ULONG *)DoMethod(config, MUIM_Dataspace_Get,
+            MUICFG_WindowPos, &bytes);
+        if (saved)
+        {
+            if (bytes < sizeof(ULONG) || bytes > sizeof(*positions) ||
+                *saved != bytes ||
+                (bytes - sizeof(ULONG)) % sizeof(struct windowpos))
+                continue; /* Preserve malformed data rather than reading past it. */
+            count = (bytes - sizeof(ULONG)) / sizeof(struct windowpos);
+            CopyMem(saved + 1, positions->entries,
+                count * sizeof(struct windowpos));
+        }
+        for (i = 0; i < count; i++)
+            if (positions->entries[i].id == id) break;
+        if (remember)
+        {
+            if (i == count && count >= MAXWINS - 1) continue;
+            positions->entries[i] = *current;
+            if (i == count) count++;
+        }
+        else if (i < count)
+        {
+            memmove(&positions->entries[i], &positions->entries[i + 1],
+                (count - i - 1) * sizeof(struct windowpos));
+            count--;
+        }
+        positions->size = sizeof(ULONG) + count * sizeof(struct windowpos);
+        if (count)
+            DoMethod(config, MUIM_Dataspace_Add, positions, positions->size,
+                MUICFG_WindowPos);
+        else
+            DoMethod(config, MUIM_Dataspace_Remove, MUICFG_WindowPos);
+        DoMethod(config, MUIM_Configdata_Save, path);
+    }
+done:
+    if (config) MUI_DisposeObject(config);
+    FreeVec(positions);
 }
+#endif
 
-/**************************************************************************
- MUIM_Window_Snapshot
-**************************************************************************/
 IPTR Window__MUIM_Snapshot(struct IClass *cl, Object *obj,
     struct MUIP_Window_Snapshot *msg)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
-    struct windowpos winp;
-    struct Window *w;
-
-    winp.id = data->wd_ID;
-    w = data->wd_RenderInfo.mri_Window;
-    if (w)
-    {
-        winp.x1 = w->LeftEdge;
-        winp.y1 = w->TopEdge;
-        winp.w1 = w->GZZWidth;
-        winp.h1 = w->GZZHeight;
-        winp.x2 = 0;
-        winp.x2 = 0;
-        winp.w2 = 0;
-        winp.h2 = 0;            //to do save alt dims
-
-        set(_app(obj), MUIA_Application_SetWinPos, &winp);
-    }
-
+    struct windowpos empty = {0};
+    if (!data->wd_ID || !muiGlobalInfo(obj) || !_app(obj)) return FALSE;
     if (msg->flags)
-        RememberWindowPosition(obj, data->wd_ID);
+        ZuneRememberWindowPosition(obj);
     else
-        ForgetWindowPosition(obj, data->wd_ID);
-    return 1;
+    {
+        empty.id = data->wd_ID;
+        set(_app(obj), MUIA_Application_SetWinPos, &empty);
+    }
+#ifdef ZUNE68_GCC_NATIVE
+    SaveWindowSnapshot(obj, data->wd_ID, msg->flags != 0);
+#endif
+    return TRUE;
 }
 
 /**************************************************************************

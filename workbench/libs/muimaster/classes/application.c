@@ -899,8 +899,8 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
              * by the application before disposing it (e.g. FryingPan) are
              * already snapshotted in UndisplayWindow, but apps that just
              * dispose the application with its windows still open (e.g.
-             * iGame) would otherwise lose their position. MUIM_Window_
-             * Snapshot stores the position in the app's winpos array,
+             * iGame) would otherwise lose their position. The internal
+             * remember helper stores the position in the app's winpos array,
              * which Configdata_SetWindowPos re-adds during Save.
              */
             {
@@ -913,7 +913,7 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
                 {
                     cstate = (Object *) children->mlh_Head;
                     while ((child = NextObject(&cstate)))
-                        DoMethod(child, MUIM_Window_Snapshot, 1);
+                        ZuneRememberWindowPosition(child);
                 }
             }
 
@@ -1142,6 +1142,19 @@ static IPTR Application__OM_SET(struct IClass *cl, Object *obj,
                 //kprintf("SetWinPos %d %d %d %d %d\n", winp->id, winp->x1,
                 //    winp->y1, winp->w1, winp->h1);
                 int i;
+                if (!winp->id) break;
+                if (!winp->w1)
+                {
+                    for (i = 0; i < MAXWINS - 1 && data->winpos[i].w1; i++)
+                        if (data->winpos[i].id == winp->id)
+                        {
+                            memmove(&data->winpos[i], &data->winpos[i + 1],
+                                (MAXWINS - i - 1) * sizeof(*winp));
+                            memset(&data->winpos[MAXWINS - 1], 0, sizeof(*winp));
+                            break;
+                        }
+                    break;
+                }
                 for (i = 0; i < MAXWINS - 1; i++)
                 {
                     if (data->winpos[i].w1)

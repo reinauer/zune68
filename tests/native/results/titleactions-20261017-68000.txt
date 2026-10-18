@@ -1,0 +1,103 @@
+starting title actions
+library opened
+screen opened
+PASS detached window snapshot rejected
+preparing mask 0
+prefs saved
+mask=0 count=0
+PASS title gadget mask
+preparing mask 1
+prefs saved
+mask=1 count=1
+PASS title gadget mask
+preparing mask 2
+prefs saved
+mask=2 count=1
+PASS title gadget mask
+preparing mask 3
+prefs saved
+mask=3 count=2
+PASS title gadget mask
+preparing mask 4
+prefs saved
+mask=4 count=1
+PASS title gadget mask
+preparing mask 5
+prefs saved
+mask=5 count=2
+PASS title gadget mask
+preparing mask 6
+prefs saved
+mask=6 count=2
+PASS title gadget mask
+preparing mask 7
+prefs saved
+mask=7 count=3
+PASS title gadget mask
+preparing mask 8
+prefs saved
+mask=8 count=1
+PASS title gadget mask
+preparing mask 9
+prefs saved
+mask=9 count=2
+PASS title gadget mask
+preparing mask 10
+prefs saved
+mask=10 count=2
+PASS title gadget mask
+preparing mask 11
+prefs saved
+mask=11 count=3
+PASS title gadget mask
+preparing mask 12
+prefs saved
+mask=12 count=2
+PASS title gadget mask
+preparing mask 13
+prefs saved
+mask=13 count=3
+PASS title gadget mask
+preparing mask 14
+prefs saved
+mask=14 count=3
+PASS title gadget mask
+preparing mask 15
+prefs saved
+mask=15 count=4
+PASS title gadget mask
+PASS snapshot disabled without window ID
+PASS snapshot rejects missing ID
+PASS all four gadgets
+PASS preserved independent appearance prefs
+PASS preserved independent appearance prefs
+PASS other window saved
+PASS gadget message replied
+PASS preserved independent appearance prefs
+PASS preserved independent appearance prefs
+PASS snapshot persisted to ENV and ENVARC
+PASS gadget message replied
+PASS preserved independent appearance prefs
+PASS preserved independent appearance prefs
+PASS double click unsnapshots both files
+PASS unsnapshot removed live position
+PASS preserved independent appearance prefs
+PASS preserved independent appearance prefs
+PASS unsnapshot preserves other window
+PASS gadget message replied
+PASS popup window opened
+PASS gadget message replied
+PASS popup window opened
+PASS preserved independent appearance prefs
+PASS popup snapshot action
+PASS gadget message replied
+PASS popup window opened
+PASS preserved independent appearance prefs
+PASS popup unsnapshot action
+PASS gadget message replied
+PASS popup parent close
+PASS snapshot restored by new application
+PASS unsnapshot restores application defaults
+PASS malformed position table preserved
+failures=0 rc=0
+ALLDONE

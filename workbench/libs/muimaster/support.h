@@ -71,6 +71,7 @@ struct ZuneWindowGuard
     struct IntuiMessage *menu_message;
     BOOL closed;
 };
+void ZuneRememberWindowPosition(Object *window);
 void ZuneWatchWindow(Object *window, struct ZuneWindowGuard *guard);
 void ZuneUnwatchWindow(Object *window, struct ZuneWindowGuard *guard);
 
