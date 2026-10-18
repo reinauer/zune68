@@ -14,6 +14,9 @@
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/intuition.h>
+#include <proto/graphics.h>
+#include <graphics/displayinfo.h>
+#include <graphics/modeid.h>
 #include <proto/timer.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -203,11 +206,31 @@ int main(int argc, char **argv)
     if (argc == 2 && (!strcmp(argv[1], "screen") || fixed_geometry))
     {
         benchmark_screen = OpenScreenTags(NULL, SA_Width, 640,
-            SA_Height, fixed_geometry ? 480 : 256, SA_Depth, 2, TAG_DONE);
+            SA_Height, fixed_geometry ? 480 : 256, SA_Depth, 2,
+            SA_DisplayID, fixed_geometry ? HIRESLACE_KEY : HIRES_KEY,
+            TAG_DONE);
         if (!benchmark_screen) goto done;
         printf("screen=%dx%d depth=%d repetitions=%d\n",
             benchmark_screen->Width, benchmark_screen->Height,
             benchmark_screen->RastPort.BitMap->Depth, REPS);
+        {
+            struct DimensionInfo dims = {0};
+            ULONG mode = GetVPModeID(&benchmark_screen->ViewPort);
+            if (!GetDisplayInfoData(NULL, (UBYTE *)&dims, sizeof(dims),
+                                   DTAG_DIMS, mode))
+                goto done;
+            printf("display-mode=%08lx nominal=%dx%d\n", mode,
+                dims.Nominal.MaxX - dims.Nominal.MinX + 1,
+                dims.Nominal.MaxY - dims.Nominal.MinY + 1);
+            if (benchmark_screen->Width >
+                    dims.Nominal.MaxX - dims.Nominal.MinX + 1 ||
+                benchmark_screen->Height >
+                    dims.Nominal.MaxY - dims.Nominal.MinY + 1)
+            {
+                puts("screen exceeds display dimensions");
+                goto done;
+            }
+        }
     }
 
     if (argc > 2)
@@ -273,6 +296,15 @@ int main(int argc, char **argv)
         get(root, MUIA_Height, &height);
         get(list, MUIA_List_Visible, &visible);
         if (!native) goto done;
+        printf("window-position=%d,%d\n", native->LeftEdge, native->TopEdge);
+        if (fixed_geometry &&
+            (native->LeftEdge < 0 || native->TopEdge < 0 ||
+             native->LeftEdge + native->Width > benchmark_screen->Width ||
+             native->TopEdge + native->Height > benchmark_screen->Height))
+        {
+            puts("window exceeds screen dimensions");
+            goto done;
+        }
         printf("geometry window=%dx%d root=%lux%lu list-visible=%lu\n",
             native->Width, native->Height, (unsigned long)width,
             (unsigned long)height, (unsigned long)visible);
