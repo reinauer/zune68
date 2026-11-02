@@ -98,6 +98,8 @@ struct MUI_StringData
     UWORD TiWordWrap;
     UBYTE TiStyles;
     UBYTE TiFont;
+    LONG MlTopLine;             /* Multiline: first visible line */
+    LONG MlLeftCol;             /* Multiline: first visible column */
 };
 
 #define MSDF_ADVANCEONCR    (1<<0)
@@ -288,8 +290,65 @@ static BOOL Buffer_SetNewContents(struct MUI_StringData *data,
     if (data->BufferPos > data->NumChars)
         data->BufferPos = data->NumChars;
     data->DispPos = 0;
+    data->MlTopLine = data->MlLeftCol = 0;
     data->AckBuffer = data->Buffer;
     return TRUE;
+}
+
+/**************************************************************************
+ Multiline: lines end at '\n'. Columns are character counts.
+**************************************************************************/
+#define MULTILINE(data) ((data)->msd_Flags & MSDF_MULTILINE)
+
+static LONG Ml_LineStart(struct MUI_StringData *data, LONG pos)
+{
+    while (pos > 0 && data->Buffer[pos - 1] != '\n')
+        pos--;
+    return pos;
+}
+
+static LONG Ml_LineEnd(struct MUI_StringData *data, LONG pos)
+{
+    while (pos < (LONG)data->NumChars && data->Buffer[pos] != '\n')
+        pos++;
+    return pos;
+}
+
+static LONG Ml_LineOf(struct MUI_StringData *data, LONG pos)
+{
+    LONG line = 0, i;
+
+    for (i = 0; i < pos; i++)
+        if (data->Buffer[i] == '\n')
+            line++;
+    return line;
+}
+
+/* Start of a line; lines past the end give the last line */
+static LONG Ml_LinePos(struct MUI_StringData *data, LONG line)
+{
+    LONG pos = 0, end;
+
+    while (line-- > 0 && (end = Ml_LineEnd(data, pos)) < (LONG)data->NumChars)
+        pos = end + 1;
+    return pos;
+}
+
+/* The same column delta lines away, or the nearest line's end */
+static LONG Ml_Vertical(struct MUI_StringData *data, LONG pos, LONG delta)
+{
+    LONG start = Ml_LineStart(data, pos), column = pos - start, end;
+
+    for (; delta < 0 && start > 0; delta++)
+        start = Ml_LineStart(data, start - 1);
+    for (; delta > 0; delta--)
+    {
+        end = Ml_LineEnd(data, start);
+        if (end >= (LONG)data->NumChars)
+            break;
+        start = end + 1;
+    }
+    return MIN(start + column, Ml_LineEnd(data, start));
 }
 
 /**************************************************************************
@@ -1768,6 +1827,100 @@ static VOID TextM(Object *obj, struct MUI_StringData *data,
     //kprintf("\n");
 }
 
+static LONG Ml_Rows(Object *obj)
+{
+    return MAX(1, _mheight(obj) / _font(obj)->tf_YSize);
+}
+
+/* Scroll so that the cursor is visible */
+static void Ml_Scroll(Object *obj, struct MUI_StringData *data)
+{
+    struct RastPort *rp = _rp(obj);
+    LONG rows = Ml_Rows(obj), line = Ml_LineOf(data, data->BufferPos);
+    LONG start = Ml_LineStart(data, data->BufferPos);
+    LONG column = data->BufferPos - start, cell;
+    STRPTR text = data->VisualBuffer + start;
+
+    if (line < data->MlTopLine)
+        data->MlTopLine = line;
+    else if (line >= data->MlTopLine + rows)
+        data->MlTopLine = line - rows + 1;
+
+    SetFont(rp, _font(obj));
+    cell = TextLength(rp, column < Ml_LineEnd(data, start) - start ?
+        text + column : (STRPTR)" ", 1);
+    if (column < data->MlLeftCol)
+        data->MlLeftCol = column;
+    while (data->MlLeftCol < column && TextLength(rp,
+            text + data->MlLeftCol, column - data->MlLeftCol) + cell
+        > _mwidth(obj))
+        data->MlLeftCol++;
+}
+
+/* Buffer position at a point; outside the rows it is in the line beyond */
+static LONG Ml_PosAt(Object *obj, struct MUI_StringData *data, WORD x,
+    WORD y)
+{
+    struct RastPort *rp = _rp(obj);
+    struct TextExtent te;
+    LONG ysize = _font(obj)->tf_YSize, row, start, end, from;
+
+    row = y < _mtop(obj) ? -1 : (y - _mtop(obj)) / ysize;
+    start = Ml_LinePos(data, MAX(0, data->MlTopLine + row));
+    end = Ml_LineEnd(data, start);
+    from = MIN(start + data->MlLeftCol, end);
+    if (x <= _mleft(obj))
+        return from;
+    SetFont(rp, _font(obj));
+    return from + TextFit(rp, data->VisualBuffer + from, end - from, &te,
+        NULL, 1, x - _mleft(obj), ysize);
+}
+
+static void Ml_Draw(Object *obj, struct MUI_StringData *data,
+    ULONG textpen)
+{
+    struct RastPort *rp = _rp(obj);
+    struct TextExtent te;
+    LONG ysize = _font(obj)->tf_YSize, rows = Ml_Rows(obj), row;
+    LONG markstart = 0, markstop = 0;
+    LONG pos = Ml_LinePos(data, data->MlTopLine);
+    BOOL marked = (data->msd_Flags & MSDF_MARKING)
+        && Buffer_GetMarkedRange(data, &markstart, &markstop);
+    STRPTR text = data->VisualBuffer;
+
+    for (row = 0; row < rows; row++)
+    {
+        LONG end = Ml_LineEnd(data, pos);
+        LONG from = MIN(pos + data->MlLeftCol, end), count;
+        WORD top = _mtop(obj) + row * ysize + rp->Font->tf_Baseline;
+
+        count = TextFit(rp, text + from, end - from, &te, NULL, 1,
+            _mwidth(obj), ysize);
+        Move(rp, _mleft(obj), top);
+        if (marked)
+            TextM(obj, data, text + from, count, markstart - from,
+                markstop - from);
+        else
+        {
+            SetABPenDrMd(rp, textpen, _pens(obj)[MPEN_BACKGROUND], JAM1);
+            Text(rp, text + from, count);
+            if (data->is_active && (LONG)data->BufferPos >= from
+                && (LONG)data->BufferPos <= end)
+            {
+                SetABPenDrMd(rp, data->active_text.p_pen,
+                    data->cursor.p_pen, JAM2);
+                Move(rp, _mleft(obj) + TextLength(rp, text + from,
+                    data->BufferPos - from), top);
+                Text(rp, (LONG)data->BufferPos < end ?
+                    text + data->BufferPos : (STRPTR)" ", 1);
+            }
+        }
+        if (end >= (LONG)data->NumChars)
+            break;
+        pos = end + 1;
+    }
+}
+
 /**************************************************************************
  MUIM_Draw
 **************************************************************************/
@@ -1831,13 +1984,25 @@ IPTR String__MUIM_Draw(struct IClass *cl, Object *obj,
     /* Update the stringdata in case of user change */
     UpdateStringData(cl, obj);
 
+    if (MULTILINE(data))
+    {
+        Ml_Scroll(obj, data);
+        if (msg->flags & MADF_DRAWUPDATE)
+            DoMethod(obj, MUIM_DrawBackground, _mleft(obj), _mtop(obj),
+                _mwidth(obj), _mheight(obj), _mleft(obj), _mtop(obj), 0);
+        Ml_Draw(obj, data, textpen);
+        data->msd_RedrawReason = NO_REASON;
+        CleanVisualBuffer(data);
+        return TRUE;
+    }
+
     /* Update the DispPos and DispCount fields so that the gadget renders
      * properly */
     UpdateDisp(cl, obj);
 
-    text_top = _mtop(obj) + _rp(obj)->Font->tf_Baseline;
-    if (!(data->msd_Flags & MSDF_MULTILINE))
-        text_top += (_mheight(obj) - _rp(obj)->Font->tf_YSize) >> 1;
+    text_top = _mtop(obj)
+        + ((_mheight(obj) - _rp(obj)->Font->tf_YSize) >> 1)
+        + _rp(obj)->Font->tf_Baseline;
 
     dispstr = data->VisualBuffer + data->DispPos;
     dispstrlen = MIN(data->DispCount, data->NumChars - data->DispPos);
@@ -1931,7 +2096,8 @@ static int String_HandleVanillakey(struct IClass *cl, Object *obj,
 
             if ((qual & IEQUALIFIER_LSHIFT) || (qual & IEQUALIFIER_RSHIFT))
             {
-                shift = data->BufferPos;
+                shift = data->BufferPos - (MULTILINE(data) ?
+                    Ml_LineStart(data, data->BufferPos) : 0);
                 data->msd_RedrawReason = NEW_CONTENTS;
             }
             else
@@ -1959,15 +2125,9 @@ static int String_HandleVanillakey(struct IClass *cl, Object *obj,
             return 1;
         }
 
-        if (data->BufferPos > 0)
+        if (Buffer_Delete(data, MULTILINE(data) ?
+                Ml_LineStart(data, data->BufferPos) : 0, data->BufferPos))
         {
-            D(bug("[MUI:String] HandleVanillakey: 'Ctrl-U' count=%d pos=%d\n",
-                data->NumChars, data->BufferPos));
-            memmove(&data->Buffer[0],
-                &data->Buffer[data->BufferPos],
-                data->NumChars - data->BufferPos + 1);
-            data->NumChars -= data->BufferPos;
-            data->BufferPos = 0;
             data->msd_RedrawReason = NEW_CONTENTS;
             return 1;
         }
@@ -1980,8 +2140,8 @@ static int String_HandleVanillakey(struct IClass *cl, Object *obj,
         {
             if ((qual & IEQUALIFIER_LSHIFT) || (qual & IEQUALIFIER_RSHIFT))
             {
-                data->Buffer[data->BufferPos] = 0;
-                data->NumChars = data->BufferPos;
+                Buffer_Delete(data, data->BufferPos, MULTILINE(data) ?
+                    Ml_LineEnd(data, data->BufferPos) : data->NumChars);
                 data->msd_RedrawReason = NEW_CONTENTS;
             }
             else
@@ -2006,8 +2166,8 @@ static int String_HandleVanillakey(struct IClass *cl, Object *obj,
     {
         if (!Buffer_KillMarked(data))
         {
-            data->Buffer[data->BufferPos] = 0;
-            data->NumChars = data->BufferPos;
+            Buffer_Delete(data, data->BufferPos, MULTILINE(data) ?
+                Ml_LineEnd(data, data->BufferPos) : data->NumChars);
             data->msd_RedrawReason = NEW_CONTENTS;
         }
         return 1;
@@ -2121,6 +2281,17 @@ static int String_HandleVanillakey(struct IClass *cl, Object *obj,
         }
     }
 
+    if (doinput && MULTILINE(data) && (code == '\r' || code == '\n'))
+    {
+        Buffer_KillMarked(data);
+        if (Buffer_AddChar(data, '\n'))
+        {
+            data->msd_RedrawReason = NEW_CONTENTS;
+            return 2;
+        }
+        return 0;
+    }
+
     if (doinput)
     {
         struct Locale *locale = OpenLocale(NULL);
@@ -2147,7 +2318,8 @@ static int String_HandleVanillakey(struct IClass *cl, Object *obj,
  Cursor movement of the Textinput Do* methods. Returns whether the
  object needs redrawing.
 **************************************************************************/
-static int String_CursorKey(struct MUI_StringData *data, LONG muikey)
+static int String_CursorKey(struct MUI_StringData *data, LONG muikey,
+    LONG target)
 {
     BOOL kills = (data->msd_Flags & MSDF_MARKING)
         && !(data->msd_Flags & MSDF_KEYMARKING);
@@ -2224,7 +2396,8 @@ static int String_CursorKey(struct MUI_StringData *data, LONG muikey)
         }
         break;
     case MUIKEY_LINESTART:
-        data->BufferPos = 0;
+        data->BufferPos = MULTILINE(data) ?
+            Ml_LineStart(data, data->BufferPos) : 0;
         update = 1;
         if (kills)
         {
@@ -2233,7 +2406,17 @@ static int String_CursorKey(struct MUI_StringData *data, LONG muikey)
         break;
 
     case MUIKEY_LINEEND:
-        data->BufferPos = data->NumChars;
+        data->BufferPos = MULTILINE(data) ?
+            Ml_LineEnd(data, data->BufferPos) : data->NumChars;
+        update = 1;
+        if (kills)
+        {
+            data->msd_Flags &= ~MSDF_MARKING;
+        }
+        break;
+
+    case MUIKEY_NONE:   /* to target, for multiline movement */
+        data->BufferPos = target;
         update = 1;
         if (kills)
         {
@@ -2362,7 +2545,8 @@ static IPTR String_Textinput(struct IClass *cl, Object *obj, Msg msg)
             UBYTE ch = m->ch;
             int r;
 
-            if (!writable || ch == '\r' || ch == '\n' || ch < 32
+            if (!writable || ((ch == '\r' || ch == '\n' || ch < 32)
+                && !(MULTILINE(data) && (ch == '\r' || ch == '\n')))
                 || ch == 127)
                 return 0;
             if ((data->msd_Flags & MSDF_ISNUMERIC) && !isdigit(ch)
@@ -2413,11 +2597,23 @@ static IPTR String_Textinput(struct IClass *cl, Object *obj, Msg msg)
     case MUIM_Textinput_DoCutLine:
         if (!writable)
             return 0;
-        if (msg->MethodID == MUIM_Textinput_DoCutLine && data->NumChars
+        start = 0;
+        stop = data->NumChars;
+        if (MULTILINE(data))
+        {
+            /* The current line with its newline */
+            start = Ml_LineStart(data, data->BufferPos);
+            stop = Ml_LineEnd(data, data->BufferPos);
+            if (stop < (LONG)data->NumChars)
+                stop++;
+            else if (start > 0)
+                start--;
+        }
+        if (msg->MethodID == MUIM_Textinput_DoCutLine && stop > start
             && !data->msd_useSecret)
-            clipboard_write_text(data->Buffer, data->NumChars);
+            clipboard_write_text(data->Buffer + start, stop - start);
         data->msd_Flags &= ~(MSDF_MARKING | MSDF_TIMARK);
-        edited = Buffer_Delete(data, 0, data->NumChars);
+        edited = Buffer_Delete(data, start, stop);
         break;
 
     case MUIM_Textinput_DoCopy:
@@ -2466,24 +2662,44 @@ static IPTR String_Textinput(struct IClass *cl, Object *obj, Msg msg)
         break;
 
     case MUIM_Textinput_DoLeft:
-        moved = String_CursorKey(data, MUIKEY_LEFT);
+        moved = String_CursorKey(data, MUIKEY_LEFT, 0);
         break;
     case MUIM_Textinput_DoRight:
-        moved = String_CursorKey(data, MUIKEY_RIGHT);
+        moved = String_CursorKey(data, MUIKEY_RIGHT, 0);
         break;
     case MUIM_Textinput_DoPrevWord:
-        moved = String_CursorKey(data, MUIKEY_WORDLEFT);
+        moved = String_CursorKey(data, MUIKEY_WORDLEFT, 0);
         break;
     case MUIM_Textinput_DoNextWord:
-        moved = String_CursorKey(data, MUIKEY_WORDRIGHT);
+        moved = String_CursorKey(data, MUIKEY_WORDRIGHT, 0);
         break;
     case MUIM_Textinput_DoLineStart:
-    case MUIM_Textinput_DoTop:
-        moved = String_CursorKey(data, MUIKEY_LINESTART);
+        moved = String_CursorKey(data, MUIKEY_LINESTART, 0);
         break;
     case MUIM_Textinput_DoLineEnd:
+        moved = String_CursorKey(data, MUIKEY_LINEEND, 0);
+        break;
+    case MUIM_Textinput_DoTop:
+        moved = String_CursorKey(data, MUIKEY_NONE, 0);
+        break;
     case MUIM_Textinput_DoBottom:
-        moved = String_CursorKey(data, MUIKEY_LINEEND);
+        moved = String_CursorKey(data, MUIKEY_NONE, data->NumChars);
+        break;
+
+    case MUIM_Textinput_DoUp:
+    case MUIM_Textinput_DoDown:
+    case MUIM_Textinput_DoPageUp:
+    case MUIM_Textinput_DoPageDown:
+        if (!MULTILINE(data))
+            return 0;
+        start = msg->MethodID == MUIM_Textinput_DoUp ||
+            msg->MethodID == MUIM_Textinput_DoDown ? 1 :
+            MAX(1, Ml_Rows(obj) - 1);
+        if (msg->MethodID == MUIM_Textinput_DoUp ||
+            msg->MethodID == MUIM_Textinput_DoPageUp)
+            start = -start;
+        moved = String_CursorKey(data, MUIKEY_NONE,
+            Ml_Vertical(data, data->BufferPos, start));
         break;
 
     case MUIM_Textinput_DoToggleCase:
@@ -2636,6 +2852,8 @@ static ULONG String_KeyToTextinput(Object *obj, struct MUI_StringData *data,
         method = MUIM_Textinput_DoLineEnd;
         break;
     case '\r':
+        if (MULTILINE(data))
+            return Ti_Call(obj, data, MUIM_Textinput_HandleChar, '\n');
         /* Acknowledge follows from MUIKEY_PRESS */
         Ti_Call(obj, data, MUIM_Textinput_HandleChar, code);
         *handled = FALSE;
@@ -2741,7 +2959,22 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     {
         retval = MUI_EventHandlerRC_Eat;
 
-        switch (muikey)
+        /* Vertical movement within a Multiline String */
+        if (MULTILINE(data) && muikey >= MUIKEY_UP && muikey <= MUIKEY_BOTTOM)
+        {
+            static const ULONG methods[] = {
+                MUIM_Textinput_DoUp, MUIM_Textinput_DoDown,
+                MUIM_Textinput_DoPageUp, MUIM_Textinput_DoPageDown,
+                MUIM_Textinput_DoTop, MUIM_Textinput_DoBottom
+            };
+            ULONG pending = Ti_Call(obj, data,
+                methods[muikey - MUIKEY_UP], 0);
+            if (pending & TIP_EDITED)
+                edited = TRUE;
+            if (pending)
+                update = 1;
+        }
+        else switch (muikey)
         {
         case MUIKEY_LEFT:
         case MUIKEY_RIGHT:
@@ -2803,7 +3036,8 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                     MUIA_List_Active, MUIV_List_Active_Bottom);
             break;
         case MUIKEY_PRESS:
-            acknowledge = TRUE;
+            /* Return is a newline in a Multiline String */
+            acknowledge = !MULTILINE(data);
             break;
 
         case MUIKEY_WINDOW_CLOSE:
@@ -2892,8 +3126,18 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                     text_right = GetTextRight(cl, obj);
                     CleanVisualBuffer(data);
 
+                    if (MULTILINE(data))
+                    {
+                        LONG newpos = Ml_PosAt(obj, data, x, y);
+
+                        if ((LONG)data->BufferPos != newpos)
+                        {
+                            data->BufferPos = newpos;
+                            update = 1;
+                        }
+                    }
                     /* Check if mouseclick is inside displayed text */
-                    if ((x >= text_left) && (x <= text_right))
+                    else if ((x >= text_left) && (x <= text_right))
                     {
                         /* Find new cursor pos. */
                         struct TextExtent te;
@@ -2995,15 +3239,15 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                 CleanVisualBuffer(data);
 
                 /* Check if mouseclick is inside displayed text */
-                if ((x >= text_left) && (x <= text_right))
+                if (MULTILINE(data) || ((x >= text_left) && (x <= text_right)))
                 {
                     /* Find new cursor pos. */
                     struct TextExtent te;
                     ULONG newpos;
                     STRPTR dispstr = data->Buffer + data->DispPos;
 
-                    newpos = data->DispPos
-                        + TextFit(_rp(obj), dispstr,
+                    newpos = MULTILINE(data) ? Ml_PosAt(obj, data, x, y) :
+                        data->DispPos + TextFit(_rp(obj), dispstr,
                         data->NumChars - data->DispPos, &te, NULL, 1,
                         x - text_left, _rp(obj)->Font->tf_YSize);
 
