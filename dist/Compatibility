@@ -195,7 +195,14 @@ This compiles the same client using the original public definitions and
 regenerates only the obsolete GCC inline assembly from that SDK's FD and
 prototypes. It leaves the original SDK untouched and does not redistribute
 it. The outputs are build/muimaster/sdk-check/compatcheck-mui38 and
-compatcheck-mui39, respectively.
+compatcheck-mui39, respectively. The MUI 5 SDK also works as the 3.9
+SDK.
+
+It then compares the value of every identifier that the SDK's
+libraries/mui.h and mui/*_mcc.h define and Zune68 also defines, and
+fails if any differ. Image and frame counts differ by design, so they
+are listed but not counted as errors. tools/check_sdk_ids.py --missing
+lists the SDK identifiers that Zune68 does not define.
 
 Run that binary in separate MUI and Zune68 installations, then compare:
 

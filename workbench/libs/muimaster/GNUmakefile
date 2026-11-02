@@ -105,7 +105,8 @@ MUI_SDK_LABEL = mui$(subst .,,$(MUI_SDK_VERSION))
 check-sdk: $(BUILD)/compatcheck
 	@test -n "$(MUI_SDK)" || { echo 'Set MUI_SDK to the original SDK directory'; exit 1; }
 	$(PYTHON) ../../../tools/check_sdk.py --sdk "$(MUI_SDK)" --release "$(MUI_SDK_VERSION)" \
-	  --output "$(BUILD)/sdk-check" --cc "$(CC)" --sfdc "$(SFDC)" --fd2sfd "$(FD2SFD)"
+	  --output "$(BUILD)/sdk-check" --cc "$(CC)" --sfdc "$(SFDC)" --fd2sfd "$(FD2SFD)" \
+	  --build-include "$(BUILD)/include"
 	$(PYTHON) ../../../tests/check_opentest_stack.py $(BUILD)/compatcheck $(BUILD)/sdk-check/compatcheck-$(MUI_SDK_LABEL)
 
 $(BUILD)/compatcheck: ../../../tests/native/compatcheck.c \
