@@ -1165,8 +1165,11 @@ static void CalcWidths(struct IClass *cl, Object *obj)
             data->entries_maxwidth += data->ci[j].entries_width
                 + data->ci[j].delta + (data->ci[j].bar ? BAR_WIDTH : 0);
 
+    /* Without entries, rows are one line of the list font, so
+     * MUIA_List_Visible counts lines rather than pixels */
     if (!data->entry_maxheight)
-        data->entry_maxheight = 1;
+        data->entry_maxheight =
+            MAX(1, _font(obj)->tf_YSize + data->prefs_linespacing);
 }
 
 /**************************************************************************
