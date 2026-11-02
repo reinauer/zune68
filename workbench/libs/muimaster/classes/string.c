@@ -89,6 +89,15 @@ struct MUI_StringData
     CONST_STRPTR placeholder;
     long long integer64;
     Object *edit_menu;
+    /* Textinput marks are inclusive and independent of the cursor */
+    LONG TiMarkStart;
+    LONG TiMarkEnd;
+    ULONG TiPending;            /* TIP_* collected during input events */
+    LONG TiMinVal;
+    LONG TiMaxVal;
+    UWORD TiWordWrap;
+    UBYTE TiStyles;
+    UBYTE TiFont;
 };
 
 #define MSDF_ADVANCEONCR    (1<<0)
@@ -97,6 +106,23 @@ struct MUI_StringData
 #define MSDF_KEYMARKING            (1<<3)
 #define MSDF_NOINPUT            (1<<4)
 #define MSDF_STAYACTIVE     (1<<5)
+#define MSDF_TIMARK         (1<<6)  /* with MSDF_MARKING: Textinput mark */
+#define MSDF_CHANGED        (1<<7)
+#define MSDF_TINOINPUT      (1<<8)
+#define MSDF_MULTILINE      (1<<9)
+#define MSDF_RESETMARK      (1<<10)
+#define MSDF_ISNUMERIC      (1<<11)
+#define MSDF_INEVENT        (1<<12) /* key input is calling methods */
+#define MSDF_SETMIN         (1<<13)
+#define MSDF_SETMAX         (1<<14)
+#define MSDF_SETVMIN        (1<<15)
+#define MSDF_SETVMAX        (1<<16)
+
+#define TIP_UPDATE 1
+#define TIP_EDITED 2
+
+#define TI_MARKED(data) (((data)->msd_Flags & (MSDF_MARKING | MSDF_TIMARK)) \
+    == (MSDF_MARKING | MSDF_TIMARK))
 
 enum
 {
@@ -374,6 +400,21 @@ static BOOL Buffer_GetMarkedRange(struct MUI_StringData *data, LONG *start,
     LONG markstart = MIN(data->MarkPos, data->NumChars);
     LONG markstop = MIN(data->BufferPos, data->NumChars);
 
+    if (TI_MARKED(data))
+    {
+        markstart = MIN(data->TiMarkStart, data->TiMarkEnd);
+        markstop = MAX(data->TiMarkStart, data->TiMarkEnd);
+        markstart = MIN(markstart, (LONG)data->NumChars);
+        markstop = MIN(markstop + 1, (LONG)data->NumChars);
+        if (markstart >= markstop)
+            return FALSE;
+        if (start)
+            *start = markstart;
+        if (stop)
+            *stop = markstop;
+        return TRUE;
+    }
+
     markstart = MIN(markstart, data->NumChars);
     markstart = MAX(markstart, 0);
 
@@ -442,7 +483,7 @@ static void Buffer_Select(struct MUI_StringData *data, LONG length)
         data->MarkPos = cursor + extent;
     }
     data->MultiClick = 0;
-    data->msd_Flags &= ~(MSDF_MARKING | MSDF_KEYMARKING);
+    data->msd_Flags &= ~(MSDF_MARKING | MSDF_KEYMARKING | MSDF_TIMARK);
     if (data->MarkPos != cursor) data->msd_Flags |= MSDF_MARKING;
     data->msd_RedrawReason = MOVE_CURSOR;
 }
@@ -464,12 +505,15 @@ static BOOL Buffer_KillMarked(struct MUI_StringData *data)
     //kprintf("\nBuffer_KillMarked 1  markpos %d  bufferpos %d  numchars %d\n",
     //    markstart, markstop, data->NumChars);
 
+    BOOL marked;
+
     if (!(data->msd_Flags & MSDF_MARKING))
         return FALSE;
 
-    data->msd_Flags &= ~MSDF_MARKING;
+    marked = Buffer_GetMarkedRange(data, &markstart, &markstop);
+    data->msd_Flags &= ~(MSDF_MARKING | MSDF_TIMARK);
 
-    if (!Buffer_GetMarkedRange(data, &markstart, &markstop))
+    if (!marked)
         return FALSE;
 
     //kprintf("Buffer_KillMarked 2  markstart %d  markstop %d\n",
@@ -493,6 +537,121 @@ static BOOL Buffer_KillMarked(struct MUI_StringData *data)
     data->NumChars -= marklen;
     data->BufferPos = markstart;
 
+    return TRUE;
+}
+
+/* Convert a mouse or keyboard selection into a Textinput mark, which
+ * stays put when the cursor moves. */
+static void Ti_FreezeMark(struct MUI_StringData *data)
+{
+    LONG start, stop;
+
+    if (TI_MARKED(data))
+        return;
+    data->msd_Flags &= ~(MSDF_TIMARK | MSDF_KEYMARKING);
+    if (!(data->msd_Flags & MSDF_MARKING))
+        return;
+    if (Buffer_GetMarkedRange(data, &start, &stop))
+    {
+        data->TiMarkStart = start;
+        data->TiMarkEnd = stop - 1;
+        data->msd_Flags |= MSDF_TIMARK;
+    }
+    else
+        data->msd_Flags &= ~MSDF_MARKING;
+}
+
+/* Inclusive bounds as MUIA_Textinput_MarkStart/End report them */
+static void Ti_GetMark(struct MUI_StringData *data, LONG *start, LONG *end)
+{
+    LONG markstart, markstop;
+
+    if (TI_MARKED(data))
+    {
+        markstart = MIN(data->TiMarkStart, data->TiMarkEnd);
+        markstop = MAX(data->TiMarkStart, data->TiMarkEnd);
+        *start = MIN(markstart, (LONG)data->NumChars);
+        *end = MIN(markstop, (LONG)data->NumChars);
+    }
+    else if ((data->msd_Flags & MSDF_MARKING)
+        && Buffer_GetMarkedRange(data, &markstart, &markstop))
+    {
+        *start = markstart;
+        *end = markstop - 1;
+    }
+    else
+        *start = *end = -1;
+}
+
+/* A negative bound removes the mark. Setting one bound without a mark
+ * marks that single character. Bounds may be given in either order. */
+static void Ti_SetMark(struct MUI_StringData *data, BOOL end, LONG value)
+{
+    if (value < 0)
+    {
+        data->msd_Flags &= ~(MSDF_MARKING | MSDF_KEYMARKING | MSDF_TIMARK);
+        return;
+    }
+    Ti_FreezeMark(data);
+    if (!TI_MARKED(data))
+    {
+        data->TiMarkStart = data->TiMarkEnd = value;
+        data->msd_Flags |= MSDF_MARKING | MSDF_TIMARK;
+    }
+    else if (end)
+        data->TiMarkEnd = value;
+    else
+        data->TiMarkStart = value;
+}
+
+static void Buffer_SetSecret(struct MUI_StringData *data, BOOL secret)
+{
+    if (secret && !data->SecBuffer)
+    {
+        data->SecBuffer = AllocVec(data->BufferSize, MEMF_ANY);
+        if (!data->SecBuffer)
+            return;
+        memset(data->SecBuffer, SECRET_CHAR, data->BufferSize - 1);
+    }
+    data->msd_useSecret = secret;
+    data->VisualBuffer = secret ? data->SecBuffer : data->Buffer;
+}
+
+/* Insert up to len characters at pos; returns the number inserted */
+static LONG Buffer_InsertText(struct MUI_StringData *data, ULONG pos,
+    CONST_STRPTR text, LONG len)
+{
+    LONG count = 0;
+
+    if (!text)
+        return 0;
+    while ((len < 0 || count < len) && text[count])
+        count++;
+    count = MIN(count, (LONG)(data->BufferSize - 1 - data->NumChars));
+    if (count <= 0)
+        return 0;
+    pos = MIN(pos, data->NumChars);
+    memmove(&data->Buffer[pos + count], &data->Buffer[pos],
+        data->NumChars - pos + 1);
+    memcpy(&data->Buffer[pos], text, count);
+    data->NumChars += count;
+    return count;
+}
+
+/* Remove the characters from start up to, not including, stop */
+static BOOL Buffer_Delete(struct MUI_StringData *data, ULONG start,
+    ULONG stop)
+{
+    stop = MIN(stop, data->NumChars);
+    if (start >= stop)
+        return FALSE;
+    memmove(&data->Buffer[start], &data->Buffer[stop],
+        data->NumChars - stop + 1);
+    data->NumChars -= stop - start;
+    if (data->BufferPos > stop)
+        data->BufferPos -= stop - start;
+    else if (data->BufferPos > start)
+        data->BufferPos = start;
     return TRUE;
 }
 
@@ -538,6 +697,55 @@ static long long StringParse64(CONST_STRPTR text)
     return negative ? 0ULL - value : value;
 }
 
+/* Textinput attributes that are stored the same way for OM_NEW and
+ * OM_SET. Returns TRUE if the display changes. */
+static BOOL String_SetTextinput(struct MUI_StringData *data,
+    struct TagItem *tag)
+{
+    switch (tag->ti_Tag)
+    {
+    case MUIA_Textinput_MarkStart:
+    case MUIA_Textinput_MarkEnd:
+        Ti_SetMark(data, tag->ti_Tag == MUIA_Textinput_MarkEnd,
+            (LONG)tag->ti_Data);
+        return TRUE;
+    case MUIA_Textinput_Changed:
+        _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_CHANGED);
+        break;
+    case MUIA_Textinput_ResetMarkOnCursor:
+        _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_RESETMARK);
+        break;
+    case MUIA_Textinput_IsNumeric:
+        _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_ISNUMERIC);
+        break;
+    case MUIA_Textinput_MinVal:
+        data->TiMinVal = (LONG)tag->ti_Data;
+        break;
+    case MUIA_Textinput_MaxVal:
+        data->TiMaxVal = (LONG)tag->ti_Data;
+        break;
+    case MUIA_Textinput_WordWrap:
+        data->TiWordWrap = (UWORD)tag->ti_Data;
+        break;
+    case MUIA_Textinput_Styles:
+        data->TiStyles = (UBYTE)tag->ti_Data;
+        break;
+    case MUIA_Textinput_SetMin:
+        _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_SETMIN);
+        break;
+    case MUIA_Textinput_SetMax:
+        _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_SETMAX);
+        break;
+    case MUIA_Textinput_SetVMin:
+        _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_SETVMIN);
+        break;
+    case MUIA_Textinput_SetVMax:
+        _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_SETVMAX);
+        break;
+    }
+    return FALSE;
+}
+
 /**************************************************************************
  OM_NEW
 **************************************************************************/
@@ -547,10 +755,13 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     struct TagItem *tags, *tag;
     CONST_STRPTR str = NULL;
     char integerbuf[22];
+    BOOL fixed = GetTagData(MUIA_Textinput_Font, MUIV_Textinput_Font_Normal,
+        msg->ops_AttrList) == MUIV_Textinput_Font_Fixed;
 
     obj = (Object *) DoSuperNewTags(cl, obj, NULL,
         MUIA_PointerType, MUIV_PointerType_Text,
         MUIA_ContextMenu, 1,
+        fixed ? MUIA_Font : TAG_IGNORE, MUIV_Font_Fixed,
         TAG_MORE, (IPTR) msg->ops_AttrList);
     if (!obj)
         return FALSE;
@@ -560,6 +771,8 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->msd_Align = MUIV_String_Format_Left;
     data->BufferSize = 80;
     data->Columns = -1;
+    data->TiWordWrap = 70;
+    data->TiFont = fixed;
 
     Buffer_SetNewContents(data, "");    /* <-- isn't this pointless? */
 
@@ -573,33 +786,79 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             data->placeholder = (CONST_STRPTR)tag->ti_Data;
             break;
 
+        case MUIA_Textinput_AcceptChars:
         case MUIA_String_Accept:
             data->msd_Accept = (CONST_STRPTR) tag->ti_Data;
             break;
 
+        case MUIA_Textinput_RejectChars:
         case MUIA_String_Reject:
             data->msd_Reject = (CONST_STRPTR) tag->ti_Data;
             break;
 
+        case MUIA_Textinput_AdvanceOnCR:
         case MUIA_String_AdvanceOnCR:
             _handle_bool_tag(data->msd_Flags, tag->ti_Data,
                 MSDF_ADVANCEONCR);
             break;
 
+        case MUIA_Textinput_CursorPos:
         case MUIA_String_BufferPos:
             data->BufferPos = (ULONG) tag->ti_Data;
             break;
 
+        case MUIA_Textinput_AttachedList:
         case MUIA_String_AttachedList:
             data->msd_AttachedList = (Object *) tag->ti_Data;
             break;
 
+        case MUIA_Textinput_Secret:
         case MUIA_String_Secret:
             data->msd_useSecret = (BOOL) tag->ti_Data;
             break;
 
+        case MUIA_Textinput_Contents:
         case MUIA_String_Contents:
             str = (CONST_STRPTR) tag->ti_Data;
+            break;
+
+        case MUIA_Textinput_Editable:
+            _handle_bool_tag(data->msd_Flags, !tag->ti_Data, MSDF_NOINPUT);
+            break;
+
+        case MUIA_Textinput_NoInput:
+            _handle_bool_tag(data->msd_Flags, tag->ti_Data,
+                MSDF_NOINPUT | MSDF_TINOINPUT);
+            break;
+
+        case MUIA_Textinput_RemainActive:
+            _handle_bool_tag(data->msd_Flags, tag->ti_Data,
+                MSDF_STAYACTIVE);
+            break;
+
+        case MUIA_Textinput_Multiline:
+            _handle_bool_tag(data->msd_Flags, tag->ti_Data,
+                MSDF_MULTILINE);
+            break;
+
+        case MUIA_Textinput_Format:
+            data->msd_Align = (LONG) tag->ti_Data;
+            break;
+
+        case MUIA_Textinput_MarkStart:
+        case MUIA_Textinput_MarkEnd:
+        case MUIA_Textinput_Changed:
+        case MUIA_Textinput_ResetMarkOnCursor:
+        case MUIA_Textinput_IsNumeric:
+        case MUIA_Textinput_MinVal:
+        case MUIA_Textinput_MaxVal:
+        case MUIA_Textinput_WordWrap:
+        case MUIA_Textinput_Styles:
+        case MUIA_Textinput_SetMin:
+        case MUIA_Textinput_SetMax:
+        case MUIA_Textinput_SetVMin:
+        case MUIA_Textinput_SetVMax:
+            String_SetTextinput(data, tag);
             break;
 
         case MUIA_String_EditHook:
@@ -618,6 +877,7 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             }
             break;
 
+        case MUIA_Textinput_Integer:
         case MUIA_String_Integer:
             snprintf(integerbuf, 19, "%ld", tag->ti_Data);
             str = integerbuf;
@@ -628,6 +888,7 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 MSDF_LONELYEDITHOOK);
             break;
 
+        case MUIA_Textinput_MaxLen:
         case MUIA_String_MaxLen:
             data->BufferSize = tag->ti_Data;
             if (data->BufferSize < 1)
@@ -661,6 +922,11 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     if (Buffer_Alloc(data))
     {
         Buffer_SetNewContents(data, str);
+        if (data->NumChars)
+            data->msd_Flags |= MSDF_CHANGED;
+        /* Marks given at creation refer to the initial contents */
+        if (data->msd_Flags & MSDF_TIMARK)
+            data->msd_Flags |= MSDF_MARKING;
     }
 
     if (NULL == data->Buffer)
@@ -706,6 +972,9 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     struct MUI_StringData *data = INST_DATA(cl, obj);
     struct TagItem *tags = msg->ops_AttrList;
     struct TagItem *tag;
+    ULONG alias = TAG_IGNORE;
+    IPTR result;
+    BOOL update = FALSE;
 
     while ((tag = NextTagItem(&tags)) != NULL)
     {
@@ -713,11 +982,17 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         {
         case MUIA_Text_Contents: /* MUI5 */
         case MUIA_String_Contents:
+        case MUIA_Textinput_Contents:
             if (Buffer_SetNewContents(data, (STRPTR) tag->ti_Data))
             {
                 data->msd_RedrawReason = NEW_CONTENTS;
-                data->msd_Flags &= ~(MSDF_MARKING | MSDF_KEYMARKING);
+                data->msd_Flags &= ~(MSDF_MARKING | MSDF_KEYMARKING |
+                    MSDF_TIMARK);
+                data->msd_Flags |= MSDF_CHANGED;
                 MUI_Redraw(obj, MADF_DRAWOBJECT);
+                /* Notify both names of the contents */
+                alias = tag->ti_Tag == MUIA_Textinput_Contents ?
+                    MUIA_String_Contents : MUIA_Textinput_Contents;
             }
             else
             {
@@ -726,16 +1001,57 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             }
             break;
 
+        case MUIA_Textinput_AcceptChars:
         case MUIA_String_Accept:
             data->msd_Accept = (CONST_STRPTR) tag->ti_Data;
             break;
 
+        case MUIA_Textinput_RejectChars:
         case MUIA_String_Reject:
             data->msd_Reject = (CONST_STRPTR) tag->ti_Data;
             break;
 
+        case MUIA_Textinput_AttachedList:
         case MUIA_String_AttachedList:
             data->msd_AttachedList = (Object *) tag->ti_Data;
+            break;
+
+        case MUIA_Textinput_Secret:
+        case MUIA_String_Secret:
+            if ((BOOL)!!tag->ti_Data != (BOOL)!!data->msd_useSecret)
+            {
+                Buffer_SetSecret(data, !!tag->ti_Data);
+                data->msd_RedrawReason = NEW_CONTENTS;
+                MUI_Redraw(obj, MADF_DRAWUPDATE);
+            }
+            break;
+
+        case MUIA_Textinput_CursorPos:
+            /* Moving the cursor keeps the Textinput mark */
+            Ti_FreezeMark(data);
+            data->BufferPos = MIN((ULONG)tag->ti_Data, data->NumChars);
+            data->msd_RedrawReason = MOVE_CURSOR;
+            update = TRUE;
+            break;
+
+        case MUIA_Textinput_Editable:
+            if (tag->ti_Data && !(data->msd_Flags & MSDF_TINOINPUT))
+                data->msd_Flags &= ~MSDF_NOINPUT;
+            else if (!tag->ti_Data)
+                data->msd_Flags |= MSDF_NOINPUT;
+            break;
+
+        case MUIA_Textinput_RemainActive:
+            _handle_bool_tag(data->msd_Flags, tag->ti_Data,
+                MSDF_STAYACTIVE);
+            break;
+
+        default:
+            if (String_SetTextinput(data, tag))
+            {
+                data->msd_RedrawReason = MOVE_CURSOR;
+                update = TRUE;
+            }
             break;
 
         case MUIA_String_EditHook:
@@ -768,6 +1084,7 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             }
             break;
 
+        case MUIA_Textinput_Integer:
         case MUIA_String_Integer:
             {
                 char buf[20];
@@ -783,6 +1100,7 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             }
             break;
 
+        case MUIA_Textinput_AdvanceOnCR:
         case MUIA_String_AdvanceOnCR:
             _handle_bool_tag(data->msd_Flags, tag->ti_Data,
                 MSDF_ADVANCEONCR);
@@ -790,7 +1108,7 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_String_BufferPos:
             data->BufferPos = (ULONG) tag->ti_Data;
-            data->msd_Flags &= ~MSDF_MARKING;
+            data->msd_Flags &= ~(MSDF_MARKING | MSDF_TIMARK);
             data->msd_RedrawReason = MOVE_CURSOR;
             MUI_Redraw(obj, MADF_DRAWUPDATE);
             break;
@@ -835,7 +1153,14 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
-    return DoSuperMethodA(cl, obj, (Msg) msg);
+    if (update)
+        MUI_Redraw(obj, MADF_DRAWUPDATE);
+    result = DoSuperMethodA(cl, obj, (Msg) msg);
+    if (alias != TAG_IGNORE)
+        SetSuperAttrs(cl, obj, MUIA_NoNotify,
+            GetTagData(MUIA_NoNotify, FALSE, msg->ops_AttrList),
+            alias, (IPTR)data->Buffer, TAG_DONE);
+    return result;
 }
 
 
@@ -851,7 +1176,70 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     {
     case MUIA_Text_Contents: /* MUI5 */
     case MUIA_String_Contents:
+    case MUIA_Textinput_Contents:
         STORE = (IPTR) data->Buffer;
+        return TRUE;
+
+    case MUIA_Textinput_CursorPos:
+        STORE = MIN(data->BufferPos, data->NumChars);
+        return TRUE;
+
+    case MUIA_Textinput_MarkStart:
+    case MUIA_Textinput_MarkEnd:
+        {
+            LONG start, end;
+            Ti_GetMark(data, &start, &end);
+            STORE = msg->opg_AttrID == MUIA_Textinput_MarkEnd ? end : start;
+            return TRUE;
+        }
+
+    case MUIA_Textinput_Changed:
+        STORE = !!(data->msd_Flags & MSDF_CHANGED);
+        return TRUE;
+    case MUIA_Textinput_Editable:
+        STORE = !(data->msd_Flags & MSDF_NOINPUT);
+        return TRUE;
+    case MUIA_Textinput_NoInput:
+        STORE = !!(data->msd_Flags & MSDF_TINOINPUT);
+        return TRUE;
+    case MUIA_Textinput_Multiline:
+        STORE = !!(data->msd_Flags & MSDF_MULTILINE);
+        return TRUE;
+    case MUIA_Textinput_RemainActive:
+        STORE = !!(data->msd_Flags & MSDF_STAYACTIVE);
+        return TRUE;
+    case MUIA_Textinput_ResetMarkOnCursor:
+        STORE = !!(data->msd_Flags & MSDF_RESETMARK);
+        return TRUE;
+    case MUIA_Textinput_IsNumeric:
+        STORE = !!(data->msd_Flags & MSDF_ISNUMERIC);
+        return TRUE;
+    case MUIA_Textinput_SetMin:
+        STORE = !!(data->msd_Flags & MSDF_SETMIN);
+        return TRUE;
+    case MUIA_Textinput_SetMax:
+        STORE = !!(data->msd_Flags & MSDF_SETMAX);
+        return TRUE;
+    case MUIA_Textinput_SetVMin:
+        STORE = !!(data->msd_Flags & MSDF_SETVMIN);
+        return TRUE;
+    case MUIA_Textinput_SetVMax:
+        STORE = !!(data->msd_Flags & MSDF_SETVMAX);
+        return TRUE;
+    case MUIA_Textinput_MinVal:
+        STORE = data->TiMinVal;
+        return TRUE;
+    case MUIA_Textinput_MaxVal:
+        STORE = data->TiMaxVal;
+        return TRUE;
+    case MUIA_Textinput_WordWrap:
+        STORE = data->TiWordWrap;
+        return TRUE;
+    case MUIA_Textinput_Styles:
+        STORE = data->TiStyles;
+        return TRUE;
+    case MUIA_Textinput_Font:
+        STORE = data->TiFont;
         return TRUE;
 
     case MUIA_String_EditHook:
@@ -862,6 +1250,7 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_String_Secret:
+    case MUIA_Textinput_Secret:
         STORE = (IPTR) data->msd_useSecret;
         return TRUE;
 
@@ -870,18 +1259,22 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_String_Accept:
+    case MUIA_Textinput_AcceptChars:
         STORE = (IPTR) data->msd_Accept;
         return TRUE;
 
     case MUIA_String_Reject:
+    case MUIA_Textinput_RejectChars:
         STORE = (IPTR) data->msd_Reject;
         return TRUE;
 
     case MUIA_String_AttachedList:
+    case MUIA_Textinput_AttachedList:
         STORE = (IPTR) data->msd_AttachedList;
         return TRUE;
 
     case MUIA_String_Format:
+    case MUIA_Textinput_Format:
         STORE = (IPTR) data->msd_Align;
         return TRUE;
 
@@ -896,6 +1289,7 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         return TRUE;
 
     case MUIA_String_Integer:
+    case MUIA_Textinput_Integer:
         {
             STRPTR buf = NULL;
             STORE = 0;
@@ -910,10 +1304,12 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         }
 
     case MUIA_String_MaxLen:
+    case MUIA_Textinput_MaxLen:
         STORE = (IPTR) data->BufferSize;
         return TRUE;
 
     case MUIA_String_AdvanceOnCR:
+    case MUIA_Textinput_AdvanceOnCR:
         STORE = (data->msd_Flags & MSDF_ADVANCEONCR) ? TRUE : FALSE;
         return TRUE;
 
@@ -967,6 +1363,14 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
         STORE = 0;
         return TRUE;
 
+    }
+
+    /* Other Textinput attributes have no function here */
+    if (msg->opg_AttrID >= MUIA_Textinput_Multiline
+        && msg->opg_AttrID <= MUIA_Textinputscroll_HorizBar)
+    {
+        STORE = 0;
+        return TRUE;
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);
@@ -1737,6 +2141,514 @@ static int String_HandleVanillakey(struct IClass *cl, Object *obj,
 
 
 /**************************************************************************
+ Cursor movement of the Textinput Do* methods. Returns whether the
+ object needs redrawing.
+**************************************************************************/
+static int String_CursorKey(struct MUI_StringData *data, LONG muikey)
+{
+    BOOL kills = (data->msd_Flags & MSDF_MARKING)
+        && !(data->msd_Flags & MSDF_KEYMARKING);
+    int update = 0;
+
+    /* A Textinput mark goes away and the cursor moves from where it is */
+    if (TI_MARKED(data))
+    {
+        data->msd_Flags &= ~(MSDF_MARKING | MSDF_TIMARK);
+        kills = FALSE;
+        update = 1;
+    }
+
+    switch (muikey)
+    {
+    case MUIKEY_LEFT:
+        if (kills)
+        {
+            update = 1;
+            data->BufferPos = MIN(data->BufferPos, data->MarkPos);
+            if (data->BufferPos > 0)
+                data->BufferPos--;
+
+            data->msd_Flags &= ~MSDF_MARKING;
+        }
+        else if (data->BufferPos > 0)
+        {
+            update = 1;
+
+            data->BufferPos--;
+            data->msd_RedrawReason = DO_CURSOR_LEFT;
+        }
+        break;
+    case MUIKEY_RIGHT:
+        if (kills)
+        {
+            update = 1;
+            data->BufferPos = MAX(data->BufferPos, data->MarkPos);
+            data->msd_Flags &= ~MSDF_MARKING;
+        }
+        else if (data->BufferPos < data->NumChars)
+        {
+            update = 1;
+            data->BufferPos++;
+            data->msd_RedrawReason = DO_CURSOR_RIGHT;
+        }
+        break;
+    case MUIKEY_WORDLEFT:
+        if (data->BufferPos > 0)
+        {
+            data->BufferPos =
+                Buffer_GetPrevWordIndex(data, data->BufferPos);
+            update = 1;
+            data->msd_RedrawReason = DO_CURSOR_LEFT;
+        }
+        if (kills)
+        {
+            data->msd_Flags &= ~MSDF_MARKING;
+            update = 1;
+        }
+        break;
+    case MUIKEY_WORDRIGHT:
+        if (data->BufferPos < data->NumChars)
+        {
+            data->BufferPos =
+                Buffer_GetSuccWordIndex(data, data->BufferPos);
+            update = 1;
+            data->msd_RedrawReason = DO_CURSOR_RIGHT;
+        }
+        if (kills)
+        {
+            data->msd_Flags &= ~MSDF_MARKING;
+            update = 1;
+        }
+        break;
+    case MUIKEY_LINESTART:
+        data->BufferPos = 0;
+        update = 1;
+        if (kills)
+        {
+            data->msd_Flags &= ~MSDF_MARKING;
+        }
+        break;
+
+    case MUIKEY_LINEEND:
+        data->BufferPos = data->NumChars;
+        update = 1;
+        if (kills)
+        {
+            data->msd_Flags &= ~MSDF_MARKING;
+        }
+        break;
+
+    }
+    return update;
+}
+
+/**************************************************************************
+ Textinput methods. During key input, MSDF_INEVENT is set and the event
+ handler redraws and notifies once; otherwise each method does that.
+**************************************************************************/
+static void Ti_Done(struct IClass *cl, Object *obj,
+    struct MUI_StringData *data, BOOL edited, BOOL moved)
+{
+    if (edited)
+        data->msd_Flags |= MSDF_CHANGED;
+    if (data->msd_Flags & MSDF_INEVENT)
+    {
+        data->TiPending |= (edited ? TIP_EDITED | TIP_UPDATE : 0)
+            | (moved ? TIP_UPDATE : 0);
+        return;
+    }
+    if (edited)
+    {
+        data->AckBuffer = NULL;
+        SetSuperAttrs(cl, obj, MUIA_String_Contents, (IPTR)data->Buffer,
+            MUIA_Textinput_Contents, (IPTR)data->Buffer, TAG_DONE);
+    }
+    if (edited || moved)
+        MUI_Redraw(obj, MADF_DRAWUPDATE);
+}
+
+/* Let subclasses see key input as Textinput methods */
+static ULONG Ti_Call(Object *obj, struct MUI_StringData *data,
+    ULONG method, ULONG arg)
+{
+    ULONG pending;
+
+    data->TiPending = 0;
+    data->msd_Flags |= MSDF_INEVENT;
+    DoMethod(obj, method, arg, 0);
+    data->msd_Flags &= ~MSDF_INEVENT;
+    pending = data->TiPending;
+    data->TiPending = 0;
+    return pending;
+}
+
+static void Ti_Copy(struct MUI_StringData *data)
+{
+    LONG start = 0, stop = data->NumChars;
+
+    if (data->msd_useSecret)
+        return;
+    if (data->msd_Flags & MSDF_MARKING)
+        Buffer_GetMarkedRange(data, &start, &stop);
+    if (stop > start)
+        clipboard_write_text(&data->Buffer[start], stop - start);
+}
+
+/* Read a file into a new buffer of at most max bytes, NUL-terminated */
+static STRPTR Ti_ReadFile(CONST_STRPTR name, ULONG max)
+{
+    BPTR file = Open(name, MODE_OLDFILE);
+    STRPTR text;
+    LONG length;
+
+    if (!file)
+        return NULL;
+    text = AllocVec(max, MEMF_ANY);
+    length = text ? Read(file, text, max - 1) : -1;
+    Close(file);
+    if (length < 0)
+    {
+        FreeVec(text);
+        return NULL;
+    }
+    text[length] = 0;
+    return text;
+}
+
+/* Find the decimal number at or just before the cursor and add delta */
+static BOOL Ti_AddToNumber(struct MUI_StringData *data, LONG delta)
+{
+    STRPTR buf = data->Buffer;
+    LONG pos = MIN(data->BufferPos, data->NumChars), start, stop, value = 0;
+    char number[16];
+    LONG length;
+
+    if (!isdigit(buf[pos]) && pos > 0 && isdigit(buf[pos - 1]))
+        pos--;
+    if (!isdigit(buf[pos]))
+        return FALSE;
+    for (start = pos; start > 0 && isdigit(buf[start - 1]); start--);
+    for (stop = pos; stop < data->NumChars && isdigit(buf[stop]); stop++);
+    if (start > 0 && buf[start - 1] == '-')
+        start--;
+    StrToLong(&buf[start], &value);
+    length = snprintf(number, sizeof(number), "%ld", (long)(value + delta));
+    if (data->NumChars - (stop - start) + length >= data->BufferSize)
+        return FALSE;
+    pos = data->BufferPos;
+    Buffer_Delete(data, start, stop);
+    Buffer_InsertText(data, start, number, length);
+    data->BufferPos = MIN(pos, (LONG)data->NumChars);
+    return TRUE;
+}
+
+static IPTR String_Textinput(struct IClass *cl, Object *obj, Msg msg)
+{
+    struct MUI_StringData *data = INST_DATA(cl, obj);
+    BOOL writable = !(data->msd_Flags & MSDF_NOINPUT);
+    ULONG oldchars = data->NumChars, oldpos = data->BufferPos;
+    BOOL edited = FALSE, moved = FALSE;
+    IPTR retval = TRUE, dummy = 0;
+    LONG start, stop;
+
+    switch (msg->MethodID)
+    {
+    case MUIM_Textinput_HandleChar:
+        {
+            struct MUIP_Textinput_HandleChar *m = (APTR)msg;
+            UBYTE ch = m->ch;
+            int r;
+
+            if (!writable || ch == '\r' || ch == '\n' || ch < 32
+                || ch == 127)
+                return 0;
+            if ((data->msd_Flags & MSDF_ISNUMERIC) && !isdigit(ch)
+                && ch != '-')
+            {
+                DisplayBeep(NULL);
+                return 0;
+            }
+            r = String_HandleVanillakey(cl, obj, ch, 0, &dummy);
+            edited = r == 2 || data->NumChars != oldchars;
+            retval = edited;
+        }
+        break;
+
+    case MUIM_Textinput_DoBS:
+    case MUIM_Textinput_DoBSSOL:
+    case MUIM_Textinput_DoDel:
+    case MUIM_Textinput_DoDelEOL:
+        if (!writable)
+            return 0;
+        String_HandleVanillakey(cl, obj,
+            msg->MethodID == MUIM_Textinput_DoBS ||
+            msg->MethodID == MUIM_Textinput_DoBSSOL ? '\b' : 127,
+            msg->MethodID == MUIM_Textinput_DoBSSOL ||
+            msg->MethodID == MUIM_Textinput_DoDelEOL ?
+            IEQUALIFIER_LSHIFT : 0, &dummy);
+        edited = data->NumChars != oldchars;
+        moved = data->BufferPos != oldpos;
+        break;
+
+    case MUIM_Textinput_DoBSWord:
+    case MUIM_Textinput_DoDelWord:
+        if (!writable)
+            return 0;
+        if (!(edited = Buffer_KillMarked(data)))
+        {
+            stop = data->BufferPos;
+            if (msg->MethodID == MUIM_Textinput_DoBSWord)
+                edited = Buffer_Delete(data,
+                    Buffer_GetPrevWordIndex(data, stop), stop);
+            else
+                edited = Buffer_Delete(data, stop,
+                    Buffer_GetSuccWordIndex(data, stop));
+        }
+        break;
+
+    case MUIM_Textinput_DoDelLine:
+    case MUIM_Textinput_DoCutLine:
+        if (!writable)
+            return 0;
+        if (msg->MethodID == MUIM_Textinput_DoCutLine && data->NumChars
+            && !data->msd_useSecret)
+            clipboard_write_text(data->Buffer, data->NumChars);
+        data->msd_Flags &= ~(MSDF_MARKING | MSDF_TIMARK);
+        edited = Buffer_Delete(data, 0, data->NumChars);
+        break;
+
+    case MUIM_Textinput_DoCopy:
+        Ti_Copy(data);
+        moved = !!(data->msd_Flags & MSDF_MARKING);
+        data->msd_Flags &= ~(MSDF_MARKING | MSDF_TIMARK);
+        break;
+
+    case MUIM_Textinput_DoCut:
+    case MUIM_Textinput_DoCopyCut:
+        /* With nothing marked, Cut clears the contents, as in MUI 5 */
+        if (msg->MethodID == MUIM_Textinput_DoCopyCut || Buffer_AnythingMarked(data))
+            Ti_Copy(data);
+        if (!writable)
+        {
+            data->msd_Flags &= ~(MSDF_MARKING | MSDF_TIMARK);
+            moved = TRUE;
+        }
+        else if (!(edited = Buffer_KillMarked(data)))
+            edited = Buffer_Delete(data, 0, data->NumChars);
+        break;
+
+    case MUIM_Textinput_DoPaste:
+        if (!writable)
+            return 0;
+        String_HandleVanillakey(cl, obj, 'v', IEQUALIFIER_RCOMMAND, &dummy);
+        edited = TRUE;
+        break;
+
+    case MUIM_Textinput_DoMarkStart:
+        Ti_FreezeMark(data);
+        data->msd_Flags &= ~MSDF_TIMARK;
+        data->MarkPos = data->BufferPos;
+        data->MultiClick = 0;
+        data->msd_Flags |= MSDF_MARKING | MSDF_KEYMARKING;
+        moved = TRUE;
+        break;
+
+    case MUIM_Textinput_DoMarkAll:
+        data->TiMarkStart = 0;
+        data->TiMarkEnd = data->NumChars;
+        data->BufferPos = data->NumChars;
+        data->msd_Flags &= ~MSDF_KEYMARKING;
+        data->msd_Flags |= MSDF_MARKING | MSDF_TIMARK;
+        moved = TRUE;
+        break;
+
+    case MUIM_Textinput_DoLeft:
+        moved = String_CursorKey(data, MUIKEY_LEFT);
+        break;
+    case MUIM_Textinput_DoRight:
+        moved = String_CursorKey(data, MUIKEY_RIGHT);
+        break;
+    case MUIM_Textinput_DoPrevWord:
+        moved = String_CursorKey(data, MUIKEY_WORDLEFT);
+        break;
+    case MUIM_Textinput_DoNextWord:
+        moved = String_CursorKey(data, MUIKEY_WORDRIGHT);
+        break;
+    case MUIM_Textinput_DoLineStart:
+    case MUIM_Textinput_DoTop:
+        moved = String_CursorKey(data, MUIKEY_LINESTART);
+        break;
+    case MUIM_Textinput_DoLineEnd:
+    case MUIM_Textinput_DoBottom:
+        moved = String_CursorKey(data, MUIKEY_LINEEND);
+        break;
+
+    case MUIM_Textinput_DoToggleCase:
+    case MUIM_Textinput_DoToggleCaseEOW:
+        if (!writable)
+            return 0;
+        stop = msg->MethodID == MUIM_Textinput_DoToggleCase ?
+            MIN(data->BufferPos + 1, data->NumChars) :
+            Buffer_GetWordEndIndex(data, data->BufferPos);
+        for (start = data->BufferPos; start < stop; start++)
+        {
+            UBYTE c = data->Buffer[start];
+            data->Buffer[start] = ToUpper(c) != c ? ToUpper(c) : ToLower(c);
+            edited = TRUE;
+        }
+        data->BufferPos = MAX((LONG)data->BufferPos, stop);
+        break;
+
+    case MUIM_Textinput_DoIncrementDec:
+    case MUIM_Textinput_DoDecrementDec:
+        if (!writable)
+            return 0;
+        edited = Ti_AddToNumber(data,
+            msg->MethodID == MUIM_Textinput_DoIncrementDec ? 1 : -1);
+        break;
+
+    case MUIM_Textinput_InsertText:
+    case MUIM_Textinput_AppendText:
+        {
+            struct MUIP_Textinput_InsertText *m = (APTR)msg;
+            BOOL append = msg->MethodID == MUIM_Textinput_AppendText;
+            LONG count = Buffer_InsertText(data,
+                append ? data->NumChars : data->BufferPos, m->text, m->len);
+
+            if (!append)
+                data->BufferPos += count;
+            edited = count > 0;
+        }
+        break;
+
+    case MUIM_Textinput_SaveToFile:
+        {
+            struct MUIP_Textinput_SaveToFile *m = (APTR)msg;
+            BPTR file = Open(m->filename, MODE_NEWFILE);
+
+            if (!file)
+                return FALSE;
+            retval = Write(file, data->Buffer, data->NumChars)
+                == data->NumChars;
+            Close(file);
+            return retval;
+        }
+
+    case MUIM_Textinput_LoadFromFile:
+    case MUIM_Textinput_InsertFromFile:
+        {
+            struct MUIP_Textinput_LoadFromFile *m = (APTR)msg;
+            STRPTR text = Ti_ReadFile(m->filename, data->BufferSize);
+
+            if (!text)
+                return FALSE;
+            if (msg->MethodID == MUIM_Textinput_LoadFromFile)
+            {
+                data->msd_Flags &= ~(MSDF_MARKING | MSDF_TIMARK);
+                Buffer_Delete(data, 0, data->NumChars);
+                data->BufferPos = 0;
+            }
+            data->BufferPos += Buffer_InsertText(data, data->BufferPos,
+                text, -1);
+            FreeVec(text);
+            edited = TRUE;
+        }
+        break;
+
+    case MUIM_Textinput_Acknowledge:
+        {
+            LONG val = 0;
+
+            data->AckBuffer = data->Buffer;
+            set(obj, MUIA_String_Acknowledge, data->Buffer);
+            SetSuperAttrs(cl, obj, MUIA_Textinput_Acknowledge,
+                (IPTR)data->Buffer, TAG_DONE);
+            if (StrToLong(data->Buffer, &val) >= 0)
+                superset(cl, obj, MUIA_String_Integer, val);
+        }
+        return TRUE;
+
+    case MUIM_Textinput_DoNextGadget:
+        if (muiRenderInfo(obj) && _win(obj))
+            set(_win(obj), MUIA_Window_ActiveObject,
+                MUIV_Window_ActiveObject_Next);
+        return TRUE;
+
+    default:
+        /* Undo, files requesters, popups, URLs and the multiline
+         * movements are not available in a single-line String */
+        return 0;
+    }
+
+    if (edited)
+        data->msd_RedrawReason = data->msd_RedrawReason == DO_ADDCHAR ?
+            DO_ADDCHAR : NEW_CONTENTS;
+    else if (moved && data->msd_RedrawReason == NO_REASON)
+        data->msd_RedrawReason = MOVE_CURSOR;
+    Ti_Done(cl, obj, data, edited, moved || edited);
+    return retval;
+}
+
+/* Key input as MUI 5 passes it to Textinput methods. Returns TIP_* */
+static ULONG String_KeyToTextinput(Object *obj, struct MUI_StringData *data,
+    UBYTE code, UWORD qual, BOOL *handled)
+{
+    BOOL shift = (qual & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) != 0;
+    ULONG method;
+
+    *handled = TRUE;
+    if (qual & IEQUALIFIER_RCOMMAND)
+    {
+        switch (ToLower(code))
+        {
+        case 'c': method = MUIM_Textinput_DoCopy; break;
+        case 'x': method = MUIM_Textinput_DoCut; break;
+        case 'v': method = MUIM_Textinput_DoPaste; break;
+        case 'z': method = MUIM_Textinput_DoUndo; break;
+        default: *handled = FALSE; return 0;
+        }
+        return Ti_Call(obj, data, method, 0);
+    }
+    switch (code)
+    {
+    case '\b':
+        method = shift ? MUIM_Textinput_DoBSSOL : MUIM_Textinput_DoBS;
+        break;
+    case 21: /* Ctrl-U */
+        method = MUIM_Textinput_DoBSSOL;
+        break;
+    case 127:
+        method = shift ? MUIM_Textinput_DoDelEOL : MUIM_Textinput_DoDel;
+        break;
+    case 11: /* Ctrl-K */
+        method = MUIM_Textinput_DoDelEOL;
+        break;
+    case 24: /* Ctrl-X */
+        method = MUIM_Textinput_DoCut;
+        break;
+    case 1: /* Ctrl-A */
+        method = MUIM_Textinput_DoLineStart;
+        break;
+    case 26: /* Ctrl-Z */
+        method = MUIM_Textinput_DoLineEnd;
+        break;
+    case '\r':
+        /* Acknowledge follows from MUIKEY_PRESS */
+        Ti_Call(obj, data, MUIM_Textinput_HandleChar, code);
+        *handled = FALSE;
+        return 0;
+    default:
+        if (code < 32 || (code >= 128 && code < 160))
+        {
+            *handled = FALSE;
+            return 0;
+        }
+        return Ti_Call(obj, data, MUIM_Textinput_HandleChar, code);
+    }
+    return Ti_Call(obj, data, method, 0);
+}
+
+/**************************************************************************
  MUIM_HandleEvent
 **************************************************************************/
 IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
@@ -1749,7 +2661,6 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     int update = 0;
     BOOL edited = FALSE;
     LONG muikey = msg->muikey;
-    BOOL cursor_kills_marking = FALSE;
     BOOL acknowledge = FALSE;
     STRPTR previous = NULL;
     LONG oldpos = data->BufferPos;
@@ -1768,11 +2679,6 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
 
     /* LonelyEditHook still receives the ordinary proposed edit, as with
      * Intuition SGWork. It does not suppress character editing itself. */
-    if ((data->msd_Flags & MSDF_MARKING)
-        && !(data->msd_Flags & MSDF_KEYMARKING))
-    {
-        cursor_kills_marking = TRUE;
-    }
 
     /* Convert raw keys to MUI keys for marking */
     if (muikey == MUIKEY_NONE && msg->imsg != NULL)
@@ -1835,80 +2741,27 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         switch (muikey)
         {
         case MUIKEY_LEFT:
-            if (cursor_kills_marking)
-            {
-                update = 1;
-                data->BufferPos = MIN(data->BufferPos, data->MarkPos);
-                if (data->BufferPos > 0)
-                    data->BufferPos--;
-
-                data->msd_Flags &= ~MSDF_MARKING;
-            }
-            else if (data->BufferPos > 0)
-            {
-                update = 1;
-
-                data->BufferPos--;
-                data->msd_RedrawReason = DO_CURSOR_LEFT;
-            }
-            break;
         case MUIKEY_RIGHT:
-            if (cursor_kills_marking)
-            {
-                update = 1;
-                data->BufferPos = MAX(data->BufferPos, data->MarkPos);
-                data->msd_Flags &= ~MSDF_MARKING;
-            }
-            else if (data->BufferPos < data->NumChars)
-            {
-                update = 1;
-                data->BufferPos++;
-                data->msd_RedrawReason = DO_CURSOR_RIGHT;
-            }
-            break;
         case MUIKEY_WORDLEFT:
-            if (data->BufferPos > 0)
-            {
-                data->BufferPos =
-                    Buffer_GetPrevWordIndex(data, data->BufferPos);
-                update = 1;
-                data->msd_RedrawReason = DO_CURSOR_LEFT;
-            }
-            if (cursor_kills_marking)
-            {
-                data->msd_Flags &= ~MSDF_MARKING;
-                update = 1;
-            }
-            break;
         case MUIKEY_WORDRIGHT:
-            if (data->BufferPos < data->NumChars)
-            {
-                data->BufferPos =
-                    Buffer_GetSuccWordIndex(data, data->BufferPos);
-                update = 1;
-                data->msd_RedrawReason = DO_CURSOR_RIGHT;
-            }
-            if (cursor_kills_marking)
-            {
-                data->msd_Flags &= ~MSDF_MARKING;
-                update = 1;
-            }
-            break;
         case MUIKEY_LINESTART:
-            data->BufferPos = 0;
-            update = 1;
-            if (cursor_kills_marking)
-            {
-                data->msd_Flags &= ~MSDF_MARKING;
-            }
-            break;
-
         case MUIKEY_LINEEND:
-            data->BufferPos = data->NumChars;
-            update = 1;
-            if (cursor_kills_marking)
             {
-                data->msd_Flags &= ~MSDF_MARKING;
+                static const ULONG methods[] = {
+                    MUIM_Textinput_DoLeft, MUIM_Textinput_DoRight,
+                    MUIM_Textinput_DoPrevWord, MUIM_Textinput_DoNextWord,
+                    MUIM_Textinput_DoLineStart, MUIM_Textinput_DoLineEnd
+                };
+                ULONG pending = Ti_Call(obj, data,
+                    methods[muikey == MUIKEY_LEFT ? 0 :
+                        muikey == MUIKEY_RIGHT ? 1 :
+                        muikey == MUIKEY_WORDLEFT ? 2 :
+                        muikey == MUIKEY_WORDRIGHT ? 3 :
+                        muikey == MUIKEY_LINESTART ? 4 : 5], 0);
+                if (pending & TIP_EDITED)
+                    edited = TRUE;
+                if (pending)
+                    update = 1;
             }
             break;
 
@@ -2000,6 +2853,9 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                     }
                     data->OldClick_Sec = data->NewClick_Sec;
                     data->OldClick_Micro = data->NewClick_Micro;
+                    if (TI_MARKED(data))
+                        update = 1;
+                    data->msd_Flags &= ~MSDF_TIMARK;
 
                     //kprintf("multiclick %d\n", data->MultiClick);
 
@@ -2212,6 +3068,7 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                                 IEQUALIFIER_RALT))
                         {
                             data->MarkPos = data->BufferPos;
+                            data->msd_Flags &= ~MSDF_TIMARK;
                             data->msd_Flags |=
                                 (MSDF_MARKING | MSDF_KEYMARKING);
                         }
@@ -2226,14 +3083,16 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
 
                 if (code)
                 {
-                    update =
-                        String_HandleVanillakey(cl, obj, code,
-                        msg->imsg->Qualifier, &retval);
-                    if (update)
-                    {
+                    BOOL handled;
+                    ULONG pending = String_KeyToTextinput(obj, data, code,
+                        msg->imsg->Qualifier, &handled);
+
+                    if (handled)
                         retval = MUI_EventHandlerRC_Eat;
+                    if (pending)
+                        update = 1;
+                    if (pending & TIP_EDITED)
                         edited = TRUE;
-                    }
                 }
             }
             break;
@@ -2309,7 +3168,9 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     if (edited)
     {
         data->AckBuffer = NULL;
-        superset(cl, obj, MUIA_String_Contents, data->Buffer);
+        data->msd_Flags |= MSDF_CHANGED;
+        SetSuperAttrs(cl, obj, MUIA_String_Contents, (IPTR)data->Buffer,
+            MUIA_Textinput_Contents, (IPTR)data->Buffer, TAG_DONE);
     }
 
     if (update)
@@ -2329,7 +3190,6 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     if (acknowledge)
             {
                 UBYTE *buf = NULL;
-                LONG val = 0;
 
                 get(obj, MUIA_String_Contents, &buf);
 
@@ -2348,13 +3208,9 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                         MUIV_Window_ActiveObject_None);
                 }
 
-                /* Notify listeners of new string value */
-                data->AckBuffer = buf;
-                set(obj, MUIA_String_Acknowledge, buf);
-
-                /* Notify listeners of new integer value (if any) */
-                if (StrToLong(buf, &val) >= 0)
-                    superset(cl, obj, MUIA_String_Integer, val);
+                /* Notify listeners of the new string and integer value */
+                data->msd_Flags &= ~MSDF_CHANGED;
+                DoMethod(obj, MUIM_Textinput_Acknowledge, (IPTR)buf);
             }
     //D(bug("String eh return %ld\n", retval));
 
@@ -2657,6 +3513,10 @@ BOOPSI_DISPATCHER(IPTR, String_Dispatcher, cl, obj, msg)
     case MUIM_String_FileNameStart:
         return String__MUIM_FileNameStart(cl, obj, (APTR) msg);
     }
+
+    if (msg->MethodID >= MUIM_Textinput_ExternalEdit
+        && msg->MethodID <= MUIM_Textinput_DoCopyCut)
+        return String_Textinput(cl, obj, msg);
 
     return DoSuperMethodA(cl, obj, msg);
 }

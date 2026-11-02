@@ -27,6 +27,7 @@ class StringHarness(Harness):
         self.mem.w32(self.symbols['_UtilityBase'], UTILITY)
         if '___UtilityBase' in self.symbols:
             self.mem.w32(self.symbols['___UtilityBase'], UTILITY)
+        self.trap(UTILITY - 36, self.get_tag_data)
         self.trap(UTILITY - 48, self.next_tag)
         self.trap(self.symbols['_DoSuperNewTags'], lambda: self.cpu.w_reg(0, OBJECT))
         self.trap(self.symbols['_DoSuperMethodA'], lambda: self.cpu.w_reg(0, 1))
@@ -77,6 +78,16 @@ class StringHarness(Harness):
         tag = self.mem.r32(storage)
         self.cpu.w_reg(0, tag if tag and self.mem.r32(tag) else 0)
         self.mem.w32(storage, tag + 8)
+
+    def get_tag_data(self):
+        wanted, value, tag = (self.cpu.r_reg(0), self.cpu.r_reg(1),
+                              self.cpu.r_reg(8))
+        while tag and self.mem.r32(tag):
+            if self.mem.r32(tag) == wanted:
+                value = self.mem.r32(tag + 4)
+                break
+            tag += 8
+        self.cpu.w_reg(0, value)
 
     def redraw(self):
         self.redraws += 1

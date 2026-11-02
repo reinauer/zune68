@@ -125,7 +125,8 @@ $(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERA
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 MUI5_PROBES = classes data selection menu menu_input string string_input image ibrowse title text list \
-  panel requesters process keyadjust text_escape rtg memory marking list_format calltips
+  panel requesters process keyadjust text_escape rtg memory marking list_format calltips \
+  textinput
 MUI5_PROBE_BINS = $(addprefix $(BUILD)/mui5-,$(addsuffix -probe,$(MUI5_PROBES)))
 
 $(MUI5_PROBE_BINS): $(BUILD)/mui5-%-probe: ../../../tests/native/mui5_%_probe.c $(GENERATED)

@@ -361,6 +361,9 @@ struct MUI_AlphaData
 #ifndef _MUI_CLASSES_STRING_H
 #include "classes/string.h"
 #endif
+#ifndef _MUI_CLASSES_TEXTINPUT_H
+#include "classes/textinput.h"
+#endif
 
 #ifndef _MUI_CLASSES_BOOPSI_H
 #include "classes/boopsi.h"

@@ -19,8 +19,8 @@ m68k-amigaos-gcc -m68000 -msoft-float -noixemul -std=gnu17 -O2 \
 Use separate disposable guest installations; do not run two emulators
 against one writable disk. The runtime needs the corresponding MUI
 libraries/classes and a working AmigaOS installation. Reference MUI 5
-requires a 68020. Zune's menu, image, Title, Text, List and String input
-probes accept a `screen` argument to open a private planar screen for a 68000 fixture.
+requires a 68020. Zune's menu, image, Title, Text, List, String input and
+Textinput probes accept a `screen` argument to open a private planar screen for a 68000 fixture.
 Input probes inject real input.device events; keep other input idle.
 Read the final PASS/FAIL line and exit status, not just a runner marker.
 
@@ -31,6 +31,7 @@ Read the final PASS/FAIL line and exit status, not just a runner marker.
 | `mui5_image_probe` | Missing-picture fallback and copied spec render alike; inactive hints do not replace contents. Pixel hashes are compared within each runtime. |
 | `mui5_string_probe` | Hint aliases, 64-bit SET/GET boundaries, cursor preservation when setting DisplayPos and default text pointer. The stable reference getter's 32-bit clamp is explicitly labeled. |
 | `mui5_string_input_probe` | Hook editing/veto/delete/Return, ordinary editing before a lonely hook, forwarded Newstring selection and clipboard round trip; Zune editing-menu actions. |
+| `mui5_textinput_probe` | Textinput.mcc/Textinputscroll.mcc 29 or later and the Textinput API of String: inclusive marks independent of the cursor, clipboard, editing and number methods, the methods key input calls in a String subclass, and marks under cursor keys and typing. The reference also calls TranslateEvent before HandleChar; Zune does not. |
 | `mui5_title_probe` | Built-in class creation, mouse page selection, FindPage and default paired removal; Zune also exercises bottom tabs, subclass new/close buttons, paired drag reordering, last-close notification, empty groups, keyboard navigation, overflow selection and reopening. |
 | `mui5_text_probe` | Borrowed/copied contents, all six shortening modes and getters, whole-text hiding, control-character behavior and pixel comparisons against explicitly shortened strings. Zune also checks that elision retains styled chunks. |
 | `mui5_list_probe` | Sort-column callback ABI, external-array sorting, inline editor creation, commit veto, Return, Escape, hidden-column editing and disposal; Zune also checks title-click notification. |
