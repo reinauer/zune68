@@ -230,6 +230,7 @@ struct MUI_WindowData
                                           * window's active object */
 #define MUIWF_TOOLBOX           (1<<17) /* Window should be opened as
                                          * ToolBox */
+#define MUIWF_ACTIVEEVENT       (1<<18) /* Reporting IDCMP_ACTIVEWINDOW */
 
 #define BUBBLEHELP_TICKER_FIRST 10
 #define BUBBLEHELP_TICKER_LATER 3
@@ -2279,10 +2280,11 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
     switch (imsg->Class)
     {
     case IDCMP_ACTIVEWINDOW:
-        data->wd_Flags |= MUIWF_ACTIVE;
+        data->wd_Flags |= MUIWF_ACTIVE | MUIWF_ACTIVEEVENT;
         if (data->wd_OldActive)
             set(oWin, MUIA_Window_ActiveObject, data->wd_OldActive);
         set(oWin, MUIA_Window_Activate, TRUE);
+        data->wd_Flags &= ~MUIWF_ACTIVEEVENT;
         is_handled = FALSE;     /* forwardable to area event handlers */
         break;
 
@@ -3914,7 +3916,11 @@ IPTR Window__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         case MUIA_Window_Activate:
             if (data->wd_RenderInfo.mri_Window)
             {
-                if (tag->ti_Data && !(data->wd_Flags & MUIWF_ACTIVE))
+                /* MUIWF_ACTIVE lags behind Intuition: a popup opened just
+                 * before may have taken the activation already. Only the
+                 * report of an IDCMP_ACTIVEWINDOW must not activate, as
+                 * another window may be active by now. */
+                if (tag->ti_Data && !(data->wd_Flags & MUIWF_ACTIVEEVENT))
                 {
                     ActivateWindow(data->wd_RenderInfo.mri_Window);
                     _handle_bool_tag(data->wd_Flags, tag->ti_Data,
