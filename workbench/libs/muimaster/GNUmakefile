@@ -30,7 +30,8 @@ CRTFLAGS = -noixemul
 # instruction fetch and cache behaviour independent of link layout.
 CFLAGS ?= -std=gnu17 -Os -g -Wall -Wno-pointer-sign \
 	-falign-functions=4 -falign-loops=4 -falign-jumps=4
-CPPFLAGS += -DMUIMASTER_YES_INLINE_STDARG= -DZUNE68_GCC_NATIVE \
+# Every native build is a release build: compile out assert().
+CPPFLAGS += -DNDEBUG -DMUIMASTER_YES_INLINE_STDARG= -DZUNE68_GCC_NATIVE \
   -DMUI_OBSOLETE -DMUIMASTER_LIBRARY_BUILD \
   -I$(BUILD)/include -I$(BUILD) -Igcc -Iinclude -I. -include include/clib/muimaster_protos.h \
   -include $(BUILD)/trace-config.h

@@ -13,7 +13,7 @@ CC := $(CROSS)gcc
 override CFLAGS := $(CPUFLAGS) -noixemul $(PLUGIN_CFLAGS) \
   $(PLUGIN_DEFINES) $(if $(PLUGIN_ADAPTER),-include $(PLUGIN_ADAPTER)) \
   -fno-common -fno-builtin -fno-strict-aliasing -D__amigaos3__ \
-  -DNO_INLINE_STDARG -U__saveds -D__saveds= -DZUNE68_GCC_NATIVE \
+  -DNO_INLINE_STDARG -U__saveds -D__saveds= -DZUNE68_GCC_NATIVE -DNDEBUG \
   -include $(dir $(PLUGIN_MAKEFILE))plugin/runtime.h \
   -I$(OBJDIR) -I. -I../include -I../include/mui \
   -I../../include -I../mcp -I../nlistview_mcc -I../nlistviews_mcp

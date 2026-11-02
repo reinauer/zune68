@@ -15,7 +15,7 @@ COMMON := $(ROOT)/workbench/classes/zune/nlist/include
 BZ := $(ROOT)/vendor/bzip2
 OBJ := $(BUILD)/imageclass
 FLAGS := $(CPUFLAGS) -noixemul $(CFLAGS) -fno-builtin -fno-common \
- -fno-strict-aliasing -D__amigaos3__ -DZUNE68_GCC_NATIVE \
+ -fno-strict-aliasing -D__amigaos3__ -DZUNE68_GCC_NATIVE -DNDEBUG \
  -DNO_INLINE_STDARG -U__saveds -D__saveds= \
  -DMUIMASTER_NAME='"muimaster.library"' \
  -I$(BUILD)/include -I$(MASTER)/include -I$(RAW) -iquote $(MASTER)/classes \
