@@ -25,6 +25,7 @@ void MUI_Priv3(void) { }
 void MUI_Priv4(void) { }
 void MUI_Priv5(void) { }
 void MUI_Priv6(void) { }
+void MUIP_GetVirtualRect(Object *obj __asm("a0"), LONG *rect __asm("a1"));
 struct Library *LibOpen(struct MUIMasterBase_intern *base __asm("a6"))
 {
     base->library.lib_Flags &= ~LIBF_DELEXP;
@@ -111,6 +112,7 @@ static const APTR LibVectors[] = {
   MUI_VECTOR(MUI_Hide),
   MUI_VECTOR(MUI_LayoutObj),
   MUI_VECTOR(MUI_Offset),
+  (APTR) MUIP_GetVirtualRect,
   (APTR) -1
 };
 

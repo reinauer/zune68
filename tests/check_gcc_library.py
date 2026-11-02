@@ -53,7 +53,9 @@ def check(path):
                  for name, _ in ENTRIES]
     for i, name in enumerate(expected):
         assert long(vectors + i * 4) == symbols[name], name
-    assert long(vectors + len(expected) * 4) == 0xffffffff
+    # MUIP_GetVirtualRect follows the FD entries; Voyager calls LVO -240.
+    assert long(vectors + len(expected) * 4) == symbols['_MUIP_GetVirtualRect']
+    assert long(vectors + (len(expected) + 1) * 4) == 0xffffffff
 
     machine = Machine.from_name("68000", ram_size=RAM_KIB)
     mem, cpu = machine.mem, machine.cpu

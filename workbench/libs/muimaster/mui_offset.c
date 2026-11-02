@@ -53,3 +53,32 @@ AROS_LH3(VOID, MUI_Offset,
 
     AROS_LIBFUNC_EXIT
 }
+
+/* Private in MUI, and called by Voyager's Show method. Fills left, top,
+ * right, bottom with what the virtual groups around obj leave visible. */
+void MUIP_GetVirtualRect(Object *obj __asm("a0"), LONG *rect __asm("a1"))
+{
+    rect[0] = rect[1] = 0;
+    rect[2] = rect[3] = 0x40000000;
+
+    while (obj)
+    {
+        struct MUI_AreaData *area = muiAreaData(obj);
+
+        if (area->mad_Flags & MADF_ISVIRTUALGROUP)
+        {
+            LONG left = area->mad_Box.Left + area->mad_addleft;
+            LONG top = area->mad_VirtualTop + area->mad_addtop;
+            LONG right = left + area->mad_Box.Width - area->mad_subwidth - 1;
+            LONG bottom = top + area->mad_Box.Height - area->mad_subheight - 1;
+
+            if (left > rect[0]) rect[0] = left;
+            if (top > rect[1]) rect[1] = top;
+            if (right < rect[2]) rect[2] = right;
+            if (bottom < rect[3]) rect[3] = bottom;
+        }
+        if (!(area->mad_Flags & MADF_INVIRTUALGROUP))
+            break;
+        obj = _parent(obj);
+    }
+}

@@ -62,6 +62,25 @@ def check(path):
         assert h.call('MUI_LayoutObj', OBJECT, 31, 47, 100, 70, 0) == 1
         assert calls[-1] == (31, 47, 100, 70)
 
+        # The rectangle comes from the virtual group's inner box, not from
+        # the object inside it. MUI 3.8's vector does the same.
+        rect = 0x76000
+        h.mem.w16(PARENT + BOX + 4, 200)
+        h.mem.w16(PARENT + BOX + 6, 100)
+        h.mem.w8(PARENT + INNER + 2, 10)
+        h.mem.w8(PARENT + INNER + 3, 14)
+        h.mem.w32(PARENT + VTOP, 23)
+        def virtual_rect():
+            h.cpu.w_reg(8, OBJECT)
+            h.cpu.w_reg(9, rect)
+            h.call('MUIP_GetVirtualRect')
+            return [h.mem.r32(rect + i * 4) for i in range(4)]
+
+        assert virtual_rect() == [0, 0, 1 << 30, 1 << 30]
+        h.mem.w32(OBJECT + FLAGS, 1 << 29)
+        assert virtual_rect() == [18, 30, 207, 115]
+        h.mem.w32(OBJECT + FLAGS, 0)
+
         # Enter the actual Area dispatcher with the public 24-byte message.
         # The implementation must issue the distinct, old one-word callback.
         message, klass = 0x74000, 0x75000
