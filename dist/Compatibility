@@ -6,8 +6,8 @@ Scope
 The native build targets AmigaOS 3.1+, a 68000 and no FPU. Classic MUI 3.8/3.9
 application behavior is the priority. The bundled classes remain separate
 libraries. Rawimage.mcc and Pixmap.mui provide the image classes used by
-the built-in preferences pages. AROS-only module ports, muiscreen.library
-and newer MUI features without an identified application need are deferred.
+the built-in preferences pages. AROS module ports, muiscreen.library and
+newer MUI features without an identified application need are deferred.
 
 Version policy
 --------------

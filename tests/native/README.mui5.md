@@ -149,6 +149,8 @@ Compile these with the same SDK and flags as the probes above.
 
 | Probe | Coverage |
 | --- | --- |
+| `mui5_classes_probe` | Each class built from `workbench/classes/zune` that has no probe of its own opens, and shows a window where it can |
+| `mui5_calltips_probe` | Calltips needs a source object, opens without gadgets or focus, follows `MUIM_Calltips_SetRectangle`, hides and shows |
 | `mui5_panel_probe` | Filepanel filtering, ASL aliases, pattern changes, Fontpanel inventory and mutable font/style/pen/draw-mode settings, accept/cancel/close-request and repeated opening. |
 | `mui5_marking_probe` | Forward/reverse mouse marking, visible selection, formatted chunks, elided suffixes, multiline clipboard text and reopening. |
 | `mui5_list_format_probe` | Pixel column widths, reordering and logical hiding, borrowed object cells, balanced setup/cleanup and caller-owned disposal. |

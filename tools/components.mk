@@ -15,7 +15,7 @@ plugins: $(PLUGIN_TARGETS) imageclasses
 .PHONY: imageclasses
 imageclasses: $(GENERATED)
 	$(MAKE) -C $(ROOT)/tools/imageclass BUILD=$(COMPONENT_BUILD) \
-	  CFLAGS='$(CFLAGS)'
+	  CFLAGS='$(CFLAGS)' FLEXCAT='$(FLEXCAT)' PYTHON='$(PYTHON)'
 
 $(PLUGIN_TARGETS):
 	$(MAKE) -C $(ROOT)/workbench/classes/zune/$(patsubst thebar/mcc-virtual,thebar/mcc,$(patsubst plugin-%,%,$@)) \

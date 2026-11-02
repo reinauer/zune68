@@ -4,7 +4,8 @@ Zune68 [RELEASE] - [STAGE] for AmigaOS 3.x / m68k
 Zune68 is a user interface library based on AROS Zune, targeting
 compatibility with classic MUI applications.
 The full package contains the core libraries, the Zune preferences editor,
-18 MCC/MCP plugins, Rawimage/Pixmap image classes, translation catalogs,
+18 MCC/MCP plugins, Rawimage/Pixmap image classes, the AROS utility
+classes, translation catalogs,
 opentest, eight examples, SDK headers, plugin documentation/licenses,
 and corresponding source.
 The separate core-only packaging option omits the additional components.
@@ -45,6 +46,9 @@ explicit choice as upgrades. The default is Skip.
     NFloattext, NListtree, TextEditor, TheBar, TheBarVirt, TheButton,
     the Toolbar wrapper, and their bundled MCP editors. Rawimage and
     Pixmap supply image rendering for the built-in preferences pages.
+    Aboutbox, AboutWindow, Busy, Calendar, Calltips, Clock, Flexgroup,
+    Graph, IconImage, Lamp, Listtree, LoginWindow, PrefsEditor, PrefsWindow
+    and SystemPrefsWindow are the AROS utility classes.
     These plugins open the standard muimaster.library name. For use with
     Zune68, install its muimaster.library variant too. Side-by-side tests
     with a different MUI implementation and these plugins are unverified.
@@ -125,9 +129,8 @@ and uncovered windows come back faster. It needs memory for covered areas;
 choose Simple under Refresh on the Windows page to save it.
 
 The preferences editor includes the upstream PrefsWindow implementation
-and uses Rawimage/Pixmap for its built-in page icons. AROS-only external
-classes and muiscreen.library are not built; public-screen enumeration has
-a native fallback. BetterString uses ordinary text rendering where the
+and uses Rawimage/Pixmap for its built-in page icons. muiscreen.library
+is not built; public-screen enumeration has a native fallback. BetterString uses ordinary text rendering where the
 classic CyberGraphX SDK lacks alpha-text support; NBitmap uses its
 existing software alpha fallback. Imported plugins retain compiler
 warnings, and translations are partial.

@@ -28,7 +28,11 @@ PLUGINS = {
     'thebar/mcp': 'TheBar.mcp',
     'thebar/toolbar_mcc': 'Toolbar.mcc',
 }
-IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Busy.mcc')
+IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Busy.mcc',
+                 'Calltips.mcc', 'Aboutbox.mcc', 'AboutWindow.mcc', 'Calendar.mcc',
+                 'Clock.mcc', 'Flexgroup.mcc', 'Graph.mcc', 'IconImage.mcc',
+                 'Lamp.mcc', 'LoginWindow.mcc', 'PrefsEditor.mcc', 'PrefsWindow.mcc',
+                 'SystemPrefsWindow.mcc')
 CLASS_FILES = (*PLUGINS.values(), *IMAGE_CLASSES)
 EXAMPLES = ['HelloZune', 'HGroup', 'VGroup', 'VHGroup', 'VHGroup2', 'HVGroup', 'Notify', 'TheBarDemo']
 
@@ -49,6 +53,8 @@ def catalog_jobs(build):
     for path, stem, destination in [
         ('workbench/libs/muimaster/catalogs', 'muimaster', 'System/Libs/muimaster.catalog'),
         ('workbench/classes/zune/prefswindow/catalogs', 'prefswindow', 'System/Classes/Zune/PrefsWindow.catalog'),
+        ('workbench/classes/zune/aboutwindow/catalogs', 'aboutwindow', 'System/Classes/Zune/AboutWindow.catalog'),
+        ('workbench/classes/zune/systemprefswindow/catalogs', 'systemprefswindow', 'System/Classes/Zune/SystemPrefsWindow.catalog'),
     ]:
         catalog_dir = ROOT / path
         for source in sorted(catalog_dir.glob('*.ct')):
@@ -121,6 +127,11 @@ def sdk(build):
     copy(CLASSES / 'rawimage/Rawimage_mcc.h', build / 'SDK/include/mui/Rawimage_mcc.h')
     copy(CLASSES / 'listtree/Listtree_mcc.h', build / 'SDK/include/mui/Listtree_mcc.h')
     copy(CLASSES / 'busy/Busy_mcc.h', build / 'SDK/include/mui/Busy_mcc.h')
+    for path in ('calltips/Calltips_mcc.h', 'aboutbox/Aboutbox_mcc.h', 'lamp/Lamp_mcc.h'):
+        copy(CLASSES / path, build / 'SDK/include/mui' / Path(path).name)
+    for name in ('aboutwindow', 'calendar', 'clock', 'flexgroup', 'graph', 'iconimage',
+                 'loginwindow', 'prefseditor', 'prefswindow', 'systemprefswindow'):
+        copy(CLASSES / name / (name + '.h'), build / 'SDK/include/zune' / (name + '.h'))
     copy(CLASSES / 'rawimage/MCC_Rawimage.doc', build / 'Docs/Rawimage/MCC_Rawimage.doc')
     copy(ROOT / 'vendor/bzip2/LICENSE', build / 'Docs/bzip2/LICENSE')
     copy(ROOT / 'vendor/bzip2/ORIGIN', build / 'Docs/bzip2/ORIGIN')

@@ -2,4 +2,6 @@
 #ifndef AROS_SYMBOLSETS_H
 #define AROS_SYMBOLSETS_H
 #define ADD2SET(symbol, set, pri)
+#define ADD2INITLIB(symbol, pri)
+#define ADD2EXPUNGELIB(symbol, pri)
 #endif

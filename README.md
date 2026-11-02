@@ -2,8 +2,9 @@
 
 Zune for classic AmigaOS 3, starting from current AROS source.
 
-The native GCC port builds both library names, Zune Prefs, 18 optional
-MCC/MCP plugins, Rawimage/Pixmap image classes, catalogs, SDK headers,
+The native GCC port builds both library names, Zune Prefs, every class under
+`workbench/classes/zune` (MCC/MCP plugins, image classes, and the AROS
+utility classes such as Calltips and Calendar), catalogs, SDK headers,
 examples and an Installer package.
 The library keeps the version number of the AROS source baseline (19.81);
 releases are identified by date and the current line is a beta.
@@ -73,9 +74,8 @@ and demo locations and the Calendar/Clock sources from Time Prefs.
 
 BetterString, HotkeyString, the NList family, and TextEditor are included
 with their preferences modules, headers, documentation, and examples.
-Other AROS classes are preserved as source; the native build selects
-the classic components listed above. Their history here is the history
-recorded in AROS, not a reconstruction of their separate upstream repos.
+The history of the AROS classes here is the history recorded in AROS, not
+a reconstruction of their separate upstream repos.
 
 The five translation repositories remain pinned submodules. TheBar is an
 additional submodule pinned to its 26.22 release. Its native build includes
