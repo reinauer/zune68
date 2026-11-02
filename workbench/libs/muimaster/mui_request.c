@@ -264,6 +264,10 @@ static void muiDataStreamFromFormat(CONST_STRPTR format, APTR dataStream,  ULONG
             }
             DoMethod(req_group, MUIM_Group_ExitChange);
 
+            /* Escape answers like the rightmost gadget: 0 */
+            DoMethod(req_wnd, MUIM_Notify, MUIA_Window_CloseRequest, TRUE,
+                     (IPTR)app, 2, MUIM_Application_ReturnID, 1);
+
             /* now activate that button with a starting "*" */
             if(active != -1) set(req_wnd, MUIA_Window_ActiveObject, (IPTR) req_but[active]);
 
