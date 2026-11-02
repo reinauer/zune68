@@ -22,7 +22,9 @@ make check
 make release
 ```
 
-Checks require Python with `amitools` and `machine68k`. They execute linked
+Checks need the Python bundled with the Amiga toolchain, which has matching
+`amitools` and `machine68k`: `make check
+PYTHON=<toolchain>/libexec/amitools/bin/python`. They execute linked
 68000 code with modelled OS calls. They do not establish GUI compatibility
 or speed on Amiga hardware. `dist/Compatibility` describes guest workloads.
 The release archive is under `build/muimaster/release`; packaged binaries
