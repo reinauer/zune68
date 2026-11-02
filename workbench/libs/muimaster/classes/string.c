@@ -3040,14 +3040,6 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
             acknowledge = !MULTILINE(data);
             break;
 
-        case MUIKEY_WINDOW_CLOSE:
-            data->is_active = FALSE;
-            set(obj, MUIA_Background,
-                (IPTR) muiGlobalInfo(obj)->mgi_Prefs->string_bg_inactive);
-            DoMethod(obj, MUIM_GoInactive);
-            retval = 0;
-            break;
-
         default:
             retval = 0;
         }                       // switch(muikey)
@@ -3106,8 +3098,14 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                             (IPTR) muiGlobalInfo(obj)->mgi_Prefs->
                             string_bg_active);
 
-                        //DoMethod(obj, MUIM_GoActive);
-                        set(_win(obj), MUIA_Window_ActiveObject, obj);
+                        /* An edit ended by a hook leaves the window's
+                         * active object unchanged, so setting it again
+                         * would not restore key input. */
+                        if (XGET(_win(obj), MUIA_Window_ActiveObject)
+                            == (IPTR)obj)
+                            DoMethod(obj, MUIM_GoActive);
+                        else
+                            set(_win(obj), MUIA_Window_ActiveObject, obj);
                         // let other objects a chance to get desactivated
                         //retval = 0;
                     }
