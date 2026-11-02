@@ -38,6 +38,26 @@ or speed on Amiga hardware. `dist/Compatibility` describes guest workloads.
 The release archive is under `build/muimaster/release`; packaged binaries
 are stripped while local build outputs keep their symbols.
 
+## Speed
+
+`perfbench` on an emulated 68020 with AGA, milliseconds per batch, lower is
+better. The tree uses only what MUI 3.8 offers, and the same executable runs
+on all three.
+
+| Test | MUI 3.8 | MUI 5 | Zune68 |
+|---|---:|---:|---:|
+| Create/dispose widget tree | 116.32 | 263.36 | 86.78 |
+| Open/close window | 359.95 | 705.86 | 359.96 |
+| Full redraw x10 | 1567.54 | 2198.56 | 1546.51 |
+| Group change cycle x5 | 956.24 | 1305.22 | 927.28 |
+| Insert 200 entries | 1552.02 | 4721.00 | 835.03 |
+| Selection/autoscroll x50 | 1071.64 | 2122.24 | 983.91 |
+| Notification chain x100 | 695.11 | 1260.20 | 654.16 |
+| Text update x100 | 158.80 | 193.96 | 154.60 |
+
+[PERFORMANCE.md](tests/native/PERFORMANCE.md) has the method and what these
+numbers do not cover.
+
 ## Tested applications
 
 These MUI applications have been run with Zune68 on AmigaOS 3:
@@ -53,12 +73,12 @@ These MUI applications have been run with Zune68 on AmigaOS 3:
 ## CI and releases
 
 GitHub Actions builds and checks branch pushes and pull requests. A release
-date tag such as `v2026.10.12`, matching the date in the library's version
+date tag such as `v2026.11.01`, matching the date in the library's version
 string, creates a draft pre-release with an LHA and Aminet readme. Publishing the release uploads those same assets to Aminet as
 `Zune68.lha` and `Zune68.readme`. Local preparation without uploading:
 
 ```sh
-python3 tools/prepare_aminet.py --tag v2026.10.12
+python3 tools/prepare_aminet.py --tag v2026.11.01
 ```
 
 ## Branches
