@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2002-2012, The AROS Development Team.
+    Copyright (C) 2002-2026, The AROS Development Team.
     All rights reserved.
     
 */
@@ -64,20 +64,24 @@ VOID ZuneRemoveClipRegion(struct MUI_RenderInfo *mri, APTR handle)
         MUI_LIB_ENTRY VOID MUI_RemoveClipRegion(MUI_LIB_ARG(a0, struct MUI_RenderInfo *mri), MUI_LIB_ARG(a1, APTR handle))
 
 /*  FUNCTION
+        Pop and dispose of the most recently pushed MUI clipping region,
+        and install the region that was current before the matching add
+        call. Refresh processing is suspended and resumed when necessary.
 
     INPUTS
+        mri - Valid rendering context used when the region was pushed.
+        handle - Token from the matching add call. (APTR)-1 does nothing.
 
     RESULT
+        None.
 
     NOTES
-
-    EXAMPLE
-
-    BUGS
+        Use strict reverse order and remove each successful push once.
+        A call with an empty stack, or without a target layer, does
+        nothing.
 
     SEE ALSO
-
-    INTERNALS
+        MUI_AddClipRegion(), MUI_AddClipping(), MUI_RemoveClipping()
 
 *****************************************************************************/
 {
