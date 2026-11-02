@@ -73,12 +73,12 @@ These MUI applications have been run with Zune68 on AmigaOS 3:
 ## CI and releases
 
 GitHub Actions builds and checks branch pushes and pull requests. A release
-date tag such as `v2026.11.01`, matching the date in the library's version
+date tag such as `v2026.11.02`, matching the date in the library's version
 string, creates a draft pre-release with an LHA and Aminet readme. Publishing the release uploads those same assets to Aminet as
 `Zune68.lha` and `Zune68.readme`. Local preparation without uploading:
 
 ```sh
-python3 tools/prepare_aminet.py --tag v2026.11.01
+python3 tools/prepare_aminet.py --tag v2026.11.02
 ```
 
 ## Branches

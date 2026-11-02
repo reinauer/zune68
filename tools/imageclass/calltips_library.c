@@ -22,7 +22,7 @@ Object *DoSuperNewTags(struct IClass *cl, Object *obj, void *unused, ...);
 #define CLASS MUIC_Calltips
 #define SUPERCLASS MUIC_Window
 #define INSTDATA Data
-#define USERLIBID CLASS " 20.12 (01.11.2026) AROS native AmigaOS port"
+#define USERLIBID CLASS " 20.12 (02.11.2026) AROS native AmigaOS port"
 #define MASTERVERSION 19
 #define MIN_STACKSIZE 16384
 #define SetupDebug() ((void)0)
