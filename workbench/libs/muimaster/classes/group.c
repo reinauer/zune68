@@ -943,8 +943,10 @@ IPTR Group__MUIM_DisconnectParent(struct IClass *cl, Object *obj,
     cstate = ChildList->mlh_Head;
     while ((child = NextObject(&cstate)))
     {
+        /* _parent() is the group link, set on adding and cleared on
+         * removal. Voyager removes a view from its parent after removing
+         * the window from the application. */
         DoMethodA(child, (Msg) msg);
-        muiNotifyData(child)->mnd_ParentObject = NULL;
         _flags(child) &= ~MADF_INVIRTUALGROUP;
     }
     DoSuperMethodA(cl, obj, (Msg) msg);
