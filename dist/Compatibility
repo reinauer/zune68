@@ -77,7 +77,7 @@ with third-party MCCs which open muimaster.library themselves.
 Rendering and lifetime limits
 -----------------------------
 Planar Bitmap rendering treats nonzero global alpha as opaque while
-retaining its mask; zero alpha is transparent. Core RTG rendering now
+retaining its mask; zero alpha is transparent. Core RTG rendering
 opens CyberGraphX V41 on demand and uses its classic pixel-array calls
 for software alpha blending. Text RGB/ARGB and inline image pixels are
 covered by a Picasso96 probe; complete RTG themes are not. Window refresh follows
@@ -139,34 +139,35 @@ Newstring.mcc clipboard behavior matches original MUI 3.9.
 The classic version-19 build needs a compatible Newstring.mcc for
 IBrowse. With IBrowse 3.0a, Newstring 16.18 starts successfully; the
 Newstring 21.26 supplied with MUI 5 requires muimaster.library version 20
-and produces "Couldn't create CL_URLString" under beta1 (19.81).
+and produces "Couldn't create CL_URLString" under version 19.
 Check both MUI:Libs/mui and the browser's own mui drawer. Preserve the
 newer class when testing an older compatible copy in a separate system.
 The opt-in version-21 development build is tested separately with the
 newer String-derived Newstring class.
+
+LumiZip 1.0.1 and LumiWeather 1.4.524 start and quit cleanly on AmigaOS
+3.2.3 with networking off. A shutdown freeze reported on OS 3.9/AfA OS has
+not been reproduced.
 
 This is a beta, and there are many ways to improve it. Settings edits,
 form handling, more applications, AmigaOS 3.1, 68000 machines and
 CyberGraphX truecolor rendering all need more testing. We need testers:
 please report what works and what doesn't.
 
-Settings and Iconify title-bar buttons are implemented. Iconify/restore
-and palette ownership work; Snapshot and popup buttons remain unsupported.
-Repeated overlays preserve all compared local-fixture content pixels after
-refresh damage culling. In a matched 20-trial benchmark, median exposure
-latency fell from 492.2 to 170.6 ms; original MUI 3.9 measured 94.1 ms.
-These times include scheduling and fixed waits.
+Settings, Snapshot, Popup and Iconify title-bar buttons are implemented.
+Iconify/restore and palette ownership work.
+
+With the default smart refresh, the main windows of IBrowse, YAM and
+Voyager restore completely when uncovered. After a resize, YAM's message
+list area differs from MUI 3.9 in both refresh modes.
 
 Application stress tests complete 1000 control and 1000 queued-call
 lifetimes after warmup, with flat measured free memory/largest blocks
 and no discarded-method callbacks. Window stress completes 100 cycles
 with balanced setup/cleanup and stable measured memory and system colors.
-One native window test ended 112 Fast RAM bytes below its initial sample;
-this did not recur in the application-lifetime test. Window-specific
-follow-up remains open. These results are not a general leak-free claim.
-
-Voyager, YAM and the original SDK demos remain future application tests;
-source inspection or prepared archives alone do not establish a pass.
+One window test ended 112 Fast RAM bytes below its initial sample, so
+window leaks are not ruled out. These results are not a general leak-free
+claim.
 
 Runtime workload
 ----------------
