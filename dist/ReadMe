@@ -48,7 +48,8 @@ explicit choice as upgrades. The default is Skip.
     Pixmap supply image rendering for the built-in preferences pages.
     Aboutbox, AboutWindow, Busy, Calendar, Calltips, Clock, Flexgroup,
     Graph, IconImage, Lamp, Listtree, LoginWindow, PrefsEditor, PrefsWindow
-    and SystemPrefsWindow are the AROS utility classes.
+    and SystemPrefsWindow are the AROS utility classes. Textinput and
+    Textinputscroll 29 are names for String, which has the Textinput API.
     These plugins open the standard muimaster.library name. For use with
     Zune68, install its muimaster.library variant too. Side-by-side tests
     with a different MUI implementation and these plugins are unverified.
@@ -111,7 +112,8 @@ reports version [VERSION], the version of MUI 5; Zune68 releases are told
 apart by the date in the version string, so Installer shows an upgrade
 between them as a same-version replacement. IBrowse 3.0a, YAM 2.9, Odyssey,
 AmiPG and Voyager 3.5.2 run; IBrowse is pretty usable. Voyager needs
-Textinput.mcc 29 or later, which is not part of Zune68.
+Textinput.mcc 29 or later: copy Textinput.mcc and Textinputscroll.mcc
+over older ones in Voyager's Libs/mui drawer.
 
 All 12 built-in Prefs pages display images; MCP pages appear once. Prefs
 Test/Cancel and TheBarDemo work. See Compatibility for application results

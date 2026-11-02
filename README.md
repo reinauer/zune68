@@ -64,7 +64,7 @@ These MUI applications have been run with Zune68 on AmigaOS 3:
 
 - IBrowse 3.0 (build 30.8, AmigaOS/68020 version)
 - YAM 2.9p1
-- Voyager 3.5.2, with its own Textinput.mcc 29 or later
+- Voyager 3.5.2, with Zune68's Textinput.mcc 29
 - Odyssey Web Browser
 - AmiPG 17.340
 

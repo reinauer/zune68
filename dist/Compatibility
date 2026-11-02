@@ -41,6 +41,11 @@ List column mapping and String hook actions are implemented. Process,
 Keyadjust and Fontdisplay are available. Textdata_SourceEncoding matches
 the observed no-op behavior of the 21.227 reference in the tested cases.
 
+As in MUI 5, String implements the Textinput API: marks, clipboard and
+edit methods, numeric input and the Textinput attributes. Textinput.mcc
+and Textinputscroll.mcc 29 are thin wrappers. Multi-line editing is not
+implemented; a Multiline String shows its text on one line.
+
 Remaining gaps include Screenmodepanel, Slave, undocumented preferences
 classes, complete theme compatibility and full application workflows.
 Native ASL handles unsupported requester options. External MCC versions
