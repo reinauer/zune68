@@ -1730,8 +1730,8 @@ BOOL zune_background_is_position_free(Object *obj)
  * the method only in Area and in Group (virtual offsets), so when every
  * class from the object's down to Area is built-in and the object is no
  * virtual group, the Area implementation is the one the dispatch would
- * reach. A background fill used to cost three to five dispatches per
- * object (own class chain, then the parent walk, then the window). */
+ * reach. Dispatching costs three to five calls per background fill (own
+ * class chain, then the parent walk, then the window). */
 IPTR zune_draw_background(Object *obj, LONG left, LONG top, LONG width,
     LONG height, LONG xoffset, LONG yoffset, ULONG flags)
 {

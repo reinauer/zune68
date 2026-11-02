@@ -23,8 +23,8 @@ extern struct Library *MUIMasterBase;
 /* MUI 3.8/3.9 built-in arrows are chevrons with two pixel wide strokes:
  * 10x5 pointing up or down and 4x8 pointing left or right. Larger areas
  * centre the same shape. */
-/* Glyphs as blitter templates. A radio image or an arrow was a dozen
- * RectFill/WritePixel calls, each 0.1-0.3 ms on a 68020 whatever its
+/* Glyphs as blitter templates. Drawing a radio image or an arrow takes a
+ * dozen RectFill/WritePixel calls, each 0.1-0.3 ms on a 68020 whatever its
  * size (tests/native/gfxprims.c); a BltTemplate paints a whole pen's
  * pixels in one call. Templates are built from the same geometry on first
  * use, in chip memory, and freed at expunge. Rows are 32 bits wide. */

@@ -261,8 +261,8 @@ IPTR Notify__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     /* The Zune-private attribute block (help line/node, AppMessage) is
      * allocated when one of those attributes is first set: most objects
-     * never set them, and the allocation per object was the largest
-     * single allocation count at tree creation. */
+     * never set them, and tree creation would otherwise pay one allocation
+     * per object. */
     while ((tag = NextTagItem(&tags)) != NULL)
     {
         switch (tag->ti_Tag)

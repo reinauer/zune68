@@ -296,7 +296,7 @@ Class *ZUNE_GetBuiltinClass(CONST_STRPTR id, struct Library *base)
      * the semaphore inside Forbid (ZUNE_AddBuiltinClass, expunge), so a
      * Forbid section sees a consistent cache entry and reference count.
      * Two semaphore operations per object (here and in MUI_FreeClass)
-     * were a visible share of tree creation. */
+     * would be a visible share of tree creation. */
     Forbid();
     cl = MUIMB(base)->BuiltinClassCache[((UBYTE)id[0] ^ (UBYTE)id[1]) & 31];
     if (cl && (cl->cl_ID == id || !strcmp(cl->cl_ID, id)))
