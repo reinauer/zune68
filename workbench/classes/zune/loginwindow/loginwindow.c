@@ -71,14 +71,20 @@ CONST_STRPTR MSG(struct Catalog *catalog, ULONG id)
 
 #define _(id) MSG(catalog,id)
 
-static CONST_STRPTR LoginWindow_ImageBase(void)
+/* Touching a path on a missing assign would open a DOS requester */
+static BOOL LoginWindow_Assigned(CONST_STRPTR name)
 {
     struct DosList *dl = LockDosList(LDF_ASSIGNS | LDF_READ);
-    BOOL assigned = (FindDosEntry(dl, "IMAGES", LDF_ASSIGNS) != NULL);
+    BOOL assigned = (FindDosEntry(dl, name, LDF_ASSIGNS) != NULL);
 
     UnLockDosList(LDF_ASSIGNS | LDF_READ);
 
-    return assigned ? IMAGES_ASSIGN : IMAGES_SYSPATH;
+    return assigned;
+}
+
+static CONST_STRPTR LoginWindow_ImageBase(void)
+{
+    return LoginWindow_Assigned("IMAGES") ? IMAGES_ASSIGN : IMAGES_SYSPATH;
 }
 
 /* Builds a MUI external-image spec ("3:<path>") for one of the images */
@@ -103,6 +109,7 @@ Object *LoginWindow__OM_NEW
     APTR                    pool                = NULL;
     BPTR                    lock                = NULL;
     CONST_STRPTR            imageBase           = LoginWindow_ImageBase();
+    BOOL                    themed              = LoginWindow_Assigned("THEME");
     char                    logoSpec[IMAGESPEC_MAX],
                             userSpec[IMAGESPEC_MAX];
     IPTR                    logoFrame           = 0,
@@ -365,7 +372,8 @@ Object *LoginWindow__OM_NEW
     /* The button row: "<space> [Login] [Cancel]", or in system mode (the
      * boot login, nothing to cancel) "[Shutdown] [Reboot] <space> [Login]" */
 /* theme images when present (ImageButton falls back to a text button) */
-#define LWButton(text, image) ImageButton((text), "THEME:Images/Gadgets/" image)
+#define LWButton(text, image) (themed \
+    ? ImageButton((text), "THEME:Images/Gadgets/" image) : SimpleButton(text))
     if (systemMode)
     {
         buttonGroup = HGroup,
