@@ -2264,12 +2264,10 @@ static UBYTE Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
             zune_frame_create_clip_region(bgleft, bgtop, bgw, bgh, actual_radius);
         if (clipregion) {
             cliphandle = MUI_AddClipRegion(data->mad_RenderInfo, clipregion);
-            if (cliphandle != (APTR)-1) {
+            /* On failure MUI_AddClipRegion has already disposed of it. */
+            if (cliphandle != (APTR)-1)
                 use_clipping = TRUE;
-            } else {
-                DisposeRegion(clipregion);
-                clipregion = NULL;
-            }
+            clipregion = NULL;
         }
     }
 
