@@ -32,8 +32,9 @@ def component_version(path):
 def library_version(path):
     """Return (library version, release date as YYYY.MM.DD, stage) from $VER.
 
-    The library version follows the AROS source baseline; Zune68 releases
-    are identified by the $VER date, and the stage names the release line.
+    The library version is the one it reports to applications; Zune68
+    releases are identified by the $VER date, and the stage names the
+    release line.
     """
     data = path.read_bytes()
     if data[:4] != struct.pack('>I', 1011):
@@ -58,7 +59,8 @@ def identity(build_dir):
 
 def substitute(text, version, date, stage):
     return (text.replace('[VERSION]', version).replace('[RELEASE]', date)
-            .replace('[STAGE]', stage))
+            .replace('[STAGE]', stage)
+            .replace('[PLUGINS]', str(len(CLASS_FILES))))
 
 
 def component_files(build_dir):

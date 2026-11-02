@@ -4,8 +4,8 @@ Zune68 [RELEASE] - [STAGE] for AmigaOS 3.x / m68k
 Zune68 is a user interface library based on AROS Zune, targeting
 compatibility with classic MUI applications.
 The full package contains the core libraries, the Zune preferences editor,
-18 MCC/MCP plugins, Rawimage/Pixmap image classes, the AROS utility
-classes, translation catalogs,
+[PLUGINS] optional MUI class plugins, among them the Rawimage/Pixmap
+image classes and the AROS utility classes, translation catalogs,
 opentest, eight examples, SDK headers, plugin documentation/licenses,
 and corresponding source.
 The separate core-only packaging option omits the additional components.

@@ -124,7 +124,8 @@ RTG effects or every legacy Toolbar application's behavior.
 Application results
 -------------------
 IBrowse 3.0a basic functionality is working and the browser is pretty
-usable. YAM 2.x, Voyager 3.2 and XSysInfo run as well. All 12 built-in
+usable. YAM 2.x, Voyager 3.5.2, Odyssey Web Browser, AmiPG and XSysInfo
+run as well. All 12 built-in
 Prefs pages display images;
 MCP pages appear once, and Prefs Test/Cancel returns successfully.
 
