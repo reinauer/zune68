@@ -1,0 +1,6 @@
+{
+  "candidate": "c07393d59c9eec89633de5de0f7917a246504154",
+  "probe_sha256": "fd32a9917e5d5b1a7c95729c65c615b9ee4458533384dc2dae0a42f2165cc854",
+  "fixture": "AmigaOS 3.2.3, 68020, AGA, no JIT; functional cpu_speed=max",
+  "note": "Cold library opening followed by one warm round and three measured rounds per class. Closed-object deltas and open-window deltas are separate."
+}

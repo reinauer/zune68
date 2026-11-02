@@ -245,9 +245,9 @@ Omit `--libraries` to retain the fixture's reference MUI. Omit `rtg` for
 a planar-only installation. Functional runs use unrestricted emulation
 speed and must never be used as timing measurements.
 
-In the last recorded full batch (`f6060891`), Zune68 passes on 68000 and
-68020 AmigaOS 3.2.3, MUI 21.227 passes the shared assertions, and the RTG
-pixel probe passes on the 68020 Picasso96 fixture. Physical hardware, AfA OS
+At `c07393d5` Zune68 passes every probe on 68020 AmigaOS 3.2.3, including
+the RTG pixel probe on the Picasso96 fixture. The last 68000 batch and the
+comparison with MUI 21.227 are from `f6060891`. Physical hardware, AfA OS
 and complete MUI 5 compatibility are not covered.
 
 See also [PERFORMANCE.md](PERFORMANCE.md) and [MEMORY.md](MEMORY.md).

@@ -1,0 +1,14 @@
+{
+  "source_commit": "bfce5ee1dd2ddf5e12a328e240aaec627d784b4b",
+  "library_compiler": "m68k-amigaos-gcc (AmigaDev 16.2-rc21) 16.2.1b 20261010182711",
+  "benchmark_compiler": "m68k-amigaos-gcc (AmigaDev amiga13.4-g696db0d5f) 13.4.0b 20260811114005",
+  "build": "make check release TRACE=0",
+  "library_sha256": "5962794fcc2001703382b8e980f262f22cb2a5e1404c1e2f9d27e05dbde93ab1",
+  "benchmark_source_sha256": "711a0845d78169eee7448350dd2e606a6b059cff1444b4f97c380d1380e04c7a",
+  "benchmark_binary_sha256": "d5da4afb298dfd444db3aad9602197b2f19d4a27668df4d26905b90458c2b8e9",
+  "benchmark_sdk": "MUI-5.0-20210831-os3.lha",
+  "benchmark_flags": "-m68000 -msoft-float -noixemul -Os -Wl,-u,___stkinit",
+  "display_mode": "HIRESLACE_KEY 640x480x2",
+  "settle_seconds": 10,
+  "trials": 3
+}

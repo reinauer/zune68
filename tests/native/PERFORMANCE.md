@@ -5,23 +5,21 @@ batch, lower is better; the percentages are Zune68's time against each MUI.
 
 | Batch | MUI 3.8 | MUI 5 | Zune68 | vs 3.8 | vs 5 |
 |---|---:|---:|---:|---:|---:|
-| Create/dispose widget tree | 105.53 | 253.28 | 88.23 | -16.4% | -65.2% |
-| Open/close window | 539.90 | 883.09 | 539.96 | 0.0% | -38.9% |
-| Full redraw x10 | 1572.25 | 2150.47 | 1549.63 | -1.4% | -27.9% |
-| Group change cycle x5 | 957.94 | 1286.92 | 932.98 | -2.6% | -27.5% |
-| Insert 200 entries | 1538.56 | 4721.42 | 994.65 | -35.4% | -78.9% |
-| Selection/autoscroll x50 | 1126.56 | 2109.61 | 1045.61 | -7.2% | -50.4% |
-| Notification chain x100 | 699.52 | 1229.53 | 672.05 | -3.9% | -45.3% |
-| Text update x100 | 180.34 | 217.22 | 179.44 | -0.5% | -17.4% |
+| Create/dispose widget tree | 116.32 | 263.36 | 86.78 | -25.4% | -67.1% |
+| Open/close window | 359.95 | 705.86 | 359.96 | 0.0% | -49.0% |
+| Full redraw x10 | 1567.54 | 2198.56 | 1546.51 | -1.3% | -29.7% |
+| Group change cycle x5 | 956.24 | 1305.22 | 927.28 | -3.0% | -29.0% |
+| Insert 200 entries | 1552.02 | 4721.00 | 835.03 | -46.2% | -82.3% |
+| Selection/autoscroll x50 | 1071.64 | 2122.24 | 983.91 | -8.2% | -53.6% |
+| Notification chain x100 | 695.11 | 1260.20 | 654.16 | -5.9% | -48.1% |
+| Text update x100 | 158.80 | 193.96 | 154.60 | -2.6% | -20.3% |
 
 Zune68 beats MUI 5 in every batch. It is level with MUI 3.8 on open/close
-and text update and faster in the other six. Differences under 1% count as
-unchanged; boot-to-boot spread is under 0.8%, except 2.6% for Zune68
-create/dispose.
+and faster in the other seven. MUI 5 takes 1.2 to 3 times as long as MUI
+3.8. Boot-to-boot spread is under 0.8%.
 
-Measured at `2aed03dc`. Not covered:
+Measured at `bfce5ee1`. Not covered:
 
-- `042ddb6d` (titlebar gadgets), which changed `window.c` afterwards.
 - 68000: no timing of the current library. MUI 5 needs a 68020 anyway.
 - RTG, physical hardware and complete applications.
 
@@ -43,13 +41,13 @@ screens or windows outside the visible area.
   is neither a structural change nor a window resize.
 - Selection/autoscroll steps through 200 entries in jumps of seven.
 - Notification and text update run with the window open, drawing included.
-- Each toolkit uses its defaults, so window sizes differ (MUI 3.8 238x419,
-  MUI 5 244x429, Zune68 232x421) and redraw does not compare identical
+- Each toolkit uses its defaults, so window sizes differ (MUI 3.8 298x419,
+  MUI 5 304x429, Zune68 292x421) and redraw does not compare identical
   pixels.
 
 Toolkits: MUI 3.8 19.35 (`mui38usr.lha`), MUI 5 21.227
-(`MUI-5.0-20210831-os3.lha`), and Zune68 built with `MUI5_TEST=1 TRACE=0
-LTO=0`, which reports the same 21.227.
+(`MUI-5.0-20210831-os3.lha`), and Zune68's default build, which reports the
+same 21.227.
 
 Machine: WinUAE, 68020, AGA, AmigaOS 3.2.3, 2 MiB Chip, 4 MiB Fast, 16 MiB
 Z3. JIT off, `cpu_speed=real`, `cpu_multiplier=4`, memory and blitter cycle
@@ -92,6 +90,9 @@ Do not retry these:
   parent and under a pressed button (`cornerbg.c`).
 - Replacing Move/Draw frame lines with RectFill or blits. See the table;
   a blit of a prepared 1-pixel bitmap is slower still.
+- `-mregparm=2` on the library objects, without adapting the tests first.
+  It gains 1.6%, but most `check_*.py` harnesses call and mock internal
+  functions on the stack, and every `HookEntry` body must become `__stdargs`.
 
 ## Fast paths
 
@@ -165,6 +166,10 @@ on a 640x256 screen, so its times do not mix with the table above. Build with
 
 ## Results
 
-[Measurements and hashes](results/toolkit-compilers-20261016.json),
-[guest transcripts](results/toolkit-compilers-20261016-transcripts.txt) and
-[build provenance](results/toolkit-compilers-20261016-provenance.json).
+[Measurements and hashes](results/toolkits-20261101.json),
+[guest transcripts](results/toolkits-20261101-transcripts.txt) and
+[build provenance](results/toolkits-20261101-provenance.json).
+
+The GCC comparison: [measurements](results/toolkit-compilers-20261016.json),
+[transcripts](results/toolkit-compilers-20261016-transcripts.txt) and
+[provenance](results/toolkit-compilers-20261016-provenance.json).

@@ -2,12 +2,12 @@
 
 ## Resident size
 
-Bytes at `2bee726d`, GCC 16.2, `-Os`, `TRACE=0`:
+Bytes at `bfce5ee1`, GCC 16.2, `-Os`, `TRACE=0`:
 
 | Build | Stripped file | CODE | DATA | BSS |
 |---|---:|---:|---:|---:|
-| Default (19.81) | 413,040 | 386,608 | 676 | 3,160 |
-| `MUI5_TEST=1` (21.227) | 413,092 | 386,660 | 676 | 3,160 |
+| Default (21.227) | 413,252 | 386,816 | 676 | 3,160 |
+| `MUI5_TEST=0` (19.81) | 413,208 | 386,772 | 676 | 3,160 |
 
 `muimaster.library` and `zunemaster.library` are complete libraries, so
 loading both names does not share code. Strip a copy for the file size and
@@ -15,27 +15,26 @@ read the segment lengths from the Hunk image.
 
 ## Object and window cost
 
-Measured at `6abcf70c` and not repeated since: the objects have changed, so
-these are approximate. Median held allocation per closed object, including
+Measured at `c07393d5`. Median held allocation per closed object, including
 Exec rounding and owned children:
 
 | Object | Bytes |
 |---|---:|
-| Notify | 56 |
+| Notify | 40 |
 | Process, not launched | 136 |
-| Rectangle | 312 |
-| Text | 384 |
-| Group | 520 |
-| Title | 608 |
-| String | 656 |
-| Keyadjust | 2,712 |
-| List | 8,304 |
-| Fontpanel | 33,184 |
-| Filepanel | 34,624 |
+| Rectangle | 296 |
+| Text | 368 |
+| Group | 488 |
+| Title | 576 |
+| String | 640 |
+| Keyadjust | 2,648 |
+| List | 8,120 |
+| Filepanel | 32,144 |
+| Fontpanel | 32,184 |
 
 Other figures from the same run:
 
-- Opening the library from cold takes 548,200 bytes, including dependent
+- Opening the library from cold takes 497,120 bytes, including dependent
   libraries and loader bookkeeping.
 - A page-mode window with 128 Text objects, one visible, adds 21,472 bytes
   while open. All of it is released on close.
@@ -68,5 +67,5 @@ objects, or four for each panel, and take the median of three rounds after
 one warm round. Process objects are not launched, so their task stack is
 not included.
 
-[Raw output](results/mui5-memory-20261014-current.txt) and
-[hashes](results/mui5-memory-20261014-metadata.json).
+[Raw output](results/mui5-memory-20261101.txt) and
+[hashes](results/mui5-memory-20261101-metadata.json).

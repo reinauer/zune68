@@ -1,0 +1,41 @@
+START:memory
+library=21.227 already-loaded=0 open-held=497120
+class=Notify.mui round=1 n=128 own=28 inherited=0 held=5120 retained=0
+class=Notify.mui round=2 n=128 own=28 inherited=0 held=5120 retained=0
+class=Notify.mui round=3 n=128 own=28 inherited=0 held=5120 retained=0
+class=Rectangle.mui round=1 n=128 own=12 inherited=266 held=37888 retained=0
+class=Rectangle.mui round=2 n=128 own=12 inherited=266 held=37888 retained=0
+class=Rectangle.mui round=3 n=128 own=12 inherited=266 held=37888 retained=0
+class=Text.mui round=1 n=128 own=50 inherited=266 held=47104 retained=0
+class=Text.mui round=2 n=128 own=50 inherited=266 held=47104 retained=0
+class=Text.mui round=3 n=128 own=50 inherited=266 held=47104 retained=0
+class=String.mui round=1 n=128 own=272 inherited=266 held=81920 retained=0
+class=String.mui round=2 n=128 own=272 inherited=266 held=81920 retained=0
+class=String.mui round=3 n=128 own=272 inherited=266 held=81920 retained=0
+class=Group.mui round=1 n=128 own=152 inherited=266 held=62464 retained=0
+class=Group.mui round=2 n=128 own=152 inherited=266 held=62464 retained=0
+class=Group.mui round=3 n=128 own=152 inherited=266 held=62464 retained=0
+class=List.mui round=1 n=128 own=412 inherited=418 held=1039360 retained=0
+class=List.mui round=2 n=128 own=412 inherited=418 held=1039360 retained=0
+class=List.mui round=3 n=128 own=412 inherited=418 held=1039360 retained=0
+class=Title.mui round=1 n=128 own=66 inherited=418 held=73728 retained=0
+class=Title.mui round=2 n=128 own=66 inherited=418 held=73728 retained=0
+class=Title.mui round=3 n=128 own=66 inherited=418 held=73728 retained=0
+class=Process.mui round=1 n=128 own=54 inherited=46 held=17408 retained=0
+class=Process.mui round=2 n=128 own=54 inherited=46 held=17408 retained=0
+class=Process.mui round=3 n=128 own=54 inherited=46 held=17408 retained=0
+class=Keyadjust.mui round=1 n=128 own=72 inherited=418 held=338944 retained=0
+class=Keyadjust.mui round=2 n=128 own=72 inherited=418 held=338944 retained=0
+class=Keyadjust.mui round=3 n=128 own=72 inherited=418 held=338944 retained=0
+class=Filepanel.mui round=1 n=4 own=260 inherited=432 held=128576 retained=0
+class=Filepanel.mui round=2 n=4 own=260 inherited=432 held=128576 retained=0
+class=Filepanel.mui round=3 n=4 own=260 inherited=432 held=128576 retained=0
+class=Fontpanel.mui round=1 n=4 own=222 inherited=432 held=128736 retained=0
+class=Fontpanel.mui round=2 n=4 own=222 inherited=432 held=128736 retained=0
+class=Fontpanel.mui round=3 n=4 own=222 inherited=432 held=128736 retained=0
+setup=text128 round=1 open=1 held=21536 retained=0
+setup=text128 round=2 open=1 held=21472 retained=0
+setup=text128 round=3 open=1 held=21472 retained=0
+PASS failures=0
+RC:0
+ALLDONE

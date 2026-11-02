@@ -1,0 +1,153 @@
+=== 0-mui38 ===
+library 19.35 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=   82506 ticks    116369 us/rep  ops=1
+open+close     median=  255342 ticks    360143 us/rep  ops=1
+window-position=20,20
+geometry window=298x419 root=290x406 list-visible=31
+redraw x10     median= 1111960 ticks   1568349 us/rep  ops=10
+relayout x5    median=  678309 ticks    956712 us/rep  ops=5
+list insert200 median= 1100897 ticks   1552746 us/rep  ops=200
+list-entries=200
+list active x50 median=  759978 ticks   1071901 us/rep  ops=50
+notify x100    median=  493058 ticks    695427 us/rep  ops=100
+text set x100  median=  112644 ticks    158877 us/rep  ops=100
+rc=0
+ALLDONE
+=== 0-mui5 ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=  186883 ticks    263586 us/rep  ops=1
+open+close     median=  499531 ticks    704557 us/rep  ops=1
+window-position=20,20
+geometry window=304x429 root=296x416 list-visible=20
+redraw x10     median= 1559612 ticks   2199734 us/rep  ops=10
+relayout x5    median=  925788 ticks   1305765 us/rep  ops=5
+list insert200 median= 3348976 ticks   4723520 us/rep  ops=200
+list-entries=200
+list active x50 median= 1505722 ticks   2123726 us/rep  ops=50
+notify x100    median=  900039 ticks   1269448 us/rep  ops=100
+text set x100  median=  137473 ticks    193897 us/rep  ops=100
+rc=0
+ALLDONE
+=== 0-zune68 ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=   61557 ticks     86822 us/rep  ops=1
+open+close     median=  255346 ticks    360149 us/rep  ops=1
+window-position=20,20
+geometry window=292x421 root=284x408 list-visible=264
+redraw x10     median= 1097082 ticks   1547365 us/rep  ops=10
+relayout x5    median=  657797 ticks    927781 us/rep  ops=5
+list insert200 median=  592297 ticks    835397 us/rep  ops=200
+list-entries=200
+list active x50 median=  697575 ticks    983885 us/rep  ops=50
+notify x100    median=  464049 ticks    654511 us/rep  ops=100
+text set x100  median=  109670 ticks    154682 us/rep  ops=100
+rc=0
+ALLDONE
+=== 1-mui38 ===
+library 19.35 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=   82513 ticks    116379 us/rep  ops=1
+open+close     median=  255355 ticks    360162 us/rep  ops=1
+window-position=20,20
+geometry window=298x419 root=290x406 list-visible=31
+redraw x10     median= 1111980 ticks   1568377 us/rep  ops=10
+relayout x5    median=  678336 ticks    956750 us/rep  ops=5
+list insert200 median= 1101255 ticks   1553251 us/rep  ops=200
+list-entries=200
+list active x50 median=  760755 ticks   1072997 us/rep  ops=50
+notify x100    median=  493173 ticks    695589 us/rep  ops=100
+text set x100  median=  112664 ticks    158905 us/rep  ops=100
+rc=0
+ALLDONE
+=== 1-mui5 ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=  186820 ticks    263497 us/rep  ops=1
+open+close     median=  500721 ticks    706235 us/rep  ops=1
+window-position=20,20
+geometry window=304x429 root=296x416 list-visible=20
+redraw x10     median= 1559662 ticks   2199805 us/rep  ops=10
+relayout x5    median=  930502 ticks   1312414 us/rep  ops=5
+list insert200 median= 3362079 ticks   4742001 us/rep  ops=200
+list-entries=200
+list active x50 median= 1505389 ticks   2123256 us/rep  ops=50
+notify x100    median=  893956 ticks   1260868 us/rep  ops=100
+text set x100  median=  137592 ticks    194064 us/rep  ops=100
+rc=0
+ALLDONE
+=== 1-zune68 ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=   61557 ticks     86822 us/rep  ops=1
+open+close     median=  255347 ticks    360150 us/rep  ops=1
+window-position=20,20
+geometry window=292x421 root=284x408 list-visible=264
+redraw x10     median= 1097063 ticks   1547338 us/rep  ops=10
+relayout x5    median=  657790 ticks    927771 us/rep  ops=5
+list insert200 median=  592352 ticks    835475 us/rep  ops=200
+list-entries=200
+list active x50 median=  697966 ticks    984437 us/rep  ops=50
+notify x100    median=  464024 ticks    654476 us/rep  ops=100
+text set x100  median=  109667 ticks    154678 us/rep  ops=100
+rc=0
+ALLDONE
+=== 2-mui38 ===
+library 19.35 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=   82628 ticks    116541 us/rep  ops=1
+open+close     median=  255342 ticks    360143 us/rep  ops=1
+window-position=20,20
+geometry window=298x419 root=290x406 list-visible=31
+redraw x10     median= 1111985 ticks   1568385 us/rep  ops=10
+relayout x5    median=  678426 ticks    956877 us/rep  ops=5
+list insert200 median= 1100970 ticks   1552849 us/rep  ops=200
+list-entries=200
+list active x50 median=  760201 ticks   1072215 us/rep  ops=50
+notify x100    median=  493099 ticks    695485 us/rep  ops=100
+text set x100  median=  112650 ticks    158885 us/rep  ops=100
+rc=0
+ALLDONE
+=== 2-mui5 ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=  186559 ticks    263129 us/rep  ops=1
+open+close     median=  502755 ticks    709104 us/rep  ops=1
+window-position=20,20
+geometry window=304x429 root=296x416 list-visible=20
+redraw x10     median= 1559280 ticks   2199266 us/rep  ops=10
+relayout x5    median=  925899 ticks   1305922 us/rep  ops=5
+list insert200 median= 3348643 ticks   4723050 us/rep  ops=200
+list-entries=200
+list active x50 median= 1505472 ticks   2123373 us/rep  ops=50
+notify x100    median=  893664 ticks   1260456 us/rep  ops=100
+text set x100  median=  137859 ticks    194441 us/rep  ops=100
+rc=0
+ALLDONE
+=== 2-zune68 ===
+library 21.227 eclock=709379
+screen=640x480 depth=2 repetitions=15
+display-mode=00008004 nominal=640x512
+create+dispose median=   61684 ticks     87001 us/rep  ops=1
+open+close     median=  255346 ticks    360149 us/rep  ops=1
+window-position=20,20
+geometry window=292x421 root=284x408 list-visible=264
+redraw x10     median= 1096974 ticks   1547212 us/rep  ops=10
+relayout x5    median=  657742 ticks    927703 us/rep  ops=5
+list insert200 median=  592570 ticks    835782 us/rep  ops=200
+list-entries=200
+list active x50 median=  698570 ticks    985289 us/rep  ops=50
+notify x100    median=  464093 ticks    654574 us/rep  ops=100
+text set x100  median=  109651 ticks    154655 us/rep  ops=100
+rc=0
+ALLDONE
