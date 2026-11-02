@@ -43,8 +43,9 @@ the observed no-op behavior of the 21.227 reference in the tested cases.
 
 As in MUI 5, String implements the Textinput API: marks, clipboard and
 edit methods, numeric input and the Textinput attributes. Textinput.mcc
-and Textinputscroll.mcc 29 are thin wrappers. Multi-line editing is not
-implemented; a Multiline String shows its text on one line.
+and Textinputscroll.mcc 29 are thin wrappers. A Multiline String edits
+lines: Return inserts a newline and the cursor keys move between lines.
+Textinputscroll does not show scrollbars.
 
 Remaining gaps include Screenmodepanel, Slave, undocumented preferences
 classes, complete theme compatibility and full application workflows.
