@@ -8,7 +8,7 @@
 
 #define MUIC_Calltips  "Calltips.mcc"
 
-#define TAGBASE_Calltips                    0xfecf4100
+#define TAGBASE_Calltips                    0xfecf1004  /* MUI 5 */
 
 #define MUIA_Calltips_Rectangle             (TAGBASE_Calltips + 0)
 #define MUIA_Calltips_Layout                (TAGBASE_Calltips + 1)
@@ -17,6 +17,8 @@
 #define MUIA_Calltips_MarginTop             (TAGBASE_Calltips + 5)
 
 #define MUIV_Calltips_Layout_Exact          0
+#define MUIV_Calltips_Layout_RightThenBelow 1  /* not implemented, as in MUI 5 */
+#define MUIV_Calltips_Layout_BelowThenAbove 2  /* not implemented, as in MUI 5 */
 
 #define MUIM_Calltips_SetRectangle          (TAGBASE_Calltips + 0)
 #define MUIM_Calltips_ParentSetup           (TAGBASE_Calltips + 1)
