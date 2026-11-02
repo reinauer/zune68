@@ -5,6 +5,7 @@
 #include <libraries/mui.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -308,7 +309,7 @@ int main(int argc, char **argv)
     check(o && attr(o, MUIA_Version) >= 21, "built-in class version gate");
     if (o) MUI_DisposeObject(o);
     if (argc > 1 && !strcmp(argv[1], "screen"))
-        screen = OpenScreenTags(NULL, SA_Width, 640, SA_Height, 256, SA_Depth, 2, TAG_DONE);
+        screen = OpenScreenTags(NULL, SA_DisplayID, HIRES_KEY, SA_Width, 640, SA_Height, 256, SA_Depth, 2, TAG_DONE);
     maps(); textdata(); containers(); directory_sizes();
     if (screen) CloseScreen(screen);
     CloseLibrary(MUIMasterBase);

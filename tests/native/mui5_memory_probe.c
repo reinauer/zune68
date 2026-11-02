@@ -8,6 +8,7 @@
 #include <exec/execbase.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -59,7 +60,7 @@ int main(void)
         }
         MUI_FreeClass(cl);
     }
-    struct Screen *screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+    struct Screen *screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     Object *group=MO(MUIC_Group,MUIA_Group_PageMode,TRUE,TAG_DONE);
     for(int i=0;i<128;i++)DoMethod(group,OM_ADDMEMBER,create(MUIC_Text));
     Object *win=MO(MUIC_Window,MUIA_Window_Screen,screen,MUIA_Window_RootObject,group,TAG_DONE);

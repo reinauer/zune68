@@ -8,6 +8,7 @@
 #include <devices/inputevent.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -79,7 +80,7 @@ int main(int argc, char **argv)
     if (!MUIMasterBase) return 20;
     printf("library=%u.%u\n", MUIMasterBase->lib_Version, MUIMasterBase->lib_Revision);
     if (argc > 1 && !strcmp(argv[1], "screen"))
-        screen = OpenScreenTags(NULL, SA_Width, 640, SA_Height, 256, SA_Depth, 2, TAG_DONE);
+        screen = OpenScreenTags(NULL, SA_DisplayID, HIRES_KEY, SA_Width, 640, SA_Height, 256, SA_Depth, 2, TAG_DONE);
     hook.h_Entry = (HOOKFUNC)edit_hook;
     obj = MO(MUIC_String, 0x8042b06eUL, 2, /* Newstring compatibility mode */
         MUIA_Frame, MUIV_Frame_String, MUIA_CycleChain, 1,

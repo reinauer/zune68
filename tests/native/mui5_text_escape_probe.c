@@ -5,6 +5,7 @@
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -15,7 +16,7 @@ int main(void)
 {
     int failures=0;setvbuf(stdout,NULL,_IONBF,0);
     MUIMasterBase=OpenLibrary("muimaster.library",0);if(!MUIMasterBase)return 20;
-    struct Screen *screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+    struct Screen *screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     if(!screen)return 20;
     const char *samples[]={"plain", "\33t\33Tplain", "\33s\33Splain", "\33g\33Gplain",
         "\33B\33Fplain", "\33V\33vplain", "\33h\33I[6:14]\33Hplain",

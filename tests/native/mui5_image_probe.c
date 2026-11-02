@@ -6,6 +6,7 @@
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -37,7 +38,7 @@ int main(int argc, char **argv)
     MUIMasterBase = OpenLibrary("muimaster.library", 0);
     if (!MUIMasterBase) return 20;
     if (argc > 1 && !strcmp(argv[1], "screen"))
-        screen = OpenScreenTags(NULL, SA_Width, 640, SA_Height, 256, SA_Depth, 2, TAG_DONE);
+        screen = OpenScreenTags(NULL, SA_DisplayID, HIRES_KEY, SA_Width, 640, SA_Height, 256, SA_Depth, 2, TAG_DONE);
     printf("library=%u.%u\n", MUIMasterBase->lib_Version, MUIMasterBase->lib_Revision);
     images[0] = MO(MUIC_Image, MUIA_Image_Spec, MUII_PopFile, MUIA_FixWidth, 32,
         MUIA_FixHeight, 24, TAG_DONE);

@@ -7,6 +7,7 @@
 #include <devices/input.h>
 #include <devices/inputevent.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -79,7 +80,7 @@ int main(int argc,char **argv)
     Object *list,*win,*app;
     MUIMasterBase=OpenLibrary("muimaster.library",0); if(!MUIMasterBase)return 20;
     printf("library=%u.%u\n",MUIMasterBase->lib_Version,MUIMasterBase->lib_Revision);
-    if(argc>1&&!strcmp(argv[1],"screen"))screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+    if(argc>1&&!strcmp(argv[1],"screen"))screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     struct MUI_CustomClass *cl=MUI_CreateCustomClass(NULL,MUIC_List,NULL,0,dispatch);
     if(!cl)return 20;
     struct TagItem tags[]={{MUIA_List_Format,(ULONG)"BAR SORTABLE,SORTABLE"},{MUIA_List_Title,TRUE},

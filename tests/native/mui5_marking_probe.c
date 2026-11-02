@@ -7,6 +7,7 @@
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -61,7 +62,7 @@ int main(int argc,char **argv)
     setvbuf(stdout,NULL,_IONBF,0);
     MUIMasterBase=OpenLibrary("muimaster.library",0);
     if(!MUIMasterBase)return 20;
-    if(argc>1)screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+    if(argc>1)screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     Object *text=MO(MUIC_Text,MUIA_Text_Marking,TRUE,MUIA_Font,MUIV_Font_Fixed,
         MUIA_Text_Contents,"ab\033ucd\033Uefghijklmnop",MUIA_FixWidth,128,
         MUIA_Text_SetMin,FALSE,TAG_DONE);

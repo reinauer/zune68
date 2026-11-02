@@ -10,6 +10,7 @@
 #include <proto/commodities.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -103,7 +104,7 @@ static void popup(Object *button,BOOL last)
 int main(void)
 {
     setvbuf(stdout,NULL,_IONBF,0);MUIMasterBase=OpenLibrary("muimaster.library",0);if(!MUIMasterBase)return 20;
-    struct Screen *screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+    struct Screen *screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     char original[]="control a";
     Object *o=MO(MUIC_Keyadjust,MUIA_Keyadjust_Key,original,TAG_DONE);
     check(o!=NULL,"construction");if(!o){if(screen)CloseScreen(screen);CloseLibrary(MUIMasterBase);return 20;}

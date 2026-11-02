@@ -12,6 +12,7 @@
 #include <intuition/pointerclass.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -140,7 +141,7 @@ int main(int argc, char **argv)
     /* Permit a 68000 run without a CPU-specific Workbench installation. */
     if (argc > 1 && !strcmp(argv[1], "screen"))
     {
-        screen = OpenScreenTags(NULL, SA_Width, 640, SA_Height, 256,
+        screen = OpenScreenTags(NULL, SA_DisplayID, HIRES_KEY, SA_Width, 640, SA_Height, 256,
             SA_Depth, 2, SA_Title, "Pointer probe", TAG_DONE);
         if (!screen) goto done;
     }

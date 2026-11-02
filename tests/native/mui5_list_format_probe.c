@@ -5,6 +5,7 @@
 #include <libraries/mui.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -41,7 +42,7 @@ int main(int argc,char **argv)
     struct Screen *screen=NULL;
     setvbuf(stdout,NULL,_IONBF,0);
     MUIMasterBase=OpenLibrary("muimaster.library",0);if(!MUIMasterBase)return 20;
-    if(argc>1)screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+    if(argc>1)screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     char *row[]={"abcdefghijklmnop","second long column","last"};
     char *titles[]={"First","Second","Third"};
     Object *list=MO(MUIC_List,MUIA_List_MaxColumns,3,MUIA_List_TitleArray,titles,

@@ -7,6 +7,7 @@
 #include <dos/dosasl.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -66,7 +67,7 @@ int main(int argc,char **argv)
 {
     setvbuf(stdout,NULL,_IONBF,0);
     MUIMasterBase=OpenLibrary("muimaster.library",0);if(!MUIMasterBase)return 20;
-    struct Screen *screen=NULL;if(argc>1)screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+    struct Screen *screen=NULL;if(argc>1)screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     BPTR lock=CreateDir("RAM:z68-panel");if(lock)UnLock(lock);
     createfile("RAM:z68-panel/keep.txt");createfile("RAM:z68-panel/drop.bin");createfile("RAM:z68-panel/keep.txt.info");
     Object *p=MO(MUIC_Filepanel,MUIA_Filepanel_Drawer,"RAM:z68-panel",MUIA_Filepanel_File,"initial",

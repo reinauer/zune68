@@ -7,6 +7,7 @@
 #include <devices/inputevent.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -76,7 +77,7 @@ int main(int argc, char **argv)
     MUIMasterBase=OpenLibrary("muimaster.library",0);
     if (!MUIMasterBase) return 20;
     printf("library=%u.%u\n",MUIMasterBase->lib_Version,MUIMasterBase->lib_Revision);
-    if(argc>1 && !strcmp(argv[1],"screen")) screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+    if(argc>1 && !strcmp(argv[1],"screen")) screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     for(int i=0;i<3;i++) { tabs[i]=MO(MUIC_Text,MUIA_Text_Contents,i==0?"First":i==1?"Second":"Third",TAG_DONE); pages[i]=MO(MUIC_Text,MUIA_Text_Contents,"Page contents",MUIA_FixWidth,180,MUIA_FixHeight,70,TAG_DONE); }
     struct MUI_CustomClass *cl=MUI_CreateCustomClass(NULL,MUIC_Title,NULL,0,dispatch);
     if(!cl)return 20;

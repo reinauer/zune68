@@ -8,6 +8,7 @@
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
+#include <graphics/modeid.h>
 #include <proto/intuition.h>
 #include <proto/muimaster.h>
 #include <clib/alib_protos.h>
@@ -186,7 +187,7 @@ int main(int argc,char **argv)
         screen=OpenScreenTags(NULL,SA_DisplayID,0x50031000,SA_Width,640,
             SA_Height,480,SA_Depth,8,TAG_DONE);
     else if(argc>1)
-        screen=OpenScreenTags(NULL,SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
+        screen=OpenScreenTags(NULL,SA_DisplayID, HIRES_KEY, SA_Width,640,SA_Height,256,SA_Depth,2,TAG_DONE);
     if(argc>1 && !screen) { puts("FAIL requested screen"); return 20; }
     if(argc>1 && !strcmp(argv[1],"rtg") && GetVPModeID(&screen->ViewPort)!=0x50031000) {
         puts("FAIL requested RTG mode unavailable"); return 20;
