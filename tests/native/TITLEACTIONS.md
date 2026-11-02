@@ -1,6 +1,6 @@
 # Native Snapshot and Popup titlebar buttons
 
-The AmigaOS 3 titlebar now supports all four preferences switches:
+The AmigaOS 3 titlebar supports all four preferences switches:
 
 - M opens application settings.
 - S snapshots the window's position and inner size; double-clicking
@@ -10,7 +10,7 @@ The AmigaOS 3 titlebar now supports all four preferences switches:
 - I iconifies the application.
 
 Enable the switches in Zune Prefs, apply the preferences and reopen the
-application's windows. The prefs switches now have explanatory bubble help.
+application's windows. The prefs switches have bubble help.
 Borderless, backdrop and toolbox windows keep their existing exclusions.
 
 Explicit snapshots update only the selected ID in both ENV and ENVARC
@@ -62,10 +62,10 @@ m68k-amigaos-gcc -m68000 -msoft-float -noixemul -Os \
 
 Run with `tests/native/run_probe.py` in a prepared, exclusively owned
 fixture, or execute `titleactions` from its guest startup script after
-assigning MUI and LIBS to the candidate installation. The fixture used here
-has AmigaOS 3.2.3 and a 640x480 depth-2 screen in HIRESLACE mode. Both 68000
-and 68020 configurations are tested; this is emulator validation, not
-physical hardware or a byte-for-byte original MUI menu reproduction.
+assigning MUI and LIBS to the candidate installation. It passes on 68000 and
+68020 with AmigaOS 3.2.3 and a 640x480 depth-2 HIRESLACE screen. This is
+emulator validation, not physical hardware or a byte-for-byte original MUI
+menu reproduction.
 
 Raw transcripts and binary/source hashes are in
 `results/titleactions-20261017-*`.

@@ -1,12 +1,5 @@
 # MUI 5 compatibility probes
 
-For creation/List performance investigation, see
-[PROFILING.toolkits.md](PROFILING.toolkits.md). Its test-only dispatcher
-wrappers require a disposable guest and are separate from compatibility
-and uninstrumented performance measurements. The implemented fixes, pixel
-equivalence probes and before/after results are documented in
-[PERFORMANCE.optimizations.md](PERFORMANCE.optimizations.md).
-
 `make -C workbench/libs/muimaster check-core` builds the probes against
 Zune's generated headers. Compilation is not a guest runtime test.
 The existing linked-code String tests also exercise full 64-bit getters
@@ -33,8 +26,8 @@ Read the final PASS/FAIL line and exit status, not just a runner marker.
 
 | Probe | Checks |
 | --- | --- |
-| `mui5_menu_probe` | Copied titles/shortcuts, borrowed AISS names, owned/borrowed BOOPSI image disposal, encoded shortcuts and batch methods. |
-| `mui5_menu_input_probe` | Command-key case, nested changes, Escape, selection, tall image drawing; Zune also closes the parent during a popup. |
+| `mui5_menu_probe` | Copied titles/shortcuts, borrowed AISS names, owned/borrowed BOOPSI image disposal, encoded shortcuts, batch methods, Menuitem copying, independent owned strings and shared BOOPSI image lifetime. |
+| `mui5_menu_input_probe` | Real input.device events: case-sensitive shortcuts, four nested branches, Escape, popup selection, tall images and native WillOpen closing its window; Zune also closes the parent during a popup. |
 | `mui5_image_probe` | Missing-picture fallback and copied spec render alike; inactive hints do not replace contents. Pixel hashes are compared within each runtime. |
 | `mui5_string_probe` | Hint aliases, 64-bit SET/GET boundaries, cursor preservation when setting DisplayPos and default text pointer. The stable reference getter's 32-bit clamp is explicitly labeled. |
 | `mui5_string_input_probe` | Hook editing/veto/delete/Return, ordinary editing before a lonely hook, forwarded Newstring selection and clipboard round trip; Zune editing-menu actions. |
@@ -57,11 +50,6 @@ The reference keeps Text_Copy enabled with HiChar, and Text_ControlChar
 does not set Area_ControlChar. Its DisplayPos getter follows BufferPos in
 the tested unshown object; Zune keeps the documented separate view offset.
 Left/right Title placement remains reserved, as in the SDK documentation.
-
-The 13 October 2026 run passed these probes on Zune's emulated OS3/68020
-and 68000/no-FPU fixtures. MUI 21.227 passed the shared assertions, with
-the differences above reported separately. This is emulator evidence;
-physical hardware and complete MUI 5 compatibility are not established.
 
 The String input probe passes the compatibility-mode tag used by the
 reference Newstring wrapper so the forwarded selection anchor can be
@@ -157,20 +145,17 @@ Observed reference differences are explicit in the probes:
 
 ## Selector, marking and menu/List extension probes
 
-The following probes exercise the development implementation added on
-14 October. Compile them with the same SDK and flags as the probes above.
+Compile these with the same SDK and flags as the probes above.
 
 | Probe | Coverage |
 | --- | --- |
 | `mui5_panel_probe` | Filepanel filtering, ASL aliases, pattern changes, Fontpanel inventory and mutable font/style/pen/draw-mode settings, accept/cancel/close-request and repeated opening. |
 | `mui5_marking_probe` | Forward/reverse mouse marking, visible selection, formatted chunks, elided suffixes, multiline clipboard text and reopening. |
 | `mui5_list_format_probe` | Pixel column widths, reordering and logical hiding, borrowed object cells, balanced setup/cleanup and caller-owned disposal. |
-| `mui5_menu_probe` | Menuitem copying, independent owned strings and shared BOOPSI image lifetime in addition to the previous menu checks. |
-| `mui5_menu_input_probe` | Actual input.device events: case-sensitive shortcuts, popup selection/images, four nested branches, cancellation, parent closure and native WillOpen closing its window. |
 
 Filepanel and Fontpanel are real selector groups. Direct Panel_Run calls
 run the supplied application's modal loop in the caller's task and leave
-its window open. MUI_AllocAslRequest/MUI_AslRequest now create supported
+its window open. MUI_AllocAslRequest/MUI_AslRequest create supported
 file/font requesters in a separate process, exporting owned strings,
 multi-file WBArgs and directory locks before disposing the panel. Filter
 callbacks receive the original public requester address. Unsupported ASL
@@ -197,7 +182,7 @@ accepted borrowed-string copying but hung in the owned-string copy probe;
 those ownership checks are therefore Zune-specific assertions. WillOpen
 is a V22 method, tested without a matching V22 reference runtime.
 
-List columns now retain physical width constraints when their contents
+List columns retain physical width constraints when their contents
 are reordered, matching 21.227. Constrained pixel columns include its
 six-pixel internal allowance; legacy FIXWIDTH includes the inter-column
 advance. TestPos rejects blank space beyond the last column. Explicit
@@ -206,7 +191,7 @@ have balanced setup/cleanup and remain caller-owned; the 21.227 reference
 did not draw the probe's object cell. Frame padding and effect artwork
 are not pixel-identical to the reference.
 
-String edit hooks now honor SGA_END, SGA_REUSE, SGA_NEXTACTIVE and
+String edit hooks honor SGA_END, SGA_REUSE, SGA_NEXTACTIVE and
 SGA_PREVACTIVE. The action matrix was compared with 21.227, including an
 inactive string whose Window_ActiveObject pointer remains unchanged.
 Textdata_SourceEncoding has no documented function and was ignored by
@@ -245,7 +230,6 @@ with empty objects. They require a concrete caller and behavioral probes.
 Screenmodepanel and Slave remain separate public class gaps; screen-mode
 ASL requests still work through native ASL. Full MUI preferences/theme
 file compatibility and composited window opacity are not implemented.
-These results do not establish complete MUI 5 compatibility.
 
 ### Native batch reproduction
 
@@ -264,26 +248,11 @@ python3 tests/native/run_mui5_probes.py \
 
 Omit `--libraries` to retain the fixture's reference MUI. Omit `rtg` for
 a planar-only installation. Functional runs use unrestricted emulation
-speed and must never be used as timing measurements. The complete new
-probe batch passed on 68000 and 68020 AmigaOS 3.2.3; the RTG pixel probe
-passed on the 68020 Picasso96 fixture. Physical hardware and AfA OS are
-not covered by these results.
+speed and must never be used as timing measurements.
 
-## Classic-workload performance
+In the last recorded full batch (`f6060891`), Zune68 passes on 68000 and
+68020 AmigaOS 3.2.3, MUI 21.227 passes the shared assertions, and the RTG
+pixel probe passes on the 68020 Picasso96 fixture. Physical hardware, AfA OS
+and complete MUI 5 compatibility are not covered.
 
-See [PERFORMANCE.mui5.md](PERFORMANCE.mui5.md) for the comparison against
-published baseline `7b847fba`, the raw run medians, library-size changes
-and reproduction commands. `compare_perf.py` requires a disposable guest
-fixture and records hashes of the exact emulator, benchmark and libraries.
-
-[PERFORMANCE.toolkits.md](PERFORMANCE.toolkits.md) compares the development
-library with original MUI 3.8 and MUI 5. `compare_toolkits.py` keeps complete
-toolkit installations separate and restores a pristine OS disk before
-each boot. It uses the benchmark's `screen-fixed` mode, which requests a
-larger screen and bounded geometry and checks that the root fits inside
-the window. Actual toolkit-constrained dimensions are recorded.
-
-## Application dependency and shutdown checks
-
-See [APPLICATIONS.mui5.md](APPLICATIONS.mui5.md) for the IBrowse 3.0a
-Newstring dependency comparison, Lumi shutdown checks and their OS limits.
+See also [PERFORMANCE.md](PERFORMANCE.md) and [MEMORY.md](MEMORY.md).
