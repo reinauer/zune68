@@ -215,7 +215,27 @@ def check(path):
     h.call('String__MUIM_ClearSelected', CLASS, OBJECT, MESSAGE)
     assert h.mem.r_cstr(h.get(CONTENTS)) == 'f'
     h.finish()
-    print(f'{path.name}: signed String selection, long ranges and focus forwarding passed')
+
+    # Measured on MUI 21.227: new contents keep the cursor's distance from
+    # the end, clamped at the start, unless the same call sets the cursor.
+    h = StringHarness(path)
+    h.contents('hello world')
+    assert h.get(CURSOR) == 11
+    h.set((CURSOR, 2))
+    h.contents('a much longer text value')
+    assert h.get(CURSOR) == 15
+    h.set((CURSOR, 3))
+    h.contents('xy')
+    assert h.get(CURSOR) == 0
+    h.mem.w_block(INPUT, b'abcdef\0')
+    h.set((CONTENTS, INPUT), (CURSOR, 1))
+    assert h.get(CURSOR) == 1
+    h.mem.w_block(INPUT, b'ghijklmn\0')
+    h.set((CURSOR, 1), (CONTENTS, INPUT))
+    assert h.get(CURSOR) == 1
+    h.finish()
+    print(f'{path.name}: signed String selection, long ranges, focus forwarding '
+          'and cursor after new contents passed')
 
 
 if __name__ == '__main__':

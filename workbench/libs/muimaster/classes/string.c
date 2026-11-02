@@ -1033,7 +1033,13 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     struct TagItem *tag;
     ULONG alias = TAG_IGNORE;
     IPTR result;
-    BOOL update = FALSE;
+    BOOL update = FALSE, setpos = FALSE;
+
+    while ((tag = NextTagItem(&tags)) != NULL)
+        if (tag->ti_Tag == MUIA_String_BufferPos
+            || tag->ti_Tag == MUIA_Textinput_CursorPos)
+            setpos = TRUE;
+    tags = msg->ops_AttrList;
 
     while ((tag = NextTagItem(&tags)) != NULL)
     {
@@ -1042,8 +1048,15 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         case MUIA_Text_Contents: /* MUI5 */
         case MUIA_String_Contents:
         case MUIA_Textinput_Contents:
+        {
+            /* As in MUI 21.227, the cursor keeps its distance from the
+             * end unless the same call sets its position. */
+            LONG keep = (LONG)data->NumChars - (LONG)data->BufferPos;
+
             if (Buffer_SetNewContents(data, (STRPTR) tag->ti_Data))
             {
+                if (!setpos)
+                    data->BufferPos = MAX(0, (LONG)data->NumChars - keep);
                 data->msd_RedrawReason = NEW_CONTENTS;
                 data->msd_Flags &= ~(MSDF_MARKING | MSDF_KEYMARKING |
                     MSDF_TIMARK);
@@ -1059,6 +1072,7 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 tag->ti_Tag = TAG_IGNORE;
             }
             break;
+        }
 
         case MUIA_Textinput_AcceptChars:
         case MUIA_String_Accept:
