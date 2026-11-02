@@ -1,4 +1,4 @@
-// sample_pcs.mjs <out.json> <seconds>: sample the PC of a running WinUAE guest over its gdbserver (PORT, default 2355) every 15 ms, with 24 stack longwords, the task name/state and the library jump tables; see PROFILING.phases.md
+// sample_pcs.mjs <out.json> <seconds>: sample the PC of a running WinUAE guest over its gdbserver (PORT, default 2355) every 15 ms, with 24 stack longwords, the task name/state and the library jump tables; see PERFORMANCE.md
 // GdbProtocol comes from mcp-winuae-emu: set WINUAE_GDB_PROTOCOL to its
 // dist/gdb-protocol.js.
 const {GdbProtocol} = await import(process.env.WINUAE_GDB_PROTOCOL ||

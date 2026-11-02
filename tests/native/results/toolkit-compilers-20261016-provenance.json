@@ -1,0 +1,29 @@
+{
+  "source_commit": "2aed03dc83822ed4f7abc18a017c39d8b2dce35a",
+  "compiler13": "m68k-amigaos-gcc (AmigaDev 0611596-dirty) 13.4.0b 20260811114005\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "compiler16": "m68k-amigaos-gcc (AmigaDev 343146d-dirty) 16.2.0b 20261010182711\nCopyright (C) 2026 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "options": "MUI5_TEST=1 TRACE=0 CPUFLAGS=-m68000 -msoft-float; default -Os alignment flags; LTO=0",
+  "gcc16_extra": "-Wno-error=incompatible-pointer-types",
+  "source_archive_sha256": "bcf9a118dfebccefa534d84324e2b461151bbca0fa2455ada4f68e468d8d27a7",
+  "benchmark_source_sha256": "711a0845d78169eee7448350dd2e606a6b059cff1444b4f97c380d1380e04c7a",
+  "benchmark_sdk": "MUI-5.0-20250420 snapshot SDK",
+  "benchmark_flags": "-m68000 -msoft-float -noixemul -Os -Wl,-u,___stkinit -lamiga",
+  "display_mode": "HIRESLACE_KEY (0x00008004), nominal 640x512, screen 640x480 depth 2",
+  "settle_seconds": 10,
+  "trials": 3,
+  "samples_per_trial": 15,
+  "catalog_commit": "c023091e8efad955dd337f9c9bb1bb96a7fcf4c0",
+  "loaded_segment_bytes": {
+    "gcc13": [
+      381452,
+      1260,
+      3160
+    ],
+    "gcc16": [
+      384384,
+      676,
+      3160
+    ]
+  },
+  "screen_probe": "explicit=0 screen=640x480 position=0,0 viewport=640x480 mode=00000000 modes=4000 nominal=0,0-319,255 text=0,0-361,282\nexplicit=1 screen=640x480 position=0,0 viewport=640x480 mode=00008004 modes=c004 nominal=0,0-639,511 text=0,0-723,565\nALLDONE\n"
+}
