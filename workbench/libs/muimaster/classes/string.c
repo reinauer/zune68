@@ -1468,6 +1468,9 @@ IPTR String__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     msg->MinMaxInfo->MinHeight += _font(obj)->tf_YSize;
     msg->MinMaxInfo->DefHeight += _font(obj)->tf_YSize;
     msg->MinMaxInfo->MaxHeight += _font(obj)->tf_YSize;
+    /* Textinputscroll subclasses add rows on top of this */
+    if (data->msd_Flags & MSDF_MULTILINE)
+        msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
 
 /*    D(bug("String_AskMinMax(%p): Min=%ldx%ld Max=%ldx%ld Def=%ldx%ld\n", */
 /*            obj, msg->MinMaxInfo->MinWidth, msg->MinMaxInfo->MinHeight, */
@@ -1832,9 +1835,9 @@ IPTR String__MUIM_Draw(struct IClass *cl, Object *obj,
      * properly */
     UpdateDisp(cl, obj);
 
-    text_top = _mtop(obj)
-        + ((_mheight(obj) - _rp(obj)->Font->tf_YSize) >> 1)
-        + _rp(obj)->Font->tf_Baseline;
+    text_top = _mtop(obj) + _rp(obj)->Font->tf_Baseline;
+    if (!(data->msd_Flags & MSDF_MULTILINE))
+        text_top += (_mheight(obj) - _rp(obj)->Font->tf_YSize) >> 1;
 
     dispstr = data->VisualBuffer + data->DispPos;
     dispstrlen = MIN(data->DispCount, data->NumChars - data->DispPos);
