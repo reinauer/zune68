@@ -159,7 +159,7 @@ MUIA_Application_Menu [I.G]               unimplemented (OBSOLETE)
 MUIA_Application_MenuAction [..G]         done
 MUIA_Application_MenuHelp [..G]           not triggered yet
 MUIA_Application_Menustrip [I..]          done
-MUIA_Application_RexxHook [ISG]           stored; not invoked
+MUIA_Application_RexxHook [ISG]           done
 MUIA_Application_RexxMsg [..G]            done
 MUIA_Application_RexxString [.S.]         done
 MUIA_Application_SingleTask [I..]         done
