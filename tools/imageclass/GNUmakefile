@@ -25,7 +25,8 @@ BZOBJS := $(addprefix $(OBJ)/bz2/,$(addsuffix .o,$(BZFILES)))
 all: $(BUILD)/Libs/MUI/Rawimage.mcc $(BUILD)/Libs/MUI/Pixmap.mui \
  $(BUILD)/Libs/MUI/Listtree.mcc \
  $(BUILD)/Libs/MUI/Busy.mcc \
- $(BUILD)/Libs/MUI/Calltips.mcc
+ $(BUILD)/Libs/MUI/Calltips.mcc \
+ $(BUILD)/Libs/MUI/Textinput.mcc $(BUILD)/Libs/MUI/Textinputscroll.mcc
 $(OBJ)/rawimage.o: library.c $(RAW)/Rawimage.c $(RAW)/Rawimage_private.h GNUmakefile
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -DBUILD_RAWIMAGE -MMD -MP -c $< -o $@
@@ -57,6 +58,18 @@ $(OBJ)/calltips.o: calltips_library.c $(wildcard $(CALLTIPS)/*.[ch]) GNUmakefile
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -I. -I$(CALLTIPS) -MMD -MP -c $< -o $@
 $(BUILD)/Libs/MUI/Calltips.mcc: $(OBJ)/calltips.o $(OBJ)/superattrs.o
+	@mkdir -p $(@D)
+	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
+$(OBJ)/textinput.o: textinput_library.c GNUmakefile
+	@mkdir -p $(@D)
+	$(CC) $(FLAGS) -I. -MMD -MP -c $< -o $@
+$(OBJ)/textinputscroll.o: textinput_library.c GNUmakefile
+	@mkdir -p $(@D)
+	$(CC) $(FLAGS) -I. -DTEXTINPUTSCROLL -MMD -MP -c $< -o $@
+$(BUILD)/Libs/MUI/Textinput.mcc: $(OBJ)/textinput.o
+	@mkdir -p $(@D)
+	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
+$(BUILD)/Libs/MUI/Textinputscroll.mcc: $(OBJ)/textinputscroll.o
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
 $(OBJ)/format.o: ../plugin/format.c
@@ -126,4 +139,4 @@ $(eval $(call CLASS_RULE,PrefsEditor,prefseditor))
 $(eval $(call CLASS_RULE,PrefsWindow,prefswindow,$(GEN)/prefswindow/prefswindow_strings.h))
 $(eval $(call CLASS_RULE,SystemPrefsWindow,systemprefswindow,$(GEN)/systemprefswindow/strings.h,-Dsystemprefswindow_ARRAY -DCatCompArray=systemprefswindow_Array))
 -include $(OBJ)/rawimage.d $(OBJ)/pixmap.d $(OBJ)/listtree.d $(OBJ)/busy.d \
- $(OBJ)/calltips.d
+ $(OBJ)/calltips.d $(OBJ)/textinput.d $(OBJ)/textinputscroll.d
