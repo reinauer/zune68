@@ -12,21 +12,13 @@ newer MUI features without an identified application need are deferred.
 Version policy
 --------------
 The two native library names share library version [VERSION] and the
-release [RELEASE] ([STAGE]). The default build retains AROS version 19.81
-and built-in class implementation version 1.1. External MCCs retain their
-own version reporting. The date identifies the Zune68 release.
+release [RELEASE] ([STAGE]). The library and built-in classes report
+21.227, the version of MUI 5, which enables application version gates; it
+does not claim complete MUI 5 compatibility. External MCCs retain their own
+version reporting. The date identifies the Zune68 release.
 
-The mui5-dev branch also builds an opt-in MUI5_TEST=1 distribution with
-library and built-in class version 21.227. Its stage is "MUI5 development".
-This enables real application version gates during testing; it does not
-claim complete MUI 5 compatibility. Install it in a separate test system.
-The main branch retains the classic compatibility baseline until merging
-has been explicitly approved.
-
-Native version definitions are centralized in native_version.h. The
-GitHub Actions artifact named zune68-mui5-dev contains the version 21
-package; zune68-release contains the default version 19 development-tree
-build. Both artifacts on mui5-dev contain experimental changes.
+Native version definitions are centralized in native_version.h. Building
+with MUI5_TEST=0 gives AROS version 19.81 and built-in class version 1.1.
 
 MUI 5 development scope
 -----------------------
@@ -136,14 +128,10 @@ Settings pages open and Cancel restores the underlying page. Native
 list-tree glyphs and some settings layouts differ from original MUI.
 Newstring.mcc clipboard behavior matches original MUI 3.9.
 
-The classic version-19 build needs a compatible Newstring.mcc for
-IBrowse. With IBrowse 3.0a, Newstring 16.18 starts successfully; the
-Newstring 21.26 supplied with MUI 5 requires muimaster.library version 20
-and produces "Couldn't create CL_URLString" under version 19.
-Check both MUI:Libs/mui and the browser's own mui drawer. Preserve the
-newer class when testing an older compatible copy in a separate system.
-The opt-in version-21 development build is tested separately with the
-newer String-derived Newstring class.
+IBrowse 3.0a runs with Newstring 16.18 and with the String-derived 21.26
+supplied with MUI 5. The latter requires muimaster.library version 20, so a
+MUI5_TEST=0 build shows "Couldn't create CL_URLString" with it. Check both
+MUI:Libs/mui and the browser's own mui drawer.
 
 LumiZip 1.0.1 and LumiWeather 1.4.524 start and quit cleanly on AmigaOS
 3.2.3 with networking off. A shutdown freeze reported on OS 3.9/AfA OS has

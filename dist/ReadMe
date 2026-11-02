@@ -106,11 +106,12 @@ and the other old shortcut macros need MUI_OBSOLETE.
 
 Status and source
 -----------------
-This is the first beta release, dated [RELEASE]. Its muimaster.library
-reports version [VERSION], the number of the AROS source baseline; Zune68
-releases are told apart by the date in the version string, so Installer
-shows an upgrade as a same-version replacement. IBrowse 3.0a, YAM 2.x,
-Voyager 3.2 and XSysInfo run; IBrowse is pretty usable.
+This is the second beta release, dated [RELEASE]. Its muimaster.library
+reports version [VERSION], the version of MUI 5; Zune68 releases are told
+apart by the date in the version string, so Installer shows an upgrade
+between them as a same-version replacement. IBrowse 3.0a, YAM 2.9, Odyssey,
+AmiPG and Voyager 3.5.2 run; IBrowse is pretty usable. Voyager needs
+Textinput.mcc 29 or later, which is not part of Zune68.
 
 All 12 built-in Prefs pages display images; MCP pages appear once. Prefs
 Test/Cancel and TheBarDemo work. See Compatibility for application results

@@ -95,20 +95,13 @@ No MUI runtime, proprietary SDK/demo source, browser, ROM, disk image,
 or reference MCC is included here. The integration test establishes
 these specific workflows, not every version-gated browser feature.
 
-## Version 21 development profile
+## Version identity
 
-Build `make check release MUI5_TEST=1 BUILD=/absolute/path/to/build`.
 Both library names and built-in class getters report 21.227; external MCC
-versions stay independent. The package identifies itself as **MUI5 development**.
-Use a separate build directory for the default 19.81 profile. Switching
-MUI5_TEST in one directory also regenerates the configuration and rebuilds
-the affected objects.
-
-CI builds both profiles on `mui5-dev`. Download `zune68-mui5-dev` to test
-actual version gates. The ordinary `zune68-release` artifact from that
-branch still contains the experimental source changes with the default
-identity. Main remains the classic baseline until the development branch
-has had an application-testing period and is explicitly merged.
+versions stay independent. `MUI5_TEST=0` builds the 19.81 identity; use a
+separate build directory for it. Switching MUI5_TEST in one directory also
+regenerates the configuration and rebuilds the affected objects. CI checks
+both.
 
 The data probe requires version 21 directly and checks class versions;
 it does not patch the installed library. The IBrowse helper remains useful

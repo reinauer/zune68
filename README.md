@@ -6,8 +6,11 @@ The native GCC port builds both library names, Zune Prefs, every class under
 `workbench/classes/zune` (MCC/MCP plugins, image classes, and the AROS
 utility classes such as Calltips and Calendar), catalogs, SDK headers,
 examples and an Installer package.
-The library keeps the version number of the AROS source baseline (19.81);
-releases are identified by date and the current line is a beta.
+The library reports 21.227, the version of MUI 5, so that applications take
+their current code paths; this is not a claim of complete MUI 5 compatibility.
+Releases are identified by date and the current line is a beta. `MUI5_TEST=0`
+builds the AROS baseline identity 19.81, and the `mui38-dev` branch holds the
+last line that targeted MUI 3.8.
 
 The native runtime supplies register gates, explicit resource ownership,
 safe class and notification lifetimes, classic application services, and
@@ -36,6 +39,10 @@ are stripped while local build outputs keep their symbols.
 These MUI applications have been run with Zune68 on AmigaOS 3:
 
 - IBrowse 3.0 (build 30.8, AmigaOS/68020 version)
+- YAM 2.9p1
+- Voyager 3.5.2, with its own Textinput.mcc 29 or later
+- Odyssey Web Browser
+- AmiPG 17.340
 
 ![IBrowse 3.0 running with Zune68, next to Zune Prefs](iBrowse.png)
 

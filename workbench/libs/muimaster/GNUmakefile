@@ -14,7 +14,7 @@ FD2SFD ?= fd2sfd
 BUILD ?= ../../../build/muimaster
 CPUFLAGS ?= -m68000 -msoft-float
 TRACE ?= 0
-MUI5_TEST ?= 0
+MUI5_TEST ?= 1
 ifneq ($(MUI5_TEST),0)
 ifneq ($(MUI5_TEST),1)
 $(error MUI5_TEST must be 0 or 1)
