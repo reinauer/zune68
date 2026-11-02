@@ -295,6 +295,13 @@ static void muiDataStreamFromFormat(CONST_STRPTR format, APTR dataStream,  ULONG
 
                     if (sigs) sigs = Wait(sigs);
                 }
+
+                /* As in MUI 5, let the window activated in its place
+                 * restore its active object before returning, so that
+                 * a key handler resumed after this call finds it. */
+                set(req_wnd, MUIA_Window_Open, FALSE);
+                sigs = 0;
+                DoMethod(app, MUIM_Application_NewInput, (IPTR)&sigs);
             }
 
             /* now lets reissue the collected returnIDs again */
