@@ -42,7 +42,8 @@
 #define MUIM_Application_SetConfigdata    (MUIB_Application | 0x00000000) /* Zune 20030407 */
 #define MUIM_Application_OpenWindows      (MUIB_Application | 0x00000001) /* Zune 20030407 */
 #define MUIM_Application_Iconify          (MUIB_Application | 0x00000002) /* Zune: V1  */
-#define MUIM_Application_Execute          (MUIB_Application | 0x00000003)
+#define MUIM_Application_Execute          (MUIB_MUI|0x004253f3) /* MUI: V20 */
+#define MUIM_Application_Run              (MUIB_Application | 0x00000003) /* MUI: V20 */
 #define MUIM_Application_UpdateMenus      (MUIB_Application | 0x00000004) /* Zune 20070712 */
 
 /* Method Structures */

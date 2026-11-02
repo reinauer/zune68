@@ -3109,6 +3109,7 @@ BOOPSI_DISPATCHER(IPTR, Application_Dispatcher, cl, obj, msg)
     case MUIM_Application_OpenConfigWindow:
         return Application__MUIM_OpenConfigWindow(cl, obj, (APTR) msg);
     case MUIM_Application_Execute:
+    case MUIM_Application_Run:
         return Application__MUIM_Execute(cl, obj, msg);
     case MUIM_Application_UpdateMenus:
         return Application__MUIM_UpdateMenus(cl, obj, msg);

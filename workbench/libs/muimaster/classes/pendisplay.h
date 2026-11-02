@@ -13,9 +13,9 @@
 #define MUIB_Pendisplay              (MUIB_ZUNE | 0x00002000)
 
 /*** Methods ****************************************************************/
-#define MUIM_Pendisplay_SetColormap  (MUIB_MUI | 0x004243a7)    /* MUI: V13 */
-#define MUIM_Pendisplay_SetMUIPen    (MUIB_MUI | 0x00426ecd)    /* MUI: V13 */
-#define MUIM_Pendisplay_SetRGB       (MUIB_MUI | 0x0042032c)    /* MUI: V13 */
+#define MUIM_Pendisplay_SetColormap  (MUIB_MUI | 0x00426c80)    /* MUI: V13 */
+#define MUIM_Pendisplay_SetMUIPen    (MUIB_MUI | 0x0042039d)    /* MUI: V13 */
+#define MUIM_Pendisplay_SetRGB       (MUIB_MUI | 0x0042c131)    /* MUI: V13 */
 
 struct MUIP_Pendisplay_SetColormap
 {
