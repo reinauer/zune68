@@ -2491,6 +2491,12 @@ static IPTR Area__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                 return Area__MUIM_HandleEvent(cl, obj, msg);
             }
 
+            /* Keys reach an idle active or default object through
+             * MUI_EHF_ALWAYSKEYS; other objects' shortcuts need them. Only
+             * a pressed object, which asked for IDCMP_RAWKEY, takes them. */
+            if (!(data->mad_ehn.ehn_Events & IDCMP_RAWKEY))
+                return 0;
+
             if (msg->imsg->Qualifier & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) {
                 handle_release(cl, obj, TRUE /* cancel */);
             }
