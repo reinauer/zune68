@@ -31,7 +31,9 @@
 #include "mui_identifiers.h"
 
 #ifndef __AROS__
+#ifndef MUIMASTER_NAME
 #define MUIMASTER_NAME "zunemaster.library"
+#endif
 #define MUIMASTER_VMIN    0
 #define MUIMASTER_VLATEST 0
 #else

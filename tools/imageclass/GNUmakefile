@@ -17,6 +17,7 @@ OBJ := $(BUILD)/imageclass
 FLAGS := $(CPUFLAGS) -noixemul $(CFLAGS) -fno-builtin -fno-common \
  -fno-strict-aliasing -D__amigaos3__ -DZUNE68_GCC_NATIVE \
  -DNO_INLINE_STDARG -U__saveds -D__saveds= \
+ -DMUIMASTER_NAME='"muimaster.library"' \
  -I$(BUILD)/include -I$(MASTER)/include -I$(RAW) -iquote $(MASTER)/classes \
  -I$(ROOT)/workbench/prefs/Zune/include -I$(COMMON) -I$(BZ)
 BZFILES := bzlib decompress huffman crctable randtable blocksort compress
