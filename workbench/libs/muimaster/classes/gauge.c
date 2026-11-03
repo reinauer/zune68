@@ -56,7 +56,9 @@
 *       recompute the cached dimensions or request relayout.
 *       Draw calls Area, paints the horizontal fill from the left or vertical
 *       fill from the bottom, and centers formatted text through the Zune text
-*       engine. It does not test drawing flags locally. Temporary text-engine
+*       engine in the inner box less one pixel on each side. A text wider than
+*       that starts at its left edge and shows only the whole characters that
+*       fit. It does not test drawing flags locally. Temporary text-engine
 *       objects are destroyed after drawing; allocation failure skips text. Draw
 *       and AskMinMax return zero. Setup returns zero on superclass failure,
 *       otherwise one.
@@ -67,11 +69,9 @@
 *       return stored values or a borrowed format pointer; there is no getter
 *       for Horiz. Setter return values come from Area and do not report
 *       string-copy failure.
-*       Use a nonzero Max for vertical drawing. The vertical path divides by Max
-*       without a zero check; the horizontal path uses zero fill when Max is
-*       zero. Fill-size multiplication is not widened to 64 bits and can
-*       overflow. Keep dimensions and values within that arithmetic range. These
-*       implementation limits are not corrected by this class.
+*       Max zero paints no fill. Fill-size multiplication is not widened to 64
+*       bits and can overflow. Keep dimensions and values within that
+*       arithmetic range.
 *
 */
 /****** Gauge.mui/MUIA_Gauge_Current ************
@@ -140,10 +140,8 @@
 *       Max requests full redraw but does not itself reformat InfoText; text can
 *       therefore show an old value after clamping. An unchanged Max tag becomes
 *       TAG_IGNORE. No Current notification is generated for the clamp.
-*       Vertical drawing requires Max greater than zero; it has no
-*       zero-denominator guard. Horizontal drawing handles zero by selecting a
-*       zero fill width. Setup measures InfoText formatted with Max; a later
-*       Max change does not remeasure.
+*       Max zero paints no fill. Setup measures InfoText formatted with Max; a
+*       later Max change does not remeasure.
 *
 */
 /****** Gauge.mui/MUIA_Gauge_Horiz ************
@@ -190,7 +188,8 @@
 *       and is unsafe. An empty string can display no characters but still
 *       counts as a present InfoText for sizing.
 *       A changed string is formatted with the post-division Current and
-*       requests redraw, but no size remeasurement. Copy failure leaves InfoText
+*       requests redraw, but no size remeasurement; a text wider than the
+*       gauge shows only the whole characters that fit. Copy failure leaves InfoText
 *       NULL without reporting setter failure. In copy mode the old string is
 *       freed before duplication; a replacement must not point inside that owned
 *       allocation. Current and Divide changes also reformat; Max alone does
@@ -561,11 +560,32 @@ IPTR Gauge__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 }
 
 /*
- * Call Area and paint oriented fill plus temporary centered Zune text; free
- * each temporary text object and skip failed allocation. Return zero
- * without checking draw flags locally. Requires valid render context and
- * nonzero Max vertically; multiplication may overflow. Does not reformat
- * cached text.
+ * Draw the formatted info text centered in the inner box less one pixel on
+ * each side, in the text pen over the filled and the empty part. A text
+ * wider than that starts at its left edge and keeps only the whole
+ * characters that fit, as in MUI 3.9 (tests/native/gaugeoverflow.c,
+ * tests/native/gaugetext.c), so nothing is drawn outside the gauge.
+ * Allocation failure skips the text.
+ */
+static void Gauge_DrawInfo(Object *obj, struct Gauge_DATA *data)
+{
+    ZText *ztext = zune_text_new("\33c", data->buf, ZTEXT_ARG_NONE, 0);
+
+    if (!ztext)
+        return;
+    zune_text_get_bounds(ztext, obj);
+    ztext->truncate = 1;
+    SetAPen(_rp(obj), _pens(obj)[MPEN_TEXT]);
+    zune_text_draw(ztext, obj, _mleft(obj) + 1, _mright(obj) - 1,
+        _mtop(obj) + (_mheight(obj) - ztext->height) / 2);
+    zune_text_destroy(ztext);
+}
+
+/*
+ * Call Area and paint oriented fill plus the info text; Max zero paints no
+ * fill. Return zero without checking draw flags locally. Requires valid
+ * render context; multiplication may overflow. Does not reformat cached
+ * text.
  */
 IPTR Gauge__MUIM_Draw(struct IClass *cl, Object *obj,
     struct MUIP_Draw *msg)
@@ -594,47 +614,21 @@ IPTR Gauge__MUIM_Draw(struct IClass *cl, Object *obj,
             _mbottom(obj));
 
         if (data->info)
-        {
-            ZText *ztext =
-                zune_text_new("\33c", data->buf, ZTEXT_ARG_NONE, 0);
-            if (ztext)
-            {
-                zune_text_get_bounds(ztext, obj);
-                /* MUI 3.9 draws the info text in the text pen over
-                 * the filled and the empty part (tests/native/gaugetext.c) */
-                SetAPen(_rp(obj), _pens(obj)[MPEN_TEXT]);
-                zune_text_draw(ztext, obj, _mleft(obj), _mright(obj),
-                    _mtop(obj) + (_mheight(obj) - ztext->height) / 2);
-                zune_text_destroy(ztext);
-            }
-        }
+            Gauge_DrawInfo(obj, data);
     }
     else
     {
         ULONG h;
 
         /* NOTE: should be 64 bit */
-        h = _mheight(obj) * data->current / data->max;
+        h = data->max ? _mheight(obj) * data->current / data->max : 0;
 
         SetABPenDrMd(_rp(obj), _pens(obj)[MPEN_FILL], 0, JAM1);
         RectFill(_rp(obj), _mleft(obj), _mbottom(obj) - h + 1, _mright(obj),
             _mbottom(obj));
 
         if (data->info)
-        {
-            ZText *ztext =
-                zune_text_new("\33c", data->buf, ZTEXT_ARG_NONE, 0);
-            if (ztext)
-            {
-                zune_text_get_bounds(ztext, obj);
-                /* MUI 3.9 draws the info text in the text pen over
-                 * the filled and the empty part (tests/native/gaugetext.c) */
-                SetAPen(_rp(obj), _pens(obj)[MPEN_TEXT]);
-                zune_text_draw(ztext, obj, _mleft(obj), _mright(obj),
-                    _mtop(obj) + (_mheight(obj) - ztext->height) / 2);
-                zune_text_destroy(ztext);
-            }
-        }
+            Gauge_DrawInfo(obj, data);
     }
     return 0;
 }
