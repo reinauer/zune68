@@ -15,13 +15,11 @@
 #include <proto/alib.h>
 #include <proto/muimaster.h>
 #include <proto/graphics.h>
-#include <proto/cybergraphics.h>
 #include <proto/intuition.h>
 #include <proto/utility.h>
 #include <proto/timer.h>
 
 #include <graphics/gfxmacros.h>
-#include <cybergraphx/cybergraphics.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -648,7 +646,7 @@ IPTR Graph__MUIM_Draw(Class *cl, Object *obj, struct MUIP_Draw *msg)
             struct RastPort *drp;
             if ((drp = CloneRastPort(renderPort)))
             {
-                IPTR dispDepth = GetCyberMapAttr(drp->BitMap, CYBRMATTR_DEPTH);
+                IPTR dispDepth = GetBitMapAttr(drp->BitMap, BMA_DEPTH);
                 APTR tmpbuf;
 
                 if ((tmpbuf = (APTR)AllocMem(objWidth * objHeight * dispDepth, MEMF_CHIP | MEMF_CLEAR)))
