@@ -24,11 +24,9 @@ PLUGIN_OUTPUT := $(BUILD)/Libs/MUI/$(if $(PLUGIN_NAME),$(PLUGIN_NAME),$(notdir $
 zune68-plugin: $(PLUGIN_OUTPUT)
 RUNTIME_DIR := $(dir $(PLUGIN_MAKEFILE))plugin
 RUNTIME_OBJECTS := $(addprefix $(OBJDIR)/runtime/,format.o strings.o superattrs.o)
-$(RUNTIME_OBJECTS): $(PLUGIN_MAKEFILE)
-$(OBJDIR)/runtime/strings.o: $(RUNTIME_DIR)/runtime.h
 $(OBJDIR)/runtime/%.o: $(RUNTIME_DIR)/%.c
 	@mkdir -p $(@D)
-	$(CC) $(CPUFLAGS) -noixemul $(PLUGIN_CFLAGS) -fno-builtin -c $< -o $@
+	$(CC) $(CPUFLAGS) -noixemul $(PLUGIN_CFLAGS) -fno-builtin -MMD -MP -c $< -o $@
 $(OBJDIR)/runtime.a: $(RUNTIME_OBJECTS)
 	$(CROSS)ar rcs $@ $^
 $(PLUGIN_OUTPUT): $(PLUGIN_OBJECTS) $(OBJDIR)/runtime.a
@@ -37,7 +35,10 @@ $(PLUGIN_OUTPUT): $(PLUGIN_OBJECTS) $(OBJDIR)/runtime.a
 	  -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lm -lamiga -ldebug \
 	  -Wl,--end-group -Wl,-Map,$@.map
 
-$(PLUGIN_OBJECTS): $(PLUGIN_MAKEFILE) $(PLUGIN_ADAPTER)
+include $(dir $(PLUGIN_MAKEFILE))flags.mk
+$(OBJDIR)/cflags: FORCE
+	@$(call record_flags,$(CC) $(CFLAGS) $(PLUGIN_CFLAGS) $(LDFLAGS_EXTRA))
+$(PLUGIN_OBJECTS) $(RUNTIME_OBJECTS): $(PLUGIN_MAKEFILE) $(PLUGIN_ADAPTER) $(OBJDIR)/cflags
 
 $(OBJDIR)/%.o: %.c
 	@mkdir -p $(@D)
@@ -54,7 +55,7 @@ $(PLUGIN_OBJECTS): $(OBJDIR)/locale.h
 $(OBJDIR)/locale.o: $(OBJDIR)/locale.c
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 endif
--include $(PLUGIN_OBJECTS:.o=.d)
+-include $(PLUGIN_OBJECTS:.o=.d) $(RUNTIME_OBJECTS:.o=.d)
 
 # Keep the pinned TheBar checkout untouched while correcting its three
 # malformed preference delimiters in the two affected translation units.

@@ -13,12 +13,16 @@ SOURCES := prefswindowp.c zune.c listview.c zunestuff.c windowp.c buttonsp.c gro
   cyclesp.c slidersp.c scrollbarsp.c listviewsp.c stringsp.c specialp.c \
   navigationp.c framesp.c locale.c systemp.c amigasupport.c
 OBJECTS := $(BUILD)/prefs/prefswindow-base.o $(addprefix $(BUILD)/prefs/,$(SOURCES:.c=.o))
+include ../../../tools/flags.mk
+$(BUILD)/prefs/cflags: FORCE
+	@$(call record_flags,$(CC) $(CPUFLAGS) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS))
+$(OBJECTS): GNUmakefile $(BUILD)/prefs/cflags
 .PHONY: all
 all: $(BUILD)/Prefs/Zune
 $(BUILD)/Prefs/Zune: $(OBJECTS)
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul $(LDFLAGS) -Wl,-u,___stkinit -o $@ $^ -lmui -ldebug
-$(BUILD)/prefs/%.o: %.c GNUmakefile
+$(BUILD)/prefs/%.o: %.c
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 -include $(OBJECTS:.o=.d)
@@ -32,4 +36,4 @@ $(BUILD)/prefs/prefswindow_strings.h: ../../classes/zune/prefswindow/catalogs/pr
 	$(FLEXCAT) $< $@=../../../tools/flexcat/CatComp_h.sd
 $(OBJECTS): $(BUILD)/prefs/strings.h $(BUILD)/prefs/prefswindow_strings.h
 $(BUILD)/prefs/prefswindow-base.o: ../../classes/zune/prefswindow/prefswindow.c
-	$(CC) $(CPUFLAGS) -noixemul $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPUFLAGS) -noixemul $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@

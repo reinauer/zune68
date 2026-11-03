@@ -41,13 +41,15 @@ check-components: prefs plugins catalogs sdk examples
 examples: $(EXAMPLES)
 $(BUILD)/Examples/%: tutorial/examples/%.c tutorial/examples/muizunesupport.h $(GENERATED)
 	@mkdir -p $(@D)
-	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DNO_INLINE_STDARG \
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DNO_INLINE_STDARG $(PROGRAM_DEPS) \
 	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 $(BUILD)/Examples/TheBarDemo: $(ROOT)/tests/native/thebar_demo.c $(GENERATED) \
   $(ROOT)/workbench/classes/zune/thebar/include/mui/TheBar_mcc.h \
   $(ROOT)/workbench/classes/zune/thebar/include/mui/Toolbar_mcc.h
 	@mkdir -p $(@D)
-	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DNO_INLINE_STDARG \
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DNO_INLINE_STDARG $(PROGRAM_DEPS) \
 	  -I$(BUILD)/include -Iinclude -I$(ROOT)/workbench/classes/zune/thebar/include \
 	  -Wl,-u,___stkinit -o $@ $< -lmui
+$(EXAMPLES): $(BUILD)/cflags
+-include $(EXAMPLES:=.d)

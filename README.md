@@ -30,6 +30,11 @@ make check
 make release
 ```
 
+Rebuilding an existing build directory recompiles what changed sources,
+headers or flags (`CFLAGS`, `CPUFLAGS`, `LTO`, `TRACE`) affect. The make
+3.81 shipped with macOS compares timestamps to the second, so a change in
+the same second as the previous build can be missed; GNU make 4 does not.
+
 Checks need the Python bundled with the Amiga toolchain, which has matching
 `amitools` and `machine68k`: `make check
 PYTHON=<toolchain>/libexec/amitools/bin/python`. They execute linked

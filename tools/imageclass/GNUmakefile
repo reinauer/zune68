@@ -28,43 +28,43 @@ all: $(BUILD)/Libs/MUI/Rawimage.mcc $(BUILD)/Libs/MUI/Pixmap.mui \
  $(BUILD)/Libs/MUI/Busy.mcc \
  $(BUILD)/Libs/MUI/Calltips.mcc \
  $(BUILD)/Libs/MUI/Textinput.mcc $(BUILD)/Libs/MUI/Textinputscroll.mcc
-$(OBJ)/rawimage.o: library.c $(RAW)/Rawimage.c $(RAW)/Rawimage_private.h GNUmakefile
+$(OBJ)/rawimage.o: library.c $(RAW)/Rawimage.c $(RAW)/Rawimage_private.h
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -DBUILD_RAWIMAGE -MMD -MP -c $< -o $@
-$(OBJ)/pixmap.o: library.c $(MASTER)/classes/pixmap.c $(MASTER)/classes/pixmap_private.h GNUmakefile
+$(OBJ)/pixmap.o: library.c $(MASTER)/classes/pixmap.c $(MASTER)/classes/pixmap_private.h
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -MMD -MP -c $< -o $@
-$(OBJ)/listtree.o: listtree_library.c $(wildcard $(LISTTREE)/*.[ch]) GNUmakefile
+$(OBJ)/listtree.o: listtree_library.c $(wildcard $(LISTTREE)/*.[ch])
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -Wno-incompatible-pointer-types -I. -I$(LISTTREE) -MMD -MP -c $< -o $@
-$(OBJ)/bz2/%.o: $(BZ)/%.c $(BZ)/bzlib.h $(BZ)/bzlib_private.h GNUmakefile
+$(OBJ)/bz2/%.o: $(BZ)/%.c $(BZ)/bzlib.h $(BZ)/bzlib_private.h
 	@mkdir -p $(@D)
-	$(CC) $(FLAGS) -DBZ_NO_STDIO -Wno-unused-but-set-variable -c $< -o $@
+	$(CC) $(FLAGS) -DBZ_NO_STDIO -Wno-unused-but-set-variable -MMD -MP -c $< -o $@
 $(OBJ)/superattrs.o: ../plugin/superattrs.c
 	@mkdir -p $(@D)
-	$(CC) $(FLAGS) -c $< -o $@
+	$(CC) $(FLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/Libs/MUI/Rawimage.mcc: $(OBJ)/rawimage.o $(OBJ)/superattrs.o
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
 $(BUILD)/Libs/MUI/Pixmap.mui: $(OBJ)/pixmap.o $(OBJ)/superattrs.o $(BZOBJS)
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
-$(OBJ)/busy.o: busy_library.c $(wildcard $(BUSY)/*.[ch]) GNUmakefile
+$(OBJ)/busy.o: busy_library.c $(wildcard $(BUSY)/*.[ch])
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -I. -I$(BUSY) -MMD -MP -c $< -o $@
 $(BUILD)/Libs/MUI/Busy.mcc: $(OBJ)/busy.o
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
-$(OBJ)/calltips.o: calltips_library.c $(wildcard $(CALLTIPS)/*.[ch]) GNUmakefile
+$(OBJ)/calltips.o: calltips_library.c $(wildcard $(CALLTIPS)/*.[ch])
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -I. -I$(CALLTIPS) -MMD -MP -c $< -o $@
 $(BUILD)/Libs/MUI/Calltips.mcc: $(OBJ)/calltips.o $(OBJ)/superattrs.o
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
-$(OBJ)/textinput.o: textinput_library.c GNUmakefile
+$(OBJ)/textinput.o: textinput_library.c
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -I. -MMD -MP -c $< -o $@
-$(OBJ)/textinputscroll.o: textinput_library.c GNUmakefile
+$(OBJ)/textinputscroll.o: textinput_library.c
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -I. -DTEXTINPUTSCROLL -MMD -MP -c $< -o $@
 $(BUILD)/Libs/MUI/Textinput.mcc: $(OBJ)/textinput.o
@@ -75,7 +75,7 @@ $(BUILD)/Libs/MUI/Textinputscroll.mcc: $(OBJ)/textinputscroll.o
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
 $(OBJ)/format.o: ../plugin/format.c
 	@mkdir -p $(@D)
-	$(CC) $(FLAGS) -c $< -o $@
+	$(CC) $(FLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/Libs/MUI/Listtree.mcc: $(OBJ)/listtree.o $(OBJ)/format.o
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
@@ -111,15 +111,15 @@ $(GEN)/systemprefswindow/strings.h: $(ZUNE)/systemprefswindow/catalogs/systempre
 $(GEN)/prefswindow/prefswindow_strings.h: $(ZUNE)/prefswindow/catalogs/prefswindow.cd
 	@mkdir -p $(@D)
 	$(FLEXCAT) $< $@=$(ROOT)/tools/flexcat/CatComp_h.sd
-$(OBJ)/class_support.o: class_support.c GNUmakefile
+$(OBJ)/class_support.o: class_support.c
 	@mkdir -p $(@D)
-	$(CC) $(FLAGS) -c $< -o $@
+	$(CC) $(FLAGS) -MMD -MP -c $< -o $@
 $(OBJ)/strings.o: ../plugin/strings.c
 	@mkdir -p $(@D)
-	$(CC) $(FLAGS) -c $< -o $@
+	$(CC) $(FLAGS) -MMD -MP -c $< -o $@
 define CLASS_RULE
 $(OBJ)/$(1).o: $(wildcard $(ZUNE)/$(2)/*.[ch]) $(wildcard $(ZUNE)/$(2)/*.conf) \
- gen_class.py class_common.h class_libdefs.h GNUmakefile \
+ gen_class.py class_common.h class_libdefs.h \
  $(CLASS_HEADERS:%=$(GEN)/include/zune/%.h) $(3)
 	@mkdir -p $(GEN)/$(2)
 	$(PYTHON) gen_class.py $(firstword $(wildcard $(ZUNE)/$(2)/*.conf)) $(GEN)/$(2)/$(2)_library.c
@@ -128,7 +128,6 @@ $(OBJ)/$(1).o: $(wildcard $(ZUNE)/$(2)/*.[ch]) $(wildcard $(ZUNE)/$(2)/*.conf) \
 $(BUILD)/Libs/MUI/$(1).mcc: $(OBJ)/$(1).o $(CLASS_SUPPORT)
 	@mkdir -p $$(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $$@ $$^ -Wl,--start-group -lm -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
--include $(OBJ)/$(1).d
 endef
 $(eval $(call CLASS_RULE,Aboutbox,aboutbox,,-UNO_INLINE_STDARG))
 $(eval $(call CLASS_RULE,AboutWindow,aboutwindow,$(GEN)/aboutwindow/strings.h,-Daboutwindow_ARRAY -DCatCompArray=aboutwindow_Array))
@@ -143,5 +142,10 @@ $(eval $(call CLASS_RULE,PrefsEditor,prefseditor))
 $(eval $(call CLASS_RULE,PrefsWindow,prefswindow,$(GEN)/prefswindow/prefswindow_strings.h))
 $(eval $(call CLASS_RULE,QRCode,qrcode))
 $(eval $(call CLASS_RULE,SystemPrefsWindow,systemprefswindow,$(GEN)/systemprefswindow/strings.h,-Dsystemprefswindow_ARRAY -DCatCompArray=systemprefswindow_Array))
--include $(OBJ)/rawimage.d $(OBJ)/pixmap.d $(OBJ)/listtree.d $(OBJ)/busy.d \
- $(OBJ)/calltips.d $(OBJ)/textinput.d $(OBJ)/textinputscroll.d
+OBJECTS := $(addprefix $(OBJ)/,rawimage.o pixmap.o listtree.o busy.o calltips.o \
+ textinput.o textinputscroll.o $(CLASS_NAMES:=.o)) $(BZOBJS) $(CLASS_SUPPORT)
+include $(ROOT)/tools/flags.mk
+$(OBJ)/cflags: FORCE
+	@$(call record_flags,$(CC) $(FLAGS))
+$(OBJECTS): GNUmakefile $(OBJ)/cflags
+-include $(OBJECTS:.o=.d)

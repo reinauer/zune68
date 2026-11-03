@@ -91,7 +91,10 @@ LDLIBS = -Wl,--start-group -lgcc -lnix20 -lnix -lm -lamiga -ldebug \
 GENERATED = $(BUILD)/muimaster_strings.h $(BUILD)/trace-config.h $(BUILD)/include/libraries/mui.h \
   $(BUILD)/include/inline/muimaster.h $(BUILD)/include/inline/muiscreen.h $(BUILD)/gates.h
 
-.PHONY: all clean check check-core check-sdk release FORCE
+.PHONY: all clean check check-core check-sdk release
+include ../../../tools/flags.mk
+# Programs compiled and linked in one step write their header dependencies here.
+PROGRAM_DEPS = -MMD -MP -MF $@.d -MT $@
 all: core $(BUILD)/compatcheck
 core: $(BUILD)/muimaster.library $(BUILD)/zunemaster.library $(BUILD)/opentest
 
@@ -113,17 +116,17 @@ check-sdk: $(BUILD)/compatcheck
 $(BUILD)/compatcheck: ../../../tests/native/compatcheck.c \
   ../../../tests/native/numeric_cases.h $(GENERATED)
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
-	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+	  $(PROGRAM_DEPS) -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 check: all check-core
 
 $(BUILD)/mui5-layout-probe: ../../../tests/native/mui5_layout_probe.c $(GENERATED)
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
-	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+	  $(PROGRAM_DEPS) -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 $(BUILD)/mui5-pointer-probe: ../../../tests/native/mui5_pointer_probe.c $(GENERATED)
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= \
-	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+	  $(PROGRAM_DEPS) -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 MUI5_PROBES = classes data selection menu menu_input string string_input image ibrowse title text list \
   panel requesters process keyadjust text_escape rtg memory marking list_format calltips \
@@ -132,20 +135,20 @@ MUI5_PROBE_BINS = $(addprefix $(BUILD)/mui5-,$(addsuffix -probe,$(MUI5_PROBES)))
 
 $(MUI5_PROBE_BINS): $(BUILD)/mui5-%-probe: ../../../tests/native/mui5_%_probe.c $(GENERATED)
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -Wno-int-conversion \
-	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+	  $(PROGRAM_DEPS) -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 $(BUILD)/mui5-ibrowse-probe: ../../../tests/native/mui5_fixture.h
 
 $(BUILD)/mui5-version_gate-probe: ../../../tests/native/mui5_version_gate.c ../../../tests/native/mui5_fixture.h $(GENERATED)
 	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) \
-	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
+	  $(PROGRAM_DEPS) -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $< -lmui
 
 $(BUILD)/list-repaint-probe: ../../../tests/native/list_repaint_probe.c $(GENERATED)
-	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -I$(BUILD)/include -Iinclude \
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) $(PROGRAM_DEPS) -I$(BUILD)/include -Iinclude \
 	  -Wl,-u,___stkinit -o $@ $< -lmui
 
 $(BUILD)/config-init-probe: ../../../tests/native/config_init_probe.c $(GENERATED) prefs.h
-	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -I$(BUILD)/include -Iinclude -I. \
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) $(PROGRAM_DEPS) -I$(BUILD)/include -Iinclude -I. \
 	  -Wl,-u,___stkinit -o $@ $< -lmui
 
 check-core: $(BUILD)/list-repaint-probe $(BUILD)/config-init-probe $(MUI5_PROBE_BINS) $(BUILD)/mui5-version_gate-probe core $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe $(BUILD)/mui5-pointer-probe
@@ -223,7 +226,8 @@ $(BUILD)/trace-config.h: FORCE
 	@printf '#define ZUNE68_TRACE %s\n#define ZUNE68_MUI5_TEST %s\n' '$(TRACE)' '$(MUI5_TEST)' | cmp -s - $@ || \
 	  printf '#define ZUNE68_TRACE %s\n#define ZUNE68_MUI5_TEST %s\n' '$(TRACE)' '$(MUI5_TEST)' > $@
 
-FORCE:
+$(BUILD)/cflags: FORCE
+	@$(call record_flags,$(CC) $(CPPFLAGS) $(LIB_CFLAGS) $(LDFLAGS) $(LTO_LDFLAGS))
 
 $(BUILD)/buildincludes: buildincludes.c GNUmakefile
 	@mkdir -p $(@D)
@@ -292,16 +296,20 @@ $(BUILD)/%.library: $(BUILD)/start.o $(BUILD)/%_lib.o $(BUILD)/gates.o $(OBJECTS
 	  -Wl,-Map,$@.map -o $@ $^ $(LDLIBS)
 
 $(BUILD)/opentest: opentest.c $(GENERATED)
-	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $<
+	$(CC) $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) -DMUIMASTER_YES_INLINE_STDARG= $(PROGRAM_DEPS) \
+	  -I$(BUILD)/include -Iinclude -Wl,-u,___stkinit -o $@ $<
 
-$(OBJECTS) $(BUILD)/gates.o $(BUILD)/muimaster_lib.o \
-  $(BUILD)/zunemaster_lib.o $(BUILD)/opentest: GNUmakefile
+PROGRAMS = $(BUILD)/opentest $(BUILD)/compatcheck $(BUILD)/mui5-layout-probe \
+  $(BUILD)/mui5-pointer-probe $(MUI5_PROBE_BINS) $(BUILD)/mui5-version_gate-probe \
+  $(BUILD)/list-repaint-probe $(BUILD)/config-init-probe
+$(OBJECTS) $(BUILD)/start.o $(BUILD)/gates.o $(BUILD)/muimaster_lib.o \
+  $(BUILD)/zunemaster_lib.o $(PROGRAMS): GNUmakefile $(BUILD)/cflags
 
 clean:
 	rm -rf $(BUILD)
 
 -include $(OBJECTS:.o=.d) $(BUILD)/gates.d \
-  $(BUILD)/muimaster_lib.d $(BUILD)/zunemaster_lib.d
+  $(BUILD)/muimaster_lib.d $(BUILD)/zunemaster_lib.d $(PROGRAMS:=.d)
 
 include ../../../tools/components.mk
 
