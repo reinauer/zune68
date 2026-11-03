@@ -32,7 +32,7 @@ IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Busy.mcc',
                  'Calltips.mcc', 'Textinput.mcc', 'Textinputscroll.mcc', 'Aboutbox.mcc', 'AboutWindow.mcc', 'Calendar.mcc',
                  'Clock.mcc', 'Flexgroup.mcc', 'Graph.mcc', 'IconImage.mcc',
                  'Lamp.mcc', 'LoginWindow.mcc', 'PrefsEditor.mcc', 'PrefsWindow.mcc',
-                 'SystemPrefsWindow.mcc')
+                 'QRCode.mcc', 'SystemPrefsWindow.mcc')
 CLASS_FILES = (*PLUGINS.values(), *IMAGE_CLASSES)
 EXAMPLES = ['HelloZune', 'HGroup', 'VGroup', 'VHGroup', 'VHGroup2', 'HVGroup', 'Notify', 'TheBarDemo']
 
@@ -130,9 +130,12 @@ def sdk(build):
     for path in ('calltips/Calltips_mcc.h', 'aboutbox/Aboutbox_mcc.h', 'lamp/Lamp_mcc.h'):
         copy(CLASSES / path, build / 'SDK/include/mui' / Path(path).name)
     for name in ('aboutwindow', 'calendar', 'clock', 'flexgroup', 'graph', 'iconimage',
-                 'loginwindow', 'prefseditor', 'prefswindow', 'systemprefswindow'):
+                 'loginwindow', 'prefseditor', 'prefswindow', 'qrcode',
+                 'systemprefswindow'):
         copy(CLASSES / name / (name + '.h'), build / 'SDK/include/zune' / (name + '.h'))
     copy(CLASSES / 'rawimage/MCC_Rawimage.doc', build / 'Docs/Rawimage/MCC_Rawimage.doc')
+    for name in ('MCC_QRCode.doc', 'LICENSE.Nayuki.txt'):
+        copy(CLASSES / 'qrcode' / name, build / 'Docs/QRCode' / name)
     copy(ROOT / 'vendor/bzip2/LICENSE', build / 'Docs/bzip2/LICENSE')
     copy(ROOT / 'vendor/bzip2/ORIGIN', build / 'Docs/bzip2/ORIGIN')
     for family in ['betterstring', 'nlist', 'texteditor', 'thebar']:

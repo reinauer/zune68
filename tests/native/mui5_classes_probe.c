@@ -12,13 +12,17 @@
 #define MO(n, ...) ({ ULONG t[] = {__VA_ARGS__}; MUI_NewObjectA(n, (APTR)t); })
 struct Library *MUIMasterBase;
 ULONG __stack = 65536;
-enum { LIBRARY, AREA, GROUP, WINDOW, CONTENTS };
+enum { LIBRARY, AREA, GROUP, WINDOW, CONTENTS, QRCODE };
+#define MUIA_QRCode_Text 0x90470b01 /* MUIB_AROS | 0xb01, zune/qrcode.h */
+#define MUIA_QRCode_Status 0x90470b04
+#define QRCODE_TEXT "https://github.com/reinauer/zune68"
 static const struct { const char *name; int kind; } classes[] = {
     {"Calendar.mcc", AREA}, {"Calltips.mcc", LIBRARY}, {"Clock.mcc", AREA},
     {"Flexgroup.mcc", GROUP}, {"Graph.mcc", AREA}, {"IconImage.mcc", LIBRARY},
     {"Lamp.mcc", AREA}, {"PrefsEditor.mcc", AREA}, {"Aboutbox.mcc", WINDOW},
     {"AboutWindow.mcc", WINDOW}, {"LoginWindow.mcc", WINDOW},
     {"PrefsWindow.mcc", CONTENTS}, {"SystemPrefsWindow.mcc", CONTENTS},
+    {"QRCode.mcc", QRCODE},
 };
 static struct Screen *screen;
 static int failures;
@@ -64,9 +68,17 @@ static void exercise(const char *name, int kind, LONG hold)
         object = kind == GROUP
             ? MO(name, MUIA_Group_Child,
                  (ULONG)MO(MUIC_Text, MUIA_Text_Contents, (ULONG)"child", TAG_DONE), TAG_DONE)
+            : kind == QRCODE
+            ? MO(name, MUIA_QRCode_Text, (ULONG)QRCODE_TEXT, TAG_DONE)
             : MO(name, TAG_DONE);
         check(object != NULL, name, "object");
         if (!object) return;
+        if (kind == QRCODE)
+        {
+            ULONG status = 0;
+            GetAttr(MUIA_QRCode_Status, object, &status);
+            check(status == 1, name, "status Ready"); /* MUIV_QRCode_Status_Ready */
+        }
         win = MO(MUIC_Window, MUIA_Window_Screen, (ULONG)screen,
             MUIA_Window_RootObject, (ULONG)object, TAG_DONE);
     }

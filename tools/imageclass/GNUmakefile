@@ -82,9 +82,9 @@ $(BUILD)/Libs/MUI/Listtree.mcc: $(OBJ)/listtree.o $(OBJ)/format.o
 # AROS classes whose library envelope is generated from their .conf file.
 ZUNE := $(ROOT)/workbench/classes/zune
 CLASS_NAMES := Aboutbox AboutWindow Calendar Clock Flexgroup Graph IconImage \
- Lamp LoginWindow PrefsEditor PrefsWindow SystemPrefsWindow
+ Lamp LoginWindow PrefsEditor PrefsWindow QRCode SystemPrefsWindow
 CLASS_BINS := $(CLASS_NAMES:%=$(BUILD)/Libs/MUI/%.mcc)
-CLASS_HEADERS := iconimage prefseditor prefswindow
+CLASS_HEADERS := iconimage prefseditor prefswindow qrcode
 CLASS_SUPPORT := $(OBJ)/class_support.o $(OBJ)/superattrs.o $(OBJ)/strings.o $(OBJ)/format.o
 GEN := $(OBJ)/generated
 FLEXCAT ?= flexcat
@@ -97,6 +97,9 @@ $(GEN)/include/zune/%.h: $(ZUNE)/prefseditor/%.h
 	@mkdir -p $(@D)
 	cp $< $@
 $(GEN)/include/zune/%.h: $(ZUNE)/prefswindow/%.h
+	@mkdir -p $(@D)
+	cp $< $@
+$(GEN)/include/zune/%.h: $(ZUNE)/qrcode/%.h
 	@mkdir -p $(@D)
 	cp $< $@
 $(GEN)/aboutwindow/strings.h: $(ZUNE)/aboutwindow/catalogs/aboutwindow.cd
@@ -138,6 +141,7 @@ $(eval $(call CLASS_RULE,Lamp,lamp))
 $(eval $(call CLASS_RULE,LoginWindow,loginwindow,,-Wno-int-conversion))
 $(eval $(call CLASS_RULE,PrefsEditor,prefseditor))
 $(eval $(call CLASS_RULE,PrefsWindow,prefswindow,$(GEN)/prefswindow/prefswindow_strings.h))
+$(eval $(call CLASS_RULE,QRCode,qrcode))
 $(eval $(call CLASS_RULE,SystemPrefsWindow,systemprefswindow,$(GEN)/systemprefswindow/strings.h,-Dsystemprefswindow_ARRAY -DCatCompArray=systemprefswindow_Array))
 -include $(OBJ)/rawimage.d $(OBJ)/pixmap.d $(OBJ)/listtree.d $(OBJ)/busy.d \
  $(OBJ)/calltips.d $(OBJ)/textinput.d $(OBJ)/textinputscroll.d

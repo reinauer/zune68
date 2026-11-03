@@ -47,8 +47,8 @@ explicit choice as upgrades. The default is Skip.
     the Toolbar wrapper, and their bundled MCP editors. Rawimage and
     Pixmap supply image rendering for the built-in preferences pages.
     Aboutbox, AboutWindow, Busy, Calendar, Calltips, Clock, Flexgroup,
-    Graph, IconImage, Lamp, Listtree, LoginWindow, PrefsEditor, PrefsWindow
-    and SystemPrefsWindow are the AROS utility classes. Textinput and
+    Graph, IconImage, Lamp, Listtree, LoginWindow, PrefsEditor, PrefsWindow,
+    QRCode and SystemPrefsWindow are the AROS utility classes. Textinput and
     Textinputscroll 29 are names for String, which has the Textinput API.
     These plugins open the standard muimaster.library name. For use with
     Zune68, install its muimaster.library variant too. Side-by-side tests
