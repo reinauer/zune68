@@ -73,14 +73,8 @@
 *       Setters modify writable caller tags to TAG_IGNORE for unchanged
 *       Entries/First/Visible. Negative First is clamped in stored state, but
 *       the original tag value still reaches superclass notification processing.
-*       Native gadget updates temporarily disable ICA_TARGET and can render
+*       Native gadget updates leave ICA_TARGET unchanged and can render
 *       immediately; they are not deferred exclusively to Draw.
-*       Custom rendering borrows image data from the prepared background and
-*       owns temporary image/bitmap/RastPort resources. Setup resets their
-*       pointers without freeing retained allocations; Cleanup does not free
-*       them. Repeated setup cycles can therefore lose resources, and repeated
-*       low-depth custom Show can replace a RastPort pointer without freeing the
-*       previous one. Dispose releases resources still referenced.
 *
 *   BUGS
 *       Getter success for First is reported even though the underlying PGA_Top
@@ -237,8 +231,8 @@
 *       UseBottomBorderScroller attribute. Left is declared but has no Show
 *       branch; other nonzero values likewise mark border mode without finding a
 *       gadget. No local setter/getter exists. Show writes the borrowed gadget
-*       UserData and ICA_TARGET; Hide does not dispose it, and Cleanup does not
-*       restore its UserData backlink.
+*       UserData; Hide does not dispose it, and Cleanup does not restore its
+*       UserData backlink.
 *
 */
 /****** Prop.mui/MUIM_Prop_Increase ************
@@ -500,8 +494,7 @@ IPTR Prop__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
  * Remove/dispose an owned nonborder gadget if still present, free
  * referenced image/bitmap/RastPort buffers and dispose Area. Requires valid
  * window if removing a gadget and prior handler Cleanup. Borrowed border
- * gadget is not disposed. Return superclass result; lost earlier allocation
- * pointers cannot be recovered.
+ * gadget is not disposed. Return superclass result.
  */
 IPTR Prop__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
@@ -535,8 +528,8 @@ IPTR Prop__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
  * Store range/factor tags and mutate unchanged range tags to TAG_IGNORE;
  * clamp stored negative First. Private OnlyTrigger suppresses native
  * refresh only, not storage or notifications. Refresh existing gadget
- * synchronously with ICA_TARGET temporarily disabled, then return Area
- * setter result. Caller tag list must be writable; range upper bounds and
+ * synchronously, leaving ICA_TARGET unchanged, then return Area setter
+ * result. Caller tag list must be writable; range upper bounds and
  * arithmetic are unchecked.
  */
 IPTR Prop__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
@@ -1154,10 +1147,8 @@ AROS_UFH3
 /*
  * Call Area Show then create/replace owned nonborder gadget only if fully
  * visible through virtual ancestors, or borrow Right/Bottom border gadget
- * and set UserData. Return Area result regardless of gadget failure. Custom
- * rendering may allocate fallback buffers; failed pairs disable custom
- * hook. Repeated low-depth Show can lose old RastPort; requires valid
- * setup/window and skin geometry.
+ * and set UserData. Return Area result regardless of gadget failure.
+ * Requires valid setup/window.
  */
 IPTR Prop__MUIM_Show(struct IClass *cl, Object *obj, struct MUIP_Show *msg)
 {

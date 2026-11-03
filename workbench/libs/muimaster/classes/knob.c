@@ -39,18 +39,18 @@
 *       class-specific public attributes or methods. ValueToScale maps the
 *       current value to zero through 270 degrees; Numeric_Reverse reverses this
 *       mapping. The artwork is a built-in 25 by 25 pixel pattern. A framed
-*       label area is painted, but no numeric text is drawn there;
-*       Numeric_Format does not change that rendering.
+*       display below it shows the Numeric_Stringify text of the current value
+*       in a built-in 3x5 pixel font.
 *       Construction prepends FillArea FALSE. Setup calls Numeric then registers
 *       a separate mouse handler; Cleanup removes it before Numeric Cleanup. No
 *       separately allocated knob image or native gadget is owned.
 *
 *   METHODS
-*       AskMinMax adds 33 pixels in width and 47 pixels in height to all
+*       AskMinMax adds 31 pixels in width and 36 pixels in height to all
 *       superclass size fields and returns TRUE. Full Draw paints frame,
 *       background and marker; update Draw erases the old marker and draws the
-*       new one. Draw returns FALSE without full/update flags, otherwise TRUE;
-*       drawing statuses are ignored.
+*       new one. Both repaint the value text. Draw returns FALSE without
+*       full/update flags, otherwise TRUE; drawing statuses are ignored.
 *       SELECTDOWN inside the object enables mouse-move events. Any other button
 *       code disables them. A delivered mouse move calculates an absolute angle
 *       from the pointer around the knob center, clamps it to 0..270 and sets
@@ -63,9 +63,9 @@
 *   NOTES
 *       Use valid Numeric bounds and normal Setup/Show/Hide/Cleanup ordering.
 *       Hit testing uses current geometry and WORD intermediates. Formatting,
-*       export/import and numeric methods remain inherited even though the class
-*       does not draw a value string. Reverse changes alone inherit Numeric's
-*       lack of an automatic redraw request.
+*       export/import and numeric methods remain inherited; Format and
+*       Stringify determine the displayed value text. Reverse changes alone
+*       inherit Numeric's lack of an automatic redraw request.
 *
 */
 
@@ -203,7 +203,7 @@ IPTR Knob__MUIM_Cleanup(struct IClass *cl, Object *obj,
  MUIM_AskMinMax
 **************************************************************************/
 /*
- * Ask Numeric/Area then add fixed 33 by 47 content requirements to every
+ * Ask Numeric/Area then add fixed 31 by 36 content requirements to every
  * corresponding size field. Return TRUE ignoring superclass result.
  * Requires writable MinMaxInfo; does not measure Format or font.
  */
@@ -277,10 +277,10 @@ static void DrawNeedle(Object *obj, struct RastPort *rp, LONG x1, LONG y1,
  MUIM_Draw
 **************************************************************************/
 /*
- * Draw full built-in frame/pattern or erase previous marker, then map Value
- * to 0..270 and draw marker. Return FALSE without full/update flags,
- * otherwise TRUE. Requires valid render context and geometry; no numeric
- * text is drawn. Save prevangle for later update; rendering results
+ * Draw full built-in frame/pattern or erase previous marker, repaint the
+ * Stringify value text, then map Value to 0..270 and draw marker. Return
+ * FALSE without full/update flags, otherwise TRUE. Requires valid render
+ * context and geometry. Save prevangle for later update; rendering results
  * ignored.
  */
 IPTR Knob__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)

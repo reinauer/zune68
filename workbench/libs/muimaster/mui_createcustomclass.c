@@ -44,8 +44,8 @@
         supermcc - Existing superclass descriptor, or NULL to use supername.
                    Its mcc_Class must be valid.
         datasize - Number of instance-data bytes added by the new class.
-        dispatcher - Non-NULL dispatcher entrypoint using the AROS class
-                     dispatcher calling convention.
+        dispatcher - Non-NULL dispatcher entrypoint taking the class in A0,
+                     the object in A2, and the message in A1.
 
     RESULT
         A newly allocated MUI_CustomClass descriptor, or NULL if neither
@@ -59,10 +59,8 @@
         The supplied superclass descriptor is not copied or freed here.
 
     BUGS
-        If a named superclass was obtained and a later allocation or
-        MakeClass() fails, this implementation does not release that
-        superclass. A supplied superclass is not separately acquired,
-        although successful deletion calls MUI_FreeClass() on it.
+        A supplied superclass is not separately acquired, although
+        successful deletion calls MUI_FreeClass() on it.
 
     SEE ALSO
         MUI_DeleteCustomClass(), MUI_GetClass(), intuition.library/MakeClass()

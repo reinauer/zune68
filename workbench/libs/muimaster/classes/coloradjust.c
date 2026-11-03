@@ -51,7 +51,7 @@
 *       The constructor opens gadgets/colorwheel.gadget and
 *       gadgets/gradientslider.gadget. It returns NULL on superclass
 *       construction failure. The interface-acquisition/drop macros are no-ops
-*       on AROS and do not test library availability. Dispose disposes Group
+*       and do not test library availability. Dispose disposes Group
 *       children and closes opened libraries. Normal Cleanup must precede
 *       disposal for the gradient pen.
 *
@@ -74,11 +74,9 @@
 *       their pointers; ignored children are not owned through that Group child
 *       tag. Conversion and hooks test wrapper pointers rather than library
 *       availability. WheelFunc leaves brightness uninitialized without a
-*       gradient; GradFunc assumes a wheel. gradpen is not initialized to -1
-*       during construction, so Cleanup without the wheel Setup branch can
-*       attempt to release pen zero. Use the complete gadget configuration and
-*       normal lifecycle; degraded configurations have no safe operation
-*       guarantee in this implementation.
+*       gradient; GradFunc assumes a wheel. Use the complete gadget
+*       configuration and normal lifecycle; degraded configurations have no
+*       safe operation guarantee in this implementation.
 *       RGB input pointers must address three ULONG values. Set uses tag order
 *       and does not suppress equal values. Preview updates can recolor screen
 *       pens through Colorfield. ModeID is declared but not implemented here.
@@ -308,8 +306,8 @@ static void SliderFunc(struct Hook *hook, Object *obj, struct MUIP_CASliderNotif
 
 /*
  * Convert wheel hue/saturation plus inverse gradient brightness to RGB,
- * synchronize sliders/preview, update full-brightness gradient pen and
- * notify all. Requires live controls, conversion library and screen.
+ * synchronize sliders/preview, update full-brightness gradient pen while
+ * set up and notify all. Requires live controls and conversion library.
  * Without grad the brightness local is uninitialized; that path is not
  * safe. No returned status.
  */
@@ -394,7 +392,7 @@ static void GradFunc(struct Hook *hook, Object *obj, struct MUIP_CANotifyMsg *ms
 /*
  * Open gadget libraries, construct Group controls, initialize white RGB,
  * synchronize controls and register hooks. Return object or zero on
- * superclass failure; the AROS interface macro cannot fail. Requires
+ * superclass failure; the interface macro cannot fail. Requires
  * readable RGB input. Missing-library and ignored-child limitations follow
  * the class contract; do not infer a safe degraded mode.
  */
@@ -601,7 +599,7 @@ IPTR Coloradjust__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 }
 
 /*
- * Invoke the interface-drop macro (a no-op on AROS), dispose Group
+ * Invoke the interface-drop macro (a no-op), dispose Group
  * children, then close saved library bases and return Group result.
  * Requires prior Cleanup of gradient pen and no active callbacks. Does not
  * independently dispose wrappers omitted from child tags.
@@ -815,10 +813,9 @@ IPTR Coloradjust__MUIM_Setup(struct IClass *cl, Object *obj,
 }
 
 /*
- * Release gradpen when not -1 using the current screen, set it to -1 and
- * return Group cleanup result. Requires valid setup/screen. Constructor
- * does not initialize gradpen to -1; skipping wheel setup can cause release
- * of initial zero.
+ * Set gradpen to -1 before releasing a held pen using the current screen,
+ * then return Group cleanup result. Requires valid setup/screen. gradpen
+ * starts at -1, so Cleanup without the wheel Setup branch releases nothing.
  */
 IPTR Coloradjust__MUIM_Cleanup(struct IClass *cl, Object *obj,
     struct MUIP_Cleanup *msg)

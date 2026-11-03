@@ -68,7 +68,7 @@ struct MUI_FamilyData
 *       Do not mutate or dispose of traversed children from callbacks during
 *       these walks.
 *       OM_ADDMEMBER uses AddTail; OM_REMMEMBER uses Remove. Version and
-*       Revision both return 1 for Family. Other methods, including the Notify
+*       Revision come from Notify. Other methods, including the Notify
 *       persistence stubs, are inherited unless a subclass overrides them.
 *
 *   EXAMPLE

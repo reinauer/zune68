@@ -42,8 +42,9 @@
 *       checks. A NULL Entries argument follows an early disposal/failure path
 *       before superclass construction; provide a valid nonempty array.
 *       Setup delegates first, returns FALSE on superclass failure, then sets
-*       horizontal and vertical Group spacing from the radio-button preferences
-*       and returns TRUE. Dispose frees the pointer array and delegates child
+*       horizontal and vertical Group spacing from the radio-button preferences,
+*       fixes every label's width to that of the widest label and returns TRUE.
+*       Dispose frees the pointer array and delegates child
 *       disposal to Group. Serialize setters and child callbacks with disposal;
 *       no additional lifetime or locking mechanism is provided.
 *
@@ -308,9 +309,10 @@ IPTR Radio__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
 /*
  * Delegate Setup and return FALSE if it fails. Otherwise synchronously set
- * Group horizontal/vertical spacing from global radio preferences and
- * return TRUE. Requires connected render/global context; setters may notify
- * and their results are ignored.
+ * Group horizontal/vertical spacing from global radio preferences, fix
+ * every label to the widest label's width and return TRUE. Requires
+ * connected render/global context; setters may notify and their results
+ * are ignored.
  */
 IPTR Radio__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
 {

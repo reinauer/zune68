@@ -25,27 +25,23 @@
 
 /*  FUNCTION
         Release a class obtained through MUI_GetClass(). For built-in
-        classes, update the internal class accounting and attempt to free
-        the class when that accounting reaches zero. For external classes,
-        close the library stored in the class dispatcher's data field.
+        classes, decrement the class's reference count; the class stays
+        cached until the library is expunged. For external classes, close
+        the library stored in the class dispatcher's data field.
 
     INPUTS
-        cl - Non-NULL class pointer obtained through MUI_GetClass().
+        cl - Class pointer obtained through MUI_GetClass(), or NULL to do
+             nothing.
 
     RESULT
-        None. The function does not report whether a built-in class was
-        actually freed.
+        None.
 
     NOTES
         Do not use the class after releasing it. This legacy interface
         is not the disposal function for a MUI_CustomClass descriptor;
         use MUI_DeleteCustomClass() for that descriptor.
-        The implementation obtains the MUI class semaphore and can wait.
-
-    BUGS
-        After FreeClass() successfully frees a built-in class, this
-        implementation writes to that class's dispatcher data field.
-        This is a use-after-free defect, not a valid class-lifetime rule.
+        For an external class, the implementation obtains the MUI class
+        semaphore and can wait.
 
     SEE ALSO
         MUI_GetClass(), MUI_CreateCustomClass(), MUI_DeleteCustomClass()

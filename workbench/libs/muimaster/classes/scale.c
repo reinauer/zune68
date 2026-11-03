@@ -41,7 +41,7 @@
 *       Area subclass with no value attribute, range configuration, numeric
 *       input or automatic association with Gauge. The default orientation is
 *       horizontal. Vertical orientation can be stored and retrieved but has no
-*       scale rendering or class-specific size implementation.
+*       scale rendering; it only reserves space.
 *
 *   METHODS
 *       Setup calls Area and measures the literal string "0% 100%" using the
@@ -49,16 +49,18 @@
 *       if Area setup fails, otherwise one. Horizontal AskMinMax adds the cached
 *       width to minimum/default widths, permits maximum width MUI_MAXMAX and
 *       adds font height plus four pixels to all height fields. In vertical mode
-*       it leaves superclass size fields unchanged. It returns zero.
-*       Draw calls Area and, in horizontal mode, paints a bar, endpoint labels
-*       and alternating long/short marks. It selects a power-of-two subdivision
-*       count from available width and measured strings. The fit estimate
-*       measures subdivision indices followed by percent signs, rather than the
-*       actual percentage labels; it is not a guarantee that labels fit.
-*       Endpoint labels are 0% and 100%; intermediate displayed values use
-*       integer division. Temporary Zune text objects are freed after use;
-*       allocation failure skips the affected label. Draw returns zero and has
-*       no local draw-flag check.
+*       it adds the cached width plus four pixels to all width fields and twice
+*       the font height plus two pixels to minimum/default heights, permitting
+*       maximum height MUI_MAXMAX. It returns zero.
+*       Draw calls Area and, for a full draw in horizontal mode with a positive
+*       width, paints a bar, labeled long marks at n equal intervals and short
+*       marks halfway between. n is a power of two, doubled while the
+*       percentage labels for the doubled count, measured in the tiny font, fit
+*       into 9/16 of the width; this is not a guarantee that labels in the
+*       scale's own font fit. Endpoint labels are 0% and 100%; intermediate
+*       displayed values use integer division. Temporary Zune text objects are
+*       freed after use; allocation failure skips the affected label. Draw
+*       returns zero.
 *
 *   NOTES
 *       No persistent strings, bitmap, pen or native gadget are allocated by
@@ -77,7 +79,7 @@
 *
 *   INPUTS
 *       Initialize, set and get, BOOL. Default TRUE for horizontal. FALSE
-*       selects the unimplemented vertical branch.
+*       selects the vertical branch, which only reserves space.
 *
 *   NOTES
 *       A changed value requests full redraw; every supplied tag is still
@@ -85,7 +87,7 @@
 *       BOOL to caller-owned IPTR storage and returns TRUE. Set returns the
 *       superclass result. There is no relayout request, so changing this
 *       attribute does not itself update size negotiation. In vertical mode only
-*       superclass drawing occurs and no class-specific sizes are added.
+*       superclass drawing occurs; AskMinMax still adds vertical-scale sizes.
 *
 */
 
@@ -93,9 +95,9 @@ extern struct Library *MUIMasterBase;
 
 
 /*
- * Construct Area and initialize Horiz TRUE unless overridden by tags.
- * Return object or zero on superclass failure. No owned resource or local
- * notification.
+ * Construct Area, initialize Horiz TRUE unless overridden by tags and
+ * select the tiny font unless a Font tag is given. Return object or zero
+ * on superclass failure. No owned resource or local notification.
  */
 IPTR Scale__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -215,7 +217,8 @@ IPTR Scale__MUIM_Setup(struct IClass *cl, Object *obj,
 
 /*
  * Call Area and add cached horizontal label sizes plus four-pixel bar
- * height; vertical branch adds nothing. Return zero ignoring superclass
+ * height; vertical branch reserves label width plus four by twice the
+ * font height plus two. Return zero ignoring superclass
  * result. Requires writable MinMaxInfo and prior Setup; no text
  * measurement.
  */
@@ -283,11 +286,11 @@ static void scale_label(Object *obj, CONST_STRPTR preparse, STRPTR text,
  * the labels for the next n fit into 9/16 of the width. A vertical scale
  * only reserves its space. */
 /*
- * Call Area; horizontally draw line, marks and temporary text objects,
- * skipping labels on allocation failure and freeing successful objects.
- * Vertical branch does nothing locally. Return zero; no local draw-flag
- * filtering. Requires valid font/render geometry; index-based fit estimate
- * does not guarantee label fit.
+ * Call Area; for a full draw of a horizontal scale with positive width,
+ * draw line, marks and temporary text objects, skipping labels on
+ * allocation failure and freeing successful objects. Vertical branch does
+ * nothing locally. Return zero. Requires valid font/render geometry; the
+ * tiny-font fit estimate does not guarantee label fit.
  */
 IPTR Scale__MUIM_Draw(struct IClass *cl, Object *obj,
     struct MUIP_Draw *msg)

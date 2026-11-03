@@ -68,38 +68,40 @@ AROS_UFH2S(void, len_func,
 *       Provide attributes, synchronous notifications, user-data matching, and
 *       utility methods for Zune objects. This class has no child traversal;
 *       container subclasses may extend the user-data methods.
-*       Construction allocates private attribute storage and returns NULL if
-*       allocation or superclass construction fails. Omitted HelpLine, ObjectID,
-*       and UserData values start at zero; HelpNode, AppMessage, parent, and
-*       global-info pointers start at NULL. Disposal frees local notification
-*       records and attribute storage. It does not dispose of notification
-*       destinations or free borrowed strings and messages.
+*       Construction returns NULL if superclass construction fails. Private
+*       storage for HelpLine, HelpNode and AppMessage is allocated when one of
+*       them is first set; if that allocation fails, the value is not stored.
+*       Omitted HelpLine, ObjectID, and UserData values start at zero; HelpNode,
+*       AppMessage, parent, and global-info pointers start at NULL. Disposal
+*       frees local notification records and attribute storage. It does not
+*       dispose of notification destinations or free borrowed strings and
+*       messages.
 *       Serialize access to the object and its notification list. Notifications
 *       execute in the calling task during attribute setting; this class
 *       provides no locking, queue, or cancellation timeout.
 *
 *   NOTES
 *       All method entries describe the Notify implementation. A subclass may
-*       override its behavior or return values. Version and Revision both return
-*       1 here; they are class values, not muimaster.library version numbers.
+*       override its behavior or return values. Version and Revision report the
+*       version of the library behind the object's nearest custom class, or the
+*       built-in class version; see MUIA_Version.
 *       An OM_SET first stores recognized attributes, then examines the supplied
 *       tags for notifications in tag order and registration order. Unchanged
-*       values can still trigger a notification. Attributes not stored by Notify
+*       values can still trigger a notification, except ObjectID: an unchanged
+*       ObjectID tag is changed to TAG_IGNORE. Attributes not stored by Notify
 *       can still be trigger attributes when their tags reach this method.
 *       Notify returns zero from OM_SET and does not forward it to rootclass.
-*
-*   BUGS
-*       Notification dispatch does not protect its current list node against
-*       deletion by a callback. Do not dispose of the source object or remove
-*       active notification records during notification dispatch. Suppression of
-*       recursive delivery for one active record is not a lifetime guard.
+*       A callback may remove notification records, including the running
+*       one; dispatch skips removed records. Disposing of the source object
+*       from a callback ends Notify's dispatch, but subclass setters may still
+*       use the object after Notify returns.
 *
 *   EXAMPLE
 *       Copy each UserData tag value to ObjectID on the same object:
 *       DoMethod(obj, MUIM_Notify, MUIA_UserData, MUIV_EveryTime,
 *                MUIV_Notify_Self, 3, MUIM_Set, MUIA_ObjectID,
 *                MUIV_TriggerValue);
-*       Register outside notification dispatch; check the returned BOOL.
+*       Check the returned BOOL.
 *
 */
 
@@ -134,7 +136,7 @@ AROS_UFH2S(void, len_func,
 *       Pointer to struct AppMessage; declared get only.
 *
 *   NOTES
-*       AROS also accepts this tag in OM_SET despite the header access flags.
+*       Notify also accepts this tag in OM_SET despite the header access flags.
 *       The pointer is borrowed: Notify neither copies, replies to, nor frees
 *       the message. Keep it valid while accessing it; storage here does not
 *       extend its lifetime.
@@ -260,7 +262,9 @@ AROS_UFH2S(void, len_func,
 *       MUIA_Version
 *
 *   FUNCTION
-*       Return 1 for Notify itself.
+*       Return the version of the library given to MUI_CreateCustomClass() for
+*       the object's nearest custom class created with one. Other objects
+*       return the built-in class version: 21, or 1 in a MUI5_TEST=0 build.
 *
 *   INPUTS
 *       LONG; get only.
@@ -277,14 +281,15 @@ AROS_UFH2S(void, len_func,
 *       MUIA_Revision
 *
 *   FUNCTION
-*       Return 1 for Notify itself.
+*       Return the revision of the library given to MUI_CreateCustomClass() for
+*       the object's nearest custom class created with one. Other objects
+*       return the built-in class revision: 227, or 1 in a MUI5_TEST=0 build.
 *
 *   INPUTS
 *       LONG; get only.
 *
 *   NOTES
-*       Subclasses can override this attribute. This value describes the class,
-*       not the library.
+*       Subclasses can override this attribute.
 *
 */
 
@@ -420,9 +425,9 @@ static struct NotifyNode *CreateNNode(struct MUI_NotifyData *data,
     return NULL;
 }
 
-/* Free a valid owned notification node and its parameter allocation. The
- * caller must unlink it first if registered and ensure that no dispatch
- * still uses it. data is unused; destinations and pointed-to arguments are
+/* Unlink a registered notification node, move active walks past it and
+ * free it with its parameters. A node whose callback is running is freed
+ * when that callback returns. Destinations and pointed-to arguments are
  * not freed.
  */
 static void DeleteNNode(struct MUI_NotifyData *data,
@@ -555,8 +560,9 @@ IPTR Notify__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 /* Match one tag against a live registered node and synchronously deliver
  * its copied message. Resolve supported destination selectors and
  * substitute EveryTime arguments. Skip an already active node. The caller
- * must keep the node, source and destination alive through return;
- * callbacks must not delete them. No result is returned.
+ * must keep the source and destination alive through return; a callback
+ * may remove the node, which is freed when it returns. No result is
+ * returned.
  */
 static void check_notify(NNode nnode, Object *obj, struct TagItem *tag)
 {
@@ -999,13 +1005,9 @@ IPTR Notify__MUIM_GetUData(struct IClass *cl, Object *obj,
 *       exists.
 *
 *   NOTES
-*       It does not remove all matching records. Repeat outside notification
-*       dispatch if all matches must be removed. The destination object remains
-*       caller-owned.
-*
-*   BUGS
-*       Removing an active record, or disposing of its source during a callback,
-*       can invalidate notification dispatch's pointers.
+*       It does not remove all matching records. Repeat the call if all matches
+*       must be removed. A record removed while its callback runs is freed when
+*       the callback returns. The destination object remains caller-owned.
 *
 */
 IPTR Notify__MUIM_KillNotify(struct IClass *cl, Object *obj,
@@ -1055,10 +1057,6 @@ IPTR Notify__MUIM_KillNotify(struct IClass *cl, Object *obj,
 *       Destination comparison uses the stored value, not its resolved target.
 *       For a Self registration, use MUIV_Notify_Self, not the object pointer.
 *       Only one record is removed; no destination object is disposed of.
-*
-*   BUGS
-*       Do not remove notification records during notification dispatch; its
-*       list traversal is not protected against deletion.
 *
 */
 IPTR Notify__MUIM_KillNotifyObj(struct IClass *cl, Object *obj,
@@ -1179,7 +1177,7 @@ IPTR Notify__MUIM_NoNotifySet(struct IClass *cl, Object *obj,
 *       TrigVal - IPTR value to match, or MUIV_EveryTime. For
 *       MUIA_Window_InputEvent with a non-EveryTime value, supply a readable
 *       ParseIX description string instead.
-*       DestObj - Live object pointer, MUIV_Notify_Self,
+*       DestObj - Live object pointer, MUIV_Notify_Self, MUIV_Notify_Parent,
 *       MUIV_Notify_Application, or MUIV_Notify_Window.
 *       FollowParams - Number of following IPTR words, including the destination
 *       MethodID; must be at least 1. Supply exactly that many words.
@@ -1187,30 +1185,24 @@ IPTR Notify__MUIM_NoNotifySet(struct IClass *cl, Object *obj,
 *
 *   RESULT
 *       TRUE if the notification was registered; FALSE for fewer than one follow
-*       word, allocation failure, or an invalid input-event description. No
-*       destination call is made during registration.
+*       word, a follow count too large to allocate, allocation failure, or an
+*       invalid input-event description. No destination call is made during
+*       registration.
 *
 *   NOTES
 *       The method words are copied; pointed-to objects and data are not. Keep
 *       those live until no registered notification can use them. Duplicate
-*       registrations are accepted and run in registration order. Sizes must fit
-*       the ULONG allocation calculation; there is no overflow check.
+*       registrations are accepted and run in registration order.
 *       For MUIV_EveryTime only, argument words after MethodID equal to
 *       MUIV_TriggerValue or MUIV_NotTriggerValue are replaced with the current
 *       tag value or its logical negation. An ordinary fixed-value notification
 *       does not substitute these markers.
-*       Self resolves to the source object. Application requires live global
-*       info. Window requires an Area-compatible object with valid render-info
-*       storage; delivery is skipped when that pointer is NULL. A record already
-*       executing is skipped on recursive delivery; other records may still run.
-*       Destination method results are ignored.
-*
-*   BUGS
-*       MUIV_Notify_Parent is declared in the header but has no special handling
-*       in this implementation. It falls through as a literal destination
-*       pointer and must not be used as a selector. Application resolution does
-*       not check global info for NULL. Do not remove active records or dispose
-*       of the source from a notification callback.
+*       Self resolves to the source object, Parent to its MUIA_Parent value,
+*       Application to the application in its global info, and Window to its
+*       MUIA_WindowObject value; delivery is skipped when the destination
+*       resolves to NULL. A record already executing is skipped on recursive
+*       delivery; other records may still run. Destination method results are
+*       ignored.
 *
 */
 IPTR Notify__MUIM_Notify(struct IClass *cl, Object *obj,
@@ -1500,10 +1492,10 @@ IPTR Notify__MUIM_ConnectParent(struct IClass *cl, Object *obj,
 *       Always zero; no disconnection work is performed by Notify.
 *
 *   NOTES
-*       AROS deliberately retains the global-info pointer here. This method also
-*       leaves MUIA_Parent unchanged. Container methods may clear their parent
-*       field separately. The retained pointer does not keep the application or
-*       configuration object alive.
+*       Notify deliberately retains the global-info pointer here. This method
+*       also leaves MUIA_Parent unchanged. Container methods may clear their
+*       parent field separately. The retained pointer does not keep the
+*       application or configuration object alive.
 *
 */
 IPTR Notify__MUIM_DisconnectParent(struct IClass *cl, Object *obj,
@@ -1527,27 +1519,23 @@ IPTR Notify__MUIM_DisconnectParent(struct IClass *cl, Object *obj,
 *       IPTR result = DoMethod(obj, MUIM_GetConfigItem, id, (IPTR)storage);
 *
 *   FUNCTION
-*       Look up id with MUIM_Dataspace_Find on the configuration object
-*       referenced by this object's global info.
+*       Pass the request to the configuration object referenced by this
+*       object's global info. Configdata stores numeric settings as values and
+*       other settings as borrowed pointers.
 *
 *   INPUTS
 *       id - ULONG record identifier.
-*       storage - Writable IPTR location for the payload pointer.
-*       obj - Object with live global info and a valid mgi_Configdata object.
+*       storage - Writable IPTR location for the value or pointer.
 *
 *   RESULT
-*       TRUE and a borrowed payload pointer in storage if found; FALSE with
-*       storage unchanged otherwise.
+*       TRUE with the item in storage if found; FALSE with storage unchanged
+*       otherwise, or when storage is NULL or the object has no global info or
+*       configuration object.
 *
 *   NOTES
-*       No payload length is returned. Do not free the pointer.
+*       No payload length is returned. Do not free a returned pointer.
 *       Configuration-record replacement, removal, or disposal can invalidate
 *       it; coordinate its use with changes to the configuration dataspace.
-*
-*   BUGS
-*       The method dereferences global info without checking for NULL. It is not
-*       safe on an unconnected object merely because the object supports Notify
-*       methods.
 *
 */
 IPTR Notify__MUIM_GetConfigItem(struct IClass *cl, Object *obj,

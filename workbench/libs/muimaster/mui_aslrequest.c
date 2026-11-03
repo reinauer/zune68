@@ -23,9 +23,11 @@
         struct Library *, MUIMasterBase, 9, MUIMaster)
 
 /*  FUNCTION
-        Run an allocated ASL requester by forwarding requester and tagList
-        to asl.library/AslRequest(). The call runs the ASL event loop and
-        waits for the requester to finish.
+        Run an allocated ASL requester and wait for it to finish. A
+        MUI-managed requester from MUI_AllocAslRequest() opens as a MUI
+        file or font panel in a separate process, unless tagList adds tags
+        the panel does not support. Other requesters run through
+        asl.library/AslRequest().
 
     INPUTS
         requester - Requester allocated by MUI_AllocAslRequest() or
@@ -34,9 +36,7 @@
                   TAG_DONE, or NULL to retain the existing settings.
 
     RESULT
-        The BOOL result of AslRequest(): TRUE on successful completion,
-        FALSE on cancellation or failure. NULL requester returns FALSE
-        and sets IoErr() to ERROR_NO_FREE_STORE in AROS.
+        TRUE on successful completion, FALSE on cancellation or failure.
 
     NOTES
         MUI_AslRequestTags() is the variadic tag-list wrapper.

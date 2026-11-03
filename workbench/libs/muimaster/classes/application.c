@@ -149,8 +149,8 @@ struct timerequest_ext
 *       menustrip, and configuration data, then releases its own resources.
 *       Caller-supplied metadata strings, hooks, command tables, and DiskObject
 *       remain borrowed unless an attribute explicitly documents copying. Stop
-*       input processing and callbacks, remove input handlers, and resolve
-*       queued methods before disposal.
+*       input processing and callbacks and remove input handlers before
+*       disposal. Disposal discards queued methods without executing them.
 *
 *   METHODS
 *       FindUData and GetUData examine the application first, then delegate to
@@ -163,20 +163,22 @@ struct timerequest_ext
 *       traversed by these overrides. Keep membership stable during callbacks.
 *       MUIA_ShowMe is also accepted by the setter and propagated to windows.
 *       The iteration rereads the window list after each setter and assumes that
-*       a processed window does not remove itself. Local MUIA_Version and
-*       MUIA_Revision both return 1.
+*       a processed window does not remove itself. Notify answers MUIA_Version
+*       and MUIA_Revision.
 *
 *   NOTES
 *       Normal construction returns NULL on required allocation, port, timer,
-*       configuration, or child validation failure. Optional broker or Rexx-port
-*       creation failure does not fail construction. The constructor creates
-*       configuration notification for ENV:zune/<base>.prefs when possible;
-*       failure to watch that file is not reported. NewInput processes changes
-*       and queues configuration replacement.
-*       Disposal can perform configuration-file I/O and wait for timer
-*       completion. Depending on the configured window-position mode, it
-*       snapshots windows and writes ENV preferences; mode 2 also reloads and
-*       saves ENVARC preferences to retain persistent settings while updating
+*       configuration, legacy menu, or child validation failure. Optional
+*       broker or Rexx-port creation failure does not fail construction. The
+*       first input-processing call creates configuration notification for
+*       ENV:zune/<base>.prefs when possible and reloads the configuration if
+*       that file was written after construction; failure to watch that file
+*       is not reported. NewInput processes changes and queues configuration
+*       replacement.
+*       Disposal can perform configuration-file I/O. Depending on the
+*       configured window-position mode, it records the positions of open
+*       windows and writes ENV preferences; mode 2 also reloads and saves
+*       ENVARC preferences to retain persistent settings while updating
 *       positions.
 *
 *   BUGS
@@ -184,9 +186,8 @@ struct timerequest_ext
 *       non-NULL. Failure after assigning the base but before preferences are
 *       available can therefore access NULL instead of cleanly returning
 *       construction failure.
-*       Disposal does not drain or free app_MethodQueue and does not enumerate
-*       and remove registered timer handlers. Pending method payloads and
-*       handler resources must not be assumed to be reclaimed by application
+*       Disposal does not enumerate and remove registered timer handlers.
+*       Handler resources must not be assumed to be reclaimed by application
 *       disposal. Cross-task queue insertion is not an application-lifetime
 *       guarantee.
 *
@@ -501,16 +502,17 @@ struct timerequest_ext
 *
 *   FUNCTION
 *       Request a public Rexx message port named from the uppercased actual
-*       Base. Default FALSE.
+*       Base when rexxsyslib.library is available. Default TRUE when a
+*       non-NULL Commands table or RexxHook is supplied at initialization,
+*       otherwise FALSE.
 *
 *   INPUTS
 *       BOOL; initialize only.
 *
 *   NOTES
-*       A Commands initialization tag also sets the request to TRUE, even for a
-*       NULL table. Constructor tag order matters: a later UseRexx tag can
-*       override it. Optional port creation failure does not fail the
-*       application. Setting Commands later does not create a missing port.
+*       An explicit UseRexx tag overrides the default regardless of tag order.
+*       Optional port creation failure does not fail the application. Setting
+*       Commands later does not create a missing port.
 *
 */
 /****** Application.mui/MUIA_Application_Commands ************
@@ -520,29 +522,28 @@ struct timerequest_ext
 *
 *   FUNCTION
 *       Store a borrowed command table terminated by an entry whose mc_Name is
-*       NULL. Default NULL. The constructor also enables the Rexx-port request
-*       when this tag occurs.
+*       NULL. Default NULL. A non-NULL table at initialization also enables
+*       the Rexx-port request unless UseRexx is given.
 *
 *   INPUTS
 *       MUI_Command table pointer; initialize, set, get.
 *
 *   NOTES
 *       Each entry supplies mc_Name, optional ReadArgs mc_Template,
-*       mc_Parameters for the IPTR argument array, and a callable mc_Hook. Keep
-*       the table, strings, and hooks alive during input processing. A matched
-*       hook receives the application and the parsed array, or NULL without a
-*       template. Its return value becomes rm_Result1. RexxMsg exposes the
-*       current request only during the hook.
-*       The dispatcher compares case-insensitively using the length of the
-*       incoming command word, so prefixes can match an earlier longer table
-*       name. Command tables must not assume exact-name matching.
-*
-*   BUGS
-*       Argument-buffer allocation and ReadArgs failure are not reliably checked
-*       before the hook is called. A non-NULL template requires a valid
-*       parameter count and suitable storage. Do not assume that hook invocation
-*       proves successful parsing or that parsed argument pointers remain valid
-*       after the hook.
+*       mc_Parameters for the IPTR argument array, and a callable mc_Hook. With
+*       mc_Template set to MC_TEMPLATE_ID, mc_Parameters is queued as a
+*       ReturnID instead and no hook is called. Keep the table, strings, and
+*       hooks alive during input processing. A matched hook receives the
+*       application and the parsed array, or NULL without a template. Its
+*       return value becomes rm_Result1. RexxMsg exposes the current request
+*       only during the hook.
+*       The command word must match a whole name case-insensitively. The
+*       standard commands QUIT, HIDE, DEACTIVATE, SHOW, ACTIVATE, INFO, and
+*       HELP take precedence over table entries of the same name.
+*       mc_Parameters must cover every template item. Allocation failure
+*       replies RC_ERROR and a ReadArgs failure replies -4, both without
+*       calling the hook. Parsed argument pointers are valid only during the
+*       hook.
 *
 */
 /****** Application.mui/MUIA_Application_RexxHook ************
@@ -551,8 +552,8 @@ struct timerequest_ext
 *       MUIA_Application_RexxHook
 *
 *   FUNCTION
-*       Store a borrowed fallback hook for Rexx commands not matched by
-*       Commands. Default NULL.
+*       Store a borrowed fallback hook for Rexx commands matched neither by a
+*       standard command nor by Commands. Default NULL.
 *
 *   INPUTS
 *       Hook pointer; initialize, set, get.
@@ -588,8 +589,8 @@ struct timerequest_ext
 *
 *   FUNCTION
 *       Replace the application-owned copy of the Rexx result string. When
-*       RXFF_RESULT is requested, the reply carries an Argstring created from
-*       the copy.
+*       RXFF_RESULT is requested and the command succeeds, the reply carries
+*       an Argstring created from the copy.
 *
 *   INPUTS
 *       STRPTR; set only.
@@ -822,16 +823,18 @@ struct timerequest_ext
 *       Object pointer; set only.
 *
 *   NOTES
-*       Supply a live, distinct Configdata-compatible object and keep it alive
-*       until the queued method adopts it. Subsequent replacement and disposal
-*       destroy the installed object. The old configuration remains active until
-*       execution.
+*       Supply a live Configdata-compatible object and keep it alive until the
+*       queued method adopts it. Application disposal destroys the installed
+*       object. The old configuration remains active until execution.
 *
 *   BUGS
-*       Queue failure is ignored by OM_SET, and pending pushed methods are not
-*       reclaimed by application disposal. Do not infer successful transfer of
-*       ownership from the setter return value. Use the direct method when
-*       controlling installation synchronously.
+*       A replaced configuration object is never disposed (see
+*       MUIM_Application_SetConfigdata).
+*       Queue failure is ignored by OM_SET, and application disposal discards
+*       a still-queued installation without disposing the supplied object. Do
+*       not infer successful transfer of ownership from the setter return
+*       value. Use the direct method when controlling installation
+*       synchronously.
 *
 */
 /****** Application.mui/MUIA_Application_SearchWinId ************
@@ -858,7 +861,9 @@ struct timerequest_ext
 *
 *   FUNCTION
 *       Copy a position record into the first matching occupied slot or the
-*       first empty slot. An occupied slot has nonzero w1.
+*       first empty slot. An occupied slot has nonzero w1. A record with zero
+*       w1 instead removes the matching slot and moves later records down. A
+*       zero id is ignored.
 *
 *   INPUTS
 *       Pointer to struct windowpos; set only.
@@ -866,8 +871,7 @@ struct timerequest_ext
 *   NOTES
 *       Supply a non-NULL readable record. The first 299 slots of the
 *       MAXWINS=300 array are examined. A full examined range silently ignores a
-*       new ID. A zero w1 marks the stored slot empty and can terminate later
-*       scans. The record is copied, not retained.
+*       new ID. The record is copied, not retained.
 *
 */
 /****** Application.mui/MUIA_Application_GetWinPos ************
@@ -953,15 +957,16 @@ struct timerequest_ext
 *       MUIA_Application_DropObject
 *
 *   FUNCTION
-*       This attribute is declared but has no Application implementation.
+*       Store a borrowed object that receives MUIA_AppMessage when icons are
+*       dropped on the application's AppIcon. Default NULL.
 *
 *   INPUTS
-*       Object pointer; declared initialize and set.
+*       Object pointer; initialize and set.
 *
 *   NOTES
-*       The constructor ignores it and the getter has no matching case. Setter
-*       tags are forwarded to Notify without an Application state change. The
-*       legacy Menu attribute is not an alias for Menustrip.
+*       NewInput sets MUIA_AppMessage synchronously and replies to the
+*       AppMessage afterwards; do not retain it. Keep the object alive while
+*       stored. The getter has no matching case.
 *
 */
 /****** Application.mui/MUIA_Application_MenuHelp ************
@@ -977,8 +982,7 @@ struct timerequest_ext
 *
 *   NOTES
 *       The constructor ignores it and the getter has no matching case. Setter
-*       tags are forwarded to Notify without an Application state change. The
-*       legacy Menu attribute is not an alias for Menustrip.
+*       tags are forwarded to Notify without an Application state change.
 *
 */
 /****** Application.mui/MUIA_Application_Menu ************
@@ -987,16 +991,19 @@ struct timerequest_ext
 *       MUIA_Application_Menu
 *
 *   FUNCTION
-*       This attribute is declared but has no Application implementation.
+*       Build the application menustrip from a borrowed NewMenu array with
+*       MUIO_MenustripNM when no Menustrip is supplied. Default NULL.
 *
 *   INPUTS
 *       NewMenu pointer; declared initialize and get only when MUI_OBSOLETE is
 *       enabled.
 *
 *   NOTES
-*       The constructor ignores it and the getter has no matching case. Setter
-*       tags are forwarded to Notify without an Application state change. The
-*       legacy Menu attribute is not an alias for Menustrip.
+*       A supplied Menustrip takes precedence and the array is then unused.
+*       Failure to build the menustrip fails construction. The built menustrip
+*       is owned like a supplied one. The getter returns the borrowed array.
+*       Setter tags are forwarded to Notify without an Application state
+*       change.
 *
 */
 
@@ -1729,8 +1736,8 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
 /* After callbacks and external users have stopped, snapshot and optionally
  * save positions, remove and dispose child windows, and release owned
  * application resources before calling Notify disposal. Return the
- * superclass result. This can block on I/O/timer work; it neither frees
- * pending method-queue nodes nor unregisters each timer handler.
+ * superclass result. Saving positions can block on I/O; queued methods
+ * are discarded.
  */
 static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
     Msg msg)
@@ -2499,9 +2506,10 @@ static IPTR Application__OM_REMMEMBER(struct IClass *cl, Object *obj,
 *
 *   INPUTS
 *       ihnode - Non-NULL, stable, writable node not already registered. Set
-*       ihn_Object to a live target and ihn_Method to its no-argument method.
-*       For signals set ihn_Signals; for timers set ihn_Millis (UWORD
-*       milliseconds).
+*       ihn_Object to a live target and ihn_Method to the method to invoke.
+*       Signal handlers receive no arguments; timer handlers receive zero and
+*       the node. For signals set ihn_Signals; for timers set ihn_Millis
+*       (UWORD milliseconds).
 *
 *   RESULT
 *       Always TRUE, including timer-request allocation failure.
@@ -3262,13 +3270,13 @@ static IPTR Application__MUIM_Input(struct IClass *cl, Object *obj,
 *       NewInput and InputBuffered execute queued messages outside the semaphore
 *       and discard their results. There is no completion acknowledgement.
 *       Cancel pending work before destroying its target; cancellation cannot
-*       stop a method already dequeued.
+*       stop a method already dequeued. Application disposal discards entries
+*       still queued.
 *
 *   BUGS
 *       Count is masked with 0xf, not range-checked. Zero creates an entry
 *       without a MethodID; 16 becomes zero. The source explicitly notes that
 *       extracting words after count is broken on 64-bit big-endian systems.
-*       Disposal does not free outstanding queue entries.
 *
 */
 static IPTR Application__MUIM_PushMethod(struct IClass *cl, Object *obj,
@@ -3591,28 +3599,30 @@ static void QueueOpenWindows(Object *obj, struct MUI_ApplicationData *data,
 *       (IPTR)configdata);
 *
 *   FUNCTION
-*       Close currently open windows, dispose of the old configuration, install
-*       the new object, read its ZunePrefs pointer, and queue reopening.
+*       Close currently open windows, install the new object, read its
+*       ZunePrefs pointer, and queue reopening.
 *
 *   INPUTS
-*       configdata - Live Configdata-compatible object, distinct from the
-*       currently installed object. Ownership transfers to the application when
-*       installed.
+*       configdata - Live Configdata-compatible object. Ownership transfers to
+*       the application when installed.
 *
 *   RESULT
 *       Always zero, without an installation or reopening success indication.
 *
 *   NOTES
-*       Previously borrowed configuration/prefs pointers become invalid. The
-*       method closes windows immediately but reopens them through PushMethod.
-*       The new configuration must provide valid ZunePrefs.
+*       Configuration/prefs pointers obtained before the call describe the
+*       replaced configuration, not the installed one. The method closes windows immediately but
+*       reopens them through the pushed-method queue. Once input processing
+*       has started, it also starts the new object's notification. The new
+*       configuration must provide valid ZunePrefs.
 *
 *   BUGS
-*       No NULL, identity, or getter-success check is performed before adopting
-*       the replacement. Passing the old object disposes it before reuse. If
-*       saving the open-window list fails, NULL later means reopen all windows;
-*       failed node allocation can omit individual windows. Queue failure can
-*       leave windows closed and leak the saved list.
+*       The replaced configuration object is never disposed, and its public
+*       screen file notification and input handler stay active.
+*       No NULL or getter-success check is performed before adopting the
+*       replacement. If saving the open-window list fails, NULL later means
+*       reopen all windows; failed node allocation can omit individual
+*       windows. Queue failure leaves the windows closed.
 *
 */
 static IPTR Application__MUIM_SetConfigdata(struct IClass *cl, Object *obj,
@@ -3803,12 +3813,12 @@ static IPTR Application__MUIM_SetConfigItem(struct IClass *cl, Object *obj,
 *       (IPTR)windows);
 *
 *   FUNCTION
-*       Request opening of selected windows, or all current application windows
-*       when windows is NULL.
+*       Request opening of the listed windows that are still application
+*       members, or all current application windows when windows is NULL.
 *
 *   INPUTS
 *       windows - NULL, or an owned Exec List allocated with AllocVec whose
-*       nodes were individually allocated with AllocVec and hold live window
+*       nodes were individually allocated with AllocVec and hold window
 *       pointers in ln_Name.
 *
 *   RESULT
@@ -3958,8 +3968,8 @@ static IPTR Application__MUIM_OpenConfigWindow(struct IClass *cl,
 *
 *   BUGS
 *       It uses an IPTR local for an interface that writes ULONG signals. The
-*       mismatch is not portable to all 64-bit byte orders. Queued non-quit IDs
-*       and callback changes to masks inherit NewInput's limitations.
+*       mismatch is not portable to all 64-bit byte orders. Callback changes
+*       to masks inherit NewInput's limitations.
 *
 */
 static IPTR Application__MUIM_Execute(Class *CLASS, Object *self,
@@ -4042,9 +4052,10 @@ static IPTR Application__MUIM_UpdateMenus(struct IClass *cl, Object *obj,
 *
 *   INPUTS
 *       name - Filename, or MUIV_Application_Load_ENV (NULL) for
-*       ENV:Zune/<base>.cfg, or MUIV_Application_Load_ENVARC for
-*       ENVARC:Zune/<base>.cfg. Explicit filenames must be NUL-terminated and
-*       shorter than 1023 bytes.
+*       ENV:MUI/<base>.cfg, or MUIV_Application_Load_ENVARC for
+*       ENVARC:MUI/<base>.cfg. If that file cannot be opened, the same name
+*       in ENV:Zune or ENVARC:Zune is tried. Explicit filenames must be
+*       NUL-terminated and shorter than 1023 bytes.
 *
 *   RESULT
 *       Always zero, including allocation, file, IFF, and child-method failures.
@@ -4156,9 +4167,10 @@ static IPTR Application__MUIM_Load(struct IClass *cl, Object *obj,
 *
 *   INPUTS
 *       name - Filename, or MUIV_Application_Save_ENV (NULL) for
-*       ENV:Zune/<base>.cfg, or MUIV_Application_Save_ENVARC for
-*       ENVARC:Zune/<base>.cfg. Explicit filenames must be NUL-terminated and
-*       shorter than 1023 bytes.
+*       ENV:MUI/<base>.cfg, or MUIV_Application_Save_ENVARC for
+*       ENVARC:MUI/<base>.cfg. A missing ENV:MUI or ENVARC:MUI drawer is
+*       created. Explicit filenames must be NUL-terminated and shorter than
+*       1023 bytes.
 *
 *   RESULT
 *       Always zero, including allocation, file, IFF, and child-method failures.
@@ -4397,21 +4409,20 @@ static IPTR Application__MUIM_ShowHelp(struct IClass *cl, Object *obj,
 *       IPTR result = DoMethod(obj, MUIM_Application_GetMenuCheck, MenuID);
 *
 *   FUNCTION
-*       Declared in application.h, but not handled by the Application
-*       dispatcher. The message is forwarded through Notify to rootclass without
-*       implementing this operation.
+*       Return MUIA_Menuitem_Checked of the first menu item whose UserData
+*       equals MenuID. MUIM_FindUData searches each application window's
+*       menustrip, or the application menustrip for a window without one,
+*       in window-list order.
 *
 *   INPUTS
 *       MenuID - ULONG menu identifier.
 *
 *   RESULT
-*       The inherited unhandled-method result is zero. It is not a completion or
-*       menu-state result.
+*       The item's checked state, or zero when no item matches.
 *
 *   NOTES
-*       Use the implemented attributes and object interfaces only where their
-*       documented behavior meets the need. A method name alone does not
-*       establish compatibility.
+*       Only menustrips reachable through application windows are searched;
+*       without windows the result is zero.
 *
 */
 
@@ -4424,21 +4435,20 @@ static IPTR Application__MUIM_ShowHelp(struct IClass *cl, Object *obj,
 *       IPTR result = DoMethod(obj, MUIM_Application_GetMenuState, MenuID);
 *
 *   FUNCTION
-*       Declared in application.h, but not handled by the Application
-*       dispatcher. The message is forwarded through Notify to rootclass without
-*       implementing this operation.
+*       Return MUIA_Menuitem_Enabled of the first menu item whose UserData
+*       equals MenuID. MUIM_FindUData searches each application window's
+*       menustrip, or the application menustrip for a window without one,
+*       in window-list order.
 *
 *   INPUTS
 *       MenuID - ULONG menu identifier.
 *
 *   RESULT
-*       The inherited unhandled-method result is zero. It is not a completion or
-*       menu-state result.
+*       The item's enabled state, or zero when no item matches.
 *
 *   NOTES
-*       Use the implemented attributes and object interfaces only where their
-*       documented behavior meets the need. A method name alone does not
-*       establish compatibility.
+*       Only menustrips reachable through application windows are searched;
+*       without windows the result is zero.
 *
 */
 
@@ -4452,22 +4462,20 @@ static IPTR Application__MUIM_ShowHelp(struct IClass *cl, Object *obj,
 *       stat);
 *
 *   FUNCTION
-*       Declared in application.h, but not handled by the Application
-*       dispatcher. The message is forwarded through Notify to rootclass without
-*       implementing this operation.
+*       Set MUIA_Menuitem_Checked to stat on the menu item whose UserData
+*       equals MenuID. MUIM_FindUData searches each application window's
+*       menustrip, or the application menustrip for a window without one.
 *
 *   INPUTS
 *       MenuID - ULONG menu identifier.
 *       stat - LONG state.
 *
 *   RESULT
-*       The inherited unhandled-method result is zero. It is not a completion or
-*       menu-state result.
+*       Always zero.
 *
 *   NOTES
-*       Use the implemented attributes and object interfaces only where their
-*       documented behavior meets the need. A method name alone does not
-*       establish compatibility.
+*       Only menustrips reachable through application windows are searched;
+*       without windows nothing changes.
 *
 */
 
@@ -4481,22 +4489,20 @@ static IPTR Application__MUIM_ShowHelp(struct IClass *cl, Object *obj,
 *       stat);
 *
 *   FUNCTION
-*       Declared in application.h, but not handled by the Application
-*       dispatcher. The message is forwarded through Notify to rootclass without
-*       implementing this operation.
+*       Set MUIA_Menuitem_Enabled to stat on the menu item whose UserData
+*       equals MenuID. MUIM_FindUData searches each application window's
+*       menustrip, or the application menustrip for a window without one.
 *
 *   INPUTS
 *       MenuID - ULONG menu identifier.
 *       stat - LONG state.
 *
 *   RESULT
-*       The inherited unhandled-method result is zero. It is not a completion or
-*       menu-state result.
+*       Always zero.
 *
 *   NOTES
-*       Use the implemented attributes and object interfaces only where their
-*       documented behavior meets the need. A method name alone does not
-*       establish compatibility.
+*       Only menustrips reachable through application windows are searched;
+*       without windows nothing changes.
 *
 */
 
@@ -4510,23 +4516,22 @@ static IPTR Application__MUIM_ShowHelp(struct IClass *cl, Object *obj,
 *       (IPTR)name, (IPTR)node, line);
 *
 *   FUNCTION
-*       Declared in application.h, but not handled by the Application
-*       dispatcher. The message is forwarded through Notify to rootclass without
-*       implementing this operation.
+*       Open an AmigaGuide file synchronously with OpenAmigaGuideA from
+*       amigaguide.library V39, then close it.
 *
 *   INPUTS
-*       window - Object pointer.
-*       name, node - String pointers.
-*       line - LONG. These fields are declared but unused by Application.
+*       window - Window whose screen hosts the viewer, -1 for the first open
+*       application window, or NULL to leave the screen to amigaguide.library.
+*       name - Guide file name, or NULL for MUIA_Application_HelpFile.
+*       node - Node name, or NULL.
+*       line - Starting line passed as nag_Line.
 *
 *   RESULT
-*       The inherited unhandled-method result is zero. It is not a completion or
-*       menu-state result.
+*       TRUE if the guide was opened; FALSE without a name, without
+*       amigaguide.library, or when opening fails.
 *
 *   NOTES
-*       Use the implemented attributes and object interfaces only where their
-*       documented behavior meets the need. A method name alone does not
-*       establish compatibility.
+*       MUIA_Application_Sleep is TRUE during the call.
 *
 */
 

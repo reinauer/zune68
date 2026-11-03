@@ -86,17 +86,15 @@ extern struct Library *MUIMasterBase;
 *       notification or setter return does not prove resource allocation or
 *       layout success.
 *       Five methods marked PRIV in area.h remain internal source contracts and
-*       are excluded from the public index. Layout, DragQuery, DragDrop and
-*       DragReport have explicit dispatcher defaults, not missing
-*       implementations. CustomBackfill has no dispatcher case.
+*       are excluded from the public index. DragQuery, DragDrop and DragReport
+*       have explicit dispatcher defaults, not missing implementations.
 *
 *   BUGS
 *       InputMode and ContextMenu setters do not rebuild setup-time event
 *       registration or selected-background resources. Do not assume that
 *       changing them while set up produces the same state as constructing with
-*       those values. QueryFrameCharacteristics has no defined success return;
-*       CreateFrameClippingRegion writes its output into the method message
-*       itself. See their individual contracts.
+*       those values. CreateFrameClippingRegion writes its output into the
+*       method message itself; see its contract.
 *
 */
 /****** Area.mui/MUIA_Background ************
@@ -318,9 +316,10 @@ extern struct Library *MUIMasterBase;
 *   NOTES
 *       Changes during setup remove and recreate the combined
 *       control-character/cycle registration. Window appends a private cycle
-*       node; nonzero values do not select a numeric position. InputMode None is
-*       not rejected. Window cycle-node allocation failure is not reported to
-*       this setter.
+*       node; after MUIM_Window_SetCycleChain, that method's list decides
+*       membership and order instead. Nonzero values do not select a numeric
+*       position. InputMode None is not rejected. Window cycle-node allocation
+*       failure is not reported to this setter.
 *
 */
 /****** Area.mui/MUIA_Disabled ************
@@ -438,7 +437,8 @@ extern struct Library *MUIMasterBase;
 *   FUNCTION
 *       Request a fixed content width. During final min/max processing, a
 *       positive stored value plus frame/spacing is clamped to the limits
-*       already computed and assigned to minimum, default and maximum.
+*       already computed and assigned to minimum and maximum. A smaller
+*       default is raised to it; a larger default is kept.
 *
 *   INPUTS
 *       LONG stored in WORD; initialize only.
@@ -497,7 +497,8 @@ extern struct Library *MUIMasterBase;
 *   FUNCTION
 *       Request a fixed content height. During final min/max processing, a
 *       positive stored value plus frame/spacing is clamped to the limits
-*       already computed and assigned to minimum, default and maximum.
+*       already computed and assigned to minimum and maximum. A smaller
+*       default is raised to it; a larger default is kept.
 *
 *   INPUTS
 *       LONG stored in WORD; initialize only.
@@ -642,8 +643,8 @@ extern struct Library *MUIMasterBase;
 *       MUIA_InnerBottom
 *
 *   FUNCTION
-*       Set explicit bottom inner spacing, clamped to 0 through 32 during
-*       construction. Otherwise setup obtains the value from the frame
+*       Set explicit bottom inner spacing, stored in a signed byte without a
+*       range check. Otherwise setup obtains the value from the frame
 *       preferences; Window can supply root spacing.
 *
 *   INPUTS
@@ -661,8 +662,8 @@ extern struct Library *MUIMasterBase;
 *       MUIA_InnerLeft
 *
 *   FUNCTION
-*       Set explicit left inner spacing, clamped to 0 through 32 during
-*       construction. Otherwise setup obtains the value from the frame
+*       Set explicit left inner spacing, stored in a signed byte without a
+*       range check. Otherwise setup obtains the value from the frame
 *       preferences; Window can supply root spacing.
 *
 *   INPUTS
@@ -680,8 +681,8 @@ extern struct Library *MUIMasterBase;
 *       MUIA_InnerRight
 *
 *   FUNCTION
-*       Set explicit right inner spacing, clamped to 0 through 32 during
-*       construction. Otherwise setup obtains the value from the frame
+*       Set explicit right inner spacing, stored in a signed byte without a
+*       range check. Otherwise setup obtains the value from the frame
 *       preferences; Window can supply root spacing.
 *
 *   INPUTS
@@ -699,8 +700,8 @@ extern struct Library *MUIMasterBase;
 *       MUIA_InnerTop
 *
 *   FUNCTION
-*       Set explicit top inner spacing, clamped to 0 through 32 during
-*       construction. Otherwise setup obtains the value from the frame
+*       Set explicit top inner spacing, stored in a signed byte without a
+*       range check. Otherwise setup obtains the value from the frame
 *       preferences; Window can supply root spacing.
 *
 *   INPUTS
@@ -756,12 +757,12 @@ extern struct Library *MUIMasterBase;
 *       defaults to 100.
 *
 *   INPUTS
-*       WORD declaration, stored as UWORD; initialize only.
+*       WORD declaration, stored as UWORD; initialize and set.
 *
 *   NOTES
-*       There is no combined getter or setter. Use HorizWeight and VertWeight
-*       for runtime access. Initialization tag order determines the final values
-*       when combined with those tags.
+*       There is no combined getter. Use HorizWeight and VertWeight to read the
+*       values. Tag order determines the final values when combined with those
+*       tags.
 *
 */
 /****** Area.mui/MUIA_InputMode ************
@@ -826,9 +827,9 @@ extern struct Library *MUIMasterBase;
 *
 *   NOTES
 *       RelVerify construction forces FALSE despite an initialization tag. A
-*       runtime setter is not restricted by InputMode. Immediate input silently
-*       clears an already selected state before setting TRUE so a new press can
-*       notify. Export/Import serializes this state under ObjectID.
+*       runtime setter is not restricted by InputMode. The default press paths
+*       ignore a press while Selected is TRUE, except a mouse press in Toggle
+*       mode. Export/Import serializes this state under ObjectID.
 *
 */
 /****** Area.mui/MUIA_ShortHelp ************
@@ -885,7 +886,9 @@ extern struct Library *MUIMasterBase;
 *
 *   NOTES
 *       Selected background is prepared during setup only when InputMode is not
-*       None. This flag changes presentation, not Selected or Pressed semantics.
+*       None, and is drawn only for an object with its own Background; others
+*       keep the inherited background. This flag changes presentation, not
+*       Selected or Pressed semantics.
 *       No setter or getter is implemented.
 *
 */
@@ -952,15 +955,18 @@ extern struct Library *MUIMasterBase;
 *       MUIA_CustomBackfill
 *
 *   FUNCTION
-*       Declared in area.h but not implemented by Area.
+*       When TRUE, background fills of this object call MUIM_CustomBackfill
+*       instead of drawing the background. Default FALSE.
 *
 *   INPUTS
-*       Declared initialize only.
+*       BOOL; initialize, set, get.
 *
 *   NOTES
-*       There is no corresponding constructor, setter or getter case. Tags can
-*       still participate in Notify delivery. The declaration does not establish
-*       this capability.
+*       This covers Area's own background drawing and DrawBackground requests
+*       on this object, including those of children that inherit its
+*       background. With FillArea, Area's drawing passes the whole box below a
+*       frame title when the frame is redrawn, otherwise the inner box. The
+*       setter does not request redraw.
 *
 */
 /****** Area.mui/MUIA_DoubleBuffer ************
@@ -1936,18 +1942,20 @@ static IPTR Area__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 *       IPTR result = DoMethod(obj, MUIM_AskMinMax, (IPTR)MinMaxInfo);
 *
 *   FUNCTION
-*       Recompute frame/title/inner offsets and overwrite all six
-*       min/max/default fields with the frame-and-spacing contribution.
+*       Recompute frame/title/inner offsets, point the message's MinMaxInfo at
+*       the object's own min/max storage and overwrite all six fields there
+*       with the frame-and-spacing contribution, never less than zero.
 *
 *   INPUTS
-*       MinMaxInfo - Non-NULL writable MUI_MinMax. Requires valid setup
-*       environment and frame preferences.
+*       MinMaxInfo - Ignored on entry and replaced; it may be NULL. Requires
+*       valid setup environment and frame preferences.
 *
 *   RESULT
 *       Always TRUE.
 *
 *   NOTES
-*       Custom classes call the superclass and add their content requirements.
+*       Custom classes call the superclass and add their content requirements
+*       through the replaced MinMaxInfo pointer.
 *       Area itself has no flexible content dimensions. Fixed/text/maximum
 *       constraints are applied afterward by the private finalization helper
 *       used by layout callers; this method alone does not apply them.
@@ -2381,11 +2389,12 @@ static UBYTE Area_Draw_handle_background(Object *obj, struct MUI_AreaData *data,
  * draw object frame + title if not MADF_FRAMEPHANTOM.
  */
 /* Draw the current frame and borrowed title using live display/font
- * preferences. Temporarily clip around the fitted title, release an
- * installed clip, then paint title effects. Caller suppresses this helper
- * for phantom frames. No status is returned; missing clipping can leave the
- * frame behind the title. AddClipRegion consumes the region even on
- * failure. This helper changes RastPort state.
+ * preferences. Temporarily clip around the fitted title and release the
+ * installed clip, or, when the title gap was just filled, refill the frame
+ * line behind the title afterward; then paint title effects. Caller
+ * suppresses this helper for phantom frames. No status is returned; missing
+ * clipping can leave the frame behind the title. AddClipRegion consumes the
+ * region even on failure. This helper changes RastPort state.
  */
 static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
                                    const struct ZuneFrameGfx *zframe,
@@ -2548,7 +2557,10 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
 *   FUNCTION
 *       Consume the instance drawing flags, promote DRAWALL to DRAWOBJECT, write
 *       the resulting flags into the method message and clear the stored drawing
-*       flags. If DRAWOBJECT is set, draw background, frame and title.
+*       flags. If DRAWOBJECT is set, draw the background. Draw frame and title
+*       too when DRAWFRAME or DRAWALL is set, the frame is custom or rounded,
+*       or the object has a title; otherwise the background leaves the frame
+*       pixels alone. DRAWFRAME without DRAWOBJECT draws only frame and title.
 *
 *   INPUTS
 *       flags - Writable message field; its incoming value is replaced with the
@@ -2556,21 +2568,20 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
 *       a valid RastPort and layout.
 *
 *   RESULT
-*       Zero when DRAWOBJECT is absent; TRUE after background/frame processing.
+*       Zero when neither DRAWOBJECT nor DRAWFRAME is set; TRUE after
+*       background/frame processing.
 *
 *   NOTES
 *       Custom subclasses call the superclass and inspect the updated message
 *       flags to draw content. DRAWUPDATE alone leaves background/frame drawing
 *       to the subclass. Use MUI_Redraw to initiate drawing; a direct message
 *       with flags alone does not establish the instance flags. Drawing can
-*       change RastPort state. Area temporarily selects the title font, then
-*       restores the object font.
+*       change RastPort state. Area selects the title font only while drawing
+*       a title and returns with the object font set in the RastPort.
 *
 *   BUGS
-*       There is no CANDRAW guard in this method itself. The rounded-background
-*       branch calls DisposeRegion after MUI_AddClipRegion reports failure,
-*       although that function already frees the supplied region. This can free
-*       the region twice. The return value is not a rendering-success guarantee.
+*       There is no CANDRAW guard in this method itself. The return value is
+*       not a rendering-success guarantee.
 *
 */
 static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
@@ -2742,7 +2753,9 @@ static IPTR area_draw_background(Object *obj, struct MUI_AreaData *data,
 *       height, xoffset, yoffset, flags);
 *
 *   FUNCTION
-*       Draw a prepared background or delegate to DrawParentBackground when none
+*       With CustomBackfill set, and outside this object's own CustomBackfill
+*       call, pass the rectangle to MUIM_CustomBackfill. Otherwise draw a
+*       prepared background or delegate to DrawParentBackground when none
 *       exists. With a custom frame, alpha characteristics control background
 *       drawing and the frame is drawn for the requested region.
 *
@@ -2759,10 +2772,10 @@ static IPTR area_draw_background(Object *obj, struct MUI_AreaData *data,
 *
 *   NOTES
 *       Requires live show/setup resources and usable geometry.
-*       Selected-background choice tests the supplied flags and prepared
-*       selected image; custom-frame state also uses the object's current
-*       selection. These are not just the public DRAWOBJECT/DRAWUPDATE flags. No
-*       image or frame ownership is returned.
+*       Selected-background choice tests the supplied flags, the prepared
+*       selected image and the object's own background; custom-frame state also
+*       uses the object's current selection. These are not just the public
+*       DRAWOBJECT/DRAWUPDATE flags. No image or frame ownership is returned.
 *
 */
 static IPTR Area__MUIM_DrawBackground(struct IClass *cl, Object *obj,
@@ -3869,8 +3882,9 @@ static IPTR event_motion(Class *cl, Object *obj, struct IntuiMessage *imsg)
 *       control key rewrites the method message to imsg=NULL and a press/release
 *       muikey before recursion. Handlers can synchronously send notifications.
 *       The default motion handler returns Eat even when it performs no action.
-*       The raw-key path leaves wheel up/down unconsumed but otherwise can
-*       consume unrelated keys. Shift can cancel a current press.
+*       Unmatched raw keys are consumed only while a press has registered for
+*       raw keys; even then wheel up/down pass through, and Shift cancels the
+*       press.
 *
 *   BUGS
 *       The built-in handlers remove and re-add their own event node while
@@ -4483,16 +4497,12 @@ static IPTR Area__MUIM_FindAreaObject(struct IClass *cl, Object *obj,
 *       completed Setup and live preferences.
 *
 *   RESULT
-*       FALSE when characteristics is NULL or the object is not set up. The
-*       success path has no return statement and therefore no defined result.
+*       FALSE when characteristics is NULL or the object is not set up;
+*       otherwise TRUE.
 *
 *   NOTES
 *       The output describes the specification, not a measurement of rendered
 *       pixels. Keep output storage valid through the synchronous call.
-*
-*   BUGS
-*       Do not branch on a success return from this implementation. This
-*       documented source defect is not repaired by the AutoDoc change.
 *
 */
 static IPTR Area__MUIM_QueryFrameCharacteristics(
@@ -4600,21 +4610,26 @@ IPTR Area__MUIM_Layout(struct IClass *cl, Object *obj,
 *       MUIM_Layout
 *
 *   SYNOPSIS
-*       IPTR result = DoMethod(obj, MUIM_Layout);
+*       IPTR result = DoMethod(obj, MUIM_Layout, left, top, width, height,
+*       flags);
 *
 *   FUNCTION
-*       Return the Area dispatcher default without laying out children or
-*       changing geometry.
+*       Store the box as the object's geometry, then lay out its contents
+*       through the private MUIM_Zune_Layout method.
 *
 *   INPUTS
-*       No arguments beyond MethodID.
+*       left, top - LONG window coordinates.
+*       width, height - LONG box dimensions.
+*       flags - ULONG; ignored by Area.
 *
 *   RESULT
-*       Always 1.
+*       FALSE when width or height lies outside the object's min/max range;
+*       the box is stored anyway. Otherwise the MUIM_Zune_Layout result,
+*       which is 1 for a plain Area.
 *
 *   NOTES
-*       Area is not a container. Parents set its box; container subclasses
-*       override Layout for their own children.
+*       Area is not a container; built-in groups lay out their children in
+*       MUIM_Zune_Layout.
 *
 */
 
@@ -4704,27 +4719,29 @@ IPTR Area__MUIM_Layout(struct IClass *cl, Object *obj,
 *       bottom, xoffset, yoffset);
 *
 *   FUNCTION
-*       Declared but not implemented by the Area dispatcher or invoked by its
-*       default drawing path.
+*       Paint the object's ordinary background over the rectangle, as if
+*       MUIA_CustomBackfill were not set. Subclasses override this to paint
+*       their own backfill and may pass areas they do not handle to Area.
 *
 *   INPUTS
-*       left, top, right, bottom, xoffset, yoffset - LONG fields declared by
-*       MUIP_CustomBackfill; not consumed by Area.
+*       left, top, right, bottom - LONG inclusive window coordinates.
+*       xoffset, yoffset - LONG; ignored by Area.
 *
 *   RESULT
-*       The inherited unhandled-method result is zero.
+*       FALSE for an empty rectangle; otherwise TRUE.
 *
 *   NOTES
-*       MUIA_CustomBackfill also has no Area implementation. The declaration
-*       alone does not establish a custom-backfill capability.
+*       With MUIA_CustomBackfill set, Area's background drawing and
+*       DrawBackground call this method with zero offsets. Inside a virtual
+*       group the call is clipped to the rectangle.
 *
 */
 
 /* Dispatch Area lifecycle, drawing, input and inherited import/export
- * messages. Provide explicit no-op Layout/DragDrop, Refuse DragQuery and
- * Continue DragReport defaults. Return handler results and forward unknown
- * IDs to Notify. Require a live object and a message with the fields used
- * by the selected operation; CustomBackfill remains unhandled.
+ * messages. Provide explicit no-op DragDrop, Refuse DragQuery and Continue
+ * DragReport defaults. Return handler results and forward unknown IDs to
+ * Notify. Require a live object and a message with the fields used by the
+ * selected operation.
  */
 BOOPSI_DISPATCHER(IPTR, Area_Dispatcher, cl, obj, msg)
 {

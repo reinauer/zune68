@@ -98,7 +98,9 @@ APTR ZuneAddClipRegion(struct MUI_RenderInfo *mri, struct Region *r)
     RESULT
         The previous layer clip-region pointer as a removal token, including
         NULL when no previous region exists. Returns (APTR)-1 if r or the
-        target layer is NULL or the 20-entry MUI clipping stack is full.
+        target layer is NULL, the 20-entry MUI clipping stack is full, the
+        region intersection fails, or the window layer is being refreshed
+        outside MUI_BeginRefresh().
 
     NOTES
         The function modifies r and disposes of it on rejection. After a
@@ -107,12 +109,6 @@ APTR ZuneAddClipRegion(struct MUI_RenderInfo *mri, struct Region *r)
         Remove successful pushes in reverse order using the same rendering
         context. Preserve the layer and context until all clips are removed.
         Refresh processing is temporarily suspended and resumed when needed.
-
-    BUGS
-        Failure of the region intersection is not checked. Removal restores
-        the previous MUI stack entry, not an arbitrary pre-existing layer
-        clip region represented by the returned token. Do not mix this
-        stack with independently installed layer clip regions.
 
     SEE ALSO
         MUI_RemoveClipRegion(), MUI_AddClipping(), layers.library/InstallClipRegion()

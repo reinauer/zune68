@@ -46,12 +46,12 @@
 *       disposer substitutes for Cleanup.
 *
 *   METHODS
-*       AskMinMax adds 53 pixels in width and 46 pixels in height to all
+*       AskMinMax adds 53 pixels in width and 43 pixels in height to all
 *       superclass size fields and returns TRUE. Full Draw paints frame,
-*       background, scale marks and an empty label field. Update Draw erases the
-*       old needle with the background pen before drawing the new one. Draw
-*       returns FALSE without full/update flags, otherwise TRUE and ignores
-*       superclass/drawing results.
+*       background, scale marks and the label field with any Label text. Update
+*       Draw erases the old needle with the background pen before drawing the
+*       new one. Draw returns FALSE without full/update flags, otherwise TRUE
+*       and ignores superclass/drawing results.
 *       Setup returns Numeric's result even if ObtainBestPen fails. Draw uses
 *       the stored pen without checking the -1 failure sentinel. The class has
 *       no mouse handler of its own and retains Numeric's raw-key handler; it is
@@ -59,11 +59,11 @@
 *       meter.
 *
 *   NOTES
-*       The Label attribute has no implementation. Numeric_Format/Stringify are
-*       inherited but not used to draw a numeric label. Scale artwork uses a
-*       nominal 39 by 20 pixel area and current frame geometry. Use ordered
-*       representable Numeric bounds and a live screen/render context. No
-*       separate bitmap or native gadget is owned.
+*       Label text is drawn in a built-in 3x5 pixel font. Numeric_Format and
+*       Stringify are inherited but not used to draw a numeric label. Scale
+*       artwork uses a nominal 39 by 22 pixel area and current frame geometry.
+*       Use ordered representable Numeric bounds and a live screen/render
+*       context. No separate bitmap or native gadget is owned.
 *
 */
 /****** Levelmeter.mui/MUIA_Levelmeter_Label ************
@@ -72,17 +72,17 @@
 *       MUIA_Levelmeter_Label
 *
 *   FUNCTION
-*       Declared label attribute without an implementation in this AROS class.
+*       Set or retrieve the text shown in the label field below the scale.
 *
 *   INPUTS
-*       String pointer; header declares initialize, set and get, but no local
-*       handler implements those operations.
+*       String pointer; initialize, set and get. Default NULL.
 *
 *   NOTES
-*       The constructor does not store the string, no getter returns it, and
-*       Draw paints only the empty label background. No string ownership is
-*       acquired. Supplying a label does not display text or change sizing;
-*       inherited Numeric_Format also does not populate this field.
+*       The pointer is borrowed, not copied; keep the string valid while it is
+*       set. Set requests a full redraw. Full Draw centers the text in a
+*       built-in 3x5 pixel font, clipped to the label field; characters outside
+*       32..126 draw as blanks. A label does not change sizing; inherited
+*       Numeric_Format does not populate this field.
 *
 */
 
@@ -117,9 +117,9 @@ extern struct Library *MUIMasterBase;
     + LEVEL_HEIGHT + LEVEL_LABEL_SPACING + LABEL_HEIGHT)
 
 /*
- * Construct Numeric with FillArea FALSE and set background-pen sentinel to
- * -1. Return superclass object or NULL. Pen acquisition is deferred to
- * Setup.
+ * Construct Numeric with FillArea FALSE, set background-pen sentinel to
+ * -1 and borrow any Label. Return superclass object or NULL. Pen
+ * acquisition is deferred to Setup.
  */
 IPTR Levelmeter__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -227,7 +227,7 @@ IPTR Levelmeter__MUIM_Cleanup(struct IClass *cl, Object *obj,
  MUIM_AskMinMax
 **************************************************************************/
 /*
- * Ask Numeric/Area then add fixed 53 by 46 content dimensions to all
+ * Ask Numeric/Area then add fixed 53 by 43 content dimensions to all
  * corresponding size fields. Return TRUE ignoring superclass result.
  * Requires writable MinMaxInfo; Label does not affect size.
  */
@@ -323,7 +323,7 @@ static void DrawNeedle(struct RastPort *rp, LONG x1, LONG y1, LONG x2,
  MUIM_Draw
 **************************************************************************/
 /*
- * Paint full frame/scale/empty label background or erase old needle, then
+ * Paint full frame/scale/label field and text or erase old needle, then
  * map Value to 0..180 and draw new needle. Return FALSE without full/update
  * flags, otherwise TRUE. Requires live render state and valid background
  * pen; does not check acquisition failure. Store prevangle; no text

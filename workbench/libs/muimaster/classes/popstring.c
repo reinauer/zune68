@@ -28,11 +28,11 @@
 *
 *   DESCRIPTION
 *       Combine a caller-supplied button and optional string object in a
-*       horizontal group with zero spacing. Successful construction places these
-*       objects in the Group child hierarchy. No default button or string is
-*       created. Supply a valid button; construction passes it as Child without
-*       a NULL guard. The optional string pointer may be NULL only if the hooks
-*       can handle it.
+*       horizontal group with one-pixel spacing. Successful construction places
+*       these objects in the Group child hierarchy. No default button or string
+*       is created. Supply a valid button; construction passes it as Child
+*       without a NULL guard. The optional string pointer may be NULL only if
+*       the hooks can handle it.
 *       The button's Pressed FALSE notification invokes Open. OpenHook and
 *       CloseHook are borrowed, default NULL; Toggle defaults FALSE. This base
 *       class supplies hook dispatch and logical open state, not a popup window

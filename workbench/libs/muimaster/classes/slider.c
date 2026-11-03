@@ -47,11 +47,14 @@
 *       display text, then Numeric. Complete Hide/Cleanup first.
 *
 *   METHODS
-*       Knob sizing calls Stringify for every value from Min to Max. If the
-*       computed span exceeds MUI_MAXMAX it instead scans zero through
-*       MUI_MAXMAX, which can miss wide strings for the real range.
-*       CheckAllSizes is ignored by this scan. Signed span/loop arithmetic is
-*       unchecked; a maximum at LONG_MAX can overflow the loop increment.
+*       Knob sizing calls Stringify for every value from Min to Max when
+*       CheckAllSizes is set. Otherwise it formats Min, Max, zero when in
+*       range and, for each digit count, the all-eights, all-nines and lowest
+*       values of either sign that lie in range. If the computed span exceeds
+*       MUI_MAXMAX either scan uses zero through MUI_MAXMAX, which can miss
+*       wide strings for the real range. Signed span arithmetic is unchecked;
+*       with CheckAllSizes a maximum at LONG_MAX can overflow the loop
+*       increment.
 *       Draw maps Value to pixel offset and caches both offset and a copied
 *       Stringify result. Text-copy allocation is unchecked before strlen. Setup
 *       does not turn knob-background preparation failure into FALSE. Mouse
@@ -110,7 +113,7 @@
 *
 *   NOTES
 *       Value changes and notifications continue normally. Knob dimensions are
-*       still calculated by formatting the selected value range. Quiet does not
+*       still calculated by formatting values from the range. Quiet does not
 *       mean release-only updates or notification suppression.
 *
 */
@@ -234,12 +237,12 @@ static LONG knob_text_width(Object *obj, struct RastPort *rp, LONG val)
 }
 
 /*
- * Measure Stringify results across the selected scan range and derive knob
- * size from font/frame preferences. Requires setup resources and valid non-
- * NULL strings. Span above MUI_MAXMAX substitutes 0..MUI_MAXMAX;
- * CheckAllSizes is ignored. Mutates geometry, no return status. LONG_MAX
- * loop increment and span subtraction can overflow; UWORD text width can
- * truncate.
+ * Measure Stringify results for every value with CheckAllSizes, otherwise
+ * for representative values, and derive knob size from font/frame
+ * preferences. Requires setup resources; NULL strings measure zero. Span
+ * above MUI_MAXMAX substitutes 0..MUI_MAXMAX. Mutates geometry, no return
+ * status. Span subtraction and the CheckAllSizes loop increment at
+ * LONG_MAX can overflow; UWORD text width can truncate.
  */
 static void CalcKnobDimensions(struct IClass *cl, Object *obj)
 {
@@ -514,7 +517,7 @@ IPTR Slider__MUIM_Cleanup(struct IClass *cl, Object *obj,
 **************************************************************************/
 /*
  * Ask superclass then add cached knob constraints according to orientation;
- * set travel-axis maximum to MUI_MAXMAX. Requires prior knob measurement
+ * add MUI_MAXMAX to the travel-axis maximum. Requires prior knob measurement
  * and writable MinMaxInfo. Return TRUE ignoring superclass result; does not
  * remeasure text.
  */

@@ -23,8 +23,11 @@
         struct Library *, MUIMasterBase, 8, MUIMaster)
 
 /*  FUNCTION
-        Allocate an ASL requester by forwarding reqType and tagList to
-        asl.library/AllocAslRequest(). No MUI-specific attributes are added.
+        Allocate an ASL requester through asl.library/AllocAslRequest().
+        For a file or font requester whose tags are all supported by the
+        MUI file or font panel, return a MUI-managed requester instead,
+        which MUI_AslRequest() runs as a MUI panel. Other requesters are
+        returned as allocated by ASL.
 
     INPUTS
         reqType - ASL_FileRequest, ASL_FontRequest, or ASL_ScreenModeRequest.
@@ -32,9 +35,7 @@
                   NULL to use defaults.
 
     RESULT
-        The allocated requester, or NULL. In the AROS ASL implementation,
-        allocation failure sets IoErr() to ERROR_NO_FREE_STORE; an unsupported
-        requester type returns NULL with IoErr() set to zero.
+        The allocated requester, or NULL.
 
     NOTES
         MUI_AllocAslRequestTags() is the variadic tag-list wrapper.

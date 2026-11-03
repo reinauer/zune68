@@ -45,18 +45,21 @@
 *
 *   METHODS
 *       The private layout hook computes constraints and allocates viewport
-*       space, showing only the required in-content bars. A corner button is
-*       shown when both bars are needed. No notification wiring from that button
-*       to the scroll offsets is installed here, so its presence does not
-*       establish working two-axis drag scrolling.
+*       space. It shows both in-content bars and the corner button, or with
+*       AutoBars only the required bars and the button when both are needed.
+*       The contents are limited to their maximum size and centered in the
+*       remaining space. No notification wiring from the button to the scroll
+*       offsets is installed here, so its presence does not establish working
+*       two-axis drag scrolling.
 *       Show reads content Left/Top/Width/Height, writes each bar's
 *       Prop_First/Entries/Visible from offsets, content extents and inner
 *       viewport dimensions, then returns Group Show's result. Getter/setter
-*       results during synchronization are ignored. Range synchronization is
-*       performed by this Show override, not by the private layout hook itself.
+*       results during synchronization are ignored. The layout hook and changes
+*       of the content Width/Height repeat that range synchronization while set
+*       up.
 *       Notifications connect bar Prop_First changes to content offsets, and
-*       content offset changes back to the bars. The callback uses NoNotify on
-*       destination updates to prevent feedback. Bar-to-content writes also
+*       content offset changes back to the bars. Offset callbacks use NoNotify
+*       on destination updates to prevent feedback. Bar-to-content writes also
 *       disable Group child forwarding. Registration results are ignored.
 *
 *   NOTES
@@ -64,18 +67,14 @@
 *       instead of laying bars beside the content. Those gadgets must be
 *       supplied by the enclosing window; this class does not request window
 *       border scrollers itself.
-*       AutoBars, FreeHoriz, FreeVert, NoHorizBar and NoVertBar are declared but
-*       not implemented. Adding unrelated children or replacing the internal
+*       FreeHoriz, FreeVert, NoHorizBar and NoVertBar are declared but not
+*       implemented. Adding unrelated children or replacing the internal
 *       layout hook does not extend the fixed-child layout algorithm. Retain the
 *       constructed tree and internal callback targets throughout its lifetime.
 *
 *   BUGS
-*       When adding a vertical bar, the second horizontal extent clamp uses
-*       virt_maxheight rather than virt_maxwidth. Bar selection can therefore be
-*       wrong for differing width/height limits. Min/max calculations reserve
-*       both bar minima even when a bar will be hidden. Arithmetic includes
-*       unchecked WORD intermediates. The layout hook ignores child layout
-*       results; Group ignores the hook return value.
+*       Arithmetic includes unchecked WORD intermediates. The layout hook
+*       ignores child layout results; Group ignores the hook return value.
 *       Content reads use the get macro with LONG destinations. Its GNU C
 *       implementation uses a temporary union; the non-GNU fallback casts the
 *       destination to an IPTR pointer. Do not assume identical width handling
@@ -170,17 +169,18 @@
 *       MUIA_Scrollgroup_AutoBars
 *
 *   FUNCTION
-*       Declared attribute without a local implementation in AROS Scrollgroup.
+*       Show only the in-content bars the contents need. Default FALSE, which
+*       always shows both bars and the corner button.
 *
 *   INPUTS
-*       BOOL; header declares initialize, set and get.
+*       BOOL; initialize, set and get.
 *
 *   NOTES
-*       No constructor, setter, getter or layout branch consumes this attribute.
-*       In-content bar visibility is automatically selected by the private
-*       layout hook regardless of this value. Group fallback to child getters
-*       does not establish local support. No working default or state should be
-*       inferred from the declaration.
+*       With AutoBars the group's minimum, default and maximum sizes are those
+*       of the contents, and the layout hook shows a bar only when the virtual
+*       size exceeds the viewport on that axis, plus the corner button when
+*       both bars are shown. Setting a changed value while set up relayouts
+*       the group. UseWinBorder mode is not affected.
 *
 */
 /****** Scrollgroup.mui/MUIA_Scrollgroup_FreeHoriz ************
@@ -189,7 +189,7 @@
 *       MUIA_Scrollgroup_FreeHoriz
 *
 *   FUNCTION
-*       Declared attribute without a local implementation in AROS Scrollgroup.
+*       Declared attribute without a local implementation in Scrollgroup.
 *
 *   INPUTS
 *       BOOL; header declares initialize only.
@@ -208,7 +208,7 @@
 *       MUIA_Scrollgroup_FreeVert
 *
 *   FUNCTION
-*       Declared attribute without a local implementation in AROS Scrollgroup.
+*       Declared attribute without a local implementation in Scrollgroup.
 *
 *   INPUTS
 *       BOOL; header declares initialize only.
@@ -227,17 +227,16 @@
 *       MUIA_Scrollgroup_NoHorizBar
 *
 *   FUNCTION
-*       Declared attribute without a local implementation in AROS Scrollgroup.
+*       Declared attribute without a local implementation in Scrollgroup.
 *
 *   INPUTS
 *       BOOL; header declares initialize, set and get.
 *
 *   NOTES
 *       No constructor, setter, getter or layout branch consumes this attribute.
-*       In-content bar visibility is automatically selected by the private
-*       layout hook regardless of this value. Group fallback to child getters
-*       does not establish local support. No working default or state should be
-*       inferred from the declaration.
+*       In-content bar visibility follows AutoBars regardless of this value.
+*       Group fallback to child getters does not establish local support. No
+*       working default or state should be inferred from the declaration.
 *
 */
 /****** Scrollgroup.mui/MUIA_Scrollgroup_NoVertBar ************
@@ -246,17 +245,16 @@
 *       MUIA_Scrollgroup_NoVertBar
 *
 *   FUNCTION
-*       Declared attribute without a local implementation in AROS Scrollgroup.
+*       Declared attribute without a local implementation in Scrollgroup.
 *
 *   INPUTS
 *       BOOL; header declares initialize, set and get.
 *
 *   NOTES
 *       No constructor, setter, getter or layout branch consumes this attribute.
-*       In-content bar visibility is automatically selected by the private
-*       layout hook regardless of this value. Group fallback to child getters
-*       does not establish local support. No working default or state should be
-*       inferred from the declaration.
+*       In-content bar visibility follows AutoBars regardless of this value.
+*       Group fallback to child getters does not establish local support. No
+*       working default or state should be inferred from the declaration.
 *
 */
 
@@ -296,12 +294,11 @@ static void layout_contents(Object *contents, LONG width, LONG height)
 /*
  * Private Group layout hook; h_Data must be live Scrollgroup_DATA with four
  * valid child references. MINMAX fills six fields, returning zero. LAYOUT
- * places fixed children and sets visibility, returning one; unknown types
- * return zero. Requires prior child min/max and valid virtual getters.
- * Ignores MUI_Layout results; Group ignores hook result. The vertical-bar
- * branch incorrectly clamps width with maximum height. Content reads use
- * get with LONG destinations; GNU C uses a temporary union, while the
- * fallback casts to IPTR storage.
+ * places fixed children, sets visibility and, while set up, synchronizes the
+ * bar ranges, returning one; unknown types return zero. Requires prior child
+ * min/max and valid virtual getters. Ignores MUI_Layout results; Group
+ * ignores hook result. Content reads use get with LONG destinations; GNU C
+ * uses a temporary union, while the fallback casts to IPTR storage.
  */
 AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
     AROS_UFHA(struct Hook *, hook, A0),
@@ -575,7 +572,8 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
  * two pointer-sized slots, type and value. Types 1/2 read
  * vertical/horizontal Prop_First into SIPTR and update content Top/Left
  * with NoNotify and Forward FALSE; types 3/4 update horizontal/vertical
- * First with NoNotify. Ignore getter/setter results, return zero even for
+ * First with NoNotify; type 5 resynchronizes both bar ranges while the
+ * contents are set up. Ignore getter/setter results, return zero even for
  * unknown type. Borrowed message/objects; no lifetime protection against
  * disposal in callbacks.
  */
@@ -630,11 +628,11 @@ AROS_UFH3(ULONG, Scrollgroup_Function,
 /*
  * Allocate an owned layout Hook and construct a nested Group with adopted
  * virtual contents, two Scrollbars and corner Scrollbutton. Initialize
- * borrowed internal pointers and hook data only after superclass success;
- * install bidirectional offset notifications ignoring results. Return
- * object or zero, freeing the hook on superclass failure. Nested object
- * allocation failures do not have comprehensive local unwind; requires
- * unowned compatible contents and writable tags.
+ * borrowed internal pointers, AutoBars and hook data only after superclass
+ * success; install bidirectional offset and content size notifications
+ * ignoring results. Return object or zero, freeing the hook on superclass
+ * failure. Nested object allocation failures do not have comprehensive
+ * local unwind; requires unowned compatible contents and writable tags.
  */
 IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
     struct opSet *msg)
@@ -727,10 +725,10 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
 }
 
 /*
- * Return borrowed Contents, HorizBar or VertBar through caller IPTR storage
- * with result one. Delegate all other getters to Group. Objects remain
- * owned by the constructed child tree; caller must not dispose or detach
- * them independently.
+ * Return borrowed Contents, HorizBar or VertBar, or AutoBars, through caller
+ * IPTR storage with result one. Delegate all other getters to Group.
+ * Objects remain owned by the constructed child tree; caller must not
+ * dispose or detach them independently.
  */
 IPTR Scrollgroup__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 {
@@ -807,10 +805,10 @@ IPTR Scrollgroup__MUIM_Show(struct IClass *cl, Object *obj,
 
 #if ZUNE_BUILTIN_SCROLLGROUP
 /*
- * When built in, route New/Get/Dispose/Show locally and delegate all other
- * messages to Group. Return selected handler result. Requires valid
- * object/class and ABI-correct message; no local setter implements the
- * unused declared attributes.
+ * When built in, route New/Get/Set/Dispose/Show locally and delegate all
+ * other messages to Group. Return selected handler result. Requires valid
+ * object/class and ABI-correct message; the local setter implements only
+ * AutoBars.
  */
 BOOPSI_DISPATCHER(IPTR, Scrollgroup_Dispatcher, cl, obj, msg)
 {

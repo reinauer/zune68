@@ -31,51 +31,46 @@
 *       List.mui
 *
 *   DESCRIPTION
-*       Wrap text into List entries using the native window RastPort's font and
-*       the object's width minus inner margins and eight pixels. Newlines
-*       delimit paragraphs. Text is copied; SkipChars is borrowed. Defaults are
-*       no source text, no skip characters, Justify FALSE and TabSize 8.
+*       Wrap text into List entries using the object's font and the width of
+*       the List entry area, which excludes the scroller, minus four pixels.
+*       Newlines delimit paragraphs. Text is copied; SkipChars is borrowed.
+*       Defaults are no source text, no skip characters, Justify FALSE and
+*       TabSize 8.
 *       Construction installs List's string construction/destruction hooks,
 *       replacing caller hook selections. Preserve these hooks while the class
 *       manages its generated lines.
 *       Each typesetting pass clears the list and rebuilds its entries. Without
-*       a window or source text it leaves the list empty. Full Draw retypesets
-*       when the outer width differs from the cached width; a font or margin
-*       change alone does not satisfy that width test. Setting any Floattext
-*       attribute also retypesets, even if the value is unchanged. Text source
-*       storage and generated line copies have separate ownership. Disposal
-*       frees the source and delegates list cleanup to List.
+*       a window, source text or a positive wrap width it leaves the list
+*       empty. Full Draw retypesets when the outer width differs from the
+*       cached width; a font or margin change alone does not satisfy that width
+*       test. Setting any Floattext attribute also retypesets, even if the
+*       value is unchanged. Text source storage and generated line copies have
+*       separate ownership. Disposal frees the source and delegates list
+*       cleanup to List.
 *
 *   METHODS
 *       The formatter expands tabs to a fixed number of spaces, filters
 *       SkipChars and carries two-byte escape commands across wrapped lines
 *       within a paragraph. It is not a general parser for all multi-byte Zune
 *       escape forms. It fits text with TextFit and prefers spaces as break
-*       points. Justification adds whole spaces; even the last paragraph line
-*       can be justified unless its computed space multiplier exceeds five.
+*       points. Justification adds whole spaces to every line of a paragraph
+*       except its last.
 *       Draw suppresses superclass drawing while typesetting and always returns
-*       zero. Typesetting clears its suppression flag and redraws the list only
-*       on normal completion. Temporary paragraph/line allocation failures
-*       return early with the flag still set and can leave an empty or partially
-*       rebuilt list. List insertion results are ignored; success of
-*       construction, set or Append does not establish that every line was
-*       generated.
+*       zero. Typesetting redraws the list only on normal completion. Temporary
+*       paragraph/line allocation failures clear the suppression flag and
+*       return early without that redraw, leaving an empty or partially rebuilt
+*       list. List insertion results are ignored; success of construction,
+*       set or Append does not establish that every line was generated.
 *
 *   BUGS
-*       The formatter uses UWORD positions, counts and allocation sizes, and
-*       unchecked arithmetic. Long paragraphs, tab expansion or accumulated
-*       escape commands can truncate lengths and overrun buffers. Incomplete
-*       escapes can read beyond input. A nonempty paragraph for which TextFit
-*       returns zero without advancing the source, including an entirely
-*       filtered paragraph, can cause a loop without progress. No cancellation
-*       or timeout is provided. Justification assumes a nonzero measured space
-*       width.
-*       Setting Text frees the old source before copying the replacement. Never
-*       pass the current Text getter pointer or a pointer into it to that
-*       setter. Append copies into new storage before freeing the old source,
-*       but its ULONG allocation-size calculation is unchecked. These
-*       limitations describe this implementation, not guaranteed safe
-*       arbitrary-input handling.
+*       The formatter's buffer-size arithmetic is unchecked. An escape whose
+*       argument byte is a SkipChars character can leave a lone escape at the
+*       end of a generated line; the next wrapped line's escape prefix copy
+*       then reads past that line's terminator.
+*       Append copies into new storage before freeing the old source, but its
+*       ULONG allocation-size calculation is unchecked. These limitations
+*       describe this implementation, not guaranteed safe arbitrary-input
+*       handling.
 *
 */
 /****** Floattext.mui/MUIA_Floattext_Text ************
@@ -93,10 +88,10 @@
 *   NOTES
 *       The class owns a StrDup copy. Get returns a borrowed pointer valid until
 *       replacement, successful Append or disposal; do not modify or free it.
-*       The setter frees the previous source before duplication, so the
-*       replacement must not alias that allocation. Copy failure loses the
-*       previous text and leaves NULL; construction and set do not report this
-*       as a separate error.
+*       The setter duplicates the replacement before freeing the previous
+*       source, so the replacement may alias that allocation. On set, copy
+*       failure keeps the previous text and that tag causes no rebuild; at
+*       construction it leaves NULL. Neither reports this as a separate error.
 *       Each set rebuilds the list, including an unchanged value. Repeated
 *       constructor Text tags overwrite earlier copies without freeing them. The
 *       original tag is forwarded to List and normal notification processing; it
@@ -123,9 +118,7 @@
 *       that strip leading spaces, even when it points to an empty string.
 *       Tabs and two-byte escape handling have their own formatting paths;
 *       SkipChars is not a general escaping or sanitizing mechanism. Setting
-*       this attribute rebuilds all lines. A paragraph filtered to no printable
-*       text can prevent formatter progress; arbitrary filtering is not
-*       protected against that case.
+*       this attribute rebuilds all lines.
 *
 */
 /****** Floattext.mui/MUIA_Floattext_TabSize ************
@@ -145,8 +138,8 @@
 *       are not tab stops. Conversion to ULONG occurs before the upper-limit
 *       check, so negative input is not a negative tab width. Construction and
 *       any recognized attribute set normalize the stored size before
-*       rebuilding. Buffer lengths still use narrower counters and are not
-*       protected against expansion overflow.
+*       rebuilding. Buffer-size arithmetic is not protected against expansion
+*       overflow.
 *
 */
 /****** Floattext.mui/MUIA_Floattext_Justify ************
@@ -163,12 +156,11 @@
 *
 *   NOTES
 *       The formatter inserts whole space characters among words when eligible
-*       spaces exist. It can also stretch the last paragraph line; that line is
-*       excluded only when the computed multiplier exceeds five. There is no
-*       fractional spacing or exact pixel-width guarantee. Get returns the
-*       stored flag. Setting it always rebuilds the list; it does not merely
-*       change drawing style. A font with zero-width spaces is not protected
-*       against division by zero.
+*       spaces exist. The last line of each paragraph is not stretched. There
+*       is no fractional spacing or exact pixel-width guarantee. Get returns
+*       the stored flag. Setting it always rebuilds the list; it does not
+*       merely change drawing style. A font with zero-width spaces disables
+*       justification.
 *
 */
 /****** Floattext.mui/MUIM_Floattext_Append ************
@@ -233,10 +225,11 @@ static long MyStrLen(const char *ptr)
  * consumed and stores the length of the line itself in *line_count.
  */
 /*
- * Use window RastPort TextFit on the remaining paragraph and prefer a
- * preceding space boundary. Return fitted count as UWORD, possibly zero.
- * Requires valid text/length/offset, window and representable width. Does
- * not ensure caller progress or allocate storage.
+ * Use TextFit on the supplied RastPort for the remaining paragraph, forcing
+ * at least one character, and prefer a preceding space boundary. Return
+ * the consumed count as UWORD; zero only at the end of the text or for a
+ * nonpositive width. Requires valid text/length/offset, RastPort and
+ * representable width. Does not allocate storage.
  */
 static UWORD FitParagraphLine(STRPTR text, ULONG length, WORD width,
    ULONG offset, struct RastPort *rp, ULONG *line_count)
@@ -742,11 +735,11 @@ IPTR Floattext__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 }
 
 /*
- * Store recognized attributes, freeing source before Text duplication;
- * normalize tabs and rebuild once if any recognized tag occurred. Return
- * List setter result with original tags forwarded. Replacement must not
- * alias owned text; failures are not separately reported and may lose old
- * state.
+ * Store recognized attributes, duplicating Text before freeing the old
+ * source; normalize tabs and rebuild once if any recognized tag took
+ * effect. Return List setter result with original tags forwarded.
+ * Replacement may alias owned text; copy failure keeps the old text and is
+ * not separately reported.
  */
 IPTR Floattext__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -810,7 +803,7 @@ IPTR Floattext__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
  * Draw through List unless typesetting is active; on full draw and changed
  * outer width cache width and rebuild lines. Return zero. Requires live
  * render context; margin/font changes alone do not trigger this test and
- * formatting may fail or not terminate.
+ * formatting may stop early on allocation failure.
  */
 IPTR Floattext__MUIM_Draw(struct IClass *cl, Object *obj,
     struct MUIP_Draw *msg)

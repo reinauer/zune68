@@ -39,9 +39,8 @@ extern struct Library *MUIMasterBase;
 *       borrowed record pointers.
 *
 *   BUGS
-*       Merge is a stub. Clear frees records without resetting the list links.
-*       ReadIFF can return success after an incomplete import. Consult the method
-*       entries before relying on these operations.
+*       Merge is a stub. ReadIFF can return success after an incomplete import.
+*       Consult the method entries before relying on these operations.
 *
 *   SEE ALSO
 *       MUIA_Dataspace_Pool, MUIM_Dataspace_Add, MUIM_Dataspace_Find
@@ -175,10 +174,10 @@ IPTR Dataspace__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 *
 *   NOTES
 *       The caller retains its input storage. The dataspace owns the copy until
-*       replacement, removal, clearing, or disposal. Do not use the old payload
-*       of the same identifier as input: replacement frees that record before
-*       CopyMem() reads the supplied bytes. Copy such data to separate storage
-*       first. The dispatcher holds an exclusive semaphore lock.
+*       replacement, removal, clearing, or disposal. The supplied bytes are
+*       copied before a replaced record is freed, so the old payload of the same
+*       identifier may be used as input. The dispatcher holds an exclusive
+*       semaphore lock.
 *
 *   SEE ALSO
 *       MUIM_Dataspace_Find, MUIM_Dataspace_Remove
@@ -231,20 +230,14 @@ IPTR Dataspace__MUIM_Add(struct IClass *cl, Object *obj,
 *       IPTR result = DoMethod(obj, MUIM_Dataspace_Clear);
 *
 *   FUNCTION
-*       Free each record allocation while holding the exclusive semaphore.
+*       Free each record allocation and reinitialize the list as empty while
+*       holding the exclusive semaphore. The dataspace remains usable.
 *
 *   INPUTS
 *       No arguments beyond MethodID.
 *
 *   RESULT
 *       Always 1 after the loop completes.
-*
-*   BUGS
-*       The implementation does not unlink the freed records or reinitialize
-*       the list. After clearing a nonempty dataspace, its list contains dangling
-*       pointers. The return value does not establish a reusable empty object.
-*       Subsequent record operations or borrowed-pool disposal can access freed
-*       storage. Do not use this method to reset a live nonempty dataspace.
 *
 *   SEE ALSO
 *       MUIM_Dataspace_Remove, MUIA_Dataspace_Pool

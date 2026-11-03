@@ -122,7 +122,7 @@
 *       normalization.
 *
 *   NOTES
-*       In this AROS implementation the stored flag is not consulted by drawing,
+*       In this implementation the stored flag is not consulted by drawing,
 *       layout or setup. FALSE therefore does not suppress the register border.
 *       This attribute differs from Area Frame and Group register-frame
 *       title-child handling. There is no Register setter.

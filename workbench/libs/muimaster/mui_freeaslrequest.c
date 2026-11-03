@@ -22,8 +22,9 @@
         struct Library *, MUIMasterBase, 10, MUIMaster)
 
 /*  FUNCTION
-        Release an allocated ASL requester through asl.library/FreeAslRequest().
-        ASL also releases the requester-specific result storage it owns.
+        Release an allocated ASL requester and the result storage it owns.
+        A MUI-managed requester also releases the ASL requester allocated
+        with it. Other requesters go to asl.library/FreeAslRequest().
 
     INPUTS
         requester - Requester allocated by MUI_AllocAslRequest() or

@@ -19,7 +19,8 @@
         struct Library *, MUIMasterBase, 6, MUIMaster)
 
 /*  FUNCTION
-        Dispose of a MUI object, then release its class through MUI_FreeClass().
+        Dispose of a MUI object. If its class is not a built-in MUI class,
+        then release that class through MUI_FreeClass().
         The object's OM_DISPOSE implementation determines which owned
         children and other resources are released.
 

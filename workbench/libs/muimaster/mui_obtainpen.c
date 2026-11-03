@@ -39,13 +39,15 @@
         spec - NUL-terminated pen specification in a MUI_PenSpec structure.
                Supported prefixes are m (MUI pen), p (colormap index),
                s (system pen), and r (three hexadecimal RGB components).
-               RGB components are separated by commas; r may be omitted.
+               RGB components are separated by commas or given as six
+               hexadecimal digits RRGGBB; r may be omitted.
         flags - Ignored by this implementation; pass zero.
 
     RESULT
         A pen token, or -1 if mri, spec, or the colormap is NULL, parsing
         fails, or a checked pen index is out of range. Use MUIPEN(token)
-        to obtain the drawing pen number. Bit 16 records an allocated pen.
+        to obtain the drawing pen number. An allocated pen has all bits of
+        the upper word set.
 
     NOTES
         Pass the complete token, not its masked pen number, to
@@ -54,8 +56,7 @@
 
     BUGS
         System-pen indices are not range-checked. Supply a valid index into
-        the rendering context's DrawInfo pen array. The RGB parser does
-        not fully validate separators or the end of the specification.
+        the rendering context's DrawInfo pen array.
 
     SEE ALSO
         MUI_ReleasePen(), graphics.library/ObtainBestPenA(),

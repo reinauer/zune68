@@ -103,9 +103,10 @@ static void muiDataStreamFromFormat(CONST_STRPTR format, APTR dataStream,  ULONG
                   On the MUI path, a leading * selects the active button;
                   if several labels have it, the last one takes precedence.
         format - Non-NULL RawDoFmt-compatible message format.
-        params - Array of IPTR-sized format arguments in AROS, in format
-                 order. Supply a valid array whenever arguments are used.
-                 This is neither a tag list nor an already packed RAWARG.
+        params - RawDoFmt() argument array for format, in format order,
+                 with each argument sized as format specifies. Supply a
+                 valid array whenever arguments are used. This is not a
+                 tag list.
 
     RESULT
         On the MUI path, buttons except the last return their one-based
@@ -124,8 +125,6 @@ static void muiDataStreamFromFormat(CONST_STRPTR format, APTR dataStream,  ULONG
     BUGS
         The 32-button array has no bounds check. More labels can overwrite
         memory. A button-construction failure can leave a partial requester.
-        On 32-bit AROS, one IPTR slot cannot preserve the full value of
-        an eight-byte formatting argument during the packing step.
         Application return IDs are neither saved nor replayed. IDs from
         1 through the number of constructed buttons plus 1 can terminate
         the requester even if they came from another application action;

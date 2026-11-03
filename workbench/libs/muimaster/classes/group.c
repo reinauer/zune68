@@ -196,12 +196,13 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *       successful Area setup itself. Cleanup calls every child then Area.
 *       Show/Hide select the active page or eligible visible children; child
 *       results are ignored. Draw returns FALSE while InitChange is active.
-*       AskMinMax asks visible children and finalizes their sizes, then uses
-*       page layout, a custom hook or built-in layout in that priority order. It
-*       returns zero regardless of results. Layout uses the same priority and
-*       also returns zero, even after a hook failure or incomplete built-in
-*       layout. The library MUI_Layout sets a child's box and returns TRUE
-*       without propagating the child's Layout result.
+*       AskMinMax asks children with ShowMe set, or every child when a layout
+*       hook is set, and finalizes their sizes, then uses page layout, a custom
+*       hook or built-in layout in that priority order. It returns zero
+*       regardless of results. Layout uses the same priority and returns the
+*       hook's result for a custom hook, otherwise TRUE. The library MUI_Layout
+*       sets a child's box and returns FALSE when that box is outside the
+*       child's min/max limits, otherwise the child's layout result.
 *       FindUData/GetUData match Group first, then delegate through its internal
 *       Family, whose own default UserData can also match. GetUData reports a
 *       match without checking getter success. SetUData may set Group, whose
@@ -225,9 +226,10 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *       beyond it. Return TRUE on the child path does not prove that any
 *       registration succeeded.
 *       Family_GetChild is delegated to the internal Family. Group also
-*       implements virtual offset/extent attributes used by Virtgroup. The locally defined Group_Insert and
-*       Group_ChildCount are internal source interfaces; the header's
-*       ExitChange2 is explicitly private.
+*       implements virtual offset/extent attributes used by Virtgroup. The
+*       locally defined Group_Insert is an internal source interface; the
+*       header's Group_ChildCount getter returns the stored child count, and
+*       its ExitChange2 is explicitly private.
 *
 *   BUGS
 *       Add/remove helpers ignore child and Family results and adjust a stored
@@ -260,8 +262,7 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *
 *   BUGS
 *       When the frame request is MUIV_Frame_Register, the first Child tag also
-*       stores the internal titlegroup pointer, even without PageMode. Removing
-*       or independently disposing this object does not clear that pointer.
+*       stores the internal titlegroup pointer, even without PageMode.
 *
 */
 /****** Group.mui/MUIA_Group_ChildList ************
@@ -307,7 +308,8 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *
 *   FUNCTION
 *       Enable page-group layout, default FALSE. One content child is shown at a
-*       time; all pages contribute size constraints and are laid out.
+*       time; pages with ShowMe set contribute size constraints and all pages
+*       are laid out.
 *
 *   INPUTS
 *       BOOL; initialize only.
@@ -315,9 +317,12 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *   NOTES
 *       PageMode takes precedence over LayoutHook, Rows/Columns and Horiz. With
 *       MUIV_Frame_Register, the first Child tag is treated as a title group and
-*       excluded from content-page counting. Its minimum height is reserved
-*       above the content; page changes set its Group_ActivePage. Group does not
-*       create tab objects or install title-selection notifications itself.
+*       excluded from content-page counting. A Title object added as the first
+*       child also becomes the title group and enables PageMode. The title
+*       group's minimum height is reserved above the content, or below it when
+*       its MUIA_Title_Position is MUIV_Title_Position_Bottom; page changes set
+*       its Group_ActivePage. Group does not create tab objects or install
+*       title-selection notifications itself.
 *
 *   BUGS
 *       Show/Hide count all children except the title group, while Draw skips
@@ -345,13 +350,13 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *       lays out and shows the new selection, then redraws content. Before
 *       PageMode is enabled this operation does nothing; initialization tag
 *       order matters. Configure PageMode and children before using relative
-*       selectors. The getter returns the stored index.
+*       selectors. Without content pages any selection stores zero. The getter
+*       returns the stored index.
 *
 *   BUGS
-*       Explicit indices are not clamped. Next/Advance divide by the content
-*       count and are invalid for an empty page group. Last on an empty group
-*       produces -1. Removing children does not repair an out-of-range active
-*       index. See PageMode for hidden-child counting differences.
+*       Explicit indices are not clamped. Removing children does not repair an
+*       out-of-range active index. See PageMode for hidden-child counting
+*       differences.
 *
 */
 /****** Group.mui/MUIA_Group_Columns ************
@@ -416,7 +421,8 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *   FUNCTION
 *       Store the horizontal gap between children or grid cells. Before setup
 *       the unspecified value is stored as ULONG -1; setup replaces it with the
-*       corresponding application preference.
+*       corresponding application preference, capped at 2 from the third
+*       fallback stage of a window set up again to fit the screen.
 *
 *   INPUTS
 *       LONG declaration, stored as ULONG; initialize, set, get.
@@ -441,7 +447,8 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *   FUNCTION
 *       Store the vertical gap between children or grid cells. Before setup the
 *       unspecified value is stored as ULONG -1; setup replaces it with the
-*       corresponding application preference.
+*       corresponding application preference, capped at 2 from the third
+*       fallback stage of a window set up again to fit the screen.
 *
 *   INPUTS
 *       LONG declaration, stored as ULONG; initialize, set, get.
@@ -552,15 +559,17 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *   NOTES
 *       CallHookPkt passes this Group as object and a temporary MUI_LayoutMsg as
 *       message. lm_Children is the borrowed internal list; keep membership
-*       stable. The hook return value is ignored for both message types;
-*       returning MUILM_UNKNOWN does not request built-in fallback. There is no
-*       local getter and replacing the hook does not itself relayout.
-*       For MUILM_MINMAX, child limits have already been collected. Fill all six
-*       lm_MinMax fields with content requirements excluding this group's
-*       frame/spacing. This stack message is not initialized for you. Group
-*       raises maxima and defaults below minima, caps aggregate maxima to
-*       MUI_MAXMAX, then adds its Area contribution. It does not clamp a
-*       too-large hook default back to the maximum.
+*       stable. The MUILM_MINMAX return value is ignored and the MUILM_LAYOUT
+*       return value becomes the Layout result; returning MUILM_UNKNOWN does
+*       not request built-in fallback. There is no local getter and replacing
+*       the hook does not itself relayout.
+*       For MUILM_MINMAX, the limits of every child, including children with
+*       ShowMe FALSE, have already been collected. Fill all six lm_MinMax
+*       fields with content requirements excluding this group's frame/spacing.
+*       This stack message is not initialized for you. Group raises maxima and
+*       defaults below minima, adds the values to its Area contribution and
+*       caps the maxima at MUI_MAXMAX. It does not clamp a too-large hook
+*       default back to the maximum.
 *       For MUILM_LAYOUT, the message starts cleared; lm_Layout.Width/Height
 *       contain available inner dimensions. Lay out children with MUI_Layout
 *       using coordinates relative to the group inner origin. For virtual
@@ -570,7 +579,7 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *
 *   BUGS
 *       A hook that omits a min/max field leaves an uninitialized value in use.
-*       Hook failure is not propagated; Group AskMinMax and Layout return zero
+*       MUILM_MINMAX failure is not propagated; Group AskMinMax returns zero
 *       regardless. Group itself does not enforce the custom layout's child size
 *       constraints.
 *
@@ -595,9 +604,10 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *       writable tags to TAG_IGNORE for filtered attributes and does not restore
 *       them.
 *       The filter removes HelpLine, HelpNode, ObjectID, UserData, ContextMenu,
-*       ContextMenuTrigger, ControlChar, CycleChain, Draggable, FillArea,
-*       Group_ActivePage, Frame, FrameTitle, HorizWeight, Pressed, ShortHelp,
-*       ShowMe, VertWeight, Weight, Virtgroup_Left/Top, AppMessage and Timer.
+*       ContextMenuTrigger, ControlChar, CustomBackfill, CycleChain, Draggable,
+*       FillArea, Group_ActivePage, Group_LayoutHook, Frame, FrameTitle,
+*       HorizWeight, Pressed, ShortHelp, ShowMe, VertWeight, Weight,
+*       Virtgroup_Left/Top, AppMessage and Timer.
 *       Selected is not explicitly filtered, but Area may already suppress an
 *       unchanged Selected tag. Unfiltered group tags such as spacing can also
 *       reach child groups.
@@ -629,7 +639,7 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *
 *   NOTES
 *       AskMinMax saves full content minima but exposes a viewport minimum of
-*       Area's contribution plus two pixels per dimension. Layout computes
+*       Area's contribution plus eight pixels per dimension. Layout computes
 *       virtual extents and clamps offsets. Group implements Virtgroup_Left/Top
 *       setters and getters plus Width/Height/MinWidth/MinHeight getters for
 *       this machinery. It does not create scrollbar objects.
@@ -639,10 +649,9 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *       local getter.
 *
 *   BUGS
-*       Virtual offset setters can force Layout even without a live display;
-*       callers must establish appropriate setup/layout state. Do not apply
-*       virtual offsets to nonvirtual groups: the drawing cleanup path assumes
-*       its scroll clip belongs to a virtual group.
+*       Virtual offset setters clamp to the current extents, so offsets set
+*       before the first layout become zero. On a nonvirtual group the offsets
+*       are stored unclamped and shift its children until the next layout.
 *
 */
 
@@ -1489,9 +1498,8 @@ IPTR Group__MUIM_Insert(struct IClass *cl, Object *obj,
 *
 *   BUGS
 *       No membership/count validation occurs. Passing an unrelated child can
-*       corrupt ownership/counts. The titlegroup pointer and active page are not
-*       repaired. Removal leaves any disabled state previously imposed on the
-*       child intact.
+*       corrupt ownership/counts. The active page is not repaired. Removal
+*       leaves any disabled state previously imposed on the child intact.
 *
 */
 IPTR Group__MUIM_Remove(struct IClass *cl, Object *obj,
@@ -3123,11 +3131,12 @@ group_minmax_pagemode(struct IClass *cl, Object *obj,
  either call a hook, or the builtin method, to calculate our minmax
 **************************************************************************/
 /*
- * Ask Area and ShowMe children, finalize child limits, then select page,
- * custom Hook or built-in constraints. Hook must fill all six fields of its
- * otherwise uninitialized min/max message; its return is ignored. Virtual
- * groups save full minima but expose Area minima plus two. Return zero even
- * on helper failure; needs valid preferences and stable membership.
+ * Ask Area and the ShowMe children (every child with a custom Hook),
+ * finalize child limits, then select page, custom Hook or built-in
+ * constraints. Hook must fill all six fields of its otherwise uninitialized
+ * min/max message; its return is ignored. Virtual groups save full minima
+ * but expose Area minima plus eight. Return zero even on helper failure;
+ * needs valid preferences and stable membership.
  */
 IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUIP_AskMinMax *msg)
@@ -4498,11 +4507,10 @@ static void group_layout_pagemode(struct IClass *cl, Object *obj,
 **************************************************************************/
 /*
  * Select page, custom Hook or built-in layout. Hook receives a zeroed
- * temporary message with inner dimensions and borrowed list; return
- * ignored. Copy virtual dimensions back, clamp WORD offsets and set them
- * with child forwarding disabled, potentially reentering Layout. Return zero
- * regardless of outcome. Requires established child min/max and valid
- * lifecycle.
+ * temporary message with inner dimensions and borrowed list. Copy virtual
+ * dimensions back, clamp WORD offsets and set them with child forwarding
+ * disabled. Return the Hook's result, otherwise TRUE. Requires established
+ * child min/max and valid lifecycle.
  */
 IPTR Group__MUIM_Layout(struct IClass *cl, Object *obj,
     struct MUIP_Zune_Layout *msg)

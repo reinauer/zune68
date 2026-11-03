@@ -49,7 +49,7 @@
 *       count.
 *
 *   METHODS
-*       Setup calls Area and measures the current formatted string once using
+*       Setup calls Area and measures InfoText formatted with Max once using
 *       TextLength and the current font. AskMinMax uses those cached dimensions
 *       and orientation, allowing expansion along the bar. With no InfoText it
 *       permits expansion in both directions. Later value or text changes do not
@@ -142,7 +142,8 @@
 *       TAG_IGNORE. No Current notification is generated for the clamp.
 *       Vertical drawing requires Max greater than zero; it has no
 *       zero-denominator guard. Horizontal drawing handles zero by selecting a
-*       zero fill width. Max does not change size requirements.
+*       zero fill width. Setup measures InfoText formatted with Max; a later
+*       Max change does not remeasure.
 *
 */
 /****** Gauge.mui/MUIA_Gauge_Horiz ************
@@ -205,7 +206,7 @@
 *       Choose whether Gauge owns a copy of InfoText.
 *
 *   INPUTS
-*       Initialize, BOOL, default FALSE. AROS also implements get although the
+*       Initialize, BOOL, default FALSE. Get is also implemented although the
 *       header marks this attribute initialize-only. No local setter is
 *       implemented.
 *
@@ -454,10 +455,10 @@ IPTR Gauge__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 }
 
 /*
- * Call Area setup; on success cache current formatted text width/font
- * height or zeros without text. Return zero on superclass failure,
- * otherwise one. Requires valid font and live format when present; no
- * persistent allocation or later automatic remeasurement.
+ * Call Area setup; on success cache the width of InfoText formatted with
+ * Max and the font height, or zeros without text. Return zero on
+ * superclass failure, otherwise one. Requires valid font and live format
+ * when present; no persistent allocation or later automatic remeasurement.
  */
 IPTR Gauge__MUIM_Setup(struct IClass *cl, Object *obj,
     struct MUIP_Setup *msg)

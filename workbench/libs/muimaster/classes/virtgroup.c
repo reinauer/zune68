@@ -29,11 +29,13 @@
 *       Group.mui
 *
 *   DESCRIPTION
-*       Create a Group with virtual-content layout enabled. The only local
-*       override is construction: prepend Group_Virtual TRUE and then process
-*       caller tags. A later Group_Virtual FALSE can override that default.
-*       Virtgroup has no additional instance storage, local disposal or local
-*       scrolling implementation.
+*       Create a Group with virtual-content layout enabled. Construction
+*       prepends Group_Virtual TRUE and then processes caller tags. A later
+*       Group_Virtual FALSE can override that default. The only other local
+*       behavior is the private ScrollParent attribute: its setter stores an
+*       object that receives MUIM_Scrollgroup_Inform with the offsets,
+*       viewport size and content extents after each layout. Virtgroup has no
+*       local disposal or local scrolling implementation.
 *       All child ownership, setup/cleanup, clipping, layout hooks, offset
 *       storage and mouse-driven edge scrolling belong to Group. Scrollbars are
 *       not created automatically. Group saves content minima while exposing a
@@ -42,10 +44,11 @@
 *
 *   METHODS
 *       Construction returns the Group constructor result, including NULL on
-*       failure. All other methods delegate unchanged to Group. Use a valid
-*       connected/setup object and completed min/max calculation before changing
-*       offsets: Group's setter can call Layout even when the object is not
-*       drawable.
+*       failure. Set consumes ScrollParent before delegating to Group; Layout
+*       informs the scroll parent after Group's layout. All other methods
+*       delegate unchanged to Group. Change offsets only after layout: Group's
+*       setter clamps them against the laid-out viewport and content extents
+*       and moves children even when the object is not drawable.
 *       In virtual mode Group tracks mouse buttons and ticks for edge
 *       autoscroll. Virtgroup_Input does not control that behavior in this
 *       implementation.
@@ -74,20 +77,20 @@
 *       Group.
 *
 *   NOTES
-*       A changed setter stores the converted value and relayouts children. When
-*       drawable, it hides/shows children and requests a scroll redraw. Layout
-*       clamps offsets to zero through content extent minus viewport extent
-*       (with zero as the minimum), then uses Group_Forward FALSE for
+*       On a virtual group the setter clamps the value to zero through content
+*       extent minus viewport extent (with zero as the minimum). A changed value
+*       is stored and children are moved by the difference without relayout.
+*       When drawable, it hides/shows children and requests a scroll redraw.
+*       Layout applies the same clamp and uses Group_Forward FALSE for
 *       corrections. This does not suppress notifications. The getter returns
-*       the stored value. Use setup and valid child min/max state before
-*       setting; avoid setting virtual offsets on nonvirtual groups.
+*       the stored value. Set it only after layout; avoid setting virtual
+*       offsets on nonvirtual groups.
 *
 *   BUGS
 *       Layout copies the stored LONG offset into a WORD before clamping;
-*       out-of-range input can wrap instead of saturating. Layout can reenter
-*       the setter while correcting offsets. A setter return is not a
-*       child-layout success report. Initialization support advertised by the
-*       header is absent in this implementation.
+*       offsets beyond the WORD range can wrap instead of saturating. Layout
+*       can reenter the setter while correcting offsets. Initialization support
+*       advertised by the header is absent in this implementation.
 *
 */
 /****** Virtgroup.mui/MUIA_Virtgroup_Top ************
@@ -105,20 +108,20 @@
 *       Group.
 *
 *   NOTES
-*       A changed setter stores the converted value and relayouts children. When
-*       drawable, it hides/shows children and requests a scroll redraw. Layout
-*       clamps offsets to zero through content extent minus viewport extent
-*       (with zero as the minimum), then uses Group_Forward FALSE for
+*       On a virtual group the setter clamps the value to zero through content
+*       extent minus viewport extent (with zero as the minimum). A changed value
+*       is stored and children are moved by the difference without relayout.
+*       When drawable, it hides/shows children and requests a scroll redraw.
+*       Layout applies the same clamp and uses Group_Forward FALSE for
 *       corrections. This does not suppress notifications. The getter returns
-*       the stored value. Use setup and valid child min/max state before
-*       setting; avoid setting virtual offsets on nonvirtual groups.
+*       the stored value. Set it only after layout; avoid setting virtual
+*       offsets on nonvirtual groups.
 *
 *   BUGS
 *       Layout copies the stored LONG offset into a WORD before clamping;
-*       out-of-range input can wrap instead of saturating. Layout can reenter
-*       the setter while correcting offsets. A setter return is not a
-*       child-layout success report. Initialization support advertised by the
-*       header is absent in this implementation.
+*       offsets beyond the WORD range can wrap instead of saturating. Layout
+*       can reenter the setter while correcting offsets. Initialization support
+*       advertised by the header is absent in this implementation.
 *
 */
 /****** Virtgroup.mui/MUIA_Virtgroup_Width ************
@@ -169,7 +172,7 @@
 *       MUIA_Virtgroup_Input
 *
 *   FUNCTION
-*       Declared initialization flag without an implementation in the AROS
+*       Declared initialization flag without an implementation in the
 *       Virtgroup/Group classes.
 *
 *   INPUTS
@@ -188,7 +191,7 @@
 /* Private MUIA_Virtgroup_MinWidth/MinHeight are handled by Group OM_GET.
  * They return saved content minima from AskMinMax, not Boolean flags
  * despite the header annotation. Read only after that calculation;
- * no new storage or ownership is introduced by Virtgroup.
+ * Virtgroup adds no storage or ownership for them.
  */
 extern struct Library *MUIMasterBase;
 
@@ -256,8 +259,8 @@ Virtgroup_Layout(struct IClass *cl, Object *obj, Msg msg)
 /*
  * Construct Group with Group_Virtual TRUE before caller tags, which can
  * override it. Return superclass object or NULL. Child ownership and
- * partial-construction failure cleanup belong to Group; no local allocation
- * or instance state.
+ * partial-construction failure cleanup belong to Group; no local
+ * allocation, and the scroll parent starts NULL.
  */
 IPTR Virtgroup__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -268,8 +271,9 @@ IPTR Virtgroup__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
 #if ZUNE_BUILTIN_VIRTGROUP
 /*
- * When built in, route OM_NEW to the virtual-default constructor and every
- * other message unchanged to Group. Return its result. Requires ABI-correct
+ * When built in, route OM_NEW to the virtual-default constructor, OM_SET
+ * and MUIM_Zune_Layout to the scroll-parent handlers and every other
+ * message unchanged to Group. Return its result. Requires ABI-correct
  * message and live object except construction; no local resources.
  */
 BOOPSI_DISPATCHER(IPTR, Virtgroup_Dispatcher, cl, obj, msg)

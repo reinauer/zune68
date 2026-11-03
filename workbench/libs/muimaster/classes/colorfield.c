@@ -41,22 +41,23 @@
 *       zero. Without an explicit fixed pen, Setup requests an exclusive pen. A
 *       fixed pen is borrowed and its screen color is overwritten with the
 *       stored RGB; its previous color is not restored. Use only a pen that the
-*       caller is entitled to recolor. The class stores pen numbers in UBYTE,
-*       even though the attribute is declared ULONG.
+*       caller is entitled to recolor. The class stores pen numbers as LONG,
+*       with -1 meaning no pen.
 *       Setup returns zero on Area failure, otherwise one, including no-screen
 *       and allocation-failure paths. Failed allocation sets the no-pen flag and
-*       pen value 255. Cleanup releases only locally allocated pens, sets their
-*       stored value to 255, clears the no-pen flag and delegates to Area. Fixed
-*       pens are neither released nor restored. Complete normal Cleanup before
-*       disposal; there is no local Dispose override.
+*       pen value -1. Cleanup releases only locally allocated pens, sets their
+*       stored value to -1, clears the saved color map and the no-pen flag and
+*       delegates to Area. Fixed pens are neither released nor restored.
+*       Complete normal Cleanup before disposal; there is no local Dispose
+*       override.
 *
 *   METHODS
 *       AskMinMax adds one to both minima and sixteen to both defaults, sets
 *       both maxima MUI_MAXMAX and returns zero. Draw calls Area and handles
 *       full/update flags. It fills with the stored pen or a shadow/background
-*       pattern when allocation failed, then clears the RastPort fill pattern.
-*       It returns zero normally, one when no RastPort exists after flag
-*       acceptance.
+*       pattern when no pen is available, then clears the RastPort fill
+*       pattern. It returns zero normally, one when no RastPort exists after
+*       flag acceptance.
 *       ConnectParent delegates first and, if already set up with no stored
 *       color map, invokes pen setup. That path requires a valid screen and does
 *       not perform the Setup method's no-screen check.
@@ -66,15 +67,16 @@
 *       notifications before changing the screen color. Component writes add an
 *       RGB notification; RGB writes add all three component notifications,
 *       using final stored values before the original tags. Equal values are not
-*       suppressed. When set up with a screen and no no-pen flag, SetRGB32
-*       recolors the stored pen; redraw is requested only above depth eight.
-*       Other users of a fixed pen can therefore change appearance too.
-*       Pen replacement releases any locally allocated pen but does not allocate
-*       a replacement in OM_SET. Setting a sentinel does not clear an
-*       already-set fixed-pen flag. A no-pen flag from a failed allocation is
-*       not cleared by an ordinary subsequent Pen or RGB set. These are
-*       implementation limitations, not a guarantee of switching between
-*       automatic and fixed modes.
+*       suppressed. When set up with a screen, a pen and no no-pen flag,
+*       SetRGB32 recolors the stored pen; redraw is requested only above depth
+*       eight. Other users of a fixed pen can therefore change appearance too.
+*       While an automatically allocated pen is held, Pen sets leave the pen
+*       unchanged. Otherwise a pen number selects fixed mode and clears the
+*       no-pen flag, and -1 selects automatic allocation at the next Setup;
+*       OM_SET neither allocates nor releases pens. A no-pen flag from a failed
+*       allocation is cleared by a fixed Pen set or the next Setup, not by an
+*       RGB set. These are implementation limitations, not a guarantee of
+*       switching between automatic and fixed modes.
 *
 */
 /****** Colorfield.mui/MUIA_Colorfield_Pen ************
@@ -86,19 +88,16 @@
 *       Set or retrieve the stored screen pen number.
 *
 *   INPUTS
-*       Initialize, set and get, ULONG input truncated to UBYTE. With no Pen tag
-*       the initial stored number is zero, but automatic allocation remains
-*       selected.
+*       Initialize, set and get, ULONG input stored as LONG. With no Pen tag
+*       the initial stored number is -1 and automatic allocation is selected.
 *
 *   NOTES
-*       An input whose low byte is not 255 sets fixed-pen mode. Low byte 255
-*       does not set that flag and does not clear it if already set. Get returns
-*       the stored 0..255 value, with no availability check; 255 also represents
-*       allocation failure or a released allocated pen. Fixed pens are borrowed
-*       and recolored during setup and color updates. Set releases an owned pen
-*       before replacing the number but does not obtain another; see class
-*       limitations. Repeated constructor Pen tags can leave fixed mode set even
-*       when the final number is 255.
+*       Any value other than -1 selects fixed-pen mode; -1 selects automatic
+*       allocation. Get returns the stored value, with no availability check;
+*       -1 also represents allocation failure or a released allocated pen.
+*       Fixed pens are borrowed and recolored during setup and color updates.
+*       Set is ignored while an allocated pen is held and never obtains a pen;
+*       see class limitations.
 *
 */
 /****** Colorfield.mui/MUIA_Colorfield_Red ************
@@ -197,8 +196,8 @@ extern struct Library *MUIMasterBase;
 /*
  * Construct Area and copy RGB/Pen tags in order. Return object or zero on
  * superclass failure. RGB needs three readable ULONG values; no input
- * pointer is retained. Pen is truncated to UBYTE and fixed mode is only
- * set, never cleared by these tags.
+ * pointer is retained. Pen starts at -1; each Pen tag stores its value
+ * and selects fixed mode unless it is -1.
  */
 IPTR Colorfield__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -252,11 +251,11 @@ IPTR Colorfield__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 }
 
 /*
- * Copy local values, release an owned pen on Pen replacement and prepend
+ * Copy local values, ignore Pen while an allocated pen is held, and prepend
  * dependent-color notifications before the original tags. Return Area
  * result. Notifications run before SetRGB32; valid screen resources and RGB
- * input are required. No replacement allocation or reliable fixed-mode
- * reset occurs here.
+ * input are required. No pen is allocated or released here; Pen -1 defers
+ * automatic allocation to the next Setup.
  */
 IPTR Colorfield__OM_SET(struct IClass *cl, Object *obj,
     struct opSet *msg)
@@ -362,7 +361,7 @@ IPTR Colorfield__OM_SET(struct IClass *cl, Object *obj,
 }
 
 /*
- * Write stored component, borrowed RGB-array pointer or UBYTE pen value
+ * Write stored component, borrowed RGB-array pointer or LONG pen value
  * into valid caller storage and return TRUE. Delegate other attributes to
  * Area. No availability check, screen readback or ownership transfer; the
  * array lasts until disposal.
@@ -404,9 +403,9 @@ IPTR Colorfield__OM_GET(struct IClass *cl, Object *obj,
 
 /*
  * Use the current screen color map to recolor a borrowed fixed pen or
- * obtain an exclusive pen. Store a truncated UBYTE result and
- * allocation/no-pen flags. Requires a valid screen and instance data. No
- * return status; failed acquisition is represented by no-pen and value 255.
+ * obtain an exclusive pen. Clear the no-pen flag, then store the result
+ * and allocation/no-pen flags. Requires a valid screen and instance data.
+ * No return status; failed acquisition is represented by no-pen and -1.
  */
 void Colorfield_SetupPen(Object *obj, struct Colorfield_DATA *data)
 {
@@ -461,10 +460,10 @@ IPTR Colorfield__MUIM_Setup(struct IClass *cl, Object *obj,
 }
 
 /*
- * Release only an allocated pen using its saved color map, clear ownership
- * and no-pen flags, and return Area result. Requires matched setup
- * resources. Fixed pens and their colors are not restored; no borrowed
- * object ownership changes.
+ * Release only an allocated pen using its saved color map, clear the saved
+ * color map, ownership and no-pen flags, and return Area result. Requires
+ * matched setup resources. Fixed pens and their colors are not restored;
+ * no borrowed object ownership changes.
  */
 IPTR Colorfield__MUIM_Cleanup(struct IClass *cl, Object *obj,
     struct MUIP_Cleanup *msg)
@@ -507,10 +506,10 @@ IPTR Colorfield__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 }
 
 /*
- * Call Area, then draw for full/update flags using stored pen or
- * allocation-failure pattern; clear fill pattern afterward. Return one if
- * accepted but no RastPort, otherwise zero. Requires normal setup and
- * drawable bounds; no allocation or ownership transfer.
+ * Call Area, then draw for full/update flags using stored pen or the
+ * pattern when no pen is available; clear fill pattern afterward. Return
+ * one if accepted but no RastPort, otherwise zero. Requires normal setup
+ * and drawable bounds; no allocation or ownership transfer.
  */
 IPTR Colorfield__MUIM_Draw(struct IClass *cl, Object *obj,
     struct MUIP_Draw *msg)

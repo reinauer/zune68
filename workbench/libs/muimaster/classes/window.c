@@ -80,11 +80,11 @@ extern struct Library *MUIMasterBase;
 *       registered event-handler nodes are borrowed. Keep borrowed objects and
 *       storage alive while used. Perform window operations and input processing
 *       in the application's task.
-*       Close a window and remove it from its application before disposing it
-*       separately. OM_DISPOSE disposes the current root and local menustrip and
-*       deletes the private pool, but does not close the Intuition window or
-*       remove application membership. Normal application removal disconnects
-*       and closes an open child before disposal.
+*       Remove a window from its application before disposing it separately.
+*       OM_DISPOSE closes an open window, disposes the current root and local
+*       menustrip and deletes the private pool, but does not remove application
+*       membership. Normal application removal disconnects and closes an open
+*       child before disposal.
 *
 *   METHODS
 *       FindUData and GetUData match the window first, then search its root
@@ -105,18 +105,18 @@ extern struct Library *MUIMasterBase;
 *       cannot open. Setter tags reach Notify after local processing;
 *       notification delivery is not proof that an operation succeeded. Query
 *       Open to determine the actual open state.
-*       Do not mutate an event-handler list, destroy callback targets, or
-*       dispose the window during its synchronous callback traversal. Event data
-*       is borrowed only for the call. RenderInfo screen, draw-info and font
-*       resources belong to the setup/cleanup interval; the native window and
-*       drawing port belong to the show/hide interval.
+*       Handlers may be removed, and the window disposed, during its synchronous
+*       callback traversal. Event data is borrowed only for the call.
+*       RenderInfo screen, draw-info and font resources belong to the
+*       setup/cleanup interval; the native window and drawing port belong to
+*       the show/hide interval.
 *
 *   BUGS
-*       Opening has incomplete checks for optional pens, images, scrollbars,
-*       menus and AppWindow registration. Setup success does not guarantee that
-*       every optional resource exists. The AppWindow handle is not removed by
-*       this file's close or disposal paths. See AppWindow, Setup, Cleanup,
-*       Snapshot and AllocGadgetID for specific limitations.
+*       Opening has incomplete checks for optional images, scrollbars, menus
+*       and AppWindow registration. Setup success does not guarantee that every
+*       optional resource exists. The AppWindow handle is not removed by this
+*       file's close or disposal paths. See AppWindow, Setup and AllocGadgetID
+*       for specific limitations.
 *
 */
 /****** Window.mui/MUIA_Window_Activate ************
@@ -125,9 +125,10 @@ extern struct Library *MUIMasterBase;
 *       MUIA_Window_Activate
 *
 *   FUNCTION
-*       Choose activation on opening; default TRUE. Setting TRUE on an open,
-*       locally inactive window calls ActivateWindow. Getting returns TRUE only
-*       when the window is open and its active flag is set.
+*       Choose activation on opening; default TRUE. Setting TRUE on an open
+*       window calls ActivateWindow, except while the window reports its own
+*       activation event. Getting returns TRUE only when the window is open and
+*       its active flag is set.
 *
 *   INPUTS
 *       BOOL; initialize, set, get.
@@ -309,8 +310,8 @@ extern struct Library *MUIMasterBase;
 *       MUIA_Window_ZoomGadget
 *
 *   FUNCTION
-*       Enable WA_Zoom with the calculated alternate rectangle when opening.
-*       Default TRUE.
+*       Enable WA_Zoom with the calculated alternate rectangle when opening a
+*       window with a size gadget. Default TRUE.
 *
 *   INPUTS
 *       BOOL; initialize only.
@@ -345,7 +346,8 @@ extern struct Library *MUIMasterBase;
 *
 *   FUNCTION
 *       Set the flag used when redrawing the window background. Setup also
-*       forces the flag on when the preference selects redraw with clearing.
+*       forces the flag on when the preferences select redraw with clearing or
+*       smart refresh.
 *
 *   INPUTS
 *       BOOL; initialize only.
@@ -489,8 +491,7 @@ extern struct Library *MUIMasterBase;
 *       Use notification trigger data. Window does not retain the last action. A
 *       setter tag can trigger Notify even though this attribute has no Window
 *       field. The native menu path handles one selected item, not a complete
-*       NextSelect chain. It also reads the message Code after replying to the
-*       original IntuiMessage; that read is outside the message lifetime.
+*       NextSelect chain.
 *
 */
 /****** Window.mui/MUIA_Window_Menustrip ************
@@ -506,11 +507,11 @@ extern struct Library *MUIMasterBase;
 *       Object pointer; initialize and get.
 *
 *   NOTES
-*       The getter returns only the local object, not the effective fallback.
-*       Window connects/disconnects the local menu with its parent and disposes
-*       it at disposal. There is no replacement setter. Do not share one owned
-*       menu tree between owners. Native menus are created for opening and freed
-*       on closing or rebuilding.
+*       The getter returns the local object, otherwise the application fallback
+*       in use while open. Window connects/disconnects the local menu with its
+*       parent and disposes it at disposal. There is no replacement setter. Do
+*       not share one owned menu tree between owners. Native menus are created
+*       for opening and freed on closing or rebuilding.
 *
 */
 /****** Window.mui/MUIA_Window_NoMenus ************
@@ -520,8 +521,8 @@ extern struct Library *MUIMasterBase;
 *
 *   FUNCTION
 *       Store a right-mouse-button trap request, initially FALSE. Opening passes
-*       WA_RMBTrap when true; a setter updates WFLG_RMBTRAP on the native window
-*       immediately.
+*       WA_RMBTrap when true or when the window gets no menu; a setter updates
+*       WFLG_RMBTRAP on the native window immediately by the same rule.
 *
 *   INPUTS
 *       BOOL; initialize and set.
@@ -639,12 +640,6 @@ extern struct Library *MUIMasterBase;
 *       throughout use. Setting it while open does not migrate the window.
 *       Application custom screens have separate ownership.
 *
-*   BUGS
-*       A failed setup can leave a stale render-info screen pointer after
-*       releasing its public-screen lock. Use the getter only during a
-*       successfully established display lifetime; non-NULL alone is not a
-*       success test.
-*
 */
 /****** Window.mui/MUIA_Window_PublicScreen ************
 *
@@ -720,11 +715,13 @@ extern struct Library *MUIMasterBase;
 *       MUIA_Window_Width
 *
 *   FUNCTION
-*       Request the inner width. Default MUIV_Window_Width_Default selects the
+*       Request the window width. Default MUIV_Window_Width_Default selects the
 *       root's default dimension. Positive values request pixels. MinMax(p),
 *       Screen(p), Visible(p) for p from 0 through 100, and Scaled are declared
-*       encodings. Results are clamped to the root's computed minimum and
-*       maximum. The getter returns native GZZWidth while open, otherwise zero.
+*       encodings. Pixel, Screen and Visible values give the outer width
+*       including borders; the others give the inner width. Results are clamped
+*       to the root's computed minimum and maximum. The getter returns native
+*       GZZWidth while open, otherwise zero.
 *
 *   INPUTS
 *       LONG; initialize and get; setter also implemented.
@@ -739,9 +736,8 @@ extern struct Library *MUIMasterBase;
 *
 *   BUGS
 *       Both requests are evaluated only when cached width is zero. Setting
-*       Height alone can leave its request unevaluated. Width MinMax(p) uses
-*       percentage interpolation. Boundary encodings overlap; the first matching
-*       MinMax, Screen or Visible branch wins.
+*       Height alone can leave its request unevaluated. Boundary encodings
+*       overlap; the first matching MinMax, Screen or Visible branch wins.
 *
 */
 /****** Window.mui/MUIA_Window_Height ************
@@ -750,29 +746,28 @@ extern struct Library *MUIMasterBase;
 *       MUIA_Window_Height
 *
 *   FUNCTION
-*       Request the inner height. Default MUIV_Window_Height_Default selects the
-*       root's default dimension. Positive values request pixels. MinMax(p),
-*       Screen(p), Visible(p) for p from 0 through 100, and Scaled are declared
-*       encodings. Results are clamped to the root's computed minimum and
-*       maximum. The getter returns native GZZHeight while open, otherwise zero.
+*       Request the window height. Default MUIV_Window_Height_Default selects
+*       the root's default dimension. Positive values request pixels.
+*       MinMax(p), Screen(p), Visible(p) for p from 0 through 100, and Scaled
+*       are declared encodings. Pixel, Screen and Visible values give the outer
+*       height including borders; the others give the inner height. Results
+*       are clamped to the root's computed minimum and maximum. The getter
+*       returns native GZZHeight while open, otherwise zero.
 *
 *   INPUTS
 *       LONG; initialize and get; setter also implemented.
 *
 *   NOTES
 *       Screen and Visible both use screen dimensions rather than measuring the
-*       unobscured viewport. Screen height subtracts estimated top/bottom
-*       borders; Visible height uses full screen height. Scaled derives this
-*       dimension from the other using the root minimum aspect ratio; it does
-*       not guard division by zero. Do not request both dimensions Scaled. A
-*       setter stores the request and clears this cached dimension; it does not
-*       immediately resize the native window.
+*       unobscured viewport. Scaled derives this dimension from the other using
+*       the root minimum aspect ratio; it does not guard division by zero. Do
+*       not request both dimensions Scaled. A setter stores the request and
+*       clears this cached dimension; it does not immediately resize the native
+*       window.
 *
 *   BUGS
 *       Both requests are evaluated only when cached width is zero. Setting
-*       Height alone can leave its request unevaluated. Height MinMax(p) uses
-*       min + p * (max - min) without dividing by 100, then clamps; it is not
-*       percentage interpolation.
+*       Height alone can leave its request unevaluated.
 *
 */
 /****** Window.mui/MUIA_Window_RefWindow ************
@@ -788,11 +783,10 @@ extern struct Library *MUIMasterBase;
 *       Object pointer; initialize and set.
 *
 *   NOTES
-*       Keep it alive through position calculation.
-*       LeftEdge/TopEdge/Width/Height getters provide its geometry; a closed
-*       reference supplies zero. There is no getter, no immediate repositioning,
-*       and no ownership transfer. Horizontal centering mixes reference inner
-*       width with this window's outer width.
+*       Keep it alive through position calculation. An open reference supplies
+*       its native window's outer box; a closed reference supplies zero. There
+*       is no getter, no immediate repositioning, and no ownership transfer.
+*       Centering uses the outer sizes of both windows.
 *
 */
 /****** Window.mui/MUIA_Window_LeftEdge ************
@@ -848,7 +842,7 @@ extern struct Library *MUIMasterBase;
 *       Store the alternate zoom width, default MUIV_Window_AltWidth_MinMax(0).
 *       The getter returns the stored encoding, not the computed zoom rectangle.
 *       Opening computes the rectangle and passes it to WA_Zoom when ZoomGadget
-*       is true.
+*       is true and the window has a size gadget.
 *
 *   INPUTS
 *       LONG converted to the IBox WORD field; initialize and get.
@@ -874,7 +868,8 @@ extern struct Library *MUIMasterBase;
 *       Store the alternate zoom height, default
 *       MUIV_Window_AltHeight_MinMax(0). The getter returns the stored encoding,
 *       not the computed zoom rectangle. Opening computes the rectangle and
-*       passes it to WA_Zoom when ZoomGadget is true.
+*       passes it to WA_Zoom when ZoomGadget is true and the window has a size
+*       gadget.
 *
 *   INPUTS
 *       LONG converted to the IBox WORD field; initialize and get.
@@ -1474,8 +1469,7 @@ static void InitRenderInfoPens(struct MUI_RenderInfo *mri,
  * references, pens and optional scrollbar images. Borrow obj/data/mri and
  * require a connected application with preferences. Return FALSE on checked
  * screen/DrawInfo failure, TRUE otherwise. Public locks are owned until
- * cleanup; optional allocations remain incompletely checked and failure can
- * leave a stale screen pointer.
+ * cleanup; optional allocations remain incompletely checked.
  */
 static BOOL SetupRenderInfo(Object *obj, struct MUI_WindowData *data,
     struct MUI_RenderInfo *mri)
@@ -4304,9 +4298,9 @@ finished:
 /* Consume a dequeued application-port IntuiMessage whose native IDCMPWindow
  * and UserData identify a live Zune Window. Route sleeping, drag, window,
  * raw-key and other handler paths. No result is returned; callbacks may
- * synchronously act on the application. Most paths reply, but GADGETUP here
- * and an eaten IDCMPUPDATE lack a reply. Callers must not assume
- * unconditional reply or reuse a possibly replied message.
+ * synchronously act on the application. Most paths reply, but an eaten
+ * IDCMPUPDATE lacks a reply. Callers must not assume unconditional reply
+ * or reuse a possibly replied message.
  */
 void _zune_window_message(struct IntuiMessage *imsg)
 {
@@ -6236,8 +6230,8 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
 *       paths even without an IDCMP_RAWKEY bit. MUI_EHF_GUIMODE filters
 *       drawing/visibility. Virtual-group SELECTDOWN bounds are checked
 *       independently of that flag; caller paths also test disabled state.
-*       MUI_EHF_HANDLEINPUT is private. Remove handlers before freeing them and
-*       keep list membership stable during dispatch.
+*       MUI_EHF_HANDLEINPUT is private. Remove handlers before freeing them;
+*       removal is allowed during dispatch.
 *
 *   BUGS
 *       Most delivered IntuiMessages are temporary copies whose original was
@@ -6280,8 +6274,8 @@ IPTR Window__MUIM_AddEventHandler(struct IClass *cl, Object *obj,
 *       Always TRUE.
 *
 *   NOTES
-*       The node is not freed. Remove outside active traversal, then release
-*       caller-owned storage when callbacks can no longer use it.
+*       The node is not freed. Removal is allowed during dispatch, also from the
+*       node's own callback; release caller-owned storage after removal.
 *
 *   BUGS
 *       No membership or NULL validation is performed. Repeated removal or
@@ -6312,9 +6306,9 @@ IPTR Window__MUIM_RemEventHandler(struct IClass *cl, Object *obj,
 *       IPTR result = DoMethod(obj, MUIM_Window_Setup);
 *
 *   FUNCTION
-*       Acquire render-info resources and create the window background
-*       specification. Used by the Window open sequence and custom Window
-*       subclasses.
+*       Create the window background specification and force EraseArea on when
+*       the preferences select redraw with clearing or smart refresh. Used by
+*       the Window open sequence and custom Window subclasses.
 *
 *   INPUTS
 *       No arguments beyond MethodID. The window must be attached to a live
@@ -6322,19 +6316,18 @@ IPTR Window__MUIM_RemEventHandler(struct IClass *cl, Object *obj,
 *       setup.
 *
 *   RESULT
-*       FALSE if SetupRenderInfo fails; otherwise TRUE.
+*       Always TRUE.
 *
 *   NOTES
 *       This is MUIM_Window_Setup, distinct from the root Area's MUIM_Setup.
-*       Opening calls it before root setup and native window creation.
-*       Subclasses must preserve the superclass resource lifecycle and propagate
-*       failure. Pair a successful setup with Cleanup in the close/unwind
-*       sequence.
+*       Opening calls it after acquiring render-info resources and before root
+*       setup and native window creation. Subclasses must preserve the
+*       superclass resource lifecycle and propagate failure. Pair a successful
+*       setup with Cleanup in the close/unwind sequence.
 *
 *   BUGS
-*       Background, pen and system-image creation are not all checked. Temporary
-*       pen-spec allocation can be dereferenced without a NULL check. TRUE is
-*       not proof that every render resource exists.
+*       Background creation is not checked. TRUE is not proof that every render
+*       resource exists.
 *
 */
 IPTR Window__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
@@ -6365,9 +6358,8 @@ IPTR Window__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
 *       IPTR result = DoMethod(obj, MUIM_Window_Cleanup);
 *
 *   FUNCTION
-*       Release the background, any drag context and render-info resources after
-*       hiding and closing. Used by the Window close sequence and custom
-*       subclasses.
+*       Release the background and any drag context after hiding and closing.
+*       Used by the Window close sequence and custom subclasses.
 *
 *   INPUTS
 *       No arguments beyond MethodID. Requires resources from a successful setup
@@ -6377,16 +6369,11 @@ IPTR Window__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
 *       Always TRUE.
 *
 *   NOTES
-*       This does not close the native window or dispose the root. It is not an
-*       idempotent public close operation. Subclasses must release their
-*       dependent resources before calling the superclass cleanup. Borrowed
-*       render-info pointers become invalid.
-*
-*   BUGS
-*       CleanupRenderInfoPens releases MPEN_MARK twice, although
-*       InitRenderInfoPens does not acquire that entry. Custom-screen closure is
-*       conditioned on an empty application window list, not on the number of
-*       open native windows.
+*       This does not close the native window, dispose the root or release
+*       render-info resources; the close sequence releases those after this
+*       method returns. It is not a public close operation. Subclasses must
+*       release their dependent resources before calling the superclass
+*       cleanup.
 *
 */
 IPTR Window__MUIM_Cleanup(struct IClass *cl, Object *obj, Msg msg)
@@ -7347,24 +7334,26 @@ static IPTR Window__MUIM_Import(struct IClass *cl, Object *obj,
 *       MUIM_Window_SetCycleChain
 *
 *   SYNOPSIS
-*       IPTR result = DoMethodA(obj, message);
+*       IPTR result = DoMethod(obj, MUIM_Window_SetCycleChain, obj1, ...,
+*           NULL);
 *
 *   FUNCTION
-*       Declared under MUI_OBSOLETE, but not implemented by the Window
-*       dispatcher.
+*       Replace the window's cycle chain with the listed objects in list
+*       order, skipping repeated entries and objects not set up in this
+*       window. Each listed object then gets MUIA_CycleChain TRUE.
 *
 *   INPUTS
-*       The legacy message declares an Object pointer array beginning with
-*       obj[0]. Window does not consume it or establish a usable argument
-*       contract.
+*       obj1, ... - NULL-terminated list of Area objects. The message is
+*       declared under MUI_OBSOLETE.
 *
 *   RESULT
-*       The inherited unhandled-method result is zero.
+*       FALSE on allocation failure, leaving the chain unchanged; otherwise
+*       TRUE.
 *
 *   NOTES
-*       There is no explicit cycle-chain installation here. The implementation
-*       builds its chain through internal control-character registration for
-*       Area objects with MUIA_CycleChain.
+*       The window keeps a copy of the order. An object registered later
+*       through control-character handling joins the chain only if listed,
+*       at its listed position.
 *
 */
 

@@ -60,8 +60,9 @@ APTR ZuneAddClipping(struct MUI_RenderInfo *mri, LONG left, LONG top,
     INPUTS
         mri - Valid rendering context for the target layer.
         left, top - Rectangle origin in the layer's drawing coordinates.
-        width, height - Positive rectangle dimensions in pixels. Values
-                        greater than or equal to MUI_MAXMAX skip clipping.
+        width, height - Rectangle dimensions in pixels. A zero or negative
+                        value pushes an empty region. Values greater than
+                        or equal to MUI_MAXMAX skip clipping.
 
     RESULT
         A removal token, which can be NULL, or (APTR)-1 if no region was
@@ -75,10 +76,6 @@ APTR ZuneAddClipping(struct MUI_RenderInfo *mri, LONG left, LONG top,
         is a valid success token; do not test the token as a Boolean.
         Failure and an unnecessary clip share the same sentinel, so this
         interface cannot guarantee that a new restriction was installed.
-
-    BUGS
-        The result of OrRectRegion() is not checked before the region is
-        passed to MUI_AddClipRegion().
 
     SEE ALSO
         MUI_RemoveClipping(), MUI_AddClipRegion(), MUI_RemoveClipRegion()

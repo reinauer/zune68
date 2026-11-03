@@ -191,15 +191,18 @@ static BOOL Menuitem_Changing(Object *obj)
 *       All three menu classes use the same attribute and method handlers and
 *       derive directly from Family.mui. They differ by an internal type flag.
 *       Family owns attached children and disposes of them; title and shortcut
-*       strings remain borrowed. Enabled defaults to TRUE; Checked, Checkit,
+*       strings are borrowed unless MUIA_Menuitem_CopyStrings or
+*       MUIA_Menu_CopyStrings is given at construction, which makes the object
+*       copy and free them. Enabled defaults to TRUE; Checked, Checkit,
 *       CommandString, Toggle, and Exclude default to zero; title, shortcut,
 *       trigger, and generated-menu pointers default to NULL.
-*       A recognized menu-attribute set requests MUIM_Application_UpdateMenus
-*       when the object has global info with an application pointer. That
-*       request is synchronous and its result is ignored. Changes made before
-*       connection are stored without requesting an application update. String
-*       storage must remain valid while the object or any generated menu still
-*       refers to it.
+*       Setting a recognized menu attribute other than Trigger requests
+*       MUIM_Application_UpdateMenus when the object has global info with an
+*       application pointer, unless the object or an ancestor is between
+*       MUIM_Menustrip_InitChange and ExitChange. That request is synchronous
+*       and its result is ignored. Changes made before connection are stored
+*       without requesting an application update. Borrowed string storage must
+*       remain valid while the object or any generated menu still refers to it.
 *
 *   METHODS
 *       ConnectParent first obtains the parent's global info through Notify,
@@ -214,16 +217,9 @@ static BOOL Menuitem_Changing(Object *obj)
 *       preserved. Sort is inherited without an update request; Transfer invokes
 *       the normal Remove and AddTail methods for its children. Serialize all
 *       tree operations and do not mutate the traversal from callbacks.
-*       Other methods and attributes follow Family and Notify. These classes add
-*       no new public method identifiers.
-*
-*   BUGS
-*       The three constructors do not check whether common superclass
-*       construction returned NULL before writing their type flag. Allocation
-*       failure or a NULL child that makes Family construction fail can
-*       therefore cause invalid memory access instead of a clean NULL return. Do
-*       not rely on the normal constructor-failure contract for these
-*       implementations.
+*       All three classes also handle MUIM_Menustrip_InitChange, ExitChange,
+*       Popup and WillOpen. Other methods and attributes follow Family and
+*       Notify.
 *
 */
 /****** Menu.mui/MUIC_Menu ************
@@ -240,15 +236,18 @@ static BOOL Menuitem_Changing(Object *obj)
 *       All three menu classes use the same attribute and method handlers and
 *       derive directly from Family.mui. They differ by an internal type flag.
 *       Family owns attached children and disposes of them; title and shortcut
-*       strings remain borrowed. Enabled defaults to TRUE; Checked, Checkit,
+*       strings are borrowed unless MUIA_Menuitem_CopyStrings or
+*       MUIA_Menu_CopyStrings is given at construction, which makes the object
+*       copy and free them. Enabled defaults to TRUE; Checked, Checkit,
 *       CommandString, Toggle, and Exclude default to zero; title, shortcut,
 *       trigger, and generated-menu pointers default to NULL.
-*       A recognized menu-attribute set requests MUIM_Application_UpdateMenus
-*       when the object has global info with an application pointer. That
-*       request is synchronous and its result is ignored. Changes made before
-*       connection are stored without requesting an application update. String
-*       storage must remain valid while the object or any generated menu still
-*       refers to it.
+*       Setting a recognized menu attribute other than Trigger requests
+*       MUIM_Application_UpdateMenus when the object has global info with an
+*       application pointer, unless the object or an ancestor is between
+*       MUIM_Menustrip_InitChange and ExitChange. That request is synchronous
+*       and its result is ignored. Changes made before connection are stored
+*       without requesting an application update. Borrowed string storage must
+*       remain valid while the object or any generated menu still refers to it.
 *
 *   METHODS
 *       ConnectParent first obtains the parent's global info through Notify,
@@ -263,16 +262,9 @@ static BOOL Menuitem_Changing(Object *obj)
 *       preserved. Sort is inherited without an update request; Transfer invokes
 *       the normal Remove and AddTail methods for its children. Serialize all
 *       tree operations and do not mutate the traversal from callbacks.
-*       Other methods and attributes follow Family and Notify. These classes add
-*       no new public method identifiers.
-*
-*   BUGS
-*       The three constructors do not check whether common superclass
-*       construction returned NULL before writing their type flag. Allocation
-*       failure or a NULL child that makes Family construction fail can
-*       therefore cause invalid memory access instead of a clean NULL return. Do
-*       not rely on the normal constructor-failure contract for these
-*       implementations.
+*       All three classes also handle MUIM_Menustrip_InitChange, ExitChange,
+*       Popup and WillOpen. Other methods and attributes follow Family and
+*       Notify.
 *
 */
 /****** Menuitem.mui/MUIC_Menuitem ************
@@ -289,15 +281,18 @@ static BOOL Menuitem_Changing(Object *obj)
 *       All three menu classes use the same attribute and method handlers and
 *       derive directly from Family.mui. They differ by an internal type flag.
 *       Family owns attached children and disposes of them; title and shortcut
-*       strings remain borrowed. Enabled defaults to TRUE; Checked, Checkit,
+*       strings are borrowed unless MUIA_Menuitem_CopyStrings or
+*       MUIA_Menu_CopyStrings is given at construction, which makes the object
+*       copy and free them. Enabled defaults to TRUE; Checked, Checkit,
 *       CommandString, Toggle, and Exclude default to zero; title, shortcut,
 *       trigger, and generated-menu pointers default to NULL.
-*       A recognized menu-attribute set requests MUIM_Application_UpdateMenus
-*       when the object has global info with an application pointer. That
-*       request is synchronous and its result is ignored. Changes made before
-*       connection are stored without requesting an application update. String
-*       storage must remain valid while the object or any generated menu still
-*       refers to it.
+*       Setting a recognized menu attribute other than Trigger requests
+*       MUIM_Application_UpdateMenus when the object has global info with an
+*       application pointer, unless the object or an ancestor is between
+*       MUIM_Menustrip_InitChange and ExitChange. That request is synchronous
+*       and its result is ignored. Changes made before connection are stored
+*       without requesting an application update. Borrowed string storage must
+*       remain valid while the object or any generated menu still refers to it.
 *
 *   METHODS
 *       ConnectParent first obtains the parent's global info through Notify,
@@ -312,16 +307,9 @@ static BOOL Menuitem_Changing(Object *obj)
 *       preserved. Sort is inherited without an update request; Transfer invokes
 *       the normal Remove and AddTail methods for its children. Serialize all
 *       tree operations and do not mutate the traversal from callbacks.
-*       Other methods and attributes follow Family and Notify. These classes add
-*       no new public method identifiers.
-*
-*   BUGS
-*       The three constructors do not check whether common superclass
-*       construction returned NULL before writing their type flag. Allocation
-*       failure or a NULL child that makes Family construction fail can
-*       therefore cause invalid memory access instead of a clean NULL return. Do
-*       not rely on the normal constructor-failure contract for these
-*       implementations.
+*       All three classes also handle MUIM_Menustrip_InitChange, ExitChange,
+*       Popup and WillOpen. Other methods and attributes follow Family and
+*       Notify.
 *
 */
 /****** Menustrip.mui/MUIA_Menustrip_Enabled ************
@@ -330,23 +318,24 @@ static BOOL Menuitem_Changing(Object *obj)
 *       MUIA_Menustrip_Enabled
 *
 *   FUNCTION
-*       This identifier is declared in the public header but is not handled by
-*       the shared menu constructor, setter, or getter.
+*       Store whether this object's generated menu entry is enabled. Default
+*       TRUE. MUIA_Menustrip_Enabled, MUIA_Menu_Enabled and
+*       MUIA_Menuitem_Enabled address the same flag in the shared
+*       implementation.
 *
 *   INPUTS
-*       BOOL; declared initialize, set, get.
+*       BOOL; initialize, set, get.
 *
 *   NOTES
-*       The implementation handles MUIA_Menu_Enabled and MUIA_Menuitem_Enabled
-*       instead, as aliases for one object-local flag. Setting that flag on a
-*       Menustrip does not disable all descendants: NewMenu generation emits
-*       children and does not propagate the root's enabled state.
+*       NewMenu generation emits the immediate children of a disabled object
+*       as disabled, so a disabled Menustrip disables every top-level entry.
+*       Deeper descendants keep their own flags. The setter requests an
+*       application update when connected.
 *
 *   BUGS
-*       Do not treat this attribute as a working whole-menustrip enable switch.
-*       An OM_SET tag can reach Notify and trigger a registration without any
-*       corresponding menu state being stored. There is no successful menu
-*       getter for this identifier.
+*       OM_SET changes the supplied enabled tag's identifier to TAG_IGNORE
+*       before forwarding the tag list to Notify. Consequently this tag does not
+*       trigger normal Notify delivery, and the caller's tag list is modified.
 *
 */
 /****** Menu.mui/MUIA_Menu_Enabled ************
@@ -365,8 +354,9 @@ static BOOL Menuitem_Changing(Object *obj)
 *   NOTES
 *       The getter returns TRUE or FALSE. A disabled generated title receives
 *       NM_MENUDISABLED; other generated entries receive NM_ITEMDISABLED. The
-*       flag is not recursively copied to descendants. The setter requests an
-*       application update when connected.
+*       flag is not stored into descendants, but generation also emits the
+*       immediate children of a disabled object as disabled. The setter
+*       requests an application update when connected.
 *
 *   BUGS
 *       OM_SET changes the supplied enabled tag's identifier to TAG_IGNORE
@@ -390,8 +380,9 @@ static BOOL Menuitem_Changing(Object *obj)
 *   NOTES
 *       The getter returns TRUE or FALSE. A disabled generated title receives
 *       NM_MENUDISABLED; other generated entries receive NM_ITEMDISABLED. The
-*       flag is not recursively copied to descendants. The setter requests an
-*       application update when connected.
+*       flag is not stored into descendants, but generation also emits the
+*       immediate children of a disabled object as disabled. The setter
+*       requests an application update when connected.
 *
 *   BUGS
 *       OM_SET changes the supplied enabled tag's identifier to TAG_IGNORE
@@ -405,19 +396,20 @@ static BOOL Menuitem_Changing(Object *obj)
 *       MUIA_Menu_Title
 *
 *   FUNCTION
-*       Store a borrowed title pointer, initially NULL. Menu_Title and
-*       Menuitem_Title address the same field. The pointer becomes nm_Label when
-*       this object is emitted into a NewMenu array.
+*       Store a title pointer, initially NULL. Menu_Title and Menuitem_Title
+*       address the same field. The pointer becomes nm_Label when this object is
+*       emitted into a NewMenu array.
 *
 *   INPUTS
 *       STRPTR; initialize, set, get.
 *
 *   NOTES
 *       Use a readable NUL-terminated label for an ordinary menu entry.
-*       NM_BARLABEL denotes a separator at an item position. The class does not
-*       copy or free the label. Keep its storage alive while the object or a
-*       generated menu refers to it. Setting the title requests an application
-*       update when connected.
+*       NM_BARLABEL denotes a separator at an item position. The label is
+*       borrowed unless CopyStrings was given at construction, in which case
+*       the class copies and frees it. Keep borrowed storage alive while the
+*       object or a generated menu refers to it. Setting the title requests an
+*       application update when connected.
 *
 *   BUGS
 *       OM_SET rewrites the supplied title tag to TAG_IGNORE before Notify
@@ -431,19 +423,20 @@ static BOOL Menuitem_Changing(Object *obj)
 *       MUIA_Menuitem_Title
 *
 *   FUNCTION
-*       Store a borrowed title pointer, initially NULL. Menu_Title and
-*       Menuitem_Title address the same field. The pointer becomes nm_Label when
-*       this object is emitted into a NewMenu array.
+*       Store a title pointer, initially NULL. Menu_Title and Menuitem_Title
+*       address the same field. The pointer becomes nm_Label when this object is
+*       emitted into a NewMenu array.
 *
 *   INPUTS
 *       STRPTR; initialize, set, get.
 *
 *   NOTES
 *       Use a readable NUL-terminated label for an ordinary menu entry.
-*       NM_BARLABEL denotes a separator at an item position. The class does not
-*       copy or free the label. Keep its storage alive while the object or a
-*       generated menu refers to it. Setting the title requests an application
-*       update when connected.
+*       NM_BARLABEL denotes a separator at an item position. The label is
+*       borrowed unless CopyStrings was given at construction, in which case
+*       the class copies and frees it. Keep borrowed storage alive while the
+*       object or a generated menu refers to it. Setting the title requests an
+*       application update when connected.
 *
 *   BUGS
 *       OM_SET rewrites the supplied title tag to TAG_IGNORE before Notify
@@ -497,14 +490,15 @@ static BOOL Menuitem_Changing(Object *obj)
 *
 *   FUNCTION
 *       Select command-string presentation for the shortcut. Default FALSE.
-*       Generation sets COMMSEQ, which is the AROS NewMenu flag
-*       NM_COMMANDSTRING.
+*       Generation sets COMMSEQ, which is the GadTools NewMenu flag
+*       NM_COMMANDSTRING. Entries below a CaseSensitive Menustrip receive it
+*       regardless of this flag.
 *
 *   INPUTS
 *       BOOL; initialize, set, get.
 *
 *   NOTES
-*       With a non-NULL shortcut, AROS GadTools uses the complete string as
+*       With a non-NULL shortcut, GadTools uses the complete string as
 *       command text when NM_COMMANDSTRING is set. Otherwise it takes the first
 *       shortcut character as the command key. Menuitem itself only stores the
 *       flag and forwards the shortcut pointer. Setting it requests an
@@ -538,23 +532,22 @@ static BOOL Menuitem_Changing(Object *obj)
 *       MUIA_Menuitem_Shortcut
 *
 *   FUNCTION
-*       Store a borrowed shortcut string pointer, initially NULL, and pass it
-*       unchanged as nm_CommKey.
+*       Store a shortcut string pointer, initially NULL, and pass it as
+*       nm_CommKey.
 *
 *   INPUTS
 *       STRPTR; initialize, set, get.
 *
 *   NOTES
-*       A NULL pointer means no shortcut. Keep any non-NULL string readable and
-*       NUL-terminated while the object or generated menus use it. CommandString
+*       A NULL pointer means no shortcut. Keep any borrowed non-NULL string
+*       readable and NUL-terminated while the object or generated menus use it;
+*       CopyStrings at construction makes the class copy it. CommandString
 *       controls its GadTools interpretation. Setting the attribute requests an
 *       application update when connected.
-*
-*   BUGS
-*       MUIV_Menuitem_Shortcut_Check (-1) is declared in the header but is not
-*       interpreted by this class. It would be forwarded as a pointer to
-*       GadTools, which reads the shortcut string; do not supply that sentinel
-*       as a shortcut.
+*       MUIV_Menuitem_Shortcut_Check (-1) takes the shortcut from the title,
+*       which then holds the key character, a NUL and the label. Generation
+*       passes the title as nm_CommKey and the text after those two bytes as
+*       nm_Label.
 *
 */
 /****** Menuitem.mui/MUIA_Menuitem_Toggle ************
@@ -583,23 +576,19 @@ static BOOL Menuitem_Changing(Object *obj)
 *   FUNCTION
 *       Return the last trigger pointer, initially NULL. The shared setter also
 *       accepts and stores this attribute; the constructor ignores it. The
-*       window menu-pick path sets it to the selected native MenuItem.
+*       window menu-pick path sets it to a stack copy of the selected native
+*       MenuItem.
 *
 *   INPUTS
 *       Pointer to struct MenuItem; declared get only.
 *
 *   NOTES
-*       An ordinary setter tag reaches Notify after the menu update request, so
+*       An ordinary setter tag reaches Notify without a menu update request, so
 *       a notification can observe a selection even if the stored value repeats.
 *       The pointer is borrowed; the Menuitem object does not own the native
-*       menu structure.
-*
-*   BUGS
-*       Setting Trigger requests a synchronous application menu update before
-*       Notify delivery. Window menu rebuilding can free the native menu
-*       containing that very pointer. Treat the stored or notified pointer as an
-*       event value, not as a safely dereferenceable or retained MenuItem. Menu
-*       disposal and later rebuilds can also invalidate it.
+*       menu structure. Treat the stored or notified pointer as an event value
+*       that is valid only while the set is processed, not as a retained
+*       MenuItem.
 *
 */
 /****** Menuitem.mui/MUIA_Menuitem_NewMenu ************
@@ -617,8 +606,10 @@ static BOOL Menuitem_Changing(Object *obj)
 *
 *   NOTES
 *       The getter reports success even when the stored pointer is NULL: that
-*       occurs for no descendants or allocation failure. A non-NULL result is
-*       borrowed until the next NewMenu getter on this object or its disposal.
+*       occurs for no descendants, allocation failure, or while this object or
+*       a descendant is between MUIM_Menustrip_InitChange and ExitChange. A
+*       non-NULL result is borrowed until the next NewMenu getter on this
+*       object or its disposal.
 *       Do not free it. Labels and shortcuts in the array remain borrowed, and
 *       nm_UserData contains the child object pointer.
 *       Emission is depth first. At depth zero, direct Menuitem children become
@@ -765,8 +756,9 @@ static int Menuitem_FillNewMenu(Object *obj, struct NewMenu *menu,
 **************************************************************************/
 /* Count descendants, free the old owned array, and allocate a cleared array
  * with one extra terminator entry. Return the replacement pointer, or NULL
- * for no descendants or allocation failure. A failure also invalidates the
- * previous array. Counts and allocation arithmetic must fit their types.
+ * for no descendants, allocation failure, or a tree inside InitChange. A
+ * failure also invalidates the previous array. Counts and allocation
+ * arithmetic must fit their types.
  */
 static struct NewMenu *Menuitem_BuildNewMenu(struct MUI_MenuitemData *data,
     Object *obj)
@@ -808,9 +800,9 @@ struct NewMenu *zune_build_submenu(Object *parent)
 **************************************************************************/
 /* Construct Family, returning zero if it fails. Otherwise initialize
  * enabled state and recognized menu tags without requesting application
- * updates or applying sibling exclusions. Store borrowed strings and return
- * the object. The class-specific wrappers must account for the possible
- * zero result.
+ * updates or applying sibling exclusions. Borrow or, with CopyStrings, copy
+ * strings and return the object; dispose and return zero if a copy fails.
+ * The class-specific wrappers must account for the possible zero result.
  */
 IPTR Common__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -902,8 +894,7 @@ IPTR Common__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 }
 
 /* Call common construction, mark the instance as a Menuitem, and return it.
- * This implementation does not check the common zero failure result before
- * accessing instance data; failure is not safely propagated.
+ * Return zero if common construction fails.
  */
 IPTR Menuitem__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -918,8 +909,7 @@ IPTR Menuitem__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 }
 
 /* Call common construction, mark the instance as a Menu, and return it.
- * This implementation does not check the common zero failure result before
- * accessing instance data; failure is not safely propagated.
+ * Return zero if common construction fails.
  */
 IPTR Menu__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -934,8 +924,7 @@ IPTR Menu__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 }
 
 /* Call common construction, mark the instance as a Menustrip, and return
- * it. This implementation does not check the common zero failure result
- * before accessing instance data; failure is not safely propagated.
+ * it. Return zero if common construction fails.
  */
 IPTR Menustrip__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -954,10 +943,11 @@ IPTR Menustrip__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 **************************************************************************/
 /* Store recognized tags and apply sibling exclusion when setting Checked
  * true. Rewrite enabled/title tag IDs to TAG_IGNORE in caller-provided
- * writable tag storage. Request an application update before forwarding to
- * Family/Notify, then return the superclass result. String and trigger
- * pointers remain borrowed; callbacks must not invalidate the object or
- * traversal.
+ * writable tag storage. For changes other than Trigger, request an
+ * application update outside InitChange/ExitChange before forwarding to
+ * Family/Notify, then return the superclass result. Trigger and borrowed
+ * string pointers are not copied; callbacks must not invalidate the object
+ * or traversal.
  */
 IPTR Menuitem__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -1088,7 +1078,8 @@ IPTR Menuitem__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 #define STORE *(msg->opg_Storage)
 /* Store menu state through writable opg_Storage and return 1; NewMenu
  * rebuilds the owned array and may store NULL despite success. The private
- * Type getter selects the constructor flag. Forward unknown attributes to
+ * Type getter selects the constructor flag. Menuitem copies this object into
+ * the object in opg_Storage and returns zero. Forward unknown attributes to
  * Family. Pointer results are borrowed with the lifetimes documented on
  * each attribute.
  */
@@ -1182,8 +1173,9 @@ IPTR Menuitem__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
  OM_DISPOSE
 **************************************************************************/
 /* After all consumers have finished, free the owned generated NewMenu
- * array, then dispose through Family and return its result. Family disposes
- * children. Borrowed label and shortcut strings are not freed here.
+ * array, copied label and shortcut strings and any owned or last shared
+ * image, then dispose through Family and return its result. Family disposes
+ * children. Borrowed strings and images are not freed.
  */
 IPTR Menuitem__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
@@ -1261,9 +1253,9 @@ IPTR Menuitem__MUIM_DisconnectParent(struct IClass *cl, Object *obj,
  MUIM_Family_Insert, MUIM_Family_Remove
 **************************************************************************/
 /* Run the requested Family mutation, then request an application menu
- * update when global info provides an application, regardless of mutation
- * success. Return the original Family result. This does not roll back a
- * mutation if rebuilding fails.
+ * update when global info provides an application and no ancestor is inside
+ * InitChange/ExitChange, regardless of mutation success. Return the original
+ * Family result. This does not roll back a mutation if rebuilding fails.
  */
 IPTR Menuitem__MUIM_Update(struct IClass *cl, Object *obj, Msg msg)
 {
@@ -1397,10 +1389,11 @@ static IPTR Menustrip_Popup(struct IClass *cl, Object *obj,
     return result;
 }
 
-/* Dispatch shared getters, setters, disposal, connection and selected
- * Family mutations. Forward other methods to Family. Sort is not
- * intercepted for a menu update. Return the selected handler or superclass
- * result; require a correctly sized message.
+/* Dispatch Menustrip WillOpen/Popup/InitChange/ExitChange, shared getters,
+ * setters, disposal, connection and selected Family mutations. Forward
+ * other methods to Family. Sort is not intercepted for a menu update.
+ * Return the selected handler or superclass result; require a correctly
+ * sized message.
  */
 IPTR Common_Dispatcher(Class *cl, Object *obj, Msg msg)
 {

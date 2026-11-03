@@ -37,8 +37,9 @@
 *       Provide flexible space, a separator line or a title. The default has no
 *       title or separator. Construction prepends the title-font selection;
 *       caller tags can override it. This class has no local setter for its
-*       attributes. Version and Revision both return 1 and are class values, not
-*       library version numbers.
+*       attributes. Version and Revision return the built-in class version,
+*       which equals the library version (21.227) by default and is 1.1 in a
+*       MUI5_TEST=0 build.
 *       A title is copied with StrDup during construction and freed on disposal.
 *       Setup creates a separate Zune text object; Cleanup destroys that object
 *       before calling Area. Complete Cleanup before disposal. Cleanup does not
@@ -51,10 +52,11 @@
 *       the text object without checking that allocation succeeded. Constructor
 *       title-copy failure instead leaves the object without a title and does
 *       not fail construction.
-*       Without a title, AskMinMax adds two pixels to minimum height for HBar or
-*       minimum width for VBar. With a title it uses measured text dimensions,
-*       adding one pixel in each dimension for the 3D title preference. Default
-*       sizes equal resulting minimum sizes; both maxima become MUI_MAXMAX.
+*       Without a title, AskMinMax adds two pixels to both minimum width and
+*       minimum height for HBar or VBar. With a title it uses measured text
+*       dimensions, adding one pixel in each dimension for the 3D title
+*       preference. Default sizes equal resulting minimum sizes; both maxima
+*       become MUI_MAXMAX.
 *       AskMinMax returns TRUE.
 *       Draw first calls Area and returns zero unless MADF_DRAWOBJECT is set. It
 *       returns TRUE for empty content geometry or after drawing. A title is
@@ -114,7 +116,7 @@
 *       value is FALSE. If HBar and VBar both occur, the last tag selects the
 *       type; getters report only that selected type. No local setter exists.
 *       Without a title, the separator is a centered two-pixel line and adds two
-*       pixels to the corresponding minimum thickness. With a title, HBar draws
+*       pixels to both minimum dimensions. With a title, HBar draws
 *       side segments if space permits; VBar draws no separator line. Both
 *       maximum size dimensions remain flexible.
 *
@@ -135,7 +137,7 @@
 *       value is FALSE. If HBar and VBar both occur, the last tag selects the
 *       type; getters report only that selected type. No local setter exists.
 *       Without a title, the separator is a centered two-pixel line and adds two
-*       pixels to the corresponding minimum thickness. With a title, HBar draws
+*       pixels to both minimum dimensions. With a title, HBar draws
 *       side segments if space permits; VBar draws no separator line. Both
 *       maximum size dimensions remain flexible.
 *
@@ -231,7 +233,7 @@ IPTR Rectangle__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 
 
 /*
- * Write class version/revision 1, borrowed title pointer, or selected-bar
+ * Write built-in version/revision, borrowed title pointer, or selected-bar
  * BOOL to valid caller-owned IPTR storage and return TRUE. Delegate other
  * attributes to Area. No ownership transfer or allocation.
  */
@@ -322,10 +324,11 @@ IPTR Rectangle__MUIM_Cleanup(struct IClass *cl, Object *obj,
  minimum, maximum and default size of our object.
 **************************************************************************/
 /*
- * Call Area then add separator thickness or parsed title dimensions and 3D
- * preference padding. Set defaults to minima and maxima to MUI_MAXMAX;
- * return TRUE. Requires writable size structure, live preferences and valid
- * parsed title when present; allocation failure is not checked.
+ * Call Area then add two pixels in both dimensions for a bar, or parsed
+ * title dimensions and 3D preference padding. Set defaults to minima and
+ * maxima to MUI_MAXMAX; return TRUE. Requires writable size structure, live
+ * preferences and valid parsed title when present; allocation failure is
+ * not checked.
  */
 IPTR Rectangle__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUIP_AskMinMax *msg)

@@ -254,7 +254,9 @@ Object *INTERNAL_ImageButton(CONST_STRPTR label, CONST_STRPTR imagePath,
 
         MUIO_HSpace: width
         MUIO_VSpace: height
-            Rectangle with fixed width or height, respectively.
+            Rectangle with fixed width or height, respectively. Zero
+            makes a stretchable spacer; a negative value makes one with
+            weight -value.
 
         MUIO_HBar: height
         MUIO_VBar: width

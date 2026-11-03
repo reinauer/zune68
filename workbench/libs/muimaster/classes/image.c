@@ -44,12 +44,14 @@
 *
 *   DESCRIPTION
 *       Display a Zune image specification or a borrowed classic Intuition
-*       Image. No source is required at construction; there is no default image
-*       fallback. A prepared specification takes precedence over OldImage. The
-*       class owns a copied specification and setup-time image resources;
-*       OldImage and the internal Prop connection remain borrowed. Complete Hide
-*       and Cleanup before disposal, which frees only the specification string
-*       locally.
+*       Image. No source is required at construction. MUIA_Image_BuiltinSpec
+*       names a built-in image used when no specification can be prepared or
+*       its brush or bitmap cannot be loaded; otherwise there is no default
+*       image fallback. A prepared specification takes precedence over
+*       OldImage. The class owns a copied specification and setup-time image
+*       resources; OldImage and the internal Prop connection remain borrowed.
+*       Complete Hide and Cleanup before disposal, which frees only the
+*       specification string locally.
 *       Setup calls Area and returns success even if image preparation fails.
 *       For gradient specifications it sets FillArea FALSE; for other
 *       successfully prepared specifications it sets FillArea TRUE. Initial
@@ -59,11 +61,12 @@
 *   METHODS
 *       AskMinMax obtains the prepared image's bounds. A free axis uses its
 *       minimum/default/maximum contributions; a nonfree axis adds its default
-*       size to all three fields. Font matching multiplies only the resulting
-*       default dimension by integer font-size/8. It does not scale minimum or
-*       maximum dimensions. OldImage instead fixes all dimensions to its size
-*       plus superclass minimum contributions. With no usable image, no local
-*       size contribution is added.
+*       size to all three fields, or only to the default for pattern, color
+*       and gradient images. Font matching fixes all three fields of an axis to
+*       the superclass minimum plus the image default scaled by font-size/8.
+*       OldImage instead fixes all dimensions to its size plus superclass
+*       minimum contributions. With no usable image, maxima equal the
+*       superclass minima and defaults add eight pixels.
 *       Spec replacement is implemented despite the header's initialize-only
 *       annotation. It rebuilds resources when set up and requests redraw, but
 *       no relayout. Image_State changes request redraw; Selected updates map
@@ -74,16 +77,15 @@
 *       Dispose returns zero.
 *
 *   NOTES
-*       Spec strings use AROS's image-specification parser. Supported numeric
+*       Spec strings use Zune's image-specification parser. Supported numeric
 *       MUII identifiers are converted to copied strings: configuration
 *       identifiers in [MUII_WindowBack, MUII_BACKGROUND) use the 6: form,
 *       pattern identifiers in [MUII_BACKGROUND, MUII_LASTPAT) use the 0: form.
 *       Other values are treated as string pointers. Do not assume integer zero
 *       is a NULL-image sentinel.
-*       Repeated constructor Spec tags leak earlier copies. Set frees the
-*       previous specification before duplicating its argument; do not pass the
-*       current getter pointer or an interior pointer back to Set. Duplication
-*       failure loses the old specification and is not separately reported.
+*       Each Spec tag copies its argument before freeing the previous copy. If
+*       duplication fails, construction fails and Set keeps the previous
+*       specification.
 *       Resource getters and borrowed external images do not extend their
 *       owners' lifetimes.
 *
@@ -97,18 +99,19 @@
 *       Supply or retrieve the image specification.
 *
 *   INPUTS
-*       Initialize, set and get in this AROS implementation; the header marks
+*       Initialize, set and get in this implementation; the header marks
 *       initialize-only. Supply a valid NUL-terminated specification or
 *       supported numeric MUII identifier.
 *
 *   NOTES
 *       The stored representation is an owned string. Get returns a borrowed
 *       pointer valid until replacement or disposal. No explicit constructor
-*       default is supplied. Set frees before copying, so its input must not
-*       alias the current allocation. When set up it hides/cleans/rebuilds/shows
-*       resources as applicable, updates FillArea for successfully parsed
-*       gradients versus other images and requests full redraw without relayout.
-*       Failed duplication or preparation is not separately reported.
+*       default is supplied. Set copies its input before freeing the previous
+*       string. When set up it hides/cleans/rebuilds/shows resources as
+*       applicable, updates FillArea for successfully parsed gradients versus
+*       other images and requests full redraw without relayout. Failed
+*       duplication leaves the previous specification and skips the update;
+*       failed preparation is not separately reported.
 *
 */
 /****** Image.mui/MUIA_Image_OldImage ************
@@ -157,17 +160,16 @@
 *       MUIA_Image_FontMatch
 *
 *   FUNCTION
-*       Enable font-based adjustment of default both dimensions.
+*       Enable font-based sizing of both dimensions.
 *
 *   INPUTS
 *       Initialize only, BOOL, default FALSE. No local setter or getter.
 *
 *   NOTES
-*       For a prepared image, AskMinMax multiplies the accumulated default both
-*       dimension(s) by integer font XSize/8 or YSize/8 on each selected axis.
-*       Division occurs before multiplication, so a font dimension below eight
-*       produces a zero factor. Minimum and maximum are unchanged. This is not
-*       an aspect-ratio or pixel-resampling guarantee. Combined and per-axis
+*       For a prepared image, AskMinMax fixes minimum, default and maximum on
+*       each selected axis to the superclass minimum plus the image default
+*       times font XSize or YSize, divided by eight. This is not an
+*       aspect-ratio or pixel-resampling guarantee. Combined and per-axis
 *       tags update the same flags in tag order; the rule does not apply to
 *       OldImage or private Prop-image sizing.
 *
@@ -178,17 +180,16 @@
 *       MUIA_Image_FontMatchWidth
 *
 *   FUNCTION
-*       Enable font-based adjustment of default width dimensions.
+*       Enable font-based sizing of the width.
 *
 *   INPUTS
 *       Initialize only, BOOL, default FALSE. No local setter or getter.
 *
 *   NOTES
-*       For a prepared image, AskMinMax multiplies the accumulated default width
-*       dimension(s) by integer font XSize/8 or YSize/8 on each selected axis.
-*       Division occurs before multiplication, so a font dimension below eight
-*       produces a zero factor. Minimum and maximum are unchanged. This is not
-*       an aspect-ratio or pixel-resampling guarantee. Combined and per-axis
+*       For a prepared image, AskMinMax fixes minimum, default and maximum on
+*       each selected axis to the superclass minimum plus the image default
+*       times font XSize or YSize, divided by eight. This is not an
+*       aspect-ratio or pixel-resampling guarantee. Combined and per-axis
 *       tags update the same flags in tag order; the rule does not apply to
 *       OldImage or private Prop-image sizing.
 *
@@ -199,17 +200,16 @@
 *       MUIA_Image_FontMatchHeight
 *
 *   FUNCTION
-*       Enable font-based adjustment of default height dimensions.
+*       Enable font-based sizing of the height.
 *
 *   INPUTS
 *       Initialize only, BOOL, default FALSE. No local setter or getter.
 *
 *   NOTES
-*       For a prepared image, AskMinMax multiplies the accumulated default
-*       height dimension(s) by integer font XSize/8 or YSize/8 on each selected
-*       axis. Division occurs before multiplication, so a font dimension below
-*       eight produces a zero factor. Minimum and maximum are unchanged. This is
-*       not an aspect-ratio or pixel-resampling guarantee. Combined and per-axis
+*       For a prepared image, AskMinMax fixes minimum, default and maximum on
+*       each selected axis to the superclass minimum plus the image default
+*       times font XSize or YSize, divided by eight. This is not an
+*       aspect-ratio or pixel-resampling guarantee. Combined and per-axis
 *       tags update the same flags in tag order; the rule does not apply to
 *       OldImage or private Prop-image sizing.
 *
@@ -228,10 +228,11 @@
 *   NOTES
 *       TRUE adds backend minimum/default/maximum values on this axis to the
 *       corresponding superclass fields. FALSE adds the backend default to all
-*       three fields. It does not override the separate OldImage or private
-*       Prop-image size paths. Drawing passes actual content dimensions to the
-*       backend; this attribute controls size negotiation, not a generic scaling
-*       algorithm.
+*       three fields, or only to the default for pattern, color and gradient
+*       images. Font matching overrides either choice. It does not override the
+*       separate OldImage or private Prop-image size paths. Drawing passes
+*       actual content dimensions to the backend; this attribute controls size
+*       negotiation, not a generic scaling algorithm.
 *
 */
 /****** Image.mui/MUIA_Image_FreeVert ************
@@ -248,10 +249,11 @@
 *   NOTES
 *       TRUE adds backend minimum/default/maximum values on this axis to the
 *       corresponding superclass fields. FALSE adds the backend default to all
-*       three fields. It does not override the separate OldImage or private
-*       Prop-image size paths. Drawing passes actual content dimensions to the
-*       backend; this attribute controls size negotiation, not a generic scaling
-*       algorithm.
+*       three fields, or only to the default for pattern, color and gradient
+*       images. Font matching overrides either choice. It does not override the
+*       separate OldImage or private Prop-image size paths. Drawing passes
+*       actual content dimensions to the backend; this attribute controls size
+*       negotiation, not a generic scaling algorithm.
 *
 */
 
@@ -424,9 +426,10 @@ IPTR Image__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 **************************************************************************/
 /*
  * Process local tags and replace prepared resources for Spec when set
- * up/shown, then return Area setter result. Spec input must not alias old
- * owned string, which is freed before duplication. Request redraw as
- * documented, not relayout; resource failures have no separate result.
+ * up/shown, then return Area setter result. Spec input is copied before the
+ * old owned string is freed; a failed copy leaves the old Spec. Request
+ * redraw as documented, not relayout; resource failures have no separate
+ * result.
  */
 IPTR Image__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 {

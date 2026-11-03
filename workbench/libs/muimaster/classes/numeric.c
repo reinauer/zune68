@@ -188,9 +188,9 @@ enum numeric_flags
 *
 *   NOTES
 *       Getter normalizes to TRUE/FALSE. Numeric itself does not consume the
-*       flag for size calculation. The AROS Slider implementation scans its
-*       selected range regardless of this flag; changing it alone does not
-*       request relayout.
+*       flag for size calculation. Slider formats every value in its range
+*       only when the flag is set and otherwise measures representative
+*       values; changing it alone does not request relayout.
 *
 */
 /****** Numeric.mui/MUIA_Numeric_Reverse ************
@@ -359,19 +359,17 @@ enum numeric_flags
 *       endpoints when Reverse is set.
 *
 *   INPUTS
-*       scalemin, scalemax, scale - LONG values. Use ordered endpoints and
-*       representable differences/products.
+*       scalemin, scalemax, scale - LONG values. Unordered scale or numeric
+*       bounds return Min.
 *
 *   RESULT
-*       Calculated LONG carried as IPTR; Value is not changed.
+*       Calculated LONG within Min/Max, carried as IPTR; Value is not changed.
 *
 *   NOTES
-*       The implementation clamps (scale - scalemin) between scalemin and
-*       scalemax, then multiplies by the numeric span, divides by the scale span
-*       when nonzero, and adds the numeric start. This is not a correct general
-*       normalization for nonzero scalemin; a zero-based scale avoids that
-*       particular defect. A zero scale span skips division, not the other
-*       arithmetic. There is no final numeric clamp or overflow protection.
+*       Each numeric value owns an equal interval of the inclusive scale; the
+*       result is the value whose interval contains scale. Scale positions
+*       outside the scale bounds select the nearest numeric endpoint. Wide
+*       ranges use 64-bit arithmetic, so the calculation does not overflow.
 *
 */
 /****** Numeric.mui/MUIM_Numeric_ValueToScale ************
@@ -387,17 +385,17 @@ enum numeric_flags
 *       Map the stored Value to an external scale without changing Value.
 *
 *   INPUTS
-*       scalemin, scalemax - Ordered LONG output bounds; differences/products
-*       must be representable.
+*       scalemin, scalemax - LONG output bounds. Unordered scale or numeric
+*       bounds return scalemin.
 *
 *   RESULT
-*       Calculated scale position, clamped to the supplied scale bounds.
+*       Calculated scale position within the supplied scale bounds.
 *
 *   NOTES
-*       Reverse swaps output endpoints. For nonzero numeric span, calculation
-*       adds half the numeric span before integer division; reversed/negative
-*       cases are not guaranteed symmetric rounding. Equal numeric bounds return
-*       the selected starting endpoint. No overflow checking. Use
+*       Reverse swaps output endpoints. Each numeric value owns an equal
+*       interval of the inclusive scale and maps to that interval's center, so
+*       equal numeric bounds return the middle of the scale. Wide ranges use
+*       64-bit arithmetic, so the calculation does not overflow. Use
 *       ValueToScaleExt to map a value other than stored Value.
 *
 */
@@ -415,18 +413,18 @@ enum numeric_flags
 *
 *   INPUTS
 *       value - LONG, clamped to Numeric bounds.
-*       scalemin, scalemax - Ordered LONG output bounds; differences/products
-*       must be representable.
+*       scalemin, scalemax - LONG output bounds. Unordered scale or numeric
+*       bounds return scalemin.
 *
 *   RESULT
-*       Calculated scale position, clamped to the supplied scale bounds.
+*       Calculated scale position within the supplied scale bounds.
 *
 *   NOTES
-*       Reverse swaps output endpoints. For nonzero numeric span, calculation
-*       adds half the numeric span before integer division; reversed/negative
-*       cases are not guaranteed symmetric rounding. Equal numeric bounds return
-*       the selected starting endpoint. No overflow checking. This is the public
-*       Zune extension declared in numeric.h.
+*       Reverse swaps output endpoints. Each numeric value owns an equal
+*       interval of the inclusive scale and maps to that interval's center, so
+*       equal numeric bounds return the middle of the scale. Wide ranges use
+*       64-bit arithmetic, so the calculation does not overflow. This is the
+*       public Zune extension declared in numeric.h.
 *
 */
 
@@ -922,10 +920,9 @@ static LONG numeric_value_to_scale(struct MUI_NumericData *data,
 **************************************************************************/
 /*
  * Implement the public Numeric ScaleToValue contract above with the ABI-
- * defined message. Requires ordered numeric/scale bounds and representable
+ * defined message. Unordered bounds return Min; wide ranges use 64-bit
  * arithmetic. No resource ownership is transferred. Return and clamping
- * semantics are specified in that method contract; delegated setter status
- * is not propagated.
+ * semantics are specified in that method contract.
  */
 IPTR Numeric__MUIM_ScaleToValue(struct IClass *cl, Object *obj,
     struct MUIP_Numeric_ScaleToValue *msg)
@@ -994,10 +991,9 @@ IPTR Numeric__MUIM_Stringify(struct IClass *cl, Object *obj,
 **************************************************************************/
 /*
  * Implement the public Numeric ValueToScale contract above with the ABI-
- * defined message. Requires ordered numeric/scale bounds and representable
+ * defined message. Unordered bounds return scalemin; wide ranges use 64-bit
  * arithmetic. No resource ownership is transferred. Return and clamping
- * semantics are specified in that method contract; delegated setter status
- * is not propagated.
+ * semantics are specified in that method contract.
  */
 IPTR Numeric__MUIM_ValueToScale(struct IClass *cl, Object *obj,
     struct MUIP_Numeric_ValueToScale *msg)
@@ -1013,10 +1009,9 @@ IPTR Numeric__MUIM_ValueToScale(struct IClass *cl, Object *obj,
 **************************************************************************/
 /*
  * Implement the public Numeric ValueToScaleExt contract above with the ABI-
- * defined message. Requires ordered numeric/scale bounds and representable
+ * defined message. Unordered bounds return scalemin; wide ranges use 64-bit
  * arithmetic. No resource ownership is transferred. Return and clamping
- * semantics are specified in that method contract; delegated setter status
- * is not propagated.
+ * semantics are specified in that method contract.
  */
 IPTR Numeric__MUIM_ValueToScaleExt(struct IClass *cl, Object *obj,
     struct MUIP_Numeric_ValueToScaleExt *msg)

@@ -48,9 +48,10 @@
 *       Setup registers a window mouse-button handler after successful Area
 *       setup and returns TRUE without checking registration status. Cleanup
 *       removes that handler and returns the superclass result. AskMinMax adds
-*       three pixels to minimum separator thickness, fixes its default and
-*       maximum thickness to that minimum, and allows MUI_MAXMAX along the other
-*       axis. It returns TRUE.
+*       three pixels, or two when Quiet, to the minimum separator thickness and
+*       to the minimum and default length, fixes its default and maximum
+*       thickness to that minimum, and allows MUI_MAXMAX along the other axis.
+*       It returns TRUE.
 *       SELECTDOWN inside the object starts a drag and enables mouse-move
 *       events. Shift at mouse-down selects only the nearest visible sibling on
 *       each side; this search does not skip fixed-size siblings. Without Shift,
@@ -82,9 +83,9 @@
 *       invoking MUIM_Draw. Quiet has no effect on either mode.
 *       Use the normal window-handler lifecycle; Cleanup does not implement drag
 *       cancellation or restore weights. Draw calls Area, paints a three-pixel
-*       separator with reversed edge pens while dragging, and returns TRUE;
-*       without MADF_DRAWOBJECT it returns zero. No separately allocated private
-*       drag buffer is owned.
+*       separator with reversed edge pens while dragging (nothing when Quiet),
+*       and returns TRUE; without MADF_DRAWOBJECT it returns zero. No
+*       separately allocated private drag buffer is owned.
 *
 */
 /****** Balance.mui/MUIA_Balance_Quiet ************
@@ -93,17 +94,17 @@
 *       MUIA_Balance_Quiet
 *
 *   FUNCTION
-*       Declared constructor attribute with no implemented behavior.
+*       Draw no separator bars and use a two-pixel thickness.
 *
 *   INPUTS
-*       Header declares initialize-only LONG. The constructor recognizes the
-*       identifier but ignores its value.
+*       Initialize only, LONG treated as BOOL. Default FALSE.
 *
 *   NOTES
-*       No state is stored and no local getter or setter implements this
-*       attribute. It does not defer layout, suppress notifications, select
-*       outline mode or change redraw behavior. The balancing-look preference
-*       controls the display mode instead.
+*       The constructor stores the flag; no local getter or setter implements
+*       this attribute. A quiet Balance draws nothing and adds two pixels
+*       instead of three to its minimum size. It does not defer layout,
+*       suppress notifications or select outline mode; the balancing-look
+*       preference controls the drag display mode.
 *
 */
 
@@ -115,10 +116,9 @@ extern struct Library *MUIMasterBase;
 
 
 /*
- * Construct Area and initialize mouse-handler descriptor. Quiet tags are
- * accepted but ignored. Return object or zero on superclass failure.
- * Private zero-initialized state starts not clicked; no sibling ownership
- * or buffer allocation.
+ * Construct Area, store Quiet and initialize mouse-handler descriptor.
+ * Return object or zero on superclass failure. Private zero-initialized
+ * state starts not clicked; no sibling ownership or buffer allocation.
  */
 IPTR Balance__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -198,8 +198,9 @@ IPTR Balance__MUIM_Cleanup(struct IClass *cl, Object *obj,
  MUIM_AskMinMax
 **************************************************************************/
 /*
- * Call Area; add three pixels to separator minimum thickness, fix
- * default/maximum thickness, and allow maximum extent on the other axis.
+ * Call Area; add three pixels (two when Quiet) to separator minimum
+ * thickness and minimum/default length, fix default/maximum thickness, and
+ * allow maximum extent on the other axis.
  * Return TRUE. Requires writable MinMaxInfo and cached orientation; no
  * layout or allocation.
  */
@@ -239,8 +240,8 @@ IPTR Balance__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 
 /*
  * Call Area; return zero unless MADF_DRAWOBJECT, otherwise TRUE after
- * drawing or empty-geometry skip. Paint three-pixel separator using pens
- * reversed while clicked. Requires live render context and cached
+ * drawing or a Quiet/empty-geometry skip. Paint three-pixel separator using
+ * pens reversed while clicked. Requires live render context and cached
  * orientation; no resource allocation.
  */
 IPTR Balance__MUIM_Draw(struct IClass *cl, Object *obj,
