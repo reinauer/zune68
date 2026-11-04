@@ -43,7 +43,7 @@ static const struct {
     { (struct Library **)&AslBase, "asl.library", 37 },
     { (struct Library **)&LayersBase, "layers.library", 37 },
     { (struct Library **)&CxBase, "commodities.library", 37 },
-    { (struct Library **)&RexxSysBase, "rexxsyslib.library", 37 },
+    { (struct Library **)&RexxSysBase, "rexxsyslib.library", 36 },
     { (struct Library **)&GadToolsBase, "gadtools.library", 37 },
     { (struct Library **)&KeymapBase, "keymap.library", 37 },
     { (struct Library **)&LocaleBase, "locale.library", 38 },
