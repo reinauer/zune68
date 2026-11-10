@@ -32,17 +32,18 @@
 /*  FUNCTION
         Create a BOOPSI class derived from a named MUI class or an existing
         custom class, and return a descriptor for the new class.
-        If supermcc is supplied, it takes precedence over supername.
+        If supername is supplied, it takes precedence over supermcc (as
+        on MUI 3.8 and MUI 5, measured with tests/native/ccprio.c).
 
     INPUTS
         base - Library base for a class module, or NULL for a private class.
                With a non-NULL base, its node name supplies the class ID
                through dos.library/FilePart(). The base is also passed to
                the dispatcher through the class dispatcher's data field.
-        supername - NUL-terminated superclass identifier, used only when
-                    supermcc is NULL.
-        supermcc - Existing superclass descriptor, or NULL to use supername.
-                   Its mcc_Class must be valid.
+        supername - NUL-terminated superclass identifier, or NULL to use
+                    supermcc.
+        supermcc - Existing superclass descriptor, used only when
+                   supername is NULL. Its mcc_Class must be valid.
         datasize - Number of instance-data bytes added by the new class.
         dispatcher - Non-NULL dispatcher entrypoint taking the class in A0,
                      the object in A2, and the message in A1.
@@ -59,8 +60,8 @@
         The supplied superclass descriptor is not copied or freed here.
 
     BUGS
-        A supplied superclass is not separately acquired, although
-        successful deletion calls MUI_FreeClass() on it.
+        A supplied superclass descriptor is not separately acquired:
+        delete the subclass before it.
 
     SEE ALSO
         MUI_DeleteCustomClass(), MUI_GetClass(), intuition.library/MakeClass()
@@ -76,10 +77,16 @@
     if ((supername == NULL) && (supermcc == NULL))
         return NULL;
 
-    if (!supermcc)
+    /* The name wins when both are given, as on MUI 3.8 and MUI 5: some
+     * programs pass a supername with garbage in A2 (LumiZip 1.0 does, for
+     * an Area subclass; taking A2 as an mcc made a class whose superclass
+     * was its name string, and its MUI_DeleteCustomClass() closed a
+     * garbage "library" and reset the machine at quit) */
+    if (supername)
     {
         super = MUI_GetClass(supername);
         if (!super) return NULL;
+        supermcc = NULL;
     }
     else super = supermcc->mcc_Class;
 
@@ -108,6 +115,7 @@
 
     mcc->mcc_Class  = cl;
     mcc->mcc_Super  = super;
+    mcc->mcc_SuperByName = !supermcc;
     mcc->mcc_Module = NULL; /* _zune_class_load() will set this */
 
 #if defined(__MAXON__) || defined(__amigaos4__)

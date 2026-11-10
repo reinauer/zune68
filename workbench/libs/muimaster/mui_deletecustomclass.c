@@ -23,8 +23,9 @@
 
 /*  FUNCTION
         Attempt to free a custom class. If intuition.library/FreeClass()
-        succeeds, free the descriptor and call MUI_FreeClass() on the
-        stored superclass.
+        succeeds, free the descriptor and, when the superclass was taken
+        by name, call MUI_FreeClass() on it (a superclass descriptor
+        given to MUI_CreateCustomClass() stays its owner's).
 
     INPUTS
         mcc - Descriptor returned by MUI_CreateCustomClass(), or NULL.
@@ -48,12 +49,16 @@
     if (mcc)
     {
         Class *super = mcc->mcc_Super;
-        
+        BOOL byname = mcc->mcc_SuperByName;
+
         if (FreeClass(mcc->mcc_Class))
         {
             mui_free(mcc);
 
-            MUI_FreeClass(super);
+            /* only a superclass taken by name: a private one (supermcc)
+             * is borrowed from its own MUI_CustomClass */
+            if (byname)
+                MUI_FreeClass(super);
 
             return TRUE;
         }

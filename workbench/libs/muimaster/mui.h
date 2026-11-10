@@ -265,6 +265,7 @@ struct MUI_CustomClass
     /* the following stuff is private */
 
     struct Library *mcc_Module;         /* non-null if external class */
+    ULONG mcc_SuperByName;              /* mcc_Super came from MUI_GetClass() */
 };
 
 #undef MPEN_COUNT
