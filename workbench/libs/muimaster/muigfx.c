@@ -274,3 +274,15 @@ void MUIGfx_Remove(void)
     MUIGfxBase = NULL;
     Owner = NULL;
 }
+
+/* MUI 3.8's private muimaster functions -204 and -210 hand over to these. */
+APTR MUIGfx_GetImage(struct MUI_RenderInfo *mri __asm("a0"),
+    STRPTR spec __asm("a1"), ULONG flags __asm("d0"))
+{
+    return Gfx_GetImage(mri, spec, flags);
+}
+
+void MUIGfx_ReleaseImage(APTR image __asm("a0"))
+{
+    Gfx_ReleaseImage(image);
+}

@@ -19,6 +19,10 @@ ENTRIES = re.findall(r'^(MUI_\w+)\([^\n]*\)\(([^)]*)\)$',
                      FD.read_text(), re.MULTILINE)
 assert len(ENTRIES) == 35, 'expected 29 public and six private FD entries'
 STUB, RESULT = 0x70000, 0x71000
+# The FD's private entries and the functions behind them
+PRIVATE = {'MUI_Priv1': '_MUIP_AllocPooled', 'MUI_Priv2': '_MUIP_FreePooled',
+           'MUI_Priv3': '_MUIP_AllocPooled', 'MUI_Priv4': '_MUIP_FreePooled',
+           'MUI_Priv5': '_MUIP_ObtainImage', 'MUI_Priv6': '_MUIP_ReleaseImage'}
 
 
 def check(path):
@@ -49,15 +53,17 @@ def check(path):
     assert long(table + 12) == symbols['_LibInit']
     vectors = long(table + 4)
     expected = ['_LibOpen', '_LibClose', '_LibExpunge', '_LibReserved']
-    expected += [('_' if name.startswith('MUI_Priv') else '_Gate_') + name
-                 for name, _ in ENTRIES]
+    expected += [PRIVATE.get(name, '_Gate_' + name) for name, _ in ENTRIES]
+    # MUI's private functions follow the FD entries from LVO -240 to -306;
+    # Voyager calls -240. Reserved entries return 0 up to MUI 5's 127.
+    expected += ['_MUIP_GetVirtualRect', '_MUIP_ObjectInRect',
+                 '_LibReserved', '_LibReserved', '_LibReserved',
+                 '_MUIP_ConfigItemAllowed', '_LibReserved',
+                 '_MUIP_RegistrationLevel', '_LibReserved',
+                 '_MUIP_ForceRegistered', '_LibReserved', '_LibReserved']
+    expected += ['_LibReserved'] * (127 - len(expected))
     for i, name in enumerate(expected):
-        assert long(vectors + i * 4) == symbols[name], name
-    # MUIP_GetVirtualRect follows the FD entries; Voyager calls LVO -240.
-    assert long(vectors + len(expected) * 4) == symbols['_MUIP_GetVirtualRect']
-    # Reserved entries return 0 up to MUI 5's 127 vectors.
-    for i in range(len(expected) + 1, 127):
-        assert long(vectors + i * 4) == symbols['_LibReserved'], -6 * (i + 1)
+        assert long(vectors + i * 4) == symbols[name], (-6 * (i + 1), name)
     assert long(vectors + 127 * 4) == 0xffffffff
 
     machine = Machine.from_name("68000", ram_size=RAM_KIB)

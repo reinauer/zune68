@@ -64,7 +64,7 @@ SOURCES = \
   mui_createcustomclass.c mui_deletecustomclass.c mui_disposeobject.c \
   mui_endrefresh.c mui_error.c mui_freeaslrequest.c mui_freeclass.c \
   mui_getclass.c mui_layout.c mui_layoutobj.c mui_show.c mui_hide.c \
-  mui_offset.c mui_makeobject.c mui_newobject.c \
+  mui_offset.c mui_private.c mui_makeobject.c mui_newobject.c \
   mui_obtainpen.c mui_redraw.c mui_rejectidcmp.c \
   mui_releasepen.c mui_removeclipping.c mui_removeclipregion.c \
   requesters.c rtg.c mui_request.c mui_requestidcmp.c mui_seterror.c classes/aboutmui.c \

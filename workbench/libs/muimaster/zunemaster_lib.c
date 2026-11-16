@@ -19,13 +19,16 @@ void L_ExpungeLib(struct Library *base);
     " (" ZUNE68_LIBRARY_DATE ") Zune68 " ZUNE68_RELEASE_STAGE "\r\n"
 
 ULONG LibReserved(void) { return 0; }
-void MUI_Priv1(void) { }
-void MUI_Priv2(void) { }
-void MUI_Priv3(void) { }
-void MUI_Priv4(void) { }
-void MUI_Priv5(void) { }
-void MUI_Priv6(void) { }
 void MUIP_GetVirtualRect(Object *obj __asm("a0"), LONG *rect __asm("a1"));
+/* mui_private.c */
+void MUIP_AllocPooled(void);
+void MUIP_FreePooled(void);
+void MUIP_ObtainImage(void);
+void MUIP_ReleaseImage(void);
+void MUIP_ObjectInRect(void);
+void MUIP_ConfigItemAllowed(void);
+void MUIP_RegistrationLevel(void);
+void MUIP_ForceRegistered(void);
 struct Library *LibOpen(struct MUIMasterBase_intern *base __asm("a6"))
 {
     base->library.lib_Flags &= ~LIBF_DELEXP;
@@ -95,10 +98,10 @@ static const APTR LibVectors[] = {
   MUI_VECTOR(MUI_DeleteCustomClass),
   MUI_VECTOR(MUI_MakeObjectA),
   MUI_VECTOR(MUI_Layout),
-  (APTR) MUI_Priv1,
-  (APTR) MUI_Priv2,
-  (APTR) MUI_Priv3,
-  (APTR) MUI_Priv4,
+  (APTR) MUIP_AllocPooled,
+  (APTR) MUIP_FreePooled,
+  (APTR) MUIP_AllocPooled,
+  (APTR) MUIP_FreePooled,
   MUI_VECTOR(MUI_ObtainPen),
   MUI_VECTOR(MUI_ReleasePen),
   MUI_VECTOR(MUI_AddClipping),
@@ -107,16 +110,28 @@ static const APTR LibVectors[] = {
   MUI_VECTOR(MUI_RemoveClipRegion),
   MUI_VECTOR(MUI_BeginRefresh),
   MUI_VECTOR(MUI_EndRefresh),
-  (APTR) MUI_Priv5,
-  (APTR) MUI_Priv6,
+  (APTR) MUIP_ObtainImage,
+  (APTR) MUIP_ReleaseImage,
   MUI_VECTOR(MUI_Show),
   MUI_VECTOR(MUI_Hide),
   MUI_VECTOR(MUI_LayoutObj),
   MUI_VECTOR(MUI_Offset),
   (APTR) MUIP_GetVirtualRect,
-  /* MUI 5 has 127 vectors and MUI 3.8 has 51. Their other entries are
-   * private and differ between versions. MUI's own preferences programs
-   * and classes call them, so they return 0 here instead of running
+  (APTR) MUIP_ObjectInRect,
+  /* -252 to -306: MUI 3.8's configuration item table, application and
+   * class lists and keyfile data, which Zune does not have. */
+  RESERVED,
+  RESERVED,
+  RESERVED,
+  (APTR) MUIP_ConfigItemAllowed,
+  RESERVED,
+  (APTR) MUIP_RegistrationLevel,
+  RESERVED,
+  (APTR) MUIP_ForceRegistered,
+  RESERVED,
+  RESERVED,
+  /* MUI 5 has 127 vectors. Its other entries are private image and string
+   * functions for its own classes; they return 0 here instead of running
    * whatever follows the table. */
   RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
   RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
@@ -127,8 +142,7 @@ static const APTR LibVectors[] = {
   RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
   RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
   RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
-  RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
-  RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED, RESERVED,
+  RESERVED, RESERVED, RESERVED, RESERVED,
   (APTR) -1
 };
 
