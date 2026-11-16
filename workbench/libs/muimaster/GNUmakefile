@@ -48,8 +48,11 @@ endif
 LTO_CFLAGS = -flto
 LTO_LDFLAGS = -flto $(LIB_CFLAGS) -Wl,-u,_RomTag
 endif
+# MUI programs often run on 4 to 8 KB stacks, and methods recurse once per
+# group level. -fconserve-stack keeps GCC from inlining large handlers into
+# the class dispatchers, whose frames are paid at every level.
 LIB_CFLAGS = $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) $(LTO_CFLAGS) \
-  -fno-common -fno-builtin -fno-strict-aliasing
+  -fno-common -fno-builtin -fno-strict-aliasing -fconserve-stack
 SOURCES = \
   gcc/format.c gcc/runtime.c muimaster_init.c datatypescache.c dragndrop.c font.c \
   frame.c pointer.c imspec.c imspec_vector.c imspec_gradient.c muigfx.c \
