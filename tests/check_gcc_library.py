@@ -55,7 +55,10 @@ def check(path):
         assert long(vectors + i * 4) == symbols[name], name
     # MUIP_GetVirtualRect follows the FD entries; Voyager calls LVO -240.
     assert long(vectors + len(expected) * 4) == symbols['_MUIP_GetVirtualRect']
-    assert long(vectors + (len(expected) + 1) * 4) == 0xffffffff
+    # Reserved entries return 0 up to MUI 5's 127 vectors.
+    for i in range(len(expected) + 1, 127):
+        assert long(vectors + i * 4) == symbols['_LibReserved'], -6 * (i + 1)
+    assert long(vectors + 127 * 4) == 0xffffffff
 
     machine = Machine.from_name("68000", ram_size=RAM_KIB)
     mem, cpu = machine.mem, machine.cpu
