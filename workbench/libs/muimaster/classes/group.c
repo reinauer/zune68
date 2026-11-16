@@ -2396,6 +2396,52 @@ static void group_clear_ring(Object *obj)
 }
 
 /*
+ * Let Area draw the frame, and fill the inner box around the children
+ * without clearing what they cover. Kept out of Group__MUIM_Draw: the gap
+ * painter's arrays take about 1 KB, which would otherwise stay on the
+ * stack under every nested group while its children draw. MUI programs
+ * often run on 4 to 8 KB stacks.
+ */
+static void __attribute__((noinline)) group_draw_area(struct IClass *cl,
+    Object *obj, struct MUIP_Draw *msg, BOOL virtual)
+{
+    struct Rectangle kids[GROUP_GAP_CHILDREN];
+    int nkids = -1;
+
+    /* Custom backfill hooks keep one call for the whole inner box */
+    if (!virtual && (_flags(obj) & MADF_FILLAREA)
+        && !(muiAreaData(obj)->mad_Flags2 & MADF2_CUSTOMBACKFILL))
+        nkids = group_collect_children(cl, obj, kids);
+
+    if (nkids >= 0)
+    {
+        /* Area paints the frame and its surround; the group fills
+         * the uncovered parts of its inner box itself */
+        _flags(obj) &= ~MADF_FILLAREA;
+        DoSuperMethodA(cl, obj, (Msg) msg);
+        _flags(obj) |= MADF_FILLAREA;
+        if (msg->flags & MADF_DRAWOBJECT)
+            group_fill_gaps(obj, kids, nkids);
+    }
+    else
+    {
+        /* Without FILLAREA, Area paints only outside the inner box,
+         * where the clip excludes nothing. In refresh mode each clip
+         * costs two refresh cycles, so skip it. */
+        struct Region *r = (_flags(obj) & MADF_FILLAREA)
+            ? group_children_clip_region(cl, obj) : NULL;
+        APTR c = (APTR)-1;
+        if (r)
+            c = MUI_AddClipRegion(muiRenderInfo(obj), r);
+
+        DoSuperMethodA(cl, obj, (Msg) msg);
+
+        if (r)
+            MUI_RemoveClipRegion(muiRenderInfo(obj), c);
+    }
+}
+
+/*
  * Draw Area and children under temporary regions, with separate page-switch
  * and virtual-scroll update paths. Return FALSE during InitChange,
  * otherwise normally TRUE; ignore child draw results. Requires drawable
@@ -2455,46 +2501,9 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
 
     if (muiGlobalInfo(obj)->mgi_Prefs->window_redraw
         == WINDOW_REDRAW_WITHOUT_CLEAR)
-    {
-        struct Rectangle kids[GROUP_GAP_CHILDREN];
-        int nkids = -1;
-
-        /* Custom backfill hooks keep one call for the whole inner box */
-        if (!virtual && (_flags(obj) & MADF_FILLAREA)
-            && !(muiAreaData(obj)->mad_Flags2 & MADF2_CUSTOMBACKFILL))
-            nkids = group_collect_children(cl, obj, kids);
-
-        if (nkids >= 0)
-        {
-            /* Area paints the frame and its surround; the group fills
-             * the uncovered parts of its inner box itself */
-            _flags(obj) &= ~MADF_FILLAREA;
-            DoSuperMethodA(cl, obj, (Msg) msg);
-            _flags(obj) |= MADF_FILLAREA;
-            if (msg->flags & MADF_DRAWOBJECT)
-                group_fill_gaps(obj, kids, nkids);
-        }
-        else
-        {
-            /* Without FILLAREA, Area paints only outside the inner box,
-             * where the clip excludes nothing. In refresh mode each clip
-             * costs two refresh cycles, so skip it. */
-            struct Region *r = (_flags(obj) & MADF_FILLAREA)
-                ? group_children_clip_region(cl, obj) : NULL;
-            APTR c = (APTR)-1;
-            if (r)
-                c = MUI_AddClipRegion(muiRenderInfo(obj), r);
-
-            DoSuperMethodA(cl, obj, (Msg) msg);
-
-            if (r)
-                MUI_RemoveClipRegion(muiRenderInfo(obj), c);
-        }
-    }
+        group_draw_area(cl, obj, msg, virtual);
     else
-    {
         DoSuperMethodA(cl, obj, (Msg) msg);
-    }
 
     if (virtual)
     {
