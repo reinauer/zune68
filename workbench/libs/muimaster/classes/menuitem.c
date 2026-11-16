@@ -719,11 +719,13 @@ static int Menuitem_FillNewMenu(Object *obj, struct NewMenu *menu,
             SIPTR type = 0;
             get(child, MUIA_Menuitem_Type, &type);
 
-            if (type == MUIV_Menuitem_Type_Menuitem) {
-                /* Depth 0 Menuitems are to become items of current menu,
-                 * not menus. MUI behavior */
+            /* A Menuitem directly in the strip joins the previous menu, as
+             * in MUI, unless it has items of its own or comes first: then
+             * it is a menu title. GadTools needs a title first. */
+            if (type == MUIV_Menuitem_Type_Menuitem && num > 0
+                && !Menuitem_GetTotalChildren(child))
                 menu->nm_Type = NM_ITEM;
-            } else
+            else
                 menu->nm_Type = NM_TITLE;
         }
         else if (depth == 1)
