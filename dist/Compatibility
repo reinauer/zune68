@@ -144,6 +144,10 @@ LumiZip 1.0.1 and LumiWeather 1.4.524 start and quit cleanly on AmigaOS
 3.2.3 with networking off. A shutdown freeze reported on OS 3.9/AfA OS has
 not been reproduced.
 
+The MUI 3.8 demos open and close on their 8 KiB stacks, as do SysSpeed 2.6
+and AHI 6.2 preferences. MUI's own preferences program (MUI:MUI) needs
+MUI's private libraries and does not work with Zune68; use SYS:Prefs/Zune.
+
 This is a beta, and there are many ways to improve it. Settings edits,
 form handling, more applications, AmigaOS 3.1, 68000 machines and
 CyberGraphX truecolor rendering all need more testing. We need testers:
