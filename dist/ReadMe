@@ -41,7 +41,7 @@ explicit choice as upgrades. The default is Skip.
   Prefs/Zune         -> SYS:Prefs/Zune (with Workbench icon)
     The preferences editor used by application settings menus.
 
-  Libs/MUI/*         -> LIBS:MUI/
+  Libs/MUI/*         -> MUI:Libs/MUI/
     BetterString, HotkeyString, NBitmap, NBalance, NList, NListview,
     NFloattext, NListtree, TextEditor, TheBar, TheBarVirt, TheButton,
     the Toolbar wrapper, and their bundled MCP editors. Rawimage and
@@ -60,23 +60,52 @@ explicit choice as upgrades. The default is Skip.
     language names to Amiga names, for example german to deutsch.
     Incomplete or unconvertible translations fall back to English.
 
+MUI classes belong in MUI:Libs/MUI, where MUI applications and the
+installers of other MUI classes expect them. If MUI: is not assigned,
+the installer asks for a drawer (SYS:MUI by default), assigns MUI: to
+it, adds MUI:Libs to LIBS:, and puts the same two commands in a Zune68
+section of S:User-Startup, as MUI's own installer does. With MUI:
+already assigned, nothing in S:User-Startup changes.
+
+A class in LIBS:MUI is found before the one in MUI:Libs/MUI, so an
+older copy there would hide the installed class. The question for that
+class says so, and installing renames the old copy to
+<class-name>.zune68-old. Earlier Zune68 betas installed their classes to
+LIBS:MUI; installing this release moves them aside this way.
+
 Before replacing a file, the installer saves the original beside it as
-<component-name>.zune68-old. An existing backup is preserved. Copy or
-rename that backup back to the original name to restore it. A newer
+<component-name>.zune68-old. An existing backup is preserved. A newer
 resident library can remain active until reboot; the installer reports
 the resident version separately and does not expunge libraries in use.
-
-To return normal MUI applications to your previous MUI installation,
-restore LIBS:muimaster.library from muimaster.library.zune68-old (after
-checking that the backup is the MUI version you want), or reinstall that
-MUI version. Close applications and reboot. Removing zunemaster.library
-alone does not restore muimaster.library: they are independent builds.
-If you also replaced MCCs, restore their saved versions as needed.
-
 Catalogs and the Prefs icon have short .old backups. Saved preferences
 are not replaced. Tests/opentest, Examples, SDK, Docs, and Source.tar.gz
-remain in the extracted package. No SDK assigns are changed, and nothing
-changes in S:Startup-Sequence or S:User-Startup.
+remain in the extracted package. No SDK assigns are changed.
+
+Protocol and Set back
+---------------------
+Each run appends what it did to MUI:Zune68/Install.log: every file it
+installed, saved, renamed or removed, and the MUI: setup. Markers in
+MUI:Zune68/Created and MUI:Zune68/Replaced record which files Zune68
+added and which originals it saved.
+
+When Zune68 is already installed, the installer first asks whether to
+install or update, or to set back. Set back puts every saved original
+back in place, deletes the files Zune68 added, and, if Zune68 set up
+MUI:, removes the assign and disables the Zune68 section in
+S:User-Startup. Files without a record, such as those that earlier
+betas installed where nothing was before, are kept and listed in the
+protocol. Close applications and reboot afterwards.
+
+If MUI applications no longer start and Workbench is not usable, boot
+without startup-sequence and restore the main library in a Shell:
+
+  Copy SYS:Libs/muimaster.library.zune68-old SYS:Libs/muimaster.library
+
+Without that backup there was no muimaster.library before Zune68;
+delete SYS:Libs/muimaster.library or install MUI again. Check that a
+backup is the MUI version you want before copying it back. Removing
+zunemaster.library alone does not restore muimaster.library: they are
+independent builds.
 Pretend mode displays the choices without copying files.
 
 After installation, close applications and reboot before trying Zune68.

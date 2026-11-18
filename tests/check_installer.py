@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Exercise the real script with an optional host CLI build of InstallerLG.
 
-The host has no Amiga assigns or resident libraries. Only LIBS:, resident
-version lookup, and initial UI mode are substituted in temporary copies.
-No files outside the fixture directories are installed.
+The host has no Amiga assigns or resident libraries. Only the LIBS: and MUI:
+locations, the temporary protocol file, resident version lookup, and initial
+UI mode are substituted in temporary copies. MUI: counts as assigned, so the
+assign and S:User-Startup changes are not exercised here. No files outside
+the fixture directories are installed.
 """
 import argparse
 import subprocess
@@ -13,14 +15,45 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from components import PLUGINS, LANGUAGES, catalog_paths
+from components import CLASS_FILES, LANGUAGES, catalog_paths
 from release import install_script
 
 NAMES = ('zunemaster.library', 'muimaster.library')
+WELCOME = '(welcome "Install Zune68\'s native AmigaOS libraries.")'
 
 
 def version_file(name, version):
     return f'\0$VER: {name} {version} (03.10.2026)\0'.encode()
+
+
+def localize(script, root, libs, mui, *, resident=0, pretend=False, level=2,
+             mode=0):
+    """Point the script's system locations at fixture directories.
+
+    The CLI build of InstallerLG cannot answer askchoice with the first
+    choice, so the Install / Set back mode is set directly.
+    """
+    script = script.replace('(if #previous\n', f'(set #mode {mode})\n(if 0\n')
+    script = script.replace('(set #syslibs (expandpath "LIBS:"))',
+                            f'(set #syslibs "{libs}")')
+    script = script.replace('(set #muiroot (getassign "MUI" "a"))',
+                            f'(set #muiroot "{mui}")')
+    script = script.replace('(if (= (getassign "MUI" "a") "")', '(if 0')
+    script = script.replace('"T:Zune68-Install.log"', f'"{root}/protocol.tmp"')
+    script = script.replace('(getversion #residentname (resident))', str(resident))
+    return script.replace(WELCOME, WELCOME + f'\n(set @pretend {int(pretend)})'
+                          f'\n(set @user-level {level})')
+
+
+def run(installer, directory, answers, encoding=None):
+    # InstallerLG's host argument reader expects a relative script path.
+    result = subprocess.run([str(installer), 'Install'], cwd=directory,
+                            input=answers, text=True, encoding=encoding,
+                            capture_output=True, timeout=15, check=True)
+    out = result.stdout + result.stderr
+    assert 'syntax error' not in out.lower(), out
+    assert 'undefined variable' not in out.lower(), out
+    return out
 
 
 def scenario(installer, label, *, installed=None, answers='N\nN\n',
@@ -28,9 +61,10 @@ def scenario(installer, label, *, installed=None, answers='N\nN\n',
              missing=False, invalid=False, directory=False):
     with tempfile.TemporaryDirectory(prefix='zune68-installer-') as temp:
         root = Path(temp)
-        payload, target = root / 'Libs', root / 'system-libs'
+        payload, target, mui = root / 'Libs', root / 'system-libs', root / 'mui'
         payload.mkdir()
         target.mkdir()
+        mui.mkdir()
         for name in NAMES:
             (payload / name).write_bytes(version_file(name, '35.6'))
         destination = target / NAMES[0]
@@ -46,22 +80,12 @@ def scenario(installer, label, *, installed=None, answers='N\nN\n',
         if directory:
             destination.mkdir()
 
-        script = (ROOT / 'dist/Install').read_text()
-        script = script.replace('"LIBS:"', f'"{target}"')
-        script = script.replace('(getversion #residentname (resident))', str(resident))
-        welcome = '(welcome "Install Zune68\'s native AmigaOS libraries.")'
-        script = script.replace(welcome, welcome +
-                                f'\n(set @pretend {int(pretend)})' +
-                                f'\n(set @user-level {0 if novice else 2})')
+        script = localize((ROOT / 'dist/Install').read_text(), root, target, mui,
+                          resident=resident, pretend=pretend,
+                          level=0 if novice else 2)
         (root / 'Install').write_text(script)
-        # InstallerLG's host argument reader expects a relative script path.
-        result = subprocess.run([str(installer), 'Install'], cwd=root,
-                                input=answers, text=True, capture_output=True,
-                                timeout=10, check=True)
-        out = result.stdout + result.stderr
+        out = run(installer, root, answers)
         assert all(len(p.name) <= 30 for p in target.iterdir()), 'OFS/FFS filename limit'
-        assert 'syntax error' not in out.lower(), out
-        assert 'undefined variable' not in out.lower(), out
         if missing or invalid or directory:
             assert 'Aborting' in out, out
             assert not (target / NAMES[1]).exists()
@@ -83,12 +107,17 @@ def scenario(installer, label, *, installed=None, answers='N\nN\n',
                 assert path.exists() == (expected is not None), out
                 if expected is not None:
                     assert path.read_bytes() == expected, out
+                marker = mui / 'Zune68/Created/Libs' / name
+                assert marker.exists() == (answer == 'Y' and not pretend
+                                           and original is None), (name, out)
             expected_backup = backup
             if expected_backup is None and installed is not None and first == 'Y' and not pretend:
                 expected_backup = installed
             assert backup_path.exists() == (expected_backup is not None), out
             if expected_backup is not None:
                 assert backup_path.read_bytes() == expected_backup, out
+            protocol = mui / 'Zune68/Install.log'
+            assert protocol.exists() == ('Y' in answers and not pretend), out
             if pretend:
                 assert 'Pretend mode finished' in out, out
             if resident:
@@ -100,37 +129,67 @@ def scenario(installer, label, *, installed=None, answers='N\nN\n',
         print(f'Installer: {label} passed')
 
 
+def set_back_scenario(installer):
+    """Install over an older MUI, then set back to exactly that state."""
+    with tempfile.TemporaryDirectory(prefix='zune68-setback-') as temp:
+        root = Path(temp)
+        payload, target, mui = root / 'Libs', root / 'system-libs', root / 'mui'
+        payload.mkdir()
+        target.mkdir()
+        mui.mkdir()
+        for name in NAMES:
+            (payload / name).write_bytes(version_file(name, '35.6'))
+        mui_library = version_file(NAMES[1], '19.1')
+        (target / NAMES[1]).write_bytes(mui_library)
+        script = (ROOT / 'dist/Install').read_text()
+        (root / 'Install').write_text(localize(script, root, target, mui))
+        run(installer, root, 'Y\nY\n')
+        assert (target / (NAMES[1] + '.zune68-old')).read_bytes() == mui_library
+        assert (mui / 'Zune68/Created/Libs' / NAMES[0]).is_file()
+        (root / 'Install').write_text(localize(script, root, target, mui, mode=1))
+        out = run(installer, root, '')
+        assert not (target / NAMES[0]).exists(), out
+        assert (target / NAMES[1]).read_bytes() == mui_library, out
+        assert not list(target.glob('*.zune68-old')), out
+        assert not list((mui / 'Zune68/Created').rglob('*.library')), out
+        protocol = (mui / 'Zune68/Install.log').read_text()
+        assert ': install ---' in protocol and ': set back ---' in protocol, protocol
+        assert 'Restored' in protocol and 'Removed' in protocol, protocol
+        print('Installer: set back passed')
+
+
 def components_scenario(installer, *, pretend=False, skip=False, missing=False,
-                        invalid=False):
+                        invalid=False, set_back=False):
     with tempfile.TemporaryDirectory(prefix='zune68-components-install-') as temp:
         root = Path(temp)
         package = root / 'package'
         target = root / 'target'
+        mui = root / 'mui'
         package.mkdir()
         target.mkdir()
+        (mui / 'Libs/MUI').mkdir(parents=True)
         libs = target / 'Libs'
         libs.mkdir()
         files = ['Prefs/Zune', 'Prefs/Zune.info']
-        files += ['Libs/MUI/' + name for name in PLUGINS.values()]
+        files += ['Libs/MUI/' + name for name in CLASS_FILES]
         files += catalog_paths(package)
         for relative in ['Libs/' + name for name in NAMES] + files:
             path = package / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(version_file(path.name, '35.6'))
-        script = install_script(files)
-        script = script.replace('"LIBS:"', f'"{libs}"')
-        script = script.replace('"LIBS:MUI"', f'"{libs}/MUI"')
-        script = script.replace('"SYS:Prefs"', f'"{target}/Prefs"')
-        script = script.replace('"LOCALE:Catalogs', f'"{target}/Catalogs')
-        # Host filenames use ASCII fixture names; Amiga script uses Latin-1.
-        for english, native in LANGUAGES.items():
-            script = script.replace('/' + native + '/', '/' + english + '/')
-            script = script.replace('/' + native + '"', '/' + english + '"')
-        script = script.replace('(getversion #residentname (resident))', '0')
-        welcome = '(welcome "Install Zune68\'s native AmigaOS libraries.")'
-        script = script.replace(welcome, welcome +
-                                f'\n(set @pretend {int(pretend)})\n(set @user-level 2)')
-        (package / 'Install').write_bytes(script.encode('latin1'))
+        def write_script(mode):
+            script = localize(install_script(files), root, libs, mui,
+                              pretend=pretend, mode=mode)
+            script = script.replace('"SYS:Prefs"', f'"{target}/Prefs"')
+            script = script.replace('"LOCALE:Catalogs', f'"{target}/Catalogs')
+            # Host filenames use ASCII fixture names; Amiga script uses Latin-1.
+            for english, native in LANGUAGES.items():
+                script = script.replace('/' + native + '/', '/' + english + '/')
+                script = script.replace('/' + native + '"', '/' + english + '"')
+            (package / 'Install').write_bytes(script.encode('latin1'))
+
+        write_script(0)
+        # An older class in the first LIBS: directory hides MUI:Libs/MUI.
         old = libs / 'MUI/BetterString.mcc'
         old.parent.mkdir()
         old.write_bytes(version_file(old.name, '35.4'))
@@ -145,32 +204,41 @@ def components_scenario(installer, *, pretend=False, skip=False, missing=False,
             (package / 'Libs/MUI/TextEditor.mcp').unlink()
         if invalid:
             (package / 'Libs/MUI/TextEditor.mcp').write_bytes(b'no version')
-        answers = ('N\n' if skip else 'Y\n') * (len(PLUGINS) + 4)
-        result = subprocess.run([str(installer), 'Install'], cwd=package,
-                                input=answers, text=True, encoding='latin1',
-                                capture_output=True, timeout=15, check=True)
-        out = result.stdout + result.stderr
-        assert 'syntax error' not in out.lower(), out
-        assert 'undefined variable' not in out.lower(), out
+        answers = ('N\n' if skip else 'Y\n') * (len(CLASS_FILES) + 4)
+        out = run(installer, package, answers, encoding='latin1')
         if missing:
             assert 'Aborting' in out and 'incomplete' in out, out
         elif invalid:
             assert 'Aborting' in out and 'Cannot read the bundled version' in out, out
         else:
             assert 'v35.4 already installed' in out and 'Bundled is v35.6' in out, out
+            assert 'hides' in out, out
         if pretend or skip or missing or invalid:
             assert {p: p.read_bytes() for p in target.rglob('*') if p.is_file()} == originals, out
+            assert not list(mui.rglob('Libs/MUI/*.mc?')), out
         else:
             assert (target / 'Prefs/Zune').is_file(), out
             assert (target / 'Prefs/Zune.info').is_file(), out
-            for name in PLUGINS.values():
-                assert (libs / 'MUI' / name).is_file(), (name, out)
+            for name in CLASS_FILES:
+                assert (mui / 'Libs/MUI' / name).is_file(), (name, out)
+                assert (mui / 'Zune68/Created/Libs/MUI' / name).is_file(), (name, out)
+            assert not old.exists(), out
             assert (libs / 'MUI/BetterString.mcc.zune68-old').read_bytes() == version_file(old.name, '35.4')
             assert len(list((target / 'Catalogs').rglob('*.catalog'))) == len(catalog_paths(package)), out
             assert old_icon.with_name('Zune.info.old').read_bytes() == b'original icon'
             assert old_catalog.with_name(old_catalog.name + '.old').read_bytes() == b'original catalog'
+            assert (mui / 'Zune68/Replaced/Catalogs/german/BetterString_mcp.catalog').is_file()
+            assert (mui / 'Zune68/Install.log').is_file()
+            if set_back:
+                write_script(1)
+                out = run(installer, package, '', encoding='latin1')
+                after = {p: p.read_bytes() for p in target.rglob('*') if p.is_file()}
+                assert after == originals, out
+                assert not list(mui.rglob('Libs/MUI/*.mc?')), out
+                assert not [p for p in (mui / 'Zune68').rglob('*')
+                            if p.is_file() and p.name != 'Install.log'], out
         print(f'Installer components: pretend={pretend}, skip={skip}, '
-              f'missing={missing}, invalid={invalid} passed')
+              f'missing={missing}, invalid={invalid}, set_back={set_back} passed')
 
 
 def main():
@@ -193,7 +261,9 @@ def main():
     scenario(installer, 'missing payload', missing=True)
     scenario(installer, 'unversioned payload', invalid=True)
     scenario(installer, 'destination is directory', directory=True)
+    set_back_scenario(installer)
     components_scenario(installer)
+    components_scenario(installer, set_back=True)
     components_scenario(installer, skip=True)
     components_scenario(installer, pretend=True)
     components_scenario(installer, missing=True)

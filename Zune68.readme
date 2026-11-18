@@ -20,7 +20,10 @@ The native code builds with m68k-amigaos-gcc and requires no FPU.
 
 Use the supplied Amiga Installer script. It shows existing and bundled
 versions, asks before replacement, and preserves an existing backup.
+Classes go to MUI:Libs/MUI; without MUI:, the installer assigns it.
 Installing muimaster.library changes the toolkit used by MUI applications.
+Every run is logged in MUI:Zune68/Install.log, and running the installer
+again offers Set back, which returns to the MUI setup from before Zune68.
 The plugins are loaded only when requested.
 
 IBrowse 3.0a, YAM 2.x, Voyager 3.5.2, Odyssey Web Browser, AmiPG and

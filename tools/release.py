@@ -93,11 +93,37 @@ def install_script(files):
         if name == 'Prefs/Zune' or name.startswith('Libs/MUI/'):
             preflight.append(f'(if (= (getversion (tackon #package "{name}")) 0)\n'
                              f'    (abort "Cannot read the bundled version of {name}."))')
+    # Set back finds its records under MUI:Zune68/Created and /Replaced in
+    # drawers that mirror the installed paths. Old Installer versions make
+    # one directory level at a time, so every parent is listed first.
+    state_dirs = [('Created', 'Libs')]  # P_StateDirs in dist/Install makes it.
+
+    def state_dir(tree, path):
+        parts = path.split('/')
+        for count in range(1, len(parts) + 1):
+            directory = '/'.join(parts[:count])
+            if (tree, directory) not in state_dirs:
+                state_dirs.append((tree, directory))
+
+    state_dir('Created', 'Libs/MUI')
+    for tree in ('Created', 'Replaced'):
+        state_dir(tree, 'Prefs')
     lines = ['(P_InstallFile "Prefs/Zune" "SYS:Prefs"',
-             '    "Zune68 preferences editor, opened by application settings menus." "")']
+             '    "Zune68 preferences editor, opened by application settings menus." ""',
+             '    "Prefs/Zune" "")']
+    restore = ['(P_RestoreFile "SYS:Prefs" "Zune" "Prefs/Zune" 0)',
+               '(P_RestoreSupport "SYS:Prefs" "Zune.info" "Prefs/Zune.info")',
+               '(if (<> #muiclasses "")', '    (']
     for name in CLASS_FILES:
-        lines.append(f'(P_InstallFile "Libs/MUI/{name}" "LIBS:MUI" '
-                     f'"Optional, demand-loaded MUI custom class." "{name}")')
+        lines.append(f'(P_InstallFile "Libs/MUI/{name}" #muiclasses '
+                     f'"Optional, demand-loaded MUI custom class." "{name}"\n'
+                     f'    "Libs/MUI/{name}" #shadowclasses)')
+        restore.append(f'        (P_RestoreFile #muiclasses "{name}" "Libs/MUI/{name}" 0)')
+    # Classes that an earlier Zune68 or another installer put in LIBS:MUI.
+    restore += ['    )', ')', '(if (<> #shadowclasses "")', '    (']
+    for name in CLASS_FILES:
+        restore.append(f'        (P_RestoreFile #shadowclasses "{name}" "" 0)')
+    restore += ['    )', ')']
     lines += ['(if (askbool (prompt "Install the bundled translations to LOCALE:Catalogs?\\nExisting catalogs are backed up once as .old.")',
               '    (help "Missing translations fall back to English. No saved preferences are replaced.")',
               '    (choices "Install" "Skip") (default 0))', '    (']
@@ -106,18 +132,27 @@ def install_script(files):
         if name.startswith('Locale/Catalogs/'):
             parts = Path(name).parts[2:]
             language = LANGUAGES.get(parts[0], parts[0])
-            directory = 'LOCALE:Catalogs/' + '/'.join([language, *parts[1:-1]])
+            relative = '/'.join([language, *parts[1:-1]])
+            directory = 'LOCALE:Catalogs/' + relative
+            key = 'Catalogs/' + relative + '/' + parts[-1]
+            for tree in ('Created', 'Replaced'):
+                state_dir(tree, 'Catalogs/' + relative)
             # Make each intermediate directory explicitly for old Installer.
             for count in range(1, len(directory.split('/')) + 1):
                 parent = '/'.join(directory.split('/')[:count])
                 if parent not in directories:
                     lines.append(f'        (makedir "{parent}")')
                     directories.add(parent)
-            lines.append(f'        (P_CopySupport "{name}" "{directory}")')
+            lines.append(f'        (P_CopySupport "{name}" "{directory}" "{key}")')
+            restore.append(f'(P_RestoreSupport "{directory}" "{parts[-1]}" "{key}")')
     lines += ['    )', ')',
               '(message "Examples, SDK, documentation and corresponding source remain in the extracted Zune68 drawer. No SDK assigns are changed.")']
-    return script.replace('; COMPONENT_PREFLIGHT', '\n'.join(preflight)).replace(
-        '; COMPONENT_INSTALL', '\n'.join(lines))
+    dirs = [f'    (makedir (P_StatePath "{tree}" "{path}"))' for tree, path in state_dirs[1:]]
+    return (script.replace('; COMPONENT_PREFLIGHT', '\n'.join(preflight))
+            .replace('    ; COMPONENT_STATEDIRS', '\n'.join(dirs))
+            .replace('        ; COMPONENT_RESTORE',
+                     '\n'.join('        ' + line for line in restore))
+            .replace('; COMPONENT_INSTALL', '\n'.join(lines)))
 
 
 def strip_binaries(package, strip):
@@ -172,7 +207,8 @@ def release(build_dir, output_dir, lha, full=True, strip='m68k-amigaos-strip'):
             (package / name).write_text(substitute(
                 (ROOT / 'dist' / name).read_text(encoding='ascii'),
                 version, date, line), encoding='ascii')
-        (package / 'Install').write_bytes(install_script(files).encode('latin1'))
+        (package / 'Install').write_bytes(
+            install_script(files).replace('[RELEASE]', date).encode('latin1'))
         for name in files:
             target = package / name
             target.parent.mkdir(parents=True, exist_ok=True)

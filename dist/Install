@@ -1,4 +1,4 @@
-; $VER: Install-Zune68 1.1 (04.10.2026)
+; $VER: Install-Zune68 1.2 (18.11.2026)
 ; Run with Amiga Installer 43 or newer.
 
 (set @app-name "Zune68")
@@ -10,28 +10,132 @@
 ; Novice mode normally skips questions. Replacements must be explicit.
 (if (< @user-level 1) (set @user-level 1))
 (set #package (pathonly @icon))
+(set #release "[RELEASE]")
 (set #selected 0)
+(set #restored 0)
+(set #log "")
+(set #action "install")
+
+; Where things are. The first LIBS: directory is where libraries are
+; installed and where older class copies would hide MUI:Libs/MUI.
+(set #syslibs (expandpath "LIBS:"))
+(set #muiroot (getassign "MUI" "a"))
+(if (= #syslibs "") (set #syslibs "SYS:Libs"))
+(if (= #muiroot "")
+    (if (= (exists "SYS:MUI/Zune68" (noreq)) 2)
+        (set #muiroot (expandpath "SYS:MUI"))
+    )
+)
+(set #state "")
+(set #muiclasses "")
+(set #shadowclasses "")
+
+; Recompute the derived locations after #muiroot changes.
+(procedure P_Locations
+    (if (<> #muiroot "")
+        (
+            (set #state (tackon #muiroot "Zune68"))
+            (set #muiclasses (tackon #muiroot "Libs/MUI"))
+        )
+    )
+    (set #shadowclasses (tackon #syslibs "MUI"))
+    (if (<> #muiclasses "")
+        (if (= (expandpath #shadowclasses) (expandpath #muiclasses))
+            (set #shadowclasses "")
+        )
+    )
+)
+(P_Locations)
 
 (procedure P_Version #number
     ("%ld.%ld" (/ #number 65536) (bitand #number 65535))
 )
 
-(procedure P_InstallFile #relative #directory #purpose #residentname
+; The protocol is kept in memory and appended to MUI:Zune68/Install.log at
+; the end of the run, or when the run is aborted.
+(procedure P_Log #line
+    (set #log (cat #log #line "\n"))
+)
+
+(procedure P_WriteLog
+    (if (and (<> #log "") (= @pretend 0))
+        (if (= (exists #state (noreq)) 2)
+            (
+                (set #logfile (tackon #state "Install.log"))
+                (if (= (exists #logfile (noreq)) 1)
+                    (textfile (dest "T:Zune68-Install.log") (include #logfile)
+                        (append ("\n--- Zune68 %s: %s ---\n" #release #action) #log))
+                    (textfile (dest "T:Zune68-Install.log")
+                        (append ("--- Zune68 %s: %s ---\n" #release #action) #log))
+                )
+                (copyfiles (source "T:Zune68-Install.log") (dest #state)
+                    (newname "Install.log") (optional "force" "nofail"))
+                (delete "T:Zune68-Install.log" (optional "nofail"))
+                (set #log "")
+            )
+        )
+    )
+)
+
+(onerror (P_WriteLog))
+
+; Markers in MUI:Zune68/Created and MUI:Zune68/Replaced record which files
+; Zune68 added and which originals it saved, so that Set back can remove
+; exactly those. Their paths mirror the installed files.
+(procedure P_StatePath #tree #key
+    (if (or (= #key "") (= #state ""))
+        ""
+        (tackon (tackon #state #tree) #key)
+    )
+)
+
+(procedure P_Mark #marker #content
+    (if (<> #marker "")
+        (textfile (dest #marker) (append #content "\n"))
+    )
+)
+
+(procedure P_StateDirs
+    (makedir #state)
+    (makedir (tackon #state "Created"))
+    (makedir (tackon #state "Replaced"))
+    (makedir (P_StatePath "Created" "Libs"))
+    ; COMPONENT_STATEDIRS
+)
+
+; #shadowdir names a directory searched before #directory, such as the
+; first LIBS: directory for classes in MUI:Libs/MUI. A copy there would
+; hide the installed file, so installing renames it to .zune68-old.
+(procedure P_InstallFile #relative #directory #purpose #residentname #key #shadowdir
     (set #name (fileonly #relative))
     (set #source (tackon #package #relative))
     (set #destination (tackon #directory #name))
     (set #backup (cat #destination ".zune68-old"))
+    (set #created (P_StatePath "Created" #key))
+    (set #shadow "")
+    (if (<> #shadowdir "")
+        (if (= (exists (tackon #shadowdir #name) (noreq)) 1)
+            (set #shadow (tackon #shadowdir #name))
+        )
+    )
     (set #bundled (getversion #source))
-    (set #existing (exists #destination))
+    (set #existing (exists #destination (noreq)))
+    (set #ours 0)
+    (if (<> #created "")
+        (if (= (exists #created (noreq)) 1) (set #ours 1))
+    )
+    (set #current #destination)
+    (if (<> #shadow "") (set #current #shadow))
     (set #resident 0)
     (if #residentname (set #resident (getversion #residentname (resident))))
     (set #prompt (cat #name " is not installed.\n"))
     (if (= #existing 2)
         (abort (cat #destination " is a directory, not a component file."))
     )
-    (if #existing
+    (set #installed 0)
+    (if (or #existing (<> #shadow ""))
         (
-            (set #installed (getversion #destination))
+            (set #installed (getversion #current))
             (if #installed
                 (set #prompt (cat #name " v" (P_Version #installed)
                     " already installed.\n"))
@@ -41,7 +145,7 @@
         )
     )
     (set #prompt (cat #prompt "Bundled is v" (P_Version #bundled) ".\n"))
-    (if #existing
+    (if (or #existing (<> #shadow ""))
         (
             (if (= #installed #bundled)
                 (set #prompt (cat #prompt "This replaces the same version.\n"))
@@ -49,8 +153,16 @@
             (if (> #installed #bundled)
                 (set #prompt (cat #prompt "This is a downgrade.\n"))
             )
+        )
+    )
+    (if (<> #shadow "")
+        (set #prompt (cat #prompt "The copy in " #shadowdir " hides\n"
+            #directory ". Installing renames it to\n" #name ".zune68-old.\n"))
+    )
+    (if (and #existing (= #ours 0))
+        (
             (set #prompt (cat #prompt "Original backup: " #backup "\n"))
-            (if (exists #backup)
+            (if (exists #backup (noreq))
                 (set #prompt (cat #prompt "The existing backup will be kept.\n"))
             )
         )
@@ -65,21 +177,40 @@
             (prompt #prompt)
             (help "Install copies this component to the shown location. Skip keeps"
                   "the current system unchanged. Existing files are backed"
-                  "up once; a previous Zune68 backup is never overwritten.")
+                  "up once; a previous Zune68 backup is never overwritten."
+                  "Run Install again and choose Set back to undo.")
             (choices "Install" "Skip")
             (default 0)
         )
         (
             (makedir #directory)
-            (if (= (exists #backup) 2)
+            (if (= (exists #backup (noreq)) 2)
                 (abort (cat #backup " is a directory. No file was replaced."))
             )
-            (if (and #existing (= (exists #backup) 0))
-                (copyfiles
-                    (source #destination)
-                    (dest #directory)
-                    (newname (cat #name ".zune68-old"))
-                    (optional "fail")
+            (if (<> #shadow "")
+                (if (exists (cat #shadow ".zune68-old") (noreq))
+                    (
+                        (delete #shadow (optional "force"))
+                        (P_Log (cat "Deleted " #shadow
+                            " (its .zune68-old backup is older and kept)"))
+                    )
+                    (
+                        (rename #shadow (cat #shadow ".zune68-old"))
+                        (P_Log (cat "Renamed " #shadow " to " #name ".zune68-old"))
+                    )
+                )
+            )
+            (if (and #existing (= #ours 0))
+                (if (= (exists #backup (noreq)) 0)
+                    (
+                        (copyfiles
+                            (source #destination)
+                            (dest #directory)
+                            (newname (cat #name ".zune68-old"))
+                            (optional "fail")
+                        )
+                        (P_Log (cat "Saved " #destination " as " #name ".zune68-old"))
+                    )
                 )
             )
             (copyfiles
@@ -87,13 +218,30 @@
                 (dest #directory)
                 (optional "fail")
             )
+            (if (= #existing 0)
+                (if (= (exists #backup (noreq)) 0)
+                    (P_Mark #created #destination)
+                )
+            )
+            (P_Log (cat "Installed " #destination " v" (P_Version #bundled)))
             (if (exists (cat #source ".info"))
                 (
-                    (if (and (exists (cat #destination ".info"))
-                             (= (exists (cat #destination ".info.old")) 0))
-                        (copyfiles (source (cat #destination ".info"))
-                            (dest #directory) (newname (cat #name ".info.old"))
-                            (optional "fail"))
+                    (set #iconreplaced (P_StatePath "Replaced" (cat #key ".info")))
+                    (set #iconcreated (P_StatePath "Created" (cat #key ".info")))
+                    (if (exists (cat #destination ".info") (noreq))
+                        (if (= (exists (cat #destination ".info.old") (noreq)) 0)
+                            (if (= (exists #iconcreated (noreq)) 0)
+                                (
+                                    (copyfiles (source (cat #destination ".info"))
+                                        (dest #directory) (newname (cat #name ".info.old"))
+                                        (optional "fail"))
+                                    (P_Mark #iconreplaced (cat #destination ".info"))
+                                )
+                            )
+                        )
+                        (if (= (exists #iconreplaced (noreq)) 0)
+                            (P_Mark #iconcreated (cat #destination ".info"))
+                        )
                     )
                     (copyfiles (source (cat #source ".info"))
                         (dest #directory) (optional "fail"))
@@ -105,21 +253,124 @@
 )
 
 (procedure P_InstallLibrary #library #description
-    (P_InstallFile (tackon "Libs" #library) "LIBS:" #description #library)
+    (P_InstallFile (tackon "Libs" #library) #syslibs #description #library
+        (tackon "Libs" #library) "")
 )
 
 ; Support files have no library identity; keep one short .old backup.
-(procedure P_CopySupport #relative #directory
+(procedure P_CopySupport #relative #directory #key
     (set #filename (fileonly #relative))
     (set #target (tackon #directory #filename))
+    (set #replaced (P_StatePath "Replaced" #key))
+    (set #created (P_StatePath "Created" #key))
     (makedir #directory)
-    (if (and (exists #target) (= (exists (cat #target ".old")) 0))
-        (copyfiles (source #target) (dest #directory)
-            (newname (cat #filename ".old")) (optional "fail"))
+    (if (exists #target (noreq))
+        (if (= (exists (cat #target ".old") (noreq)) 0)
+            (if (= (exists #created (noreq)) 0)
+                (
+                    (copyfiles (source #target) (dest #directory)
+                        (newname (cat #filename ".old")) (optional "fail"))
+                    (P_Mark #replaced #target)
+                    (P_Log (cat "Saved " #target " as " #filename ".old"))
+                )
+            )
+        )
+        (if (= (exists #replaced (noreq)) 0)
+            (P_Mark #created #target)
+        )
     )
     (copyfiles (source (tackon #package #relative)) (dest #directory)
         (optional "fail"))
+    (P_Log (cat "Installed " #target))
     (set #selected (+ #selected 1))
+)
+
+; Set back: put a .zune68-old backup back in place, or delete a file that
+; Zune68 added. #ours treats a file without backup as added by Zune68.
+(procedure P_RestoreFile #directory #name #key #ours
+    (set #destination (tackon #directory #name))
+    (set #backup (cat #destination ".zune68-old"))
+    (set #created (P_StatePath "Created" #key))
+    (set #added #ours)
+    (if (<> #created "")
+        (if (= (exists #created (noreq)) 1) (set #added 1))
+    )
+    (if (= (exists #backup (noreq)) 1)
+        (
+            (if (exists #destination (noreq))
+                (delete #destination (optional "force"))
+            )
+            (rename #backup #destination)
+            (P_Log (cat "Restored " #destination " from " #name ".zune68-old"))
+            (set #restored (+ #restored 1))
+        )
+        (if (= (exists #destination (noreq)) 1)
+            (if #added
+                (
+                    (delete #destination (optional "force"))
+                    (P_Log (cat "Removed " #destination))
+                    (set #restored (+ #restored 1))
+                )
+                (P_Log (cat "Kept " #destination " (no record that Zune68 installed it)"))
+            )
+        )
+    )
+    (if (<> #created "")
+        (delete #created (optional "nofail"))
+    )
+)
+
+(procedure P_RestoreSupport #directory #name #key
+    (set #target (tackon #directory #name))
+    (set #replaced (P_StatePath "Replaced" #key))
+    (set #created (P_StatePath "Created" #key))
+    (if (= (exists #replaced (noreq)) 1)
+        (
+            (if (= (exists (cat #target ".old") (noreq)) 1)
+                (
+                    (if (exists #target (noreq))
+                        (delete #target (optional "force"))
+                    )
+                    (rename (cat #target ".old") #target)
+                    (P_Log (cat "Restored " #target " from " #name ".old"))
+                    (set #restored (+ #restored 1))
+                )
+            )
+            (delete #replaced (optional "nofail"))
+        )
+        (if (= (exists #created (noreq)) 1)
+            (
+                (if (= (exists #target (noreq)) 1)
+                    (
+                        (delete #target (optional "force"))
+                        (P_Log (cat "Removed " #target))
+                        (set #restored (+ #restored 1))
+                    )
+                )
+                (delete #created (optional "nofail"))
+            )
+        )
+    )
+)
+
+(procedure P_RestoreMUI
+    (if (= (exists (P_StatePath "Created" "Assign") (noreq)) 1)
+        (
+            (startup "Zune68"
+                (prompt "Disable the Zune68 section of S:User-Startup?")
+                (help "Zune68 added this section to assign MUI: at boot."
+                      "Its commands are replaced by a comment.")
+                (command "; Zune68 was set back. This section can be deleted."))
+            (run ("Assign LIBS: \"%s\" REMOVE" (tackon #muiroot "Libs")))
+            (makeassign "MUI")
+            (delete (P_StatePath "Created" "Assign") (optional "nofail"))
+            (delete (tackon #muiroot "Libs/MUI") (optional "nofail"))
+            (delete (tackon #muiroot "Libs") (optional "nofail"))
+            (P_Log (cat "Removed the MUI: assign to " #muiroot
+                " and disabled the Zune68 section of S:User-Startup"))
+            (set #muiremoved 1)
+        )
+    )
 )
 
 ; Check the entire payload before offering any system changes.
@@ -138,6 +389,99 @@
 
 ; COMPONENT_PREFLIGHT
 
+(set #previous 0)
+(if (<> #state "")
+    (if (= (exists #state (noreq)) 2) (set #previous 1))
+)
+(if (exists (tackon #syslibs "zunemaster.library") (noreq)) (set #previous 1))
+(if (exists (tackon #syslibs "muimaster.library.zune68-old") (noreq)) (set #previous 1))
+
+(set #mode 0)
+(if #previous
+    (set #mode (askchoice
+        (prompt "Zune68 has been installed on this system before.\n\n"
+                "Set back puts the saved originals back in place and\n"
+                "removes the files Zune68 added, returning to the\n"
+                "MUI setup that was there before Zune68.")
+        (help "Install or update asks about each component, as on a first"
+              "installation. Set back uses the backups and the records in"
+              "MUI:Zune68. Files that were not recorded are kept. The protocol"
+              "of every run is in MUI:Zune68/Install.log.")
+        (choices "Install or update Zune68" "Set back to the state before Zune68")
+        (default 0)))
+)
+
+(if (= #mode 1)
+    (
+        (set #action "set back")
+        (set #muiremoved 0)
+        (P_RestoreFile #syslibs "zunemaster.library" "Libs/zunemaster.library" 1)
+        (P_RestoreFile #syslibs "muimaster.library" "Libs/muimaster.library" 0)
+        ; COMPONENT_RESTORE
+        (if (<> #state "") (P_RestoreMUI))
+        (P_WriteLog)
+        (if @pretend
+            (message "Pretend mode finished. No files were changed.")
+            (message ("Set back %ld file(s).\n\n" #restored)
+                (if (<> #state "")
+                    (cat "The protocol is in " (tackon #state "Install.log") ".\n")
+                    "")
+                (if #muiremoved
+                    (cat "MUI: is no longer assigned. You can delete\n" #muiroot
+                        " once you no longer need the protocol.\n")
+                    "")
+                "\nClose applications and reboot to use the restored libraries.")
+        )
+        (exit (quiet))
+    )
+)
+
+; MUI classes belong in MUI:Libs/MUI. Without a MUI: assign, create one
+; and add it to S:User-Startup like MUI does.
+(set #muinew 0)
+(if (= (getassign "MUI" "a") "")
+    (
+        (if (= #muiroot "") (set #muiroot "SYS:MUI"))
+        (set #muiroot (askdir
+            (prompt "MUI: is not assigned. Zune68 installs its classes to\n"
+                    "MUI:Libs/MUI, where MUI applications and class\n"
+                    "installers look for them.\n\n"
+                    "Choose the drawer to use as MUI:. It is created if\n"
+                    "needed, and S:User-Startup gets a Zune68 section:\n"
+                    "  Assign MUI: <drawer>\n  Assign LIBS: MUI:Libs ADD")
+            (help "MUI keeps its files in the drawer assigned to MUI: and adds"
+                  "MUI:Libs to LIBS:, so that classes in MUI:Libs/MUI are found."
+                  "Zune68 sets up the same layout. Set back removes it again.")
+            (default #muiroot)
+            (newpath)))
+        (makedir #muiroot)
+        (makedir (tackon #muiroot "Libs"))
+        (makedir (tackon #muiroot "Libs/MUI"))
+        (if (= @pretend 0)
+            (if (= (exists #muiroot (noreq)) 2)
+                (set #muiroot (expandpath #muiroot))
+            )
+        )
+        (makeassign "MUI" #muiroot)
+        (run ("Assign LIBS: \"%s\" ADD" (tackon #muiroot "Libs")))
+        (startup "Zune68"
+            (prompt "Add the MUI: assign to S:User-Startup?")
+            (help "Without these lines MUI: is gone after the next boot, and"
+                  "applications do not find the classes in MUI:Libs/MUI.")
+            (command ("Assign MUI: \"%s\"\nAssign LIBS: MUI:Libs ADD\n" #muiroot)))
+        (set #muinew 1)
+    )
+)
+(P_Locations)
+(P_StateDirs)
+(if #muinew
+    (
+        (P_Mark (P_StatePath "Created" "Assign") #muiroot)
+        (P_Log (cat "Assigned MUI: to " #muiroot
+            ", added MUI:Libs to LIBS: and a Zune68 section to S:User-Startup"))
+    )
+)
+
 (P_InstallLibrary "zunemaster.library"
     "This library installs alongside MUI. opentest uses it by default.")
 (complete 50)
@@ -145,12 +489,15 @@
     "This replaces MUI for applications using the standard library name.")
 ; COMPONENT_INSTALL
 (complete 100)
+(P_WriteLog)
 
 (if @pretend
     (message "Pretend mode finished. No files were copied.")
-    (if #selected
+    (if (or #selected #muinew)
         (message ("Installed %ld component file(s).\n" #selected)
-            "Close applications and reboot before using the new libraries.")
+            "Close applications and reboot before using the new libraries.\n\n"
+            "The protocol is in " (tackon #state "Install.log") ".\n"
+            "To undo, run Install again and choose Set back.")
         (message "No component files were selected. The system was not changed.")
     )
 )
