@@ -126,6 +126,9 @@ def check(path):
     assert 'cybergraphics.library' not in h.opens
     assert h.added == ['muigfx.library'], h.added
     count = len(h.opens)
+    names = list(h.opens)
+    # ARexx is optional; the other libraries are required
+    assert names.count('rexxsyslib.library') == 1, names
     size = h.mem.r32(h.symbols['_LibInitTable'])
     pens = h.mem.r32(MASTER + size - 4)
     for index, expected in enumerate([b's3', b'', b's7', b'', b's4', b's2', b's5', b'rffa997']):
@@ -138,6 +141,13 @@ def check(path):
     for failed_open in range(1, count + 1):
         h = InitHarness(path, fail=failed_open)
         restore_cleanup(h)
+        if names[failed_open - 1] == 'rexxsyslib.library':
+            assert h.call('L_InitLib')
+            h.call('L_ExpungeLib')
+            del h.allocations[h.lib_list]
+            assert not h.live_libraries and not h.allocations
+            h.machine.cleanup()
+            continue
         assert not h.call('L_InitLib')
         assert not h.added
         del h.allocations[h.lib_list]
@@ -149,7 +159,7 @@ def check(path):
     del h.allocations[h.lib_list]
     assert not h.live_libraries and not h.allocations
     h.machine.cleanup()
-    print(f'{path.name}: native startup, pens, muigfx.library and {count} failed opens unwind cleanly')
+    print(f'{path.name}: native startup, pens, muigfx.library, optional ARexx and {count} failed opens unwind cleanly')
 
 
 if __name__ == '__main__':

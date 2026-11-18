@@ -43,7 +43,6 @@ static const struct {
     { (struct Library **)&AslBase, "asl.library", 37 },
     { (struct Library **)&LayersBase, "layers.library", 37 },
     { (struct Library **)&CxBase, "commodities.library", 37 },
-    { (struct Library **)&RexxSysBase, "rexxsyslib.library", 37 },
     { (struct Library **)&GadToolsBase, "gadtools.library", 37 },
     { (struct Library **)&KeymapBase, "keymap.library", 37 },
     { (struct Library **)&LocaleBase, "locale.library", 38 },
@@ -68,6 +67,8 @@ void L_ExpungeLib(struct Library *library)
     if (base->defaultPens)
         FreeMem(base->defaultPens, MPEN_COUNT * sizeof(*base->defaultPens));
     if (base->SpecialMemory) FreeMem(base->SpecialMemory, 4);
+    if (RexxSysBase) CloseLibrary((struct Library *)RexxSysBase);
+    RexxSysBase = NULL;
     while (i--) {
         if (*dependencies[i].base) CloseLibrary(*dependencies[i].base);
         *dependencies[i].base = NULL;
@@ -96,6 +97,9 @@ ULONG L_InitLib(struct Library *library)
             dependencies[i].version);
         if (!*dependencies[i].base) goto fail;
     }
+    /* ARexx is optional: applications only get a Rexx port when it is
+     * there. AmigaOS 2.04 to 3.1 ship rexxsyslib.library 36. */
+    RexxSysBase = (struct RxsLib *)OpenLibrary("rexxsyslib.library", 36);
     base->dosbase = DOSBase;
     base->utilitybase = (struct UtilityBase *)UtilityBase;
     base->gfxbase = GfxBase;
