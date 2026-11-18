@@ -80,6 +80,12 @@ def scenario(installer, label, *, installed=None, answers='N\nN\n',
         if directory:
             destination.mkdir()
 
+        if novice:
+            # InstallerLG also honours (set @user-level 1); Commodore's
+            # Installer 43 only changes the level through (user).
+            text = (ROOT / 'dist/Install').read_text()
+            assert '(if (< @user-level 1) (user 1))' in text
+            assert '(set @user-level' not in text
         script = localize((ROOT / 'dist/Install').read_text(), root, target, mui,
                           resident=resident, pretend=pretend,
                           level=0 if novice else 2)
