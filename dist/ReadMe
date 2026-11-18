@@ -25,18 +25,15 @@ Alternatively, change to that drawer in a Shell and run:
 
   SYS:System/Installer Install MINUSER AVERAGE
 
-Each library, plugin, and Prefs editor has its own Install/Skip question.
-Existing and bundled versions are shown before anything is replaced.
-Versions come from the actual files, not from the archive filename.
-Unknown versions are shown as unknown. Equal-version replacements and downgrades require the same
-explicit choice as upgrades. The default is Skip.
+The installer installs every component below without asking. A file
+that Zune68 did not install is saved first, whatever its version, so
+Set back can restore it. The protocol lists each replaced version.
 
   zunemaster.library  -> LIBS:zunemaster.library
     Installs alongside MUI. opentest uses this name by default.
 
   muimaster.library   -> LIBS:muimaster.library
     Replaces MUI for applications using the standard library name.
-    Installing this is optional; it can affect other MUI applications.
 
   Prefs/Zune         -> SYS:Prefs/Zune (with Workbench icon)
     The preferences editor used by application settings menus.
@@ -56,8 +53,7 @@ explicit choice as upgrades. The default is Skip.
     Plugins are loaded on demand, not added to every application's cost.
 
   Locale/Catalogs/*  -> LOCALE:Catalogs/<system-language>/
-    Translation installation is optional. The installer maps package
-    language names to Amiga names, for example german to deutsch.
+    The installer maps package language names to Amiga names, for example german to deutsch.
     Incomplete or unconvertible translations fall back to English.
 
 MUI classes belong in MUI:Libs/MUI, where MUI applications and the
@@ -68,9 +64,8 @@ section of S:User-Startup, as MUI's own installer does. With MUI:
 already assigned, nothing in S:User-Startup changes.
 
 A class in LIBS:MUI is found before the one in MUI:Libs/MUI, so an
-older copy there would hide the installed class. The question for that
-class says so, and installing renames the old copy to
-<class-name>.zune68-old. Earlier Zune68 betas installed their classes to
+older copy there would hide the installed class, so installing renames
+it to <class-name>.zune68-old. Earlier Zune68 betas installed their classes to
 LIBS:MUI; installing this release moves them aside this way.
 
 Before replacing a file, the installer saves the original beside it as
@@ -106,7 +101,7 @@ delete SYS:Libs/muimaster.library or install MUI again. Check that a
 backup is the MUI version you want before copying it back. Removing
 zunemaster.library alone does not restore muimaster.library: they are
 independent builds.
-Pretend mode displays the choices without copying files.
+Pretend mode shows the run without copying files.
 
 After installation, close applications and reboot before trying Zune68.
 Run Tests/opentest from the extracted drawer. To exercise the replacement

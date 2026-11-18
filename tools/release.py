@@ -108,15 +108,12 @@ def install_script(files):
     state_dir('Created', 'Libs/MUI')
     for tree in ('Created', 'Replaced'):
         state_dir(tree, 'Prefs')
-    lines = ['(P_InstallFile "Prefs/Zune" "SYS:Prefs"',
-             '    "Zune68 preferences editor, opened by application settings menus." ""',
-             '    "Prefs/Zune" "")']
+    lines = ['(P_InstallFile "Prefs/Zune" "SYS:Prefs" "" "Prefs/Zune" "")']
     restore = ['(P_RestoreFile "SYS:Prefs" "Zune" "Prefs/Zune" 0)',
                '(P_RestoreSupport "SYS:Prefs" "Zune.info" "Prefs/Zune.info")',
                '(if (<> #muiclasses "")', '    (']
     for name in CLASS_FILES:
-        lines.append(f'(P_InstallFile "Libs/MUI/{name}" #muiclasses '
-                     f'"Optional, demand-loaded MUI custom class." "{name}"\n'
+        lines.append(f'(P_InstallFile "Libs/MUI/{name}" #muiclasses "{name}"\n'
                      f'    "Libs/MUI/{name}" #shadowclasses)')
         restore.append(f'        (P_RestoreFile #muiclasses "{name}" "Libs/MUI/{name}" 0)')
     # Classes that an earlier Zune68 or another installer put in LIBS:MUI.
@@ -124,9 +121,6 @@ def install_script(files):
     for name in CLASS_FILES:
         restore.append(f'        (P_RestoreFile #shadowclasses "{name}" "" 0)')
     restore += ['    )', ')']
-    lines += ['(if (askbool (prompt "Install the bundled translations to LOCALE:Catalogs?\\nExisting catalogs are backed up once as .old.")',
-              '    (help "Missing translations fall back to English. No saved preferences are replaced.")',
-              '    (choices "Install" "Skip") (default 0))', '    (']
     directories = set()
     for name in files:
         if name.startswith('Locale/Catalogs/'):
@@ -141,12 +135,10 @@ def install_script(files):
             for count in range(1, len(directory.split('/')) + 1):
                 parent = '/'.join(directory.split('/')[:count])
                 if parent not in directories:
-                    lines.append(f'        (makedir "{parent}")')
+                    lines.append(f'(makedir "{parent}")')
                     directories.add(parent)
-            lines.append(f'        (P_CopySupport "{name}" "{directory}" "{key}")')
+            lines.append(f'(P_CopySupport "{name}" "{directory}" "{key}")')
             restore.append(f'(P_RestoreSupport "{directory}" "{parts[-1]}" "{key}")')
-    lines += ['    )', ')',
-              '(message "Examples, SDK, documentation and corresponding source remain in the extracted Zune68 drawer. No SDK assigns are changed.")']
     dirs = [f'    (makedir (P_StatePath "{tree}" "{path}"))' for tree, path in state_dirs[1:]]
     return (script.replace('; COMPONENT_PREFLIGHT', '\n'.join(preflight))
             .replace('    ; COMPONENT_STATEDIRS', '\n'.join(dirs))

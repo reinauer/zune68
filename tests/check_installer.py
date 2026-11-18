@@ -56,9 +56,9 @@ def run(installer, directory, answers, encoding=None):
     return out
 
 
-def scenario(installer, label, *, installed=None, answers='N\nN\n',
-             backup=None, pretend=False, resident=0, novice=False,
-             missing=False, invalid=False, directory=False):
+def scenario(installer, label, *, installed=None, backup=None, pretend=False,
+             resident=0, novice=False, missing=False, invalid=False,
+             directory=False):
     with tempfile.TemporaryDirectory(prefix='zune68-installer-') as temp:
         root = Path(temp)
         payload, target, mui = root / 'Libs', root / 'system-libs', root / 'mui'
@@ -90,48 +90,46 @@ def scenario(installer, label, *, installed=None, answers='N\nN\n',
                           resident=resident, pretend=pretend,
                           level=0 if novice else 2)
         (root / 'Install').write_text(script)
-        out = run(installer, root, answers)
+        # Components install without questions; nothing reads these answers.
+        out = run(installer, root, 'N\n' * 4)
         assert all(len(p.name) <= 30 for p in target.iterdir()), 'OFS/FFS filename limit'
+        protocol = mui / 'Zune68/Install.log'
         if missing or invalid or directory:
             assert 'Aborting' in out, out
             assert not (target / NAMES[1]).exists()
             if not directory:
                 assert not destination.exists()
+            print(f'Installer: {label} passed')
+            return
+        for name in NAMES:
+            original = installed if name == NAMES[0] else None
+            expected = original if pretend else version_file(name, '35.6')
+            assert (target / name).exists() == (expected is not None), out
+            if expected is not None:
+                assert (target / name).read_bytes() == expected, out
+            marker = mui / 'Zune68/Created/Libs' / name
+            assert marker.exists() == (not pretend and original is None), (name, out)
+        expected_backup = backup
+        if expected_backup is None and installed is not None and not pretend:
+            expected_backup = installed
+        assert backup_path.exists() == (expected_backup is not None), out
+        if expected_backup is not None:
+            assert backup_path.read_bytes() == expected_backup, out
+        assert protocol.exists() == (not pretend), out
+        if pretend:
+            assert 'Pretend mode finished' in out, out
         else:
-            assert 'Bundled is v35.6.' in out, out
-            if installed is not None:
-                if b'$VER:' in installed:
-                    old = installed.split(b' ')[2].decode()
-                    assert f'v{old} already installed.' in out, out
-                else:
-                    assert 'version unknown' in out, out
-            first, second = answers.splitlines()
-            for name, answer in zip(NAMES, (first, second)):
-                path = target / name
-                original = installed if name == NAMES[0] else None
-                expected = version_file(name, '35.6') if answer == 'Y' and not pretend else original
-                assert path.exists() == (expected is not None), out
-                if expected is not None:
-                    assert path.read_bytes() == expected, out
-                marker = mui / 'Zune68/Created/Libs' / name
-                assert marker.exists() == (answer == 'Y' and not pretend
-                                           and original is None), (name, out)
-            expected_backup = backup
-            if expected_backup is None and installed is not None and first == 'Y' and not pretend:
-                expected_backup = installed
-            assert backup_path.exists() == (expected_backup is not None), out
-            if expected_backup is not None:
-                assert backup_path.read_bytes() == expected_backup, out
-            protocol = mui / 'Zune68/Install.log'
-            assert protocol.exists() == ('Y' in answers and not pretend), out
-            if pretend:
-                assert 'Pretend mode finished' in out, out
-            if resident:
-                assert 'Currently in memory: v40.1' in out, out
-            if label == 'downgrade':
-                assert 'This is a downgrade.' in out, out
-            if label == 'same version':
-                assert 'This replaces the same version.' in out, out
+            log = protocol.read_text()
+            assert f'Installed {target / NAMES[1]} v35.6\n' in log, log
+            if installed is None:
+                assert f'Installed {destination} v35.6\n' in log, log
+            elif b'$VER:' in installed:
+                old = installed.split(b' ')[2].decode()
+                assert f'Installed {destination} v35.6, replacing v{old}' in log, log
+            else:
+                assert 'replacing a file of unknown version' in log, log
+            assert ('Saved ' in log) == (installed is not None and backup is None), log
+            assert ('v40.1 stays in memory until reboot' in log) == bool(resident), log
         print(f'Installer: {label} passed')
 
 
@@ -149,7 +147,7 @@ def set_back_scenario(installer):
         (target / NAMES[1]).write_bytes(mui_library)
         script = (ROOT / 'dist/Install').read_text()
         (root / 'Install').write_text(localize(script, root, target, mui))
-        run(installer, root, 'Y\nY\n')
+        run(installer, root, '')
         assert (target / (NAMES[1] + '.zune68-old')).read_bytes() == mui_library
         assert (mui / 'Zune68/Created/Libs' / NAMES[0]).is_file()
         (root / 'Install').write_text(localize(script, root, target, mui, mode=1))
@@ -164,7 +162,7 @@ def set_back_scenario(installer):
         print('Installer: set back passed')
 
 
-def components_scenario(installer, *, pretend=False, skip=False, missing=False,
+def components_scenario(installer, *, pretend=False, missing=False,
                         invalid=False, set_back=False):
     with tempfile.TemporaryDirectory(prefix='zune68-components-install-') as temp:
         root = Path(temp)
@@ -210,16 +208,12 @@ def components_scenario(installer, *, pretend=False, skip=False, missing=False,
             (package / 'Libs/MUI/TextEditor.mcp').unlink()
         if invalid:
             (package / 'Libs/MUI/TextEditor.mcp').write_bytes(b'no version')
-        answers = ('N\n' if skip else 'Y\n') * (len(CLASS_FILES) + 4)
-        out = run(installer, package, answers, encoding='latin1')
+        out = run(installer, package, '', encoding='latin1')
         if missing:
             assert 'Aborting' in out and 'incomplete' in out, out
         elif invalid:
             assert 'Aborting' in out and 'Cannot read the bundled version' in out, out
-        else:
-            assert 'v35.4 already installed' in out and 'Bundled is v35.6' in out, out
-            assert 'hides' in out, out
-        if pretend or skip or missing or invalid:
+        if pretend or missing or invalid:
             assert {p: p.read_bytes() for p in target.rglob('*') if p.is_file()} == originals, out
             assert not list(mui.rglob('Libs/MUI/*.mc?')), out
         else:
@@ -234,7 +228,8 @@ def components_scenario(installer, *, pretend=False, skip=False, missing=False,
             assert old_icon.with_name('Zune.info.old').read_bytes() == b'original icon'
             assert old_catalog.with_name(old_catalog.name + '.old').read_bytes() == b'original catalog'
             assert (mui / 'Zune68/Replaced/Catalogs/german/BetterString_mcp.catalog').is_file()
-            assert (mui / 'Zune68/Install.log').is_file()
+            log = (mui / 'Zune68/Install.log').read_text(encoding='latin1')
+            assert 'v35.6, replacing v35.4' in log and 'it hid' in log, log
             if set_back:
                 write_script(1)
                 out = run(installer, package, '', encoding='latin1')
@@ -243,7 +238,7 @@ def components_scenario(installer, *, pretend=False, skip=False, missing=False,
                 assert not list(mui.rglob('Libs/MUI/*.mc?')), out
                 assert not [p for p in (mui / 'Zune68').rglob('*')
                             if p.is_file() and p.name != 'Install.log'], out
-        print(f'Installer components: pretend={pretend}, skip={skip}, '
+        print(f'Installer components: pretend={pretend}, '
               f'missing={missing}, invalid={invalid}, set_back={set_back} passed')
 
 
@@ -254,23 +249,21 @@ def main():
     args = parser.parse_args()
     installer = args.installer.resolve()
     old = version_file(NAMES[0], '35.4')
-    scenario(installer, 'fresh install', answers='Y\nY\n')
-    scenario(installer, 'skip both', installed=old)
-    scenario(installer, 'upgrade', installed=old, answers='Y\nN\n')
-    scenario(installer, 'downgrade', installed=version_file(NAMES[0], '36.0'), answers='Y\nN\n')
-    scenario(installer, 'same version', installed=version_file(NAMES[0], '35.6'), answers='Y\nN\n')
-    scenario(installer, 'unknown version', installed=b'original unversioned data', answers='Y\nN\n')
-    scenario(installer, 'retain backup', installed=old, backup=b'original backup', answers='Y\nN\n')
+    scenario(installer, 'fresh install')
+    scenario(installer, 'upgrade', installed=old)
+    scenario(installer, 'newer installed', installed=version_file(NAMES[0], '36.0'))
+    scenario(installer, 'same version', installed=version_file(NAMES[0], '35.6'))
+    scenario(installer, 'unknown version', installed=b'original unversioned data')
+    scenario(installer, 'retain backup', installed=old, backup=b'original backup')
     scenario(installer, 'resident version', resident=40 * 65536 + 1)
-    scenario(installer, 'pretend', installed=old, answers='Y\nY\n', pretend=True)
-    scenario(installer, 'novice still asks', novice=True, answers='Y\nN\n')
+    scenario(installer, 'pretend', installed=old, pretend=True)
+    scenario(installer, 'novice installs', novice=True)
     scenario(installer, 'missing payload', missing=True)
     scenario(installer, 'unversioned payload', invalid=True)
     scenario(installer, 'destination is directory', directory=True)
     set_back_scenario(installer)
     components_scenario(installer)
     components_scenario(installer, set_back=True)
-    components_scenario(installer, skip=True)
     components_scenario(installer, pretend=True)
     components_scenario(installer, missing=True)
     components_scenario(installer, invalid=True)

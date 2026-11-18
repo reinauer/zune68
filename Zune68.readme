@@ -18,8 +18,8 @@ because applications enable their current code paths by it; Zune68
 releases are identified by their date.
 The native code builds with m68k-amigaos-gcc and requires no FPU.
 
-Use the supplied Amiga Installer script. It shows existing and bundled
-versions, asks before replacement, and preserves an existing backup.
+Use the supplied Amiga Installer script. It installs every component
+without asking and saves each file it replaces from before Zune68.
 Classes go to MUI:Libs/MUI; without MUI:, the installer assigns it.
 Installing muimaster.library changes the toolkit used by MUI applications.
 Every run is logged in MUI:Zune68/Install.log, and running the installer
