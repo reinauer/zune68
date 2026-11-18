@@ -23,9 +23,10 @@
         struct Library *, MUIMasterBase, 32, MUIMaster)
 
 /*  FUNCTION
-        Begin a refresh pass for a damaged simple-refresh window. Set the
-        rendering context's refresh flag, lock the screen's LayerInfo, and
-        call intuition.library/BeginRefresh().
+        Begin a refresh pass for a damaged window. Set the rendering
+        context's refresh flag, lock the screen's LayerInfo, and call
+        intuition.library/BeginRefresh(). Smart-refresh windows are damaged
+        too: the area a window grows into has no saved contents.
 
     INPUTS
         mri - Non-NULL initialized rendering context. A present window must
@@ -33,9 +34,9 @@
         flags - Ignored by this implementation; pass zero.
 
     RESULT
-        TRUE if a refresh pass was begun. FALSE if there is no window, the
-        window is not simple-refresh, its layer does not need refreshing,
-        or this rendering context is already in refresh mode.
+        TRUE if a refresh pass was begun. FALSE if there is no window, its
+        layer does not need refreshing, or this rendering context is already
+        in refresh mode.
 
     NOTES
         Only after TRUE, complete the pass with MUI_EndRefresh() on the
@@ -52,7 +53,7 @@
     struct Window *w = mri->mri_Window;
     struct Layer  *l;
 
-    if ((w == NULL) || !(w->Flags & WFLG_SIMPLE_REFRESH))
+    if (w == NULL)
         return 0;
 
     l = w->WLayer;
