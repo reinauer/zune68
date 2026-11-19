@@ -134,7 +134,7 @@ and the other old shortcut macros need MUI_OBSOLETE.
 
 Status and source
 -----------------
-This is the third beta release, dated [RELEASE]. Its muimaster.library
+This is the fourth beta release, dated [RELEASE]. Its muimaster.library
 reports version [VERSION], the version of MUI 5; Zune68 releases are told
 apart by the date in the version string, so Installer shows an upgrade
 between them as a same-version replacement. IBrowse 3.0a, YAM 2.9, Odyssey,
