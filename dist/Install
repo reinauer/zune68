@@ -54,10 +54,17 @@
     ("%ld.%ld" (/ #number 65536) (bitand #number 65535))
 )
 
-; The protocol is kept in memory and appended to MUI:Zune68/Install.log at
-; the end of the run, or when the run is aborted.
+; The protocol is collected in memory and appended to MUI:Zune68/Install.log
+; in parts: Installer limits the length of a string. The rest is written at
+; the end of the run, or when the run is aborted. Pretend mode writes none.
+(set #logstarted 0)
 (procedure P_Log #line
-    (set #log (cat #log #line "\n"))
+    (if (= @pretend 0)
+        (
+            (set #log (cat #log #line "\n"))
+            (if (> (strlen #log) 1000) (P_WriteLog))
+        )
+    )
 )
 
 (procedure P_WriteLog
@@ -65,12 +72,18 @@
         (if (= (exists #state (noreq)) 2)
             (
                 (set #logfile (tackon #state "Install.log"))
+                (set #header "")
+                (if (= #logstarted 0)
+                    (set #header ("--- Zune68 %s: %s ---\n" #release #action)))
                 (if (= (exists #logfile (noreq)) 1)
-                    (textfile (dest "T:Zune68-Install.log") (include #logfile)
-                        (append ("\n--- Zune68 %s: %s ---\n" #release #action) #log))
-                    (textfile (dest "T:Zune68-Install.log")
-                        (append ("--- Zune68 %s: %s ---\n" #release #action) #log))
+                    (
+                        (if (<> #header "") (set #header (cat "\n" #header)))
+                        (textfile (dest "T:Zune68-Install.log") (include #logfile)
+                            (append #header #log))
+                    )
+                    (textfile (dest "T:Zune68-Install.log") (append #header #log))
                 )
+                (set #logstarted 1)
                 (copyfiles (source "T:Zune68-Install.log") (dest #state)
                     (newname "Install.log") (optional "force" "nofail"))
                 (delete "T:Zune68-Install.log" (optional "nofail"))
@@ -198,8 +211,14 @@
     )
     (if (exists (cat #source ".info"))
         (
-            (set #iconreplaced (P_StatePath "Replaced" (cat #key ".info")))
-            (set #iconcreated (P_StatePath "Created" (cat #key ".info")))
+            ; Procedure arguments are global in Commodore's Installer:
+            ; P_StatePath's #key replaces this one, so compute it once.
+            (set #iconkey (cat #key ".info"))
+            (set #iconreplaced (P_StatePath "Replaced" #iconkey))
+            (set #iconcreated (P_StatePath "Created" #iconkey))
+            ; Earlier installers wrote the marker as <key>.info.info.
+            (if (= (exists (cat #iconcreated ".info") (noreq)) 1)
+                (rename (cat #iconcreated ".info") #iconcreated))
             (if (exists (cat #destination ".info") (noreq))
                 (if (= (exists (cat #destination ".info.old") (noreq)) 0)
                     (if (= (exists #iconcreated (noreq)) 0)

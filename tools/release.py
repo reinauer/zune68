@@ -139,6 +139,11 @@ def install_script(files):
                     directories.add(parent)
             lines.append(f'(P_CopySupport "{name}" "{directory}" "{key}")')
             restore.append(f'(P_RestoreSupport "{directory}" "{parts[-1]}" "{key}")')
+    # Set back removes the catalog drawers that are empty again, deepest
+    # first; a drawer that still holds other files fails and is kept.
+    for directory in sorted(directories, key=lambda d: d.count('/'), reverse=True):
+        if directory.count('/') >= 1:  # never LOCALE:Catalogs itself
+            restore.append(f'(delete "{directory}" (optional "nofail"))')
     dirs = [f'    (makedir (P_StatePath "{tree}" "{path}"))' for tree, path in state_dirs[1:]]
     return (script.replace('; COMPONENT_PREFLIGHT', '\n'.join(preflight))
             .replace('    ; COMPONENT_STATEDIRS', '\n'.join(dirs))

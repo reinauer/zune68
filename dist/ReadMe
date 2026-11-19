@@ -23,7 +23,7 @@ Installation
 Extract the archive and double-click Install inside the Zune68 drawer.
 Alternatively, change to that drawer in a Shell and run:
 
-  SYS:System/Installer Install MINUSER AVERAGE
+  SYS:System/Installer Install APPNAME Zune68 MINUSER AVERAGE
 
 The installer installs every component below without asking. A file
 that Zune68 did not install is saved first, whatever its version, so

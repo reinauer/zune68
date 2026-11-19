@@ -204,6 +204,7 @@ def components_scenario(installer, *, pretend=False, missing=False,
         old_catalog.parent.mkdir(parents=True)
         old_catalog.write_bytes(b'original catalog')
         originals = {p: p.read_bytes() for p in target.rglob('*') if p.is_file()}
+        drawers = {p for p in target.rglob('*') if p.is_dir()}
         if missing:
             (package / 'Libs/MUI/TextEditor.mcp').unlink()
         if invalid:
@@ -230,11 +231,20 @@ def components_scenario(installer, *, pretend=False, missing=False,
             assert (mui / 'Zune68/Replaced/Catalogs/german/BetterString_mcp.catalog').is_file()
             log = (mui / 'Zune68/Install.log').read_text(encoding='latin1')
             assert 'v35.6, replacing v35.4' in log and 'it hid' in log, log
+            # Written in parts: one header, and a line for every file.
+            assert log.count('--- Zune68 ') == 1, log
+            # Prefs/Zune.info is copied with Prefs/Zune and not listed.
+            installed = len(NAMES) + 1 + len(CLASS_FILES) + len(catalog_paths(package))
+            assert log.count('\nInstalled ') == installed, (log.count('\nInstalled '), installed)
             if set_back:
                 write_script(1)
                 out = run(installer, package, '', encoding='latin1')
                 after = {p: p.read_bytes() for p in target.rglob('*') if p.is_file()}
                 assert after == originals, out
+                left = {p for p in target.rglob('*') if p.is_dir()}
+                assert left == drawers, sorted(map(str, left - drawers))
+                log = (mui / 'Zune68/Install.log').read_text(encoding='latin1')
+                assert log.count('--- Zune68 ') == 2 and log.endswith('\n'), log
                 assert not list(mui.rglob('Libs/MUI/*.mc?')), out
                 assert not [p for p in (mui / 'Zune68').rglob('*')
                             if p.is_file() and p.name != 'Install.log'], out
