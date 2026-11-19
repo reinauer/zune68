@@ -16,15 +16,37 @@ jobs:
     if: ${{ startsWith(github.event.release.tag_name, 'v') }}
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      # Publishing a release again, after turning it into a draft and
+      # back, must not upload it to Aminet a second time.
+      - name: Skip a release that was uploaded before
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          uploads=$(gh run list --workflow aminet-release.yml --event release \
+            --status success --limit 100 --json headBranch,databaseId \
+            --jq '[.[] | select(.headBranch == env.RELEASE_TAG and
+                  .databaseId != (env.RUN_ID | tonumber))] | length')
+          if [ "$uploads" != 0 ]; then
+            echo "::notice::$RELEASE_TAG was uploaded to Aminet before; skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ github.event.release.tag_name }}
           persist-credentials: false
           submodules: recursive
 
       - name: Download the published release assets
+        if: steps.guard.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -37,6 +59,7 @@ jobs:
             --tag "$RELEASE_TAG"
 
       - name: Keep the Aminet upload pair
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: aminet-upload
@@ -44,6 +67,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to Aminet
+        if: steps.guard.outputs.skip != 'true'
         uses: sidick/aminet-release-action@v1
         with:
           filename: build/aminet/Zune68.lha
