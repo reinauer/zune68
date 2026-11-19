@@ -27,7 +27,7 @@ Every run is logged in MUI:Zune68/Install.log, and running the installer
 again offers Set back, which returns to the MUI setup from before Zune68.
 The plugins are loaded only when requested.
 
-IBrowse 3.0a, YAM 2.x, Voyager 3.5.2, Odyssey Web Browser, AmiPG and
+IBrowse 3.1 and 3.0a, YAM 2.x, Voyager 3.5.2, Odyssey Web Browser, AmiPG and
 XSysInfo run; IBrowse is pretty usable.
 
 This is a beta: there are many ways Zune68 can still improve, and broad

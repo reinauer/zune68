@@ -137,9 +137,9 @@ Status and source
 This is the fourth beta release, dated [RELEASE]. Its muimaster.library
 reports version [VERSION], the version of MUI 5; Zune68 releases are told
 apart by the date in the version string, so Installer shows an upgrade
-between them as a same-version replacement. IBrowse 3.0a, YAM 2.9, Odyssey,
-AmiPG and Voyager 3.5.2 run; IBrowse is pretty usable. Voyager needs
-Textinput.mcc 29 or later: copy Textinput.mcc and Textinputscroll.mcc
+between them as a same-version replacement. IBrowse 3.1 and 3.0a, YAM
+2.9, Odyssey, AmiPG and Voyager 3.5.2 run; IBrowse is pretty usable. Voyager
+needs Textinput.mcc 29 or later: copy Textinput.mcc and Textinputscroll.mcc
 over older ones in Voyager's Libs/mui drawer.
 
 All 12 built-in Prefs pages display images; MCP pages appear once. Prefs
