@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from components import CLASS_FILES, EXAMPLES, LANGUAGES, catalog_paths
+from components import CLASS_FILES, EXAMPLES, LANGUAGES, MUI_CLASSES, catalog_paths
 
 LIBRARIES = ('zunemaster.library', 'muimaster.library')
 
@@ -108,13 +108,14 @@ def install_script(files):
     state_dir('Created', 'Libs/MUI')
     for tree in ('Created', 'Replaced'):
         state_dir(tree, 'Prefs')
-    lines = ['(P_InstallFile "Prefs/Zune" "SYS:Prefs" "" "Prefs/Zune" "")']
+    lines = ['(P_InstallFile "Prefs/Zune" "SYS:Prefs" "" "Prefs/Zune" "" 0)']
     restore = ['(P_RestoreFile "SYS:Prefs" "Zune" "Prefs/Zune" 0)',
                '(P_RestoreSupport "SYS:Prefs" "Zune.info" "Prefs/Zune.info")',
                '(if (<> #muiclasses "")', '    (']
     for name in CLASS_FILES:
+        thirdparty = 0 if name in MUI_CLASSES else 1
         lines.append(f'(P_InstallFile "Libs/MUI/{name}" #muiclasses "{name}"\n'
-                     f'    "Libs/MUI/{name}" #shadowclasses)')
+                     f'    "Libs/MUI/{name}" #shadowclasses {thirdparty})')
         restore.append(f'        (P_RestoreFile #muiclasses "{name}" "Libs/MUI/{name}" 0)')
     # Classes that an earlier Zune68 or another installer put in LIBS:MUI.
     restore += ['    )', ')', '(if (<> #shadowclasses "")', '    (']

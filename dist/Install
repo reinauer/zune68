@@ -18,6 +18,8 @@
 (set #restored 0)
 (set #log "")
 (set #action "install")
+; Newer third-party classes: 0 ask, 1 keep all, 2 install all
+(set #newer 0)
 
 ; Where things are. The first LIBS: directory is where libraries are
 ; installed and where older class copies would hide MUI:Libs/MUI.
@@ -119,13 +121,14 @@
     ; COMPONENT_STATEDIRS
 )
 
-; Install a component without asking. A file that Zune68 did not install
-; is saved once as .zune68-old before it is replaced, whatever its
-; version; Set back restores it. #shadowdir names a directory searched
+; Install a component. A file that Zune68 did not install is saved once
+; as .zune68-old before it is replaced; Set back restores it. Only a
+; newer third-party class (#thirdparty, not one that MUI itself ships)
+; is replaced after asking. #shadowdir names a directory searched
 ; before #directory, such as the first LIBS: directory for classes in
 ; MUI:Libs/MUI. A copy there would hide the installed file, so it is
 ; renamed to .zune68-old.
-(procedure P_InstallFile #relative #directory #residentname #key #shadowdir
+(procedure P_InstallFile #relative #directory #residentname #key #shadowdir #thirdparty
     (set #name (fileonly #relative))
     (set #source (tackon #package #relative))
     (set #destination (tackon #directory #name))
@@ -152,6 +155,7 @@
     (set #current #destination)
     (if (<> #shadow "") (set #current #shadow))
     (set #replaced "")
+    (set #installed 0)
     (if (or #existing (<> #shadow ""))
         (
             (set #installed (getversion #current))
@@ -161,6 +165,39 @@
             )
         )
     )
+    (set #install 1)
+    (if (and #thirdparty (= #ours 0) (= (exists #backup (noreq)) 0)
+             (> #installed #bundled))
+        (
+            (if (= #newer 0)
+                (
+                    (set #question (cat #name " v" (P_Version #installed)
+                        " is installed in\n" (pathonly #current) ".\n"
+                        "It is newer than the bundled v" (P_Version #bundled) ".\n\n"
+                        "Installing saves it as " #name ".zune68-old."))
+                    (set #choice (askchoice
+                        (prompt #question)
+                        (help "This class does not come with MUI. A newer version from"
+                              "its own distribution works with Zune68 as well. Set back"
+                              "restores a replaced class.")
+                        (choices "Keep the installed version"
+                                 "Install the bundled version"
+                                 "Keep all newer classes"
+                                 "Install all bundled classes")
+                        (default 0)))
+                    (if (= #choice 2) (set #newer 1))
+                    (if (= #choice 3) (set #newer 2))
+                    (if (or (= #choice 0) (= #choice 2)) (set #install 0))
+                )
+                (if (= #newer 1) (set #install 0))
+            )
+        )
+    )
+    (if (= #install 0)
+        (P_Log (cat "Kept " #current " v" (P_Version #installed)
+            ", newer than the bundled v" (P_Version #bundled)))
+    )
+    (if #install (
     (makedir #directory)
     (if (<> #shadow "")
         (if (exists (cat #shadow ".zune68-old") (noreq))
@@ -239,11 +276,12 @@
         )
     )
     (set #selected (+ #selected 1))
+    ))
 )
 
 (procedure P_InstallLibrary #library
     (P_InstallFile (tackon "Libs" #library) #syslibs #library
-        (tackon "Libs" #library) "")
+        (tackon "Libs" #library) "" 0)
 )
 
 ; Support files have no library identity; keep one short .old backup.

@@ -34,6 +34,12 @@ IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Busy.mcc',
                  'Lamp.mcc', 'LoginWindow.mcc', 'PrefsEditor.mcc', 'PrefsWindow.mcc',
                  'QRCode.mcc', 'SystemPrefsWindow.mcc')
 CLASS_FILES = (*PLUGINS.values(), *IMAGE_CLASSES)
+# Bundled classes that MUI 3.8, 3.9 or 5 itself ships. The installer
+# replaces these without asking; newer versions of the others are kept
+# if the user says so.
+MUI_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Busy.mcc',
+               'Calltips.mcc', 'Textinput.mcc', 'Textinputscroll.mcc',
+               'Aboutbox.mcc', 'Clock.mcc', 'Lamp.mcc')
 EXAMPLES = ['HelloZune', 'HGroup', 'VGroup', 'VHGroup', 'VHGroup2', 'HVGroup', 'Notify', 'TheBarDemo']
 
 

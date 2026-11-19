@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from components import CLASS_FILES, LANGUAGES, catalog_paths
+from components import CLASS_FILES, LANGUAGES, MUI_CLASSES, catalog_paths
 from release import install_script
 
 NAMES = ('zunemaster.library', 'muimaster.library')
@@ -252,6 +252,53 @@ def components_scenario(installer, *, pretend=False, missing=False,
               f'missing={missing}, invalid={invalid}, set_back={set_back} passed')
 
 
+NEWER = ('NList.mcc', 'TextEditor.mcc', 'Rawimage.mcc')
+
+
+def newer_scenario(installer, answers, kept):
+    """Newer copies of two third-party classes and of one MUI class."""
+    assert 'Rawimage.mcc' in MUI_CLASSES and 'NList.mcc' not in MUI_CLASSES
+    with tempfile.TemporaryDirectory(prefix='zune68-newer-') as temp:
+        root = Path(temp)
+        package, target, mui = root / 'package', root / 'target', root / 'mui'
+        package.mkdir()
+        target.mkdir()
+        classes = mui / 'Libs/MUI'
+        classes.mkdir(parents=True)
+        libs = target / 'Libs'
+        libs.mkdir()
+        files = ['Prefs/Zune'] + ['Libs/MUI/' + name for name in CLASS_FILES]
+        for relative in ['Libs/' + name for name in NAMES] + files:
+            path = package / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(version_file(path.name, '35.6'))
+        for name in NEWER:
+            (classes / name).write_bytes(version_file(name, '36.0'))
+        script = localize(install_script(files), root, libs, mui)
+        script = script.replace('"SYS:Prefs"', f'"{target}/Prefs"')
+        (package / 'Install').write_text(script)
+        out = run(installer, package, answers)
+        questions = out.count('It is newer than the bundled v35.6.')
+        assert questions == len(answers.splitlines()), out
+        assert 'Rawimage.mcc v36.0 is installed' not in out, out
+        log = (mui / 'Zune68/Install.log').read_text()
+        for name in NEWER:
+            installed = (classes / name).read_bytes()
+            backup = classes / (name + '.zune68-old')
+            if name in kept:
+                assert installed == version_file(name, '36.0'), (name, out)
+                assert not backup.exists(), (name, out)
+                assert f'Kept {classes / name} v36.0, newer than the bundled v35.6' in log, log
+            else:
+                assert installed == version_file(name, '35.6'), (name, out)
+                assert backup.read_bytes() == version_file(name, '36.0'), (name, out)
+                assert f'v35.6, replacing v36.0' in log, log
+        for name in CLASS_FILES:
+            if name not in NEWER:
+                assert (classes / name).read_bytes() == version_file(name, '35.6'), name
+        print(f'Installer newer classes: answers={answers!r} passed')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--installer', required=True, type=Path,
@@ -277,6 +324,10 @@ def main():
     components_scenario(installer, pretend=True)
     components_scenario(installer, missing=True)
     components_scenario(installer, invalid=True)
+    newer_scenario(installer, '0\n1\n', kept={'NList.mcc'})
+    newer_scenario(installer, '\n\n', kept={'NList.mcc', 'TextEditor.mcc'})
+    newer_scenario(installer, '2\n', kept={'NList.mcc', 'TextEditor.mcc'})
+    newer_scenario(installer, '3\n', kept=set())
 
 
 if __name__ == '__main__':
