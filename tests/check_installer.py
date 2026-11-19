@@ -299,6 +299,38 @@ def newer_scenario(installer, answers, kept):
         print(f'Installer newer classes: answers={answers!r} passed')
 
 
+def upgrade_scenario(installer):
+    """An earlier beta left its classes in LIBS:MUI without records."""
+    with tempfile.TemporaryDirectory(prefix='zune68-upgrade-') as temp:
+        root = Path(temp)
+        package, target, mui = root / 'package', root / 'target', root / 'mui'
+        package.mkdir()
+        target.mkdir()
+        (mui / 'Libs/MUI').mkdir(parents=True)
+        libs = target / 'Libs'
+        (libs / 'MUI').mkdir(parents=True)
+        files = ['Prefs/Zune'] + ['Libs/MUI/' + name for name in CLASS_FILES]
+        for relative in ['Libs/' + name for name in NAMES] + files:
+            path = package / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(version_file(path.name, '35.6'))
+        (libs / NAMES[0]).write_bytes(version_file(NAMES[0], '35.5'))
+        ours, theirs = libs / 'MUI/NList.mcc', libs / 'MUI/Busy.mcc'
+        ours.write_bytes(version_file(ours.name, '35.6'))
+        theirs.write_bytes(version_file(theirs.name, '19.1'))
+        script = localize(install_script(files), root, libs, mui)
+        script = script.replace('"SYS:Prefs"', f'"{target}/Prefs"')
+        (package / 'Install').write_text(script)
+        out = run(installer, package, '')
+        log = (mui / 'Zune68/Install.log').read_text()
+        assert not ours.exists() and not ours.with_name('NList.mcc.zune68-old').exists(), log
+        assert f'Deleted {ours} (an earlier Zune68 installed it)' in log, log
+        assert theirs.with_name('Busy.mcc.zune68-old').read_bytes() == version_file('Busy.mcc', '19.1'), log
+        for name in CLASS_FILES:
+            assert (mui / 'Libs/MUI' / name).read_bytes() == version_file(name, '35.6'), name
+        print('Installer upgrade from an earlier beta passed')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--installer', required=True, type=Path,
@@ -324,6 +356,7 @@ def main():
     components_scenario(installer, pretend=True)
     components_scenario(installer, missing=True)
     components_scenario(installer, invalid=True)
+    upgrade_scenario(installer)
     newer_scenario(installer, '0\n1\n', kept={'NList.mcc'})
     newer_scenario(installer, '\n\n', kept={'NList.mcc', 'TextEditor.mcc'})
     newer_scenario(installer, '2\n', kept={'NList.mcc', 'TextEditor.mcc'})

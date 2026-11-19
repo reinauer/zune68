@@ -206,10 +206,19 @@
                 (P_Log (cat "Deleted " #shadow
                     " (its .zune68-old backup is older and kept)"))
             )
-            (
-                (rename #shadow (cat #shadow ".zune68-old"))
-                (P_Log (cat "Renamed " #shadow " to " #name ".zune68-old"
-                    " (it hid " #directory ")"))
+            ; Earlier Zune68 betas installed their classes here without
+            ; a record. A copy of the bundled version is one of them.
+            (if (and #previous (= (getversion #shadow) #bundled))
+                (
+                    (delete #shadow (optional "force"))
+                    (P_Log (cat "Deleted " #shadow
+                        " (an earlier Zune68 installed it)"))
+                )
+                (
+                    (rename #shadow (cat #shadow ".zune68-old"))
+                    (P_Log (cat "Renamed " #shadow " to " #name ".zune68-old"
+                        " (it hid " #directory ")"))
+                )
             )
         )
     )

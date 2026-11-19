@@ -69,7 +69,7 @@ already assigned, nothing in S:User-Startup changes.
 A class in LIBS:MUI is found before the one in MUI:Libs/MUI, so an
 older copy there would hide the installed class, so installing renames
 it to <class-name>.zune68-old. Earlier Zune68 betas installed their classes to
-LIBS:MUI; installing this release moves them aside this way.
+LIBS:MUI; copies of the bundled version there are deleted instead.
 
 Before replacing a file, the installer saves the original beside it as
 <component-name>.zune68-old. An existing backup is preserved. A newer
