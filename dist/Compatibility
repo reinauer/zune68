@@ -84,6 +84,11 @@ an update, and managed refresh preserves pending damage while changing
 regions. Broad redraw/text caches need measurements and GUI evidence
 before adoption.
 
+Image specs "3:<name>.image" draw external BOOPSI image classes from
+MUI:Images (or a full path), such as the kmel images of MUI 3.8's presets,
+at the sizes MUI 3.8 gives them; a class that cannot be opened is drawn as
+the background. The Prop class does not use the knob image of the settings.
+
 Rawimage.mcc and Pixmap.mui are separate, demand-loaded libraries. Pixmap
 accepts RGB24, ARGB32 and CLUT8 images with raw, RLE or bzip2 storage.
 Planar screens use graphics.library bitmaps, acquire only the pens actually

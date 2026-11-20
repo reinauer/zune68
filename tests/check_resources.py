@@ -144,6 +144,14 @@ def check(path):
         for failure in range(1, 5):
             h = ResourceHarness(path)
             h.fail_number = failure
+            # An image class is looked for from a process: the file is not there.
+            process = h.blob(bytes(228))
+            h.mem.w8(process + 8, 13)  # NT_PROCESS
+            h.trap(EXEC - 294, lambda: h.cpu.w_reg(0, process))  # FindTask
+            h.trap(EXEC - 276, lambda: h.cpu.w_reg(0, 0))  # FindName
+            h.mem.w32(h.symbols['_DOSBase'], 0x7e000)
+            h.trap(0x7e000 - 84, lambda: h.cpu.w_reg(0, 0))  # Lock
+            h.trap(0x7e000 - 870, lambda: h.cpu.w_reg(0, h.cpu.r_reg(1)))  # FilePart
             spec = h.call('zune_imspec_setup', h.blob(text.encode() + b'\0'), MRI)
             if spec:
                 h.call('zune_imspec_cleanup', spec)

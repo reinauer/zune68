@@ -65,7 +65,9 @@ struct MUI_ImageSpec_intern /* _intern */
 	/* IST_BOOPSI */
 	struct {
 	    CONST_STRPTR filename;
-	    Object *obj;
+	    Object *obj;            /* between setup and cleanup */
+	    struct Library *base;   /* the class library */
+	    UWORD size[6];          /* min, max, default width and height */
 	} boopsi;
 	/* IST_BRUSH */
 	struct {
@@ -125,5 +127,10 @@ VOID zune_gradient_drawfast
 
 BOOL zune_gradientspec_setup(struct MUI_ImageSpec_intern *spec, struct MUI_RenderInfo *mri);
 VOID zune_gradientspec_cleanup(struct MUI_ImageSpec_intern *spec);
+
+/* External BOOPSI image classes, "3:<name>.image" (imspec_boopsi.c) */
+BOOL zune_boopsi_image_open(struct MUI_ImageSpec_intern *spec,
+    struct MUI_RenderInfo *mri);
+void zune_boopsi_image_close(struct MUI_ImageSpec_intern *spec);
 
 #endif

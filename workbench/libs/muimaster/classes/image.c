@@ -62,8 +62,10 @@
 *       AskMinMax obtains the prepared image's bounds. A free axis uses its
 *       minimum/default/maximum contributions; a nonfree axis adds its default
 *       size to all three fields, or only to the default for pattern, color
-*       and gradient images. Font matching fixes all three fields of an axis to
-*       the superclass minimum plus the image default scaled by font-size/8.
+*       and gradient images; an external image class ("3:<name>.image") adds
+*       its minimum to minimum and maximum. Font matching fixes all three
+*       fields of an axis to the superclass minimum plus the image default
+*       scaled by font-size/8.
 *       OldImage instead fixes all dimensions to its size plus superclass
 *       minimum contributions. With no usable image, maxima equal the
 *       superclass minima and defaults add eight pixels.
@@ -659,8 +661,12 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
         /* the frame and spacing the superclass already counted */
         WORD base_w = msg->MinMaxInfo->MinWidth;
         WORD base_h = msg->MinMaxInfo->MinHeight;
+        WORD fixw, fixh;
 
         zune_imspec_askminmax(data->img, &minmax);
+        /* the size a non-free axis is fixed at */
+        fixw = minmax.DefWidth;
+        fixh = minmax.DefHeight;
         switch (data->img->type)
         {
         case IST_PATTERN:
@@ -668,6 +674,13 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
         case IST_SCALED_GRADIENT:
         case IST_TILED_GRADIENT:
             fixed = 0;
+            break;
+        case IST_BOOPSI:
+            /* MUI 3.8 fixes an image class at its minimum but keeps its
+             * default (tests/native/boopsiimage.c: kmel_arrowdown is
+             * 4x4 with a 10x10 default) */
+            fixw = minmax.MinWidth;
+            fixh = minmax.MinHeight;
             break;
         default:
             break;
@@ -681,8 +694,8 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
         }
         else
         {
-            msg->MinMaxInfo->MinWidth += fixed * minmax.DefWidth;
-            msg->MinMaxInfo->MaxWidth += fixed * minmax.DefWidth;
+            msg->MinMaxInfo->MinWidth += fixed * fixw;
+            msg->MinMaxInfo->MaxWidth += fixed * fixw;
             msg->MinMaxInfo->DefWidth += minmax.DefWidth;
         }
 
@@ -706,8 +719,8 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
         }
         else
         {
-            msg->MinMaxInfo->MinHeight += fixed * minmax.DefHeight;
-            msg->MinMaxInfo->MaxHeight += fixed * minmax.DefHeight;
+            msg->MinMaxInfo->MinHeight += fixed * fixh;
+            msg->MinMaxInfo->MaxHeight += fixed * fixh;
             msg->MinMaxInfo->DefHeight += minmax.DefHeight;
         }
 
