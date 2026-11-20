@@ -170,13 +170,18 @@ IPTR Scrollbar__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     /* Restore the original tag so the Group (superclass) still sees it */
     if (showTag)
         showTag->ti_Tag = MUIA_ShowMe;
+    if (!prop)
+        return 0;
 
     obj = (Object *) DoSuperNewTags(cl, obj, NULL,
         MUIA_Group_Spacing, 0,
         MUIA_Background, MUII_GroupBack,
         TAG_MORE, (IPTR) msg->ops_AttrList);
     if (!obj)
-        return FALSE;
+    {
+        MUI_DisposeObject(prop);
+        return 0;
+    }
 
     data = INST_DATA(cl, obj);
     data->prop = prop;
@@ -211,6 +216,18 @@ IPTR Scrollbar__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             DoMethod(data->down_arrow, MUIM_Notify, MUIA_Timer,
                 MUIV_EveryTime, (IPTR) prop, 2,
                 MUIM_Prop_Increase, incdec);
+        }
+        /* MUI's rule: a failed call leaves no created object behind. The
+         * parts are not members yet. */
+        if (!data->up_arrow || !data->down_arrow)
+        {
+            if (data->up_arrow)
+                MUI_DisposeObject(data->up_arrow);
+            if (data->down_arrow)
+                MUI_DisposeObject(data->down_arrow);
+            MUI_DisposeObject(prop);
+            CoerceMethod(cl, obj, OM_DISPOSE);
+            return 0;
         }
 
         switch (sb_pos)
