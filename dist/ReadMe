@@ -36,7 +36,13 @@ version. The protocol lists each replaced version.
     Replaces MUI. The zunemaster.library of earlier betas is removed.
 
   Prefs/Zune         -> SYS:Prefs/Zune (with Workbench icon)
-    The preferences editor used by application settings menus.
+    The preferences editor used by application settings menus. Project /
+    "Import MUI 3.8 settings..." reads a MUI 3.8 settings file (from
+    ENVARC:MUI, or a preset from MUI:Presets) into the editor for a test;
+    Save or Use keeps it. MUI 3.8's global file also brings each program's
+    own MUI 3.8 settings into ENVARC:zune. When Zune has no settings yet and
+    ENVARC:MUI has MUI 3.8's, the editor offers the import when it starts.
+    MUI's files are only read.
 
   Libs/MUI/*         -> MUI:Libs/MUI/
     BetterString, HotkeyString, NBitmap, NBalance, NList, NListview,
