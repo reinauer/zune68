@@ -42,7 +42,11 @@ version. The protocol lists each replaced version.
     Save or Use keeps it. MUI 3.8's global file also brings each program's
     own MUI 3.8 settings into ENVARC:zune. When Zune has no settings yet and
     ENVARC:MUI has MUI 3.8's, the editor offers the import when it starts.
-    MUI's files are only read.
+    MUI's files are only read. The System page's "MUI Version" sets the
+    version programs see: MUI 5, or MUI 3.8 for programs and classes that
+    lay out better with it, for all programs or by a program's file name.
+    A program that asks for MUI 4 or later always sees MUI 5. Use and Save
+    write ENV:zune/MUIVersion, which applies to programs started after.
 
   Libs/MUI/*         -> MUI:Libs/MUI/
     BetterString, HotkeyString, NBitmap, NBalance, NList, NListview,

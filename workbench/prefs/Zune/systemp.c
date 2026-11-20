@@ -255,8 +255,170 @@ struct MUI_SystemPData
     Object *arexx_checkmark;
     Object *first_bubble_slider;
     Object *next_bubble_slider;
+    Object *version_cycle;
+    Object *program_list;
+    Object *program_string;
+    Object *program_cycle;
+    Object *program_add;
+    Object *program_remove;
     struct Hook psiHook;
+    struct Hook programHook;
 };
+
+/* The MUI version programs see (ENV:zune/MUIVersion, read by
+ * muimaster.library, identity.c): the first line for all programs, a
+ * further line per program, "MUI3.8 YAM". Written by Use and Save. */
+#define MUIVERSION_FILE "zune/MUIVersion"
+static CONST_STRPTR version_labels[] = { "MUI 5", "MUI 3.8", NULL };
+static CONST_STRPTR const version_words[] = { "MUI5", "MUI3.8" };
+static struct MUI_SystemPData *systemp_data;
+
+/* "MUI5" or "MUI3.8" at the start of S: 0 or 1, the name after it in
+ * *name; -1 when it is neither */
+static int version_word(CONST_STRPTR s, CONST_STRPTR *name)
+{
+    int id;
+
+    if (!strnicmp(s, "MUI5", 4))
+        id = 0, s += 4;
+    else if (!strnicmp(s, "MUI3.8", 6))
+        id = 1, s += 6;
+    else
+        return -1;
+    if (*s && *s != ' ' && *s != '\t')
+        return -1;
+    while (*s == ' ' || *s == '\t')
+        s++;
+    if (name)
+        *name = s;
+    return id;
+}
+
+/* A line of the list was chosen (0), Add or Return in the name (1),
+ * Remove (2) */
+static IPTR ProgramFunc(struct Hook *hook, Object *caller, IPTR *params)
+{
+    struct MUI_SystemPData *data = hook->h_Data;
+    STRPTR line = NULL, entry, name;
+    CONST_STRPTR lname;
+    char buf[300];
+    LONG i, active = XGET(data->program_list, MUIA_List_Active);
+
+    (void)caller;
+    switch (params[0])
+    {
+    case 0:
+        if (active < 0)
+            break;
+        DoMethod(data->program_list, MUIM_List_GetEntry, active, (IPTR)&line);
+        if (line && version_word(line, &lname) >= 0)
+        {
+            nnset(data->program_string, MUIA_String_Contents, (IPTR)lname);
+            nnset(data->program_cycle, MUIA_Cycle_Active,
+                version_word(line, NULL));
+        }
+        break;
+    case 1:
+        name = (STRPTR)XGET(data->program_string, MUIA_String_Contents);
+        while (name && (*name == ' ' || *name == '\t'))
+            name++;
+        if (!name || !*name || strchr(name, ':') || strchr(name, '/'))
+            break;
+        snprintf(buf, sizeof(buf), "%s %s",
+            version_words[XGET(data->program_cycle, MUIA_Cycle_Active) ? 1 : 0],
+            name);
+        for (i = 0; ; i++)
+        {
+            entry = NULL;
+            DoMethod(data->program_list, MUIM_List_GetEntry, i, (IPTR)&entry);
+            if (!entry)
+                break;
+            if (version_word(entry, &lname) >= 0 && !stricmp(lname, name))
+            {
+                DoMethod(data->program_list, MUIM_List_Remove, i);
+                break;
+            }
+        }
+        DoMethod(data->program_list, MUIM_List_InsertSingle, (IPTR)buf,
+            entry ? i : MUIV_List_Insert_Bottom);
+        set(data->program_list, MUIA_List_Active,
+            entry ? i : MUIV_List_Active_Bottom);
+        break;
+    case 2:
+        if (active >= 0)
+            DoMethod(data->program_list, MUIM_List_Remove,
+                MUIV_List_Remove_Active);
+        break;
+    }
+    return 0;
+}
+
+static void load_muiversion(struct MUI_SystemPData *data)
+{
+    char line[300];
+    CONST_STRPTR name;
+    BPTR fh;
+    int first = 1, id, n;
+
+    DoMethod(data->program_list, MUIM_List_Clear);
+    set(data->version_cycle, MUIA_Cycle_Active, 0);
+    if (!(fh = Open("ENV:" MUIVERSION_FILE, MODE_OLDFILE)))
+        return;
+    while (FGets(fh, line, sizeof(line)))
+    {
+        n = strlen(line);
+        while (n && (line[n - 1] == '\n' || line[n - 1] == '\r'
+            || line[n - 1] == ' '))
+            line[--n] = 0;
+        id = version_word(line, &name);
+        if (id < 0)
+            ;
+        else if (first && !*name)
+            set(data->version_cycle, MUIA_Cycle_Active, id);
+        else if (*name)
+            DoMethod(data->program_list, MUIM_List_InsertSingle, (IPTR)line,
+                MUIV_List_Insert_Bottom);
+        first = 0;
+    }
+    Close(fh);
+}
+
+static void write_muiversion(struct MUI_SystemPData *data, CONST_STRPTR path)
+{
+    STRPTR entry;
+    BPTR fh, lock;
+    char dir[64];
+    LONG i;
+
+    /* the drawer ENV:zune or ENVARC:zune */
+    strcpy(dir, path);
+    *PathPart(dir) = 0;
+    if ((lock = Lock(dir, SHARED_LOCK)) || (lock = CreateDir(dir)))
+        UnLock(lock);
+    if (!(fh = Open(path, MODE_NEWFILE)))
+        return;
+    FPrintf(fh, "%s\n",
+        (IPTR)version_words[XGET(data->version_cycle, MUIA_Cycle_Active) ? 1 : 0]);
+    for (i = 0; ; i++)
+    {
+        entry = NULL;
+        DoMethod(data->program_list, MUIM_List_GetEntry, i, (IPTR)&entry);
+        if (!entry)
+            break;
+        FPrintf(fh, "%s\n", (IPTR)entry);
+    }
+    Close(fh);
+}
+
+/* Use (ENV:) and Save (ENV: and ENVARC:) */
+void SystemP_SaveMUIVersion(BOOL envarc)
+{
+    if (!systemp_data)
+        return;
+    if (envarc)
+        write_muiversion(systemp_data, "ENVARC:" MUIVERSION_FILE);
+    write_muiversion(systemp_data, "ENV:" MUIVERSION_FILE);
+}
 
 static IPTR ExecuteScreenInspectorFunc(struct Hook *hook, Object *caller, void *data)
 {
@@ -297,7 +459,7 @@ static IPTR SystemP_New(struct IClass *cl, Object *obj, struct opSet *msg)
     (
         cl, obj, NULL,
         
-        MUIA_Group_Columns, 2,
+        Child, (IPTR) ColGroup(2),
 
         Child, (IPTR) VGroup,
             GroupFrameT(_(MSG_PUBLIC_SCREEN)),
@@ -369,6 +531,35 @@ static IPTR SystemP_New(struct IClass *cl, Object *obj, struct opSet *msg)
             Child, (IPTR) VSpace(0),
             End,
 
+        End,
+
+        Child, (IPTR) HGroup,
+            GroupFrameT("MUI Version"),
+            Child, (IPTR) VGroup,
+                Child, (IPTR) Label1("All programs:"),
+                Child, (IPTR) (d.version_cycle = MakeCycle(NULL, version_labels)),
+                End,
+            Child, (IPTR) ListviewObject,
+                MUIA_HorizWeight, 300,
+                MUIA_Listview_List, (IPTR) (d.program_list = ListObject,
+                    InputListFrame,
+                    MUIA_List_ConstructHook, MUIV_List_ConstructHook_String,
+                    MUIA_List_DestructHook, MUIV_List_DestructHook_String,
+                    End),
+                MUIA_ShortHelp, (IPTR) "Programs that see a version of\n"
+                    "their own, by the name of the\n"
+                    "program's file.",
+                End,
+            Child, (IPTR) VGroup,
+                Child, (IPTR) (d.program_string = MakeString()),
+                Child, (IPTR) HGroup,
+                    Child, (IPTR) (d.program_cycle = MakeCycle(NULL, version_labels)),
+                    Child, (IPTR) (d.program_add = SimpleButton("_Add")),
+                    Child, (IPTR) (d.program_remove = SimpleButton("_Remove")),
+                    End,
+                End,
+            End,
+
         TAG_MORE, (IPTR) msg->ops_AttrList);
 
     if (!obj) return FALSE;
@@ -378,6 +569,29 @@ static IPTR SystemP_New(struct IClass *cl, Object *obj, struct opSet *msg)
     
     data = INST_DATA(cl, obj);
     *data = d;
+    systemp_data = data;
+
+    set(d.version_cycle, MUIA_ShortHelp, (IPTR) "The MUI version programs see.\n"
+        "Most programs work best with MUI 5;\n"
+        "some older ones lay out better with\n"
+        "MUI 3.8. A program in the list sees\n"
+        "the version given there; one that\n"
+        "asks for MUI 4 or later always sees\n"
+        "MUI 5. For programs started after\n"
+        "Use or Save.");
+
+    data->programHook.h_Entry = HookEntry;
+    data->programHook.h_SubEntry = (HOOKFUNC) ProgramFunc;
+    data->programHook.h_Data = data;
+    DoMethod(d.program_list, MUIM_Notify, MUIA_List_Active, MUIV_EveryTime,
+        obj, (IPTR) 3, MUIM_CallHook, &data->programHook, 0);
+    DoMethod(d.program_add, MUIM_Notify, MUIA_Pressed, FALSE,
+        obj, (IPTR) 3, MUIM_CallHook, &data->programHook, 1);
+    DoMethod(d.program_string, MUIM_Notify, MUIA_String_Acknowledge,
+        MUIV_EveryTime, obj, (IPTR) 3, MUIM_CallHook, &data->programHook, 1);
+    DoMethod(d.program_remove, MUIM_Notify, MUIA_Pressed, FALSE,
+        obj, (IPTR) 3, MUIM_CallHook, &data->programHook, 2);
+    load_muiversion(data);
 
     DoMethod(
         d.first_bubble_slider, MUIM_Notify, MUIA_Numeric_Value, MUIV_EveryTime,
@@ -435,6 +649,10 @@ BOOPSI_DISPATCHER(IPTR, SystemP_Dispatcher, cl, obj, msg)
     switch (msg->MethodID)
     {
         case OM_NEW: return SystemP_New(cl, obj, (struct opSet *)msg);
+        case OM_DISPOSE:
+            if (systemp_data == INST_DATA(cl, obj))
+                systemp_data = NULL;
+            break;
         case MUIM_Settingsgroup_ConfigToGadgets: return SystemP_ConfigToGadgets(cl,obj,(APTR)msg);break;
         case MUIM_Settingsgroup_GadgetsToConfig: return SystemP_GadgetsToConfig(cl,obj,(APTR)msg);break;
     }

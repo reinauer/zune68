@@ -54,7 +54,7 @@ endif
 LIB_CFLAGS = $(CPUFLAGS) $(CRTFLAGS) $(CFLAGS) $(LTO_CFLAGS) \
   -fno-common -fno-builtin -fno-strict-aliasing -fconserve-stack
 SOURCES = \
-  gcc/format.c gcc/runtime.c muimaster_init.c datatypescache.c dragndrop.c font.c \
+  gcc/format.c gcc/runtime.c muimaster_init.c identity.c datatypescache.c dragndrop.c font.c \
   frame.c pointer.c imspec.c imspec_boopsi.c imspec_vector.c imspec_gradient.c muigfx.c \
   imspec_gradientdraw.c menu.c penspec.c support.c support_amigaos.c \
   support_classes.c textengine.c bubbleengine.c clipboard.c locale.c \

@@ -176,7 +176,13 @@ Class *ZUNE_GetExternalClass(CONST_STRPTR classname,
 
         D(bug("Trying opening of %s\n", s));
 
-        if ((mcclib = OpenLibrary(s, 0)))
+        /* ramlib's process opens this library for the class it loads:
+         * that open gets the MUI version of this program (identity.c) */
+        MUIMB(MUIMasterBase)->IdLoader =
+            zune_identity_of(MUIMB(MUIMasterBase), FindTask(NULL)) + 1;
+        mcclib = OpenLibrary(s, 0);
+        MUIMB(MUIMasterBase)->IdLoader = 0;
+        if (mcclib)
         {
             D(bug("Calling MCC Query. Librarybase at 0x%p\n", mcclib));
 

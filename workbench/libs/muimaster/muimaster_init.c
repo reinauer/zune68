@@ -58,6 +58,7 @@ void L_ExpungeLib(struct Library *library)
     struct MUIMasterBase_intern *base = MUIMB(library);
     unsigned i = sizeof(dependencies) / sizeof(dependencies[0]);
     MUIGfx_Remove();
+    zune_identity_exit(base);
     zune_vector_free_templates();
     if (CyberGfxBase) CloseLibrary(CyberGfxBase);
     CyberGfxBase = NULL;
@@ -121,6 +122,7 @@ ULONG L_InitLib(struct Library *library)
     for (i = 0; i < sizeof(mark_pen); ++i)
         base->defaultPens[MPEN_MARK].buf[i] = mark_pen[i];
     if (!ZuneGccInit()) goto fail;
+    zune_identity_init(base);
     Locale_Initialize();
     MUIGfx_Install(library);
     return TRUE;

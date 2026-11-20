@@ -41,6 +41,7 @@
 #   include "support_amigaos.h"
 #endif
 
+#include <dos/notify.h>
 #include "mui.h"
 #include "textengine.h"
 #include "prefs.h"
@@ -82,6 +83,17 @@ struct MUIMasterBase_intern
     struct SignalSemaphore      ZuneSemaphore; /* Used when accessing global data */
     APTR                        SpecialMemory;
 
+#ifndef __AROS__
+    /* The MUI version each program sees (identity.c) */
+    struct Library              *IdCopy;    /* the base with MUI 3.8's version */
+    UBYTE                       *IdList;    /* per-program versions */
+    LONG                        IdLoader;   /* ZUNE_ID_* + 1 of a program loading a class */
+    UBYTE                       IdDefault;
+    UBYTE                       IdChanged;
+    UBYTE                       IdNotifying;
+    struct MsgPort              IdPort;
+    struct NotifyRequest        IdNotify;
+#endif
     /* What MUI's private LVO -264 returns (classes/application.c) */
     Object                      *Applist;
     struct MUI_CustomClass      *ApplistClass;
@@ -111,6 +123,14 @@ void zune_dispose_children(struct TagItem *tags);
  * count when it fails */
 struct IClass *zune_make_class(CONST_STRPTR id, CONST_STRPTR superid,
     struct IClass *super, ULONG size);
+/* identity.c: the MUI version each program sees */
+#define ZUNE_ID_MUI5  0
+#define ZUNE_ID_MUI38 1
+void zune_identity_init(struct MUIMasterBase_intern *base);
+void zune_identity_exit(struct MUIMasterBase_intern *base);
+LONG zune_identity_of(struct MUIMasterBase_intern *base, struct Task *task);
+struct Library *zune_identity_open(struct MUIMasterBase_intern *base,
+    ULONG version);
 #endif
 
 #endif /* MUIMASTER_INTERN_H */

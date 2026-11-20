@@ -78,6 +78,14 @@ class Harness:
         self.trap(self.symbols['_ZUNE_GetExternalClass'], self.external_class)
         if '_ZuneTraceOutput' in self.symbols:
             self.trap(self.symbols['_ZuneTraceOutput'], lambda: None)
+        # The MUI version a program sees reads ENV: through dos.library;
+        # tests/native/muiversion.c checks it on WinUAE. Open hands out
+        # the real base here.
+        if '_zune_identity_open' in self.symbols:
+            self.trap(self.symbols['_zune_identity_init'], lambda: None)
+            self.trap(self.symbols['_zune_identity_exit'], lambda: None)
+            self.trap(self.symbols['_zune_identity_open'], lambda: self.cpu.w_reg(
+                0, self.mem.r32(self.cpu.r_reg(15) + 4)))
 
     def trap(self, address, fn):
         def callback(opcode, pc):

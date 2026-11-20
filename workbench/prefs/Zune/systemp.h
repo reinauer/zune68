@@ -11,5 +11,6 @@
 extern const struct __MUIBuiltinClass _MUIP_System_desc;
 
 Object *systemclass_get_icon(void);
+void SystemP_SaveMUIVersion(BOOL envarc);
 
 #endif

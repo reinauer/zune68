@@ -651,12 +651,14 @@ void main_revert_pressed(void)
 void main_save_pressed(void)
 {
     save_prefs(appname, TRUE);
+    SystemP_SaveMUIVersion(TRUE);
     DoMethod(app, MUIM_Application_ReturnID, MUIV_Application_ReturnID_Quit);
 }
 
 void main_use_pressed(void)
 {
     save_prefs(appname, FALSE);
+    SystemP_SaveMUIVersion(FALSE);
     DoMethod(app, MUIM_Application_ReturnID, MUIV_Application_ReturnID_Quit);
 }
 
