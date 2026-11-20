@@ -105,6 +105,8 @@ BOOL ZUNE_FreeBuiltinClasses(struct Library *base);
 /* classes/application.c: MUI's private application list object */
 Object *zune_applist_get(void);
 void zune_applist_free(void);
+/* mui_newobject.c: the child objects of a tag list nothing has read yet */
+void zune_dispose_children(struct TagItem *tags);
 #endif
 
 #endif /* MUIMASTER_INTERN_H */

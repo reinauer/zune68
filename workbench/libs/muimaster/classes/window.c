@@ -4857,7 +4857,10 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     obj = (Object *) DoSuperMethodA(cl, obj, (Msg) msg);
     if (!obj)
+    {
+        zune_dispose_children(msg->ops_AttrList);
         return FALSE;
+    }
 
     /* Initial local instance data */
     data = INST_DATA(cl, obj);
@@ -4868,6 +4871,7 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->wd_MemoryPool = CreatePool(0, 4096, 2048);
     if (NULL == data->wd_MemoryPool)
     {
+        zune_dispose_children(msg->ops_AttrList);  /* root, menustrip */
         CoerceMethod(cl, obj, OM_DISPOSE);
         return (IPTR) NULL;
     }

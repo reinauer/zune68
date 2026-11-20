@@ -442,7 +442,7 @@ static ULONG Popasl_Close_Function(struct Hook *hook, Object *obj,
 /*
  * Allocate ASL request from Type/constructor tags, construct Popstring and
  * install embedded hooks with Toggle FALSE. Return object or zero on
- * failure. Superclass failure leaks already allocated requester. Borrow
+ * failure; a failure disposes the string and button. Borrow
  * hooks and retain requester until disposal; no getter for Type/hooks.
  */
 IPTR Popasl__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
@@ -455,12 +455,20 @@ IPTR Popasl__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     APTR asl_req;
 
     if (!(asl_req = AllocAslRequest(asl_type, msg->ops_AttrList)))
+    {
+        /* Nothing has read the tag list: its string and button go too */
+        zune_dispose_children(msg->ops_AttrList);
         return 0;
+    }
 
     obj = (Object *) DoSuperNewTags(cl, obj, NULL,
         MUIA_Popstring_Toggle, FALSE, TAG_MORE, (IPTR) msg->ops_AttrList);
     if (!obj)
+    {
+        /* the superclass disposed the string and button */
+        FreeAslRequest(asl_req);
         return FALSE;
+    }
 
     data = INST_DATA(cl, obj);
 

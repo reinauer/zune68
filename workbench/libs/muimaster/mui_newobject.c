@@ -4,6 +4,7 @@
 
 #include <proto/exec.h>
 #include <proto/intuition.h>
+#include <proto/utility.h>
 #include <proto/muimaster.h>
 
 #include "mui.h"
@@ -11,6 +12,55 @@
 
 /* #define MYDEBUG 1 */
 #include "debug.h"
+
+/* Whether a tag hands an object over to the object being made. */
+static BOOL zune_child_tag(Tag t)
+{
+    switch (t)
+    {
+    case MUIA_Group_Child:
+    case MUIA_Family_Child:
+    case MUIA_Window_RootObject:
+    case MUIA_Window_Menustrip:
+    case MUIA_Application_Window:
+    case MUIA_Application_Menustrip:
+    case MUIA_Listview_List:
+    case MUIA_Scrollgroup_Contents:
+    case MUIA_Popstring_String:
+    case MUIA_Popstring_Button:
+    case MUIA_Popobject_Object:
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/* MUI's rule (Group.mui, MUIA_Group_Child): a failed MUI_NewObject() call
+ * leaves no previously created object behind, however deep the failure.
+ * A class whose OM_NEW fails before it reads its tags calls this to
+ * dispose the objects the tag list hands over: a group's children, a
+ * window's root object and menustrip, an application's windows and
+ * menustrip, a listview's list, a scrollgroup's contents, a popup's
+ * string, button and object. One that fails after reading them disposes
+ * them in its OM_DISPOSE. Popstring passes its string and button to Group
+ * as children with its own tag list after them (TAG_MORE), and Listview
+ * its list, so the same object can appear twice: only its last
+ * appearance disposes it. */
+void zune_dispose_children(struct TagItem *tags)
+{
+    struct TagItem *tag, *rest, *t;
+
+    while ((tag = NextTagItem(&tags)))
+    {
+        if (!zune_child_tag(tag->ti_Tag) || !tag->ti_Data)
+            continue;
+        rest = tag + 1;
+        while ((t = NextTagItem(&rest)))
+            if (t->ti_Data == tag->ti_Data && zune_child_tag(t->ti_Tag))
+                break;
+        if (!t)
+            MUI_DisposeObject((Object *)tag->ti_Data);
+    }
+}
 
 /*****************************************************************************
 
@@ -58,7 +108,9 @@
     Class  *cl;
 
     cl = MUI_GetClass(classid);
-    if (cl)
+    if (!cl)
+        zune_dispose_children(tags);   /* no class: nothing read the list */
+    else
     {
         Object *obj = NewObjectA(cl, NULL, tags);
 

@@ -649,7 +649,12 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
 
     struct Hook *layout_hook = mui_alloc_struct(struct Hook);
     if (!layout_hook)
+    {
+        /* MUI's rule: a failed call leaves no created object behind */
+        if (contents)
+            MUI_DisposeObject(contents);
         return 0;
+    }
 
     layout_hook->h_Entry = (HOOKFUNC) Scrollgroup_Layout_Function;
 

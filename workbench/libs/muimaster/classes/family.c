@@ -184,7 +184,10 @@ IPTR Family__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     obj = (Object *) DoSuperMethodA(cl, obj, (Msg) msg);
     if (!obj)
+    {
+        zune_dispose_children(msg->ops_AttrList);
         return FALSE;
+    }
     /*
      * Initial local instance data
      */

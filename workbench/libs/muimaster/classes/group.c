@@ -878,7 +878,10 @@ IPTR Group__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     obj = (Object *) DoSuperMethodA(cl, obj, (Msg) msg);
     if (!obj)
+    {
+        zune_dispose_children(msg->ops_AttrList);
         return 0;
+    }
 
     muiAreaData(obj)->mad_Flags2 |= MADF2_ISGROUP;
 
@@ -888,6 +891,7 @@ IPTR Group__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->family = MUI_NewObjectA(MUIC_Family, NULL);
     if (!data->family)
     {
+        zune_dispose_children(msg->ops_AttrList);
         CoerceMethod(cl, obj, OM_DISPOSE);
         return 0;
     }
