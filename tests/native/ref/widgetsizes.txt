@@ -1,0 +1,22 @@
+vbar 2           min=4,2 def=4,2 max=4,10000 sub=0,0
+hbar 0           min=4,2 def=4,2 max=10000,10000 sub=0,0
+hbar 2           min=4,2 def=4,2 max=10000,2 sub=0,0
+levelmeter lbl   min=53,43 def=53,43 max=53,43 sub=0,0
+levelmeter       min=53,43 def=53,43 max=53,43 sub=0,0
+knob big         min=31,36 def=31,36 max=31,36 sub=0,0
+knob             min=31,36 def=31,36 max=31,36 sub=0,0
+slider big       min=39,16 def=134,16 max=10006,16 sub=6,6
+slider max999    min=39,16 def=134,16 max=10006,16 sub=6,6
+slider v         min=38,17 def=38,46 max=38,10006 sub=6,6
+slider h         min=39,16 def=134,16 max=10006,16 sub=6,6
+scale big        min=56,12 def=56,12 max=10000,12 sub=0,0
+scale v          min=60,20 def=60,20 max=60,10000 sub=0,0
+scale h          min=56,12 def=56,12 max=10000,12 sub=0,0
+gauge v info     min=30,12 def=30,32 max=30,10000 sub=4,2
+gauge v          min=7,5 def=12,32 max=10000,10000 sub=4,2
+gauge h big      min=7,5 def=34,10 max=10000,10000 sub=4,2
+gauge h info     min=54,12 def=54,12 max=10000,12 sub=4,2
+gauge h noframe  min=3,3 def=30,8 max=10000,10000 sub=0,0
+gauge h          min=7,5 def=34,10 max=10000,10000 sub=4,2
+rc=0
+[rc 0]

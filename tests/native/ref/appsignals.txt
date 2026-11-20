@@ -1,0 +1,6 @@
+default    before 16 app +3 window +0
+no cx      before 16 app +2 window +0
+no rexx    before 16 app +2 window +0
+neither    before 16 app +1 window +0
+rc=0
+[rc 0]

@@ -1,0 +1,12 @@
+label1 box=16,42,121,14 min=56 def=56 max=10000 hw=0
+string box=143,42,369,14 min=32 def=112 max=10000 hw=100
+label2 box=16,59,121,14 min=72 def=72 max=10000 hw=0
+cycles box=143,60,369,12 min=170 def=170 max=10000 hw=100
+space box=16,76,121,16 min=0 def=0 max=10000 hw=100
+text box=143,76,369,16 min=128 def=128 max=10000 hw=100
+group box=8,31,512,67 min=264 def=264 max=10016 hw=100
+wide box=8,14,512,14 min=512 def=512 max=512 hw=100
+space-1 box=16,124,56,8 min=0 def=0 max=10000 hw=1
+text-1 box=78,124,434,8 min=128 def=128 max=10000 hw=100
+rc=0
+[rc 0]

@@ -1,0 +1,35 @@
+--- listprop.txt
+height 40 inner 36
+open         visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 10     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 100    visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 17     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 16     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 15     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first -1     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+active bot   visible 4 first 16 entries 20 prop vis 0 ent 0 first 0
+active top   visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+pagedown     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+  active 3
+pagedown2    visible 4 first 3 entries 20 prop vis 0 ent 0 first 0
+  active 6
+pageup       visible 4 first 3 entries 20 prop vis 0 ent 0 first 0
+  active 3
+height 45 inner 41
+open         visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 10     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 100    visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 17     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 16     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first 15     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+first -1     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+active bot   visible 4 first 16 entries 20 prop vis 0 ent 0 first 0
+active top   visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+pagedown     visible 4 first 0 entries 20 prop vis 0 ent 0 first 0
+  active 3
+pagedown2    visible 4 first 3 entries 20 prop vis 0 ent 0 first 0
+  active 6
+pageup       visible 4 first 3 entries 20 prop vis 0 ent 0 first 0
+  active 3
+rc=0
+[rc 0]

@@ -1,0 +1,15 @@
+--- centrestyle.txt
+0 first 37 last 160 min 200
+1 first 36 last 160 min 200
+2 first 37 last 161 min 200
+3 first 37 last 160 min 200
+4 first 34 last 161 min 200
+5 first 93 last 106 min 200
+6 first 93 last 107 min 200
+7 first 92 last 106 min 200
+8 first 38 last 164 min 200
+9 first 90 last 106 min 200
+10 first 94 last 109 min 200
+11 first 26 last 168 min 200
+rc=0
+[rc 0]

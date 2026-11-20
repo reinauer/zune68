@@ -1,0 +1,5 @@
+Add  set MUIA_Weight 0:      horiz 0 vert 0
+BM   set MUIA_HorizWeight 0: horiz 0 vert 100
+widths string 316 add 32 bm 24
+window 400 x 41 borders 4 4
+[rc 0]

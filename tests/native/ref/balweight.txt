@@ -1,0 +1,18 @@
+--- balweight.txt
+case 0 width 624: a 142 b 3 c 479
+case 0 width 584: a 132 b 3 c 449
+case 0 width 484: a 110 b 3 c 371
+case 0 width 384: a 87 b 3 c 294
+case 0 width 284: a 64 b 3 c 217
+case 1 width 624: a 142 b 3 c 479
+case 1 width 584: a 132 b 3 c 449
+case 1 width 484: a 110 b 3 c 371
+case 1 width 384: a 87 b 3 c 294
+case 1 width 284: a 64 b 3 c 217
+case 2 width 624: a 142 b 2 c 480
+case 2 width 584: a 133 b 2 c 449
+case 2 width 484: a 111 b 2 c 371
+case 2 width 384: a 87 b 2 c 295
+case 2 width 284: a 64 b 2 c 218
+rc=0
+[rc 0]

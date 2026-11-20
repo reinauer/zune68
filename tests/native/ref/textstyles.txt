@@ -1,0 +1,20 @@
+ 0 min  34 height  8 plain  32 extra +2
+ 1 min  34 height  8 plain  32 extra +2
+ 2 min  34 height  8 plain  32 extra +2
+ 3 min  50 height  8 plain  48 extra +2
+ 4 min  34 height  8 plain  32 extra +2
+ 5 min  35 height  8 plain  32 extra +3
+ 6 min  27 height  8 plain  24 extra +3
+ 7 min  37 height  8 plain  32 extra +5
+ 8 min  37 height  8 plain  32 extra +5
+ 9 min  37 height  8 plain  32 extra +5
+10 min  53 height  8 plain  48 extra +5
+11 min  37 height  8 plain  32 extra +5
+12 min  22 height  8 plain  16 extra +6
+13 min  74 height 16 plain  72 extra +2
+14 min  73 height 16 plain  72 extra +1
+15 min  82 height 16 plain  80 extra +2
+16 min  32 height  8 plain  32 extra +0
+17 min  40 height  8 plain  40 extra +0
+rc=0
+[rc 0]

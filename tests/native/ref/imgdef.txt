@@ -1,0 +1,17 @@
+--- imgdef.txt
+makeobj-check              min 21,11 def 21,11 max    21,10004 box 21x14 font 8 add 4,2 sub 8,4
+check-freevert             min 21,11 def 21,11 max    21,10004 box 21x14 font 8 add 4,2 sub 8,4
+check-fixed                min 21,11 def 21,11 max    21,   11 box 21x11 font 8 add 4,2 sub 8,4
+check-freeboth             min 21,11 def 21,11 max 10008,10004 box 21x14 font 8 add 4,2 sub 8,4
+check-noframe-freevert     min 13, 7 def 13, 7 max    13,10000 box 13x14 font 8 add 0,0 sub 0,0
+check-freevert-fontmatch   min 21,11 def 21,11 max    21,   11 box 21x11 font 8 add 4,2 sub 8,4
+popup-freevert             min 18,14 def 18,14 max    18,10004 box 18x14 font 8 add 4,2 sub 8,4
+check-freevert-toggle-nobg min 21,11 def 21,11 max    21,10004 box 21x14 font 8 add 4,2 sub 8,4
+check-freevert-big         min 21,11 def 21,11 max    21,10004 box 21x14 font 8 add 4,2 sub 8,4
+check-freevert-big-inner1  min 19,11 def 19,11 max    19,10004 box 19x14 font 8 add 3,2 sub 6,4
+check-fixed-big            min 21,11 def 21,11 max    21,   11 box 21x11 font 8 add 4,2 sub 8,4
+cycle-big                  min 78,12 def 78,12 max 10026,   12 box 78x12 font 8 add 4,2 sub 8,4
+check-fontmatch-big        min 21,11 def 21,11 max    21,   11 box 21x11 font 8 add 4,2 sub 8,4
+check-fontmatchw-big       min 21,11 def 21,11 max    21,   11 box 21x11 font 8 add 4,2 sub 8,4
+rc=0
+[rc 0]

@@ -1,0 +1,14 @@
+state normal
+button      62x12  tl=1 tr=0 bl=0 br=1 outside=1 inside=0
+string      62x14  tl=1 tr=1 bl=1 br=1 outside=1 inside=0
+textframe   62x12  tl=1 tr=0 bl=0 br=1 outside=1 inside=1
+imagebtn    16x9   tl=1 tr=0 bl=0 br=1 outside=1 inside=1
+greybtn     94x12  tl=1 tr=0 bl=0 br=1 outside=0 inside=0
+state pressed
+button      62x12  tl=1 tr=0 bl=0 br=1 outside=1 inside=1
+greybtn     94x12  tl=1 tr=0 bl=0 br=1 outside=0 inside=1
+state released
+button      62x12  tl=1 tr=0 bl=0 br=1 outside=1 inside=0
+greybtn     94x12  tl=1 tr=0 bl=0 br=1 outside=0 inside=0
+PASS rc=0
+[rc 0]

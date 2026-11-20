@@ -1,0 +1,17 @@
+initial parent=1 virtual=1 extent=60 virtual=250,120 box=250,120
+informs=1
+  0,0,250,120,250,120
+unchanged parent=0 virtual=1 extent=60 virtual=250,120 box=250,120
+informs=1
+  0,0,250,120,250,120
+grown parent=0 virtual=1 extent=1000 virtual=1000,1000 box=250,120
+informs=1
+  0,0,250,120,1000,1000
+scrolled parent=0 virtual=0 extent=1000 virtual=1000,1000 box=250,120
+informs=0
+shrunk parent=0 virtual=1 extent=60 virtual=250,120 box=250,120
+informs=1
+  0,0,250,120,250,120
+unregistered parent=0 virtual=1 extent=1000 virtual=1000,1000 box=250,120
+informs=0
+[rc 0]

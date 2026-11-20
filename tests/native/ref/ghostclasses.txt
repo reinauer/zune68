@@ -1,0 +1,22 @@
+button pens: 0=212 1=108
+image pens: 0=32 1=18
+rectangle pens: 0=1944
+custom-area pens: 0=288
+custom-text pens: 0=1045 1=75
+cycle pens: 0=241 1=119 2=8
+group pens: 0=265 1=39
+string pens: 0=277 1=59
+checkmark pens: 0=66 1=25
+slider pens: 0=352 1=80 2=48
+disabled-button pens: 0=158 1=162
+disabled-image pens: 0=24 1=26
+disabled-rectangle pens: 0=1944
+disabled-custom-area pens: 0=288
+disabled-custom-text pens: 0=784 1=336
+disabled-cycle pens: 0=180 1=180 2=8
+disabled-group pens: 0=198 1=106
+disabled-string pens: 0=208 1=128
+disabled-checkmark pens: 0=52 1=39
+disabled-slider pens: 0=265 1=180 2=35
+rc=0
+[rc 0]

@@ -1,0 +1,25 @@
+window 640 178
+ftlv box=8,14,76,151 min=66,34 def=126,76 max=10000,10000 sub=0,0
+ft box=8,14,58,151 min=48,31 def=108,76 max=10000,10000 sub=8,4
+ft entries=127
+emptylv box=90,14,77,151 min=66,34 def=126,76 max=10000,10000 sub=0,0
+empty box=90,14,59,151 min=48,31 def=108,76 max=10000,10000 sub=8,4
+fewlv box=173,14,77,151 min=66,34 def=126,76 max=10000,10000 sub=0,0
+few box=173,14,59,151 min=48,31 def=108,76 max=10000,10000 sub=8,4
+manylv box=256,14,77,151 min=66,34 def=126,76 max=10000,10000 sub=0,0
+many box=256,14,59,151 min=48,31 def=108,76 max=10000,10000 sub=8,4
+many visible=16
+noscroll box=339,14,77,74 min=48,31 def=108,76 max=10000,10000 sub=8,4
+noframe box=339,91,59,74 min=40,27 def=100,72 max=10000,10000 sub=0,0
+big box=422,14,59,151 min=48,31 def=108,76 max=10000,10000 sub=8,4
+bigfew box=505,14,59,151 min=48,31 def=108,76 max=10000,10000 sub=8,4
+scroller box=601,14,18,136 min=18,34 def=18,72 max=18,10000 sub=0,0
+hscroller box=588,153,44,12 min=44,12 def=82,12 max=10000,12 sub=0,0
+v.0 box=601,14,18,118 min=14,16 def=14,54 max=10000,10000 sub=8,4
+v.0 box=601,132,18,9 min=18,9 def=18,9 max=18,9 sub=8,4
+v.0 box=601,141,18,9 min=18,9 def=18,9 max=18,9 sub=8,4
+h.0 box=588,153,20,12 min=20,10 def=58,10 max=10000,10000 sub=8,4
+h.0 box=608,153,12,12 min=12,12 def=12,12 max=12,12 sub=8,4
+h.0 box=620,153,12,12 min=12,12 def=12,12 max=12,12 sub=8,4
+rc=0
+[rc 0]

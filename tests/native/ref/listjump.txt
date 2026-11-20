@@ -1,0 +1,14 @@
+--- listjump.txt
+autovisible 0 active 150 -> first 143 visible 8
+autovisible 0 active 3 -> first 3 visible 8
+autovisible 0 active 199 -> first 192 visible 8
+autovisible 0 active 100 -> first 100 visible 8
+autovisible 0 active 101 -> first 100 visible 8
+autovisible 0 active 0 -> first 0 visible 8
+autovisible 1 active 150 -> first 143 visible 8
+autovisible 1 active 3 -> first 3 visible 8
+autovisible 1 active 199 -> first 192 visible 8
+autovisible 1 active 100 -> first 100 visible 8
+autovisible 1 active 101 -> first 100 visible 8
+autovisible 1 active 0 -> first 0 visible 8
+[rc 0]

@@ -1,0 +1,7 @@
+empty fixed VGroup       0x-3  min 0x-3 max 0x-3
+empty fixed HGroup       0x0   min -6x0 max -6x0
+empty plain VGroup       0x0   min 0x-3 max 0x-3
+fixed Rectangle          0x0   min 16x70 max 16x70
+slider                   0x0   min 38x17 max 38x10006
+PASS rc=0
+[rc 0]

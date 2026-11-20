@@ -1,0 +1,11 @@
+created          bufferpos   0 displaypos   0
+reopened         bufferpos   0 displaypos   0
+set contents     bufferpos   0 displaypos   0
+reopened         bufferpos   0 displaypos   0
+activated        bufferpos   0 displaypos   0
+deactivated      bufferpos   0 displaypos   0
+reopened         bufferpos   0 displaypos   0
+bufferpos 0      bufferpos   0 displaypos   0
+reopened         bufferpos   0 displaypos   0
+rc=0
+[rc 0]

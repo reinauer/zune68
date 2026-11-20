@@ -1,0 +1,5 @@
+empty   4 4 4 4 5 5 5 5 6 6
+three   4 4 4 4 5 5 5 5 6 6
+clear   4 4 4 4 5 5 5 5 6 6
+PASS listempty
+[rc 0]

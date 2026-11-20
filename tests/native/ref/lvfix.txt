@@ -1,0 +1,9 @@
+--- lvfix.txt
+window 102x182
+group    box 4,11 94x161 inner 8,14 86x155 min 94,83 def 94,161 max 94,10049 sub 8,6
+lv       box 18,14 66x40 inner 18,14 66x40 min 66,40 def 126,76 max 66,40 sub 0,0
+list     box 18,14 48x40 inner 22,16 40x36 min 48,31 def 108,76 max 10000,10000 sub 8,4
+lv2      box 8,57 86x112 inner 8,57 86x112 min 86,34 def 86,76 max 86,10000 sub 0,0
+list2    box 8,57 68x112 inner 12,59 60x108 min 68,31 def 108,76 max 68,10000 sub 8,4
+rc=0
+[rc 0]

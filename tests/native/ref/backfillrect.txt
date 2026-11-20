@@ -1,0 +1,7 @@
+open     plain box 18,14 42x14 inner 24,17-53,24 backfill 18,14-59,27 off 0,0
+open     virtual box 9,41 42x14 inner 15,44-44,51 backfill 9,41-50,54 off 0,0
+scrollgroup 8,31 62x46 virtgroup 9,41 42x14 min 8,8 def 42,14 max 42,14
+redraw   plain box 18,14 42x14 inner 24,17-53,24 backfill 24,17-53,24 off 0,0
+redraw   virtual box 9,41 42x14 inner 15,44-44,51 backfill 15,44-44,51 off 0,0
+rc=0
+[rc 0]

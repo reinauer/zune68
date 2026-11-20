@@ -1,0 +1,6 @@
+hgroup box=8,14,31,4 min=31,4 def=31,4 max=10000,10000 sub=0,0
+hbal box=22,14,3,4 min=3,3 def=3,3 max=3,10000 sub=0,0
+vgroup box=8,21,31,17 min=8,17 def=8,17 max=10000,10000 sub=0,0
+vbal box=8,28,31,3 min=3,3 def=3,3 max=10000,3 sub=0,0
+rc=0
+[rc 0]

@@ -1,0 +1,6 @@
+--- defclamp.txt
+mode 0 open 1 min 52,26 def 52,26 max 12,6 box 12x6
+mode 1 open 1 min 52,26 def 52,26 max 50,30 box 50x26
+mode 2 open 1 min 12,6 def 500,300 max 100,60 box 100x60
+mode 3 open 1 min 80,6 def 80,6 max 20,6 box 20x6
+[rc 0]

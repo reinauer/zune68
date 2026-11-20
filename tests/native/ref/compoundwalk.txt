@@ -1,0 +1,24 @@
+cycle
+  box=8,14,70,12 min=70,12 def=70,12 max=10026,12 sub=8,4
+    box=12,16,18,8 min=18,8 def=18,8 max=18,10000 sub=3,0
+    box=30,16,44,8 min=44,8 def=44,8 max=10004,8 sub=4,0
+radio
+  box=12,29,61,19 min=61,19 def=61,19 max=61,19 sub=0,0
+    box=12,29,61,9 min=61,9 def=61,9 max=61,9 sub=0,0
+      box=12,29,17,9 min=17,9 def=17,9 max=17,9 sub=0,0
+      box=33,29,40,9 min=40,8 def=40,8 max=40,10000 sub=0,0
+        box=33,29,40,1 min=0,0 def=0,0 max=10000,10000 sub=0,0
+        box=33,30,40,8 min=40,8 def=40,8 max=40,8 sub=0,0
+    box=12,39,61,9 min=61,9 def=61,9 max=61,9 sub=0,0
+      box=12,39,17,9 min=17,9 def=17,9 max=17,9 sub=0,0
+      box=33,39,40,9 min=40,8 def=40,8 max=40,10000 sub=0,0
+        box=33,39,40,1 min=0,0 def=0,0 max=10000,10000 sub=0,0
+        box=33,40,40,8 min=40,8 def=40,8 max=40,8 sub=0,0
+popasl
+  box=8,51,70,14 min=53,14 def=133,14 max=10000,14 sub=0,0
+    box=8,51,49,14 min=32,14 def=112,14 max=10000,14 sub=12,6
+    box=58,51,20,14 min=20,14 def=20,14 max=20,10004 sub=8,4
+slider
+  box=8,68,70,16 min=39,16 def=134,16 max=10006,16 sub=6,6
+rc=0
+[rc 0]

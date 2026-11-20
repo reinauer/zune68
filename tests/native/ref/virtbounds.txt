@@ -1,0 +1,18 @@
+text window=466,256
+  scrollgroup box=8,14,450,229 min=62,46 def=450,256 max=10000,256 sub=0,0
+  virtual box=8,14,432,217 min=16,12 def=432,244 max=10008,244 sub=8,4
+  vertbar shown=1
+big window=350,256
+  scrollgroup box=8,14,334,229 min=62,46 def=334,420 max=334,420 sub=0,0
+  virtual box=8,14,316,217 min=16,12 def=316,408 max=316,408 sub=8,4
+  vertbar shown=1
+small window=90,77
+  scrollgroup box=8,14,74,50 min=62,46 def=74,50 max=74,50 sub=0,0
+  virtual box=8,14,56,38 min=16,12 def=56,38 max=56,38 sub=8,4
+  vertbar shown=1
+small-autobars window=90,77
+  scrollgroup box=8,14,74,50 min=62,46 def=74,50 max=74,50 sub=0,0
+  virtual box=8,14,56,38 min=16,12 def=56,38 max=56,38 sub=8,4
+  vertbar shown=1
+rc=0
+[rc 0]

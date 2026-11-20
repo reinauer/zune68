@@ -1,0 +1,51 @@
+--- disappear.txt
+window 260 (260)
+  g1  box   8,14 244x12 min 80 def 80 max 9999
+  a   box   8,14 119x12 min 80 def 80 max 9999
+  b   box  94,14  80x12 min 80 def 80 max 9999
+  c   box 133,14 119x12 min 80 def 80 max 9999
+  g2  box   8,29 244x12 min -6 def -6 max 9999
+  d   box   8,29  79x12 min 48 def 48 max 9999
+  e   box  93,29 159x12 min 96 def 96 max 9999
+window 200 (200)
+  g1  box   8,14 184x12 min 80 def 80 max 9999
+  a   box   8,14  89x12 min 80 def 80 max 9999
+  b   box  94,14  80x12 min 80 def 80 max 9999
+  c   box 103,14  89x12 min 80 def 80 max 9999
+  g2  box   8,29 184x12 min -6 def -6 max 9999
+  d   box   8,29  59x12 min 48 def 48 max 9999
+  e   box  73,29 119x12 min 96 def 96 max 9999
+window 160 (160)
+  g1  box   8,14 144x12 min 80 def 80 max 9999
+  a   box   8,14 144x12 min 80 def 80 max 9999
+  b   box  94,14  80x12 min 80 def 80 max 9999
+  c   box  94,14  80x12 min 80 def 80 max 9999
+  g2  box   8,29 144x12 min -6 def -6 max 9999
+  d   box   8,29  48x12 min 48 def 48 max 9999
+  e   box  62,29  96x12 min 96 def 96 max 9999
+window 140 (140)
+  g1  box   8,14 124x12 min 80 def 80 max 9999
+  a   box   8,14 124x12 min 80 def 80 max 9999
+  b   box  94,14  80x12 min 80 def 80 max 9999
+  c   box  94,14  80x12 min 80 def 80 max 9999
+  g2  box   8,29 124x12 min -6 def -6 max 9999
+  d   box   8,29  48x12 min 48 def 48 max 9999
+  e   box  62,29  96x12 min 96 def 96 max 9999
+window 120 (120)
+  g1  box   8,14 104x12 min 80 def 80 max 9999
+  a   box   8,14 104x12 min 80 def 80 max 9999
+  b   box  94,14  80x12 min 80 def 80 max 9999
+  c   box  94,14  80x12 min 80 def 80 max 9999
+  g2  box   8,29 104x12 min -6 def -6 max 9999
+  d   box   8,29  48x12 min 48 def 48 max 9999
+  e   box  62,29  96x12 min 96 def 96 max 9999
+window 100 (100)
+  g1  box   8,14  84x12 min 80 def 80 max 9999
+  a   box   8,14  84x12 min 80 def 80 max 9999
+  b   box  94,14  80x12 min 80 def 80 max 9999
+  c   box  94,14  80x12 min 80 def 80 max 9999
+  g2  box   8,29  84x12 min -6 def -6 max 9999
+  d   box   8,29  48x12 min 48 def 48 max 9999
+  e   box  62,29  96x12 min 96 def 96 max 9999
+rc=0
+[rc 0]

@@ -1,0 +1,8 @@
+group at=8,14 size=21,45 min=21,45 def=21,45 max=21,10000
+check at=8,14 size=21,11 min=21,11 def=21,11 max=21,10004
+pop at=9,28 size=18,14 min=18,14 def=18,14 max=18,10004
+rect at=8,45 size=21,14 min=8,14 def=8,14 max=10000,14
+check2 at=35,14 size=21,21 min=21,11 def=21,11 max=21,10004
+pop2 at=36,38 size=18,21 min=18,14 def=18,14 max=18,10004
+rc=0
+[rc 0]

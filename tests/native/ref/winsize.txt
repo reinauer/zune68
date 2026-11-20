@@ -1,0 +1,11 @@
+--- winsize.txt
+80h-small     outer 200 x  80 borders 4,11,4,10 root 192 x  59 min 20,20
+80h-small-ns  outer 200 x  80 borders 4,11,4,2 root 192 x  67 min 20,20
+80h-big       outer 200 x 121 borders 4,11,4,10 root 192 x 100 min 20,100
+40h-small     outer 200 x  41 borders 4,11,4,10 root 192 x  20 min 20,20
+300w          outer 300 x  41 borders 4,11,4,10 root 292 x  20 min 20,20
+def           outer  28 x  41 borders 4,11,4,10 root  20 x  20 min 20,20
+minmax50      outer 334 x 148 borders 4,11,4,10 root 326 x 127 min 20,20
+visible30     outer 192 x  76 borders 4,11,4,10 root 184 x  55 min 20,20
+rc=0
+[rc 0]

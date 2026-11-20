@@ -1,0 +1,7 @@
+group0 font=topaz.font/8 base=6 top=14 height=27 sub=16,17 child=11,6 min=27
+group1 font=topaz.font/8 base=6 top=44 height=22 sub=16,12 child=6,6 min=22
+group2 font=topaz.font/8 base=6 top=69 height=24 sub=16,14 child=8,6 min=24
+group3 font=topaz.font/8 base=6 top=96 height=33 sub=16,23 child=17,6 min=33
+group4 font=topaz.font/8 base=6 top=132 height=23 sub=16,13 child=11,2 min=23
+rc=0
+[rc 0]

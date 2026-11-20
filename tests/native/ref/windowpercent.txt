@@ -1,0 +1,6 @@
+screen50 window=320,128 borders=4,11,4,10 screen=640,256 bar=10
+screen30 window=192,76 borders=4,11,4,10 screen=640,256 bar=10
+visible50 window=320,128 borders=4,11,4,10 screen=640,256 bar=10
+minmax50 window=332,150 borders=4,11,4,10 screen=640,256 bar=10
+rc=0
+[rc 0]
