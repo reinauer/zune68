@@ -210,6 +210,8 @@ check-core: $(BUILD)/list-repaint-probe $(BUILD)/config-init-probe $(MUI5_PROBE_
 	  $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_textengine.py \
 	  $(BUILD)/muimaster.library
+	$(PYTHON) ../../../tests/check_fuzz_parsers.py \
+	  $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_textdata.py \
 	  $(BUILD)/muimaster.library
 	$(PYTHON) ../../../tests/check_numeric.py \
