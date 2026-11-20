@@ -100,7 +100,7 @@
     if (base)
         id = FilePart(((struct Node *)base)->ln_Name);
 
-    if (!(cl = MakeClass(id, NULL, super, datasize, 0)))
+    if (!(cl = zune_make_class(id, NULL, super, datasize)))
     {
         mui_free(mcc);
         if (!supermcc)

@@ -204,6 +204,22 @@ Class *ZUNE_GetExternalClass(CONST_STRPTR classname,
     return NULL;
 }
 
+/* intuition.library/MakeClass(). On OS 3.1 a MakeClass whose own memory
+ * allocation fails has already counted the new subclass in its superclass
+ * and leaves the count raised. A built-in class with a subclass count is
+ * never freed, so the library could not be expunged again after one class
+ * failed for lack of memory. */
+struct IClass *zune_make_class(CONST_STRPTR id, CONST_STRPTR superid,
+    struct IClass *super, ULONG size)
+{
+    ULONG n = super ? super->cl_SubclassCount : 0;
+    struct IClass *cl = MakeClass(id, superid, super, size, 0);
+
+    if (!cl && super && super->cl_SubclassCount > n)
+        super->cl_SubclassCount--;
+    return cl;
+}
+
 /**************************************************************************/
 static Class *ZUNE_FindBuiltinClass(CONST_STRPTR classid, struct Library *MUIMasterBase)
 {
@@ -258,8 +274,8 @@ static Class *ZUNE_MakeBuiltinClass(CONST_STRPTR classid,
                     break;
             }
 
-            cl = MakeClass(builtins[i]->name, superclid, supercl,
-                builtins[i]->datasize, 0);
+            cl = zune_make_class(builtins[i]->name, superclid, supercl,
+                builtins[i]->datasize);
             /* MakeClass owns the subclass link on success. The temporary
                lookup reference is no longer needed, including on failure. */
             if (supercl)
