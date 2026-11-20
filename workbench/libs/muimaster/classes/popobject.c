@@ -275,7 +275,10 @@ AROS_UFH3(ULONG, Popobject_Open_Function,
         CallHookPkt(data->window_hook, data->object, data->wnd);
     }
 
+    /* On obj's screen, as MUI 3.8: a parent window given
+     * MUIA_Window_Screen had its popup open on the default public screen. */
     SetAttrs(data->wnd,
+        MUIA_Window_Screen, (IPTR) _screen(obj),
         MUIA_Window_LeftEdge, _left(obj) + _window(obj)->LeftEdge,
         MUIA_Window_TopEdge, _bottom(obj) + 1 + _window(obj)->TopEdge,
         MUIA_Window_Width, _width(obj), MUIA_Window_Open, TRUE, TAG_DONE);
