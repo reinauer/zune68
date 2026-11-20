@@ -35,6 +35,7 @@ check-components: prefs plugins catalogs sdk examples
 	$(PYTHON) $(ROOT)/tests/check_components.py $(COMPONENT_BUILD)
 	$(PYTHON) $(ROOT)/tests/check_prefs_cancel.py $(COMPONENT_BUILD)/Prefs/Zune
 	$(PYTHON) $(ROOT)/tests/check_mui38_import.py
+	$(PYTHON) $(ROOT)/tests/check_mui38_fuzz.py
 	$(PYTHON) $(ROOT)/tests/check_thebar.py $(COMPONENT_BUILD)
 	$(PYTHON) $(ROOT)/tests/check_bzip2.py
 	$(PYTHON) $(ROOT)/tests/check_pixmap.py $(COMPONENT_BUILD)/Libs/MUI/Pixmap.mui
