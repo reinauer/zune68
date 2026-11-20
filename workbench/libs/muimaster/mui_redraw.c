@@ -324,6 +324,19 @@ void ZuneDrawDisabled(Object *obj)
             clip_rect->MaxY = ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Top + ((struct __dummyAreaData__ *)(obj))->mad.mad_Box.Height - 1;
         }
 
+        /* Nothing of the object lies within the installed clip region's
+         * bounds, as for most children of a Virtgroup while it paints the
+         * strips a scroll uncovered. MUI 3.8 draws only the children there
+         * (measured by OpenMUI); drawing all of them cost a 68020 tenths of
+         * a second per scroll step with 80 buttons. */
+        if (l && l->ClipRegion
+            && (bounds.MaxX < bounds.MinX || bounds.MaxY < bounds.MinY))
+        {
+            if (clip != (APTR)-1)
+                MUI_RemoveClipRegion(muiRenderInfo(obj), clip);
+            return;
+        }
+
         if (have_damage)
         {
             bounds.MinX = MAX(bounds.MinX, damage_bounds.MinX);
