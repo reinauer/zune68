@@ -251,12 +251,18 @@ AROS_UFH3(ULONG, Popobject_Open_Function,
             {TAG_DONE}
         };
 
+        if (!data->object)
+            return 0;
         data->wnd = WindowObject,
             WindowContents, (IPTR)data->object,
             data->light ? TAG_MORE : TAG_IGNORE, (IPTR) light_tags, End;
 
         if (!data->wnd)
+        {
+            /* A Window that fails disposes its contents */
+            data->object = NULL;
             return 0;
+        }
 
         DoMethod(_app(obj), OM_ADDMEMBER, (IPTR) data->wnd);
 
