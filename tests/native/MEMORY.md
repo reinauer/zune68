@@ -42,6 +42,25 @@ Smart refresh, the default, also holds the covered parts of each window.
 With half the window covered that is 30 KB for IBrowse, 40 KB for Voyager
 and 53 KB for YAM.
 
+## Against MUI 3.8
+
+Measured at `99e8aaca` on WinUAE (OS 3.1, 68020, 2 MB chip and 4 MB fast
+RAM, cold boot) with `memstat`, against MUI 3.8 installed on the same
+system. Free memory taken by the library held open by a program, and by
+copies of MUI 3.8's MUI-Demo started one after another:
+
+| | MUI 3.8 | Zune68 |
+|---|---:|---:|
+| Library alone | 319 KB | 667 KB |
+| First MUI-Demo, library included | 560 KB | 936 KB |
+| Each further MUI-Demo | 230-238 KB | 349 KB |
+
+The library opens asl, datatypes, diskfont, iffparse, icon, locale,
+rexxsyslib and workbench at load, where MUI 3.8 opens most on first use;
+the rest is the larger code and per-object sizes, and List's 2 KB pools.
+A plain program run again costs nothing more after its first run
+(`failprog` eight times: 46,656 bytes once, for fonts and caches).
+
 ## Tradeoffs
 
 - List reserves 64 display columns, about 504 bytes of pointer arrays
