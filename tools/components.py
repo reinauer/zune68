@@ -28,7 +28,7 @@ PLUGINS = {
     'thebar/mcp': 'TheBar.mcp',
     'thebar/toolbar_mcc': 'Toolbar.mcc',
 }
-IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Busy.mcc',
+IMAGE_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Listtree.mcp', 'Busy.mcc',
                  'Calltips.mcc', 'Textinput.mcc', 'Textinputscroll.mcc', 'Aboutbox.mcc', 'AboutWindow.mcc', 'Calendar.mcc',
                  'Clock.mcc', 'Flexgroup.mcc', 'Graph.mcc', 'IconImage.mcc',
                  'Lamp.mcc', 'LoginWindow.mcc', 'PrefsEditor.mcc', 'PrefsWindow.mcc',
@@ -37,7 +37,7 @@ CLASS_FILES = (*PLUGINS.values(), *IMAGE_CLASSES)
 # Bundled classes that MUI 3.8, 3.9 or 5 itself ships. The installer
 # replaces these without asking; newer versions of the others are kept
 # if the user says so.
-MUI_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Busy.mcc',
+MUI_CLASSES = ('Rawimage.mcc', 'Pixmap.mui', 'Listtree.mcc', 'Listtree.mcp', 'Busy.mcc',
                'Calltips.mcc', 'Textinput.mcc', 'Textinputscroll.mcc',
                'Aboutbox.mcc', 'Clock.mcc', 'Lamp.mcc')
 EXAMPLES = ['HelloZune', 'HGroup', 'VGroup', 'VHGroup', 'VHGroup2', 'HVGroup', 'Notify', 'TheBarDemo']

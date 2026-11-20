@@ -45,7 +45,8 @@ version. The protocol lists each replaced version.
     Pixmap supply image rendering for the built-in preferences pages.
     Aboutbox, AboutWindow, Busy, Calendar, Calltips, Clock, Flexgroup,
     Graph, IconImage, Lamp, Listtree, LoginWindow, PrefsEditor, PrefsWindow,
-    QRCode and SystemPrefsWindow are the AROS utility classes. Textinput and
+    QRCode and SystemPrefsWindow are the AROS utility classes. Listtree.mcp
+    is Listtree's page in Zune prefs, with MUI 3.8's settings. Textinput and
     Textinputscroll 29 are names for String, which has the Textinput API.
     These plugins open the standard muimaster.library name.
     Plugins are loaded on demand, not added to every application's cost.

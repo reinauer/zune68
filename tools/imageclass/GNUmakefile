@@ -24,7 +24,7 @@ BZFILES := bzlib decompress huffman crctable randtable blocksort compress
 BZOBJS := $(addprefix $(OBJ)/bz2/,$(addsuffix .o,$(BZFILES)))
 .PHONY: all
 all: $(BUILD)/Libs/MUI/Rawimage.mcc $(BUILD)/Libs/MUI/Pixmap.mui \
- $(BUILD)/Libs/MUI/Listtree.mcc \
+ $(BUILD)/Libs/MUI/Listtree.mcc $(BUILD)/Libs/MUI/Listtree.mcp \
  $(BUILD)/Libs/MUI/Busy.mcc \
  $(BUILD)/Libs/MUI/Calltips.mcc \
  $(BUILD)/Libs/MUI/Textinput.mcc $(BUILD)/Libs/MUI/Textinputscroll.mcc
@@ -77,6 +77,12 @@ $(OBJ)/format.o: ../plugin/format.c
 	@mkdir -p $(@D)
 	$(CC) $(FLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/Libs/MUI/Listtree.mcc: $(OBJ)/listtree.o $(OBJ)/format.o
+	@mkdir -p $(@D)
+	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
+$(OBJ)/listtree_mcp.o: listtree_mcp_library.c $(LISTTREE)/listtree_config.h
+	@mkdir -p $(@D)
+	$(CC) $(FLAGS) -I. -I$(LISTTREE) -MMD -MP -c $< -o $@
+$(BUILD)/Libs/MUI/Listtree.mcp: $(OBJ)/listtree_mcp.o
 	@mkdir -p $(@D)
 	$(CC) $(CPUFLAGS) -noixemul -nostdlib -o $@ $^ -Wl,--start-group -lmui -lgcc -lnix20 -lnix -lamiga -ldebug -Wl,--end-group
 # AROS classes whose library envelope is generated from their .conf file.
@@ -142,7 +148,7 @@ $(eval $(call CLASS_RULE,PrefsEditor,prefseditor))
 $(eval $(call CLASS_RULE,PrefsWindow,prefswindow,$(GEN)/prefswindow/prefswindow_strings.h))
 $(eval $(call CLASS_RULE,QRCode,qrcode))
 $(eval $(call CLASS_RULE,SystemPrefsWindow,systemprefswindow,$(GEN)/systemprefswindow/strings.h,-Dsystemprefswindow_ARRAY -DCatCompArray=systemprefswindow_Array))
-OBJECTS := $(addprefix $(OBJ)/,rawimage.o pixmap.o listtree.o busy.o calltips.o \
+OBJECTS := $(addprefix $(OBJ)/,rawimage.o pixmap.o listtree.o listtree_mcp.o busy.o calltips.o \
  textinput.o textinputscroll.o $(CLASS_NAMES:=.o)) $(BZOBJS) $(CLASS_SUPPORT)
 include $(ROOT)/tools/flags.mk
 $(OBJ)/cflags: FORCE
