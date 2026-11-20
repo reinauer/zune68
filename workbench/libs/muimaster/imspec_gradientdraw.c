@@ -155,7 +155,7 @@ void FillPixelArrayGradientRelative(struct RastPort *rp, int xt, int yt,
     int diffR, diffG, diffB;
 
     int r, t;                   /* some helper variables to shorten the code */
-    int l, y, c, x;
+    int l, y, c;
     int y1;                     /* The intersection point */
     int incr_y1;                /* increment of y1 */
     int xs, ys, xw, yw;
@@ -277,7 +277,7 @@ void FillPixelArrayGradientRelative(struct RastPort *rp, int xt, int yt,
 
         y1_mul_t_accu += (incr_y1 * (xp - xt));
 
-        for (c = 0, x = ((xp - xt) * xadd); c < w; c++, x += xadd)
+        for (c = 0; c < w; c++)
         {
             int red, green, blue;
 
@@ -335,7 +335,7 @@ STATIC int FillPixelArrayGradient(struct RastPort *rp, int xt, int yt,
     int diffR, diffG, diffB;
 
     int r, t;                   /* some helper variables to shorten the code */
-    int l, y, c, x;
+    int l, y, c;
     int y1;                     /* The intersection point */
     int incr_y1;                /* increment of y1 */
     int xs, ys, xw, yw;
@@ -448,7 +448,7 @@ STATIC int FillPixelArrayGradient(struct RastPort *rp, int xt, int yt,
          * vx nothing is left, currently 9 bits are used for vx or vy */
         int y1_mul_t_accu = r - yw * vx * y;
 
-        for (c = 0, x = 0; c < width; c++, x += xadd)
+        for (c = 0; c < width; c++)
         {
             int red, green, blue;
 

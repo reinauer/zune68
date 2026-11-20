@@ -3685,6 +3685,13 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
     return is_handled;
 }
 
+/* The cursor lives on the dispatching function's stack while it is linked
+ * here: both callers unlink it at "finished" before they return, and
+ * OM_DISPOSE unlinks every cursor (next = NULL) when a handler disposes the
+ * window, so GCC's -Wdangling-pointer is a false alarm (code audit,
+ * stability round 2). */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-pointer"
 static void BeginEventDispatch(struct MUI_WindowData *data,
     struct WindowEventCursor *cursor)
 {
@@ -3692,6 +3699,7 @@ static void BeginEventDispatch(struct MUI_WindowData *data,
     cursor->next = data->wd_EHList.mlh_Head;
     data->wd_EventCursors = cursor;
 }
+#pragma GCC diagnostic pop
 
 static struct MinNode *NextEventHandler(struct WindowEventCursor *cursor)
 {
