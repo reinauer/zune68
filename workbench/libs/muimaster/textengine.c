@@ -883,7 +883,7 @@ static ZTextLine *zune_text_parse_line(CONST_STRPTR * s_ptr,
             continue;
         }
 
-        if (*argtype == ZTEXT_ARG_HICHARIDX && arg == c)
+        if (*argtype == ZTEXT_ARG_HICHARIDX && arg == c && s[1])
         {
             ULONG styleback = zc->style;
             /* underline next char; unlike HiChar, MUI 3.9 uses the
@@ -896,6 +896,7 @@ static ZTextLine *zune_text_parse_line(CONST_STRPTR * s_ptr,
             zc->text_start = s;
             zc->style = styleback;
             *argtype = ZTEXT_ARG_NONE;
+            continue;
         }
 
         zc->text = ++s;
