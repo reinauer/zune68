@@ -2157,9 +2157,9 @@ static struct Region *group_children_clip_region(struct IClass *cl,
 #define GROUP_GAP_CHILDREN 32
 
 /* Collect the visible children of a group clipped to its inner box.
- * Returns the count, or -1 when there are too many for the gap painter. */
+ * Returns the count, or -1 when there are more than max. */
 static int group_collect_children(struct IClass *cl, Object *obj,
-    struct Rectangle *kids)
+    struct Rectangle *kids, int max)
 {
     struct MUI_GroupData *data = INST_DATA(cl, obj);
     struct MinList *ChildList = NULL;
@@ -2189,22 +2189,43 @@ static int group_collect_children(struct IClass *cl, Object *obj,
         rect.MaxY = MIN(_bottom(child), _mbottom(obj));
         if (rect.MaxX < rect.MinX || rect.MaxY < rect.MinY)
             continue;
-        if (n == GROUP_GAP_CHILDREN)
+        if (n == max)
             return -1;
         kids[n++] = rect;
     }
     return n;
 }
 
+struct group_gap { WORD x0, x1, y0, y1; };
+
 /* Paint the group background only where no child covers the inner box,
  * using a band sweep instead of a clip region. Region clipping allocated
- * temporary regions and rebuilt the layer clip for every group drawn. */
-static void group_fill_gaps(Object *obj, const struct Rectangle *kids,
+ * temporary regions and rebuilt the layer clip for every group drawn.
+ * More than GROUP_GAP_CHILDREN children take their arrays from the heap.
+ * Returns FALSE, having painted nothing, when that allocation fails. */
+static BOOL group_fill_gaps(Object *obj, const struct Rectangle *kids,
     int n)
 {
-    WORD ys[2 * GROUP_GAP_CHILDREN + 2], xs[GROUP_GAP_CHILDREN][2];
+    WORD ysbuf[2 * GROUP_GAP_CHILDREN + 2], xsbuf[GROUP_GAP_CHILDREN][2];
+    struct group_gap pendbuf[GROUP_GAP_CHILDREN + 1],
+        curbuf[GROUP_GAP_CHILDREN + 1];
+    WORD *ys = ysbuf, (*xs)[2] = xsbuf;
+    struct group_gap *pend = pendbuf, *cur = curbuf;
+    APTR heap = NULL;
     WORD left = _mleft(obj), right = _mright(obj);
     int ny = 0, i, j, k;
+
+    if (n > GROUP_GAP_CHILDREN)
+    {
+        heap = AllocVec(2 * (n + 1) * sizeof(struct group_gap)
+            + n * sizeof(xs[0]) + (2 * n + 2) * sizeof(WORD), MEMF_ANY);
+        if (!heap)
+            return FALSE;
+        pend = heap;
+        cur = pend + n + 1;
+        xs = (WORD (*)[2])(cur + n + 1);
+        ys = (WORD *)(xs + n);
+    }
 
     ys[ny++] = _mtop(obj);
     ys[ny++] = _mbottom(obj) + 1;
@@ -2225,8 +2246,6 @@ static void group_fill_gaps(Object *obj, const struct Rectangle *kids,
      * column of children at every child edge. The pending gaps are kept
      * sorted by x like each band's gaps. */
     {
-        struct { WORD x0, x1, y0, y1; } pend[GROUP_GAP_CHILDREN + 1],
-            cur[GROUP_GAP_CHILDREN + 1];
         int npend = 0, ncur, p, c;
         BOOL merge = zune_background_is_position_free(obj);
 
@@ -2292,6 +2311,9 @@ static void group_fill_gaps(Object *obj, const struct Rectangle *kids,
                 pend[p].x1 - pend[p].x0 + 1, pend[p].y1 - pend[p].y0 + 1,
                 pend[p].x0, pend[p].y0, _flags(obj));
     }
+    if (heap)
+        FreeVec(heap);
+    return TRUE;
 }
 
 /* Private MUI virtual-group painting protocol. These method IDs are used
@@ -2409,23 +2431,39 @@ static void group_clear_ring(Object *obj)
 static void __attribute__((noinline)) group_draw_area(struct IClass *cl,
     Object *obj, struct MUIP_Draw *msg, BOOL virtual)
 {
-    struct Rectangle kids[GROUP_GAP_CHILDREN];
+    struct MUI_GroupData *data = INST_DATA(cl, obj);
+    struct Rectangle kidsbuf[GROUP_GAP_CHILDREN], *kids = kidsbuf;
     int nkids = -1;
 
     /* Custom backfill hooks keep one call for the whole inner box */
     if (!virtual && (_flags(obj) & MADF_FILLAREA)
         && !(muiAreaData(obj)->mad_Flags2 & MADF2_CUSTOMBACKFILL))
-        nkids = group_collect_children(cl, obj, kids);
+    {
+        nkids = group_collect_children(cl, obj, kids, GROUP_GAP_CHILDREN);
+        /* More children: a clip region of one ClearRectRegion per child
+         * costs O(n^2) region work, seconds for 80 children on a 68020
+         * (OpenMUI's measurement), so their rectangles go on the heap */
+        if (nkids < 0 && (kids = AllocVec(data->num_children
+            * sizeof(*kids), MEMF_ANY)))
+            nkids = group_collect_children(cl, obj, kids,
+                data->num_children);
+    }
 
     if (nkids >= 0)
     {
         /* Area paints the frame and its surround; the group fills
-         * the uncovered parts of its inner box itself */
+         * the uncovered parts of its inner box itself. Without memory
+         * for the sweep, it fills all of it before the children draw. */
         _flags(obj) &= ~MADF_FILLAREA;
         DoSuperMethodA(cl, obj, (Msg) msg);
         _flags(obj) |= MADF_FILLAREA;
-        if (msg->flags & MADF_DRAWOBJECT)
-            group_fill_gaps(obj, kids, nkids);
+        if ((msg->flags & MADF_DRAWOBJECT)
+            && !group_fill_gaps(obj, kids, nkids))
+            zune_draw_background(obj, _mleft(obj), _mtop(obj),
+                _mwidth(obj), _mheight(obj), _mleft(obj), _mtop(obj),
+                _flags(obj));
+        if (kids != kidsbuf)
+            FreeVec(kids);
     }
     else
     {
@@ -2442,6 +2480,8 @@ static void __attribute__((noinline)) group_draw_area(struct IClass *cl,
 
         if (r)
             MUI_RemoveClipRegion(muiRenderInfo(obj), c);
+        if (kids != kidsbuf)
+            FreeVec(kids);
     }
 }
 
