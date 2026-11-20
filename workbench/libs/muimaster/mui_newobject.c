@@ -107,10 +107,10 @@ void zune_dispose_children(struct TagItem *tags)
 
     Class  *cl;
 
+    /* Without the class nothing reads the tag list, and its objects stay
+     * the caller's: MUI 3.8 keeps them too (tests/native/fixpaths.c). */
     cl = MUI_GetClass(classid);
-    if (!cl)
-        zune_dispose_children(tags);   /* no class: nothing read the list */
-    else
+    if (cl)
     {
         Object *obj = NewObjectA(cl, NULL, tags);
 
@@ -125,8 +125,8 @@ void zune_dispose_children(struct TagItem *tags)
         bug("*** Could not create object of %s\n", classid);
         MUI_FreeClass(cl);
     }
-
-    bug("*** Couldn't find %s\n", classid);
+    else
+        bug("*** Couldn't find %s\n", classid);
 
     return NULL;
 
