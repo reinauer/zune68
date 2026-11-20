@@ -57,9 +57,9 @@
 *       contents. Allocation failure can leave the string unchanged without a
 *       separate error. Other requester types have no built-in string
 *       conversion.
-*       Cleanup requests AbortAslRequest if active and then delegates; it does
-*       not wait for the process or queued close. Dispose frees the requester
-*       without joining the worker. An explicit inherited Close merely queues
+*       Cleanup aborts an active requester on asl.library 44+ and then
+*       delegates; it does not wait for the process or queued close. Dispose
+*       waits for the worker (aborting it on 44+) and drops a queued Close. An explicit inherited Close merely queues
 *       bookkeeping/result processing; it does not abort or wait for ASL. Do not
 *       use it to force-close a running requester.
 *
@@ -171,14 +171,15 @@ struct Asl_Startup
     Object *app;          /* the application */
     Object *pop;
     STRPTR buf;           /* asl_entry must FreeVec() this before exiting!!! */
+    struct Popasl_DATA *data;
 };
 
 /*
  * Worker waits for startup, copies borrowed request/tag/object pointers,
- * replies, runs AslRequest and queues Close with acceptance flag. Free
- * transferred temporary buffer and return zero. Requires all borrowed
- * resources live through requester and queued callbacks; queue failure is
- * ignored and no join signal is provided.
+ * replies, runs AslRequest and queues Close with acceptance flag, unless
+ * OM_DISPOSE is waiting for it. Frees the transferred temporary buffer,
+ * then clears asl_running under Forbid, which lasts until the process has
+ * ended (OM_DISPOSE polls it; its code may be unloaded after that). Queue failure is ignored.
  */
 SAVEDS static LONG Asl_Entry(void)
 {
@@ -190,6 +191,8 @@ SAVEDS static LONG Asl_Entry(void)
     Object *app;
     Object *pop;
     STRPTR buf;
+    struct Popasl_DATA *data;
+    BOOL ok;
 
     proc = (struct Process *)FindTask(NULL);
     WaitPort(&proc->pr_MsgPort);        /* Wait for the startup message */
@@ -200,18 +203,20 @@ SAVEDS static LONG Asl_Entry(void)
     app = msg->app;
     pop = msg->pop;
     buf = msg->buf;
+    data = msg->data;
 
     ReplyMsg(&msg->msg);
 
-    if (AslRequest(asl_req, tags))
+    ok = AslRequest(asl_req, tags) ? TRUE : FALSE;
+    /* A Close pushed while OM_DISPOSE starts waiting is unpushed there */
+    if (!data->asl_waiter)
         DoMethod(app, MUIM_Application_PushMethod, (IPTR) pop, 2,
-            MUIM_Popstring_Close, TRUE);
-    else
-        DoMethod(app, MUIM_Application_PushMethod, (IPTR) pop, 2,
-            MUIM_Popstring_Close, FALSE);
+            MUIM_Popstring_Close, ok);
 
     FreeVec(buf);
 
+    Forbid();
+    data->asl_running = FALSE;
     return 0;
 }
 
@@ -307,12 +312,16 @@ static ULONG Popasl_Open_Function(struct Hook *hook, Object *obj,
     }
 
     if (!(msg_port = CreateMsgPort()))
+    {
+        FreeVec(buf);
         return 0;
+    }
     if (!(startup =
             (struct Asl_Startup *)AllocVec(sizeof(struct Asl_Startup),
                 MEMF_PUBLIC)))
     {
         DeleteMsgPort(msg_port);
+        FreeVec(buf);
         return 0;
     }
 
@@ -322,10 +331,15 @@ static ULONG Popasl_Open_Function(struct Hook *hook, Object *obj,
             {TAG_DONE, 0}
         };
 
+        /* Set before the process can run: it clears it when done */
+        data->asl_running = TRUE;
+        data->asl_waiter = NULL;
         if (!(data->asl_proc = CreateNewProc(processTags)))
         {
+            data->asl_running = FALSE;
             FreeVec(startup);
             DeleteMsgPort(msg_port);
+            FreeVec(buf);
             return 0;
         }
     }
@@ -337,6 +351,8 @@ static ULONG Popasl_Open_Function(struct Hook *hook, Object *obj,
     startup->asl_req = data->asl_req;
     startup->pop = obj;
     startup->buf = buf;
+    startup->data = data;
+    data->asl_app = _app(obj);
     PutMsg(&data->asl_proc->pr_MsgPort, &startup->msg);
     WaitPort(msg_port);
 
@@ -506,13 +522,43 @@ IPTR Popasl__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 }
 
 /*
- * Free class-owned ASL requester and return Popstring disposal result.
- * Requires worker and all deferred callbacks finished; does not abort, join
- * or cancel queued work here. Disposing an active requester is unsafe.
+ * Free class-owned ASL requester and return Popstring disposal result,
+ * after ending an open requester and removing a queued Close.
  */
+/* AbortAslRequest() came with asl.library 44 (OS 3.5, asl.doc): on
+ * 3.0/3.1 (asl 39/40) its vector is past the end of the library's jump
+ * table. Nothing to do there: the requester stays until the user closes
+ * it. */
+static void popasl_abort(struct Popasl_DATA *data)
+{
+    if (AslBase && AslBase->lib_Version >= 44)
+        AbortAslRequest(data->asl_req);
+}
+
 IPTR Popasl__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 {
     struct Popasl_DATA *data = INST_DATA(cl, obj);
+
+    /* The requester may still be open in the worker process (the program
+     * quits with it open): end it and wait before freeing it. */
+    if (data->asl_running
+        && FindTask(NULL)->tc_Node.ln_Type == NT_PROCESS) /* Delay() */
+    {
+        /* Abort again until it is gone: the worker may not have opened
+         * the requester yet when the first abort comes. Without
+         * AbortAslRequest (asl.library before 44) wait until the user
+         * closes the requester. */
+        data->asl_waiter = FindTask(NULL);
+        while (data->asl_running)
+        {
+            popasl_abort(data);
+            Delay(5);
+        }
+    }
+    /* A Close still queued would run on this disposed object */
+    if (data->asl_proc && data->asl_app)
+        DoMethod(data->asl_app, MUIM_Application_UnpushMethod, (IPTR) obj,
+            0, MUIM_Popstring_Close);
     if (data->asl_req)
         FreeAslRequest(data->asl_req);
     return DoSuperMethodA(cl, obj, (Msg) msg);
@@ -575,7 +621,7 @@ IPTR Popasl__MUIM_Cleanup(struct IClass *cl, Object *obj,
 {
     struct Popasl_DATA *data = INST_DATA(cl, obj);
     if (data->asl_proc)
-        AbortAslRequest(data->asl_req);
+        popasl_abort(data);
     return DoSuperMethodA(cl, obj, (Msg) msg);
 }
 
