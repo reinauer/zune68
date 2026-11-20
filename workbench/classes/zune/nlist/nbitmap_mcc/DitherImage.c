@@ -99,6 +99,11 @@ APTR DitherImageA(CONST_APTR data, struct TagItem *tags)
         mPtr = mask;
       }
 
+      // the last pixel's colour and the pen found for it: images have
+      // runs of one colour
+      int32 lastRGB = -1;
+      int32 lastIndex = -1;
+
       for(y = 0; y < height; y++)
       {
         uint32 x;
@@ -150,16 +155,19 @@ APTR DitherImageA(CONST_APTR data, struct TagItem *tags)
           bestIndex = -1;
           bestError = 0xffffffffUL;
 
-          for(i = 0; i < 256; i++)
+          if(lastRGB == (int32)((r << 16) | (g << 8) | b))
+            bestIndex = lastIndex;
+          else for(i = 0; i < 256; i++)
           {
-            int32 dr, dg, db;
+            // 16 bit factors: a 68000 multiplies them in one instruction
+            int16 dr, dg, db;
             uint32 error;
 
             // calculate the geometric difference to the current color
-            dr = (int32)((colorMap[i] >> 16) & 0xff) - (int32)r;
-            dg = (int32)((colorMap[i] >>  8) & 0xff) - (int32)g;
-            db = (int32)((colorMap[i] >>  0) & 0xff) - (int32)b;
-            error = dr * dr + dg * dg + db * db;
+            dr = (int16)((colorMap[i] >> 16) & 0xff) - (int16)r;
+            dg = (int16)((colorMap[i] >>  8) & 0xff) - (int16)g;
+            db = (int16)((colorMap[i] >>  0) & 0xff) - (int16)b;
+            error = (int32)dr * dr + (int32)dg * dg + (int32)db * db;
 
             if(bestError > error)
             {
@@ -172,6 +180,9 @@ APTR DitherImageA(CONST_APTR data, struct TagItem *tags)
                 break;
             }
           }
+
+          lastRGB = (r << 16) | (g << 8) | b;
+          lastIndex = bestIndex;
 
           // put the calculated color number into the destination LUT8 image
           // using an additional pen map if available
