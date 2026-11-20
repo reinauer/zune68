@@ -193,8 +193,11 @@ IPTR Dataspace__MUIM_Add(struct IClass *cl, Object *obj,
     if (NULL == msg->data || msg->len < 1 || msg->id < 1)
         return 0;
 
+    /* One zero byte after the data: a damaged settings file's string
+     * without its terminator then ends there instead of running into the
+     * pool's next allocation. */
     node = (struct Dataspace_Node *)AllocVecPooled(data->current_pool,
-        sizeof(struct Dataspace_Node) + msg->len);
+        sizeof(struct Dataspace_Node) + msg->len + 1);
     if (NULL == node)
     {
         return 0;
@@ -202,6 +205,7 @@ IPTR Dataspace__MUIM_Add(struct IClass *cl, Object *obj,
 
     /* The source may be the entry being replaced. */
     CopyMem(msg->data, node + 1, msg->len);
+    ((UBYTE *)(node + 1))[msg->len] = 0;
     replace = List_First(&data->list);
     while (replace)
     {
