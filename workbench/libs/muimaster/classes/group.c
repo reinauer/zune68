@@ -2443,8 +2443,11 @@ static void __attribute__((noinline)) group_draw_area(struct IClass *cl,
     struct Rectangle kidsbuf[GROUP_GAP_CHILDREN], *kids = kidsbuf;
     int nkids = -1;
 
-    /* Custom backfill hooks keep one call for the whole inner box */
-    if (!virtual && (_flags(obj) & MADF_FILLAREA)
+    /* Custom backfill hooks keep one call for the whole inner box. MUI
+     * 3.8 paints a group's gaps whatever its MUIA_FillArea; FALSE only
+     * leaves the box under a child that paints nothing as it was
+     * (tests/native/groupset.c). */
+    if (!virtual
         && !(muiAreaData(obj)->mad_Flags2 & MADF2_CUSTOMBACKFILL))
     {
         nkids = group_collect_children(cl, obj, kids, GROUP_GAP_CHILDREN);
@@ -2462,9 +2465,11 @@ static void __attribute__((noinline)) group_draw_area(struct IClass *cl,
         /* Area paints the frame and its surround; the group fills
          * the uncovered parts of its inner box itself. Without memory
          * for the sweep, it fills all of it before the children draw. */
+        ULONG fill = _flags(obj) & MADF_FILLAREA;
+
         _flags(obj) &= ~MADF_FILLAREA;
         DoSuperMethodA(cl, obj, (Msg) msg);
-        _flags(obj) |= MADF_FILLAREA;
+        _flags(obj) |= fill;
         if ((msg->flags & MADF_DRAWOBJECT)
             && !group_fill_gaps(obj, kids, nkids))
             zune_draw_background(obj, _mleft(obj), _mtop(obj),
@@ -2555,7 +2560,15 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
         == WINDOW_REDRAW_WITHOUT_CLEAR)
         group_draw_area(cl, obj, msg, virtual);
     else
+    {
+        /* The inner box whatever FillArea, as in group_draw_area */
+        if (!virtual
+            && !(muiAreaData(obj)->mad_Flags2 & MADF2_CUSTOMBACKFILL))
+            _flags(obj) |= MADF_FILLAREA;
         DoSuperMethodA(cl, obj, (Msg) msg);
+        if (!virtual)
+            _flags(obj) = (_flags(obj) & ~MADF_FILLAREA) | fill;
+    }
 
     if (virtual)
     {
