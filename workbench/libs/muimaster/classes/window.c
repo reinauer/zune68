@@ -155,16 +155,18 @@ extern struct Library *MUIMasterBase;
 *       get.
 *
 *   NOTES
-*       Objects remain borrowed. An explicit target is stored without ownership
-*       or membership validation; use a live descendant. GoInactive and GoActive
-*       depend on setup/draw state. Raw-key processing tries active, parent,
-*       default and other handlers.
+*       Objects remain borrowed. As in MUI 3.8 (tests/native/cyclechain.c),
+*       an explicit target that is hidden or disabled leaves no object
+*       active while the window is open; Next and Prev skip hidden and
+*       disabled objects and wrap around at the ends; from none, or from an
+*       active object since hidden or disabled, both go to the first. The
+*       chain is in the order of the window's object tree. GoInactive and
+*       GoActive depend on setup/draw state. Raw-key processing tries
+*       active, parent, default and other handlers.
 *
 *   BUGS
-*       Next/Prev filter disabled or hidden objects during traversal, but
-*       wraparound falls back to the first/last chain entry without that
-*       filtering. The raw-key parent loop starts at the active object again, so
-*       an unconsumed key can reach it twice. Initialization tags are not
+*       The raw-key parent loop starts at the active object again, so an
+*       unconsumed key can reach it twice. Initialization tags are not
 *       handled.
 *
 */
@@ -1179,7 +1181,6 @@ struct MUI_WindowData
     LONG wd_SleepMinWidth;
 
     struct IClass *wd_Class;
-    Object **wd_CycleOrder; /* allocated only for the legacy explicit chain */
     /* Public mri_Pens contains only UWORD pen numbers. Keep ownership bits. */
     LONG wd_PenHandles[MPEN_COUNT];
 #ifdef ZUNE68_GCC_NATIVE
@@ -4509,119 +4510,60 @@ static struct ObjNode *FindObjNode(struct MinList *list, Object *obj)
     return NULL;
 }
 
-/* Return the borrowed object in the first cycle-chain node, or NULL for an
- * empty chain. Do not filter disabled or hidden state; callers must account
- * for this fallback behavior.
- */
-static Object *GetFirstActiveObject(struct MUI_WindowData *data)
+/* Whether obj is shown, or would be but for a virtual group's view (a
+ * virtual group shows only its children in view; Tab still reaches the
+ * others) */
+static BOOL ChainShown(Object *obj)
 {
-    ASSERT_VALID_PTR(data);
+    Object *parent;
 
-    if (!IsListEmpty(&data->wd_CycleChain))
-        return ((struct ObjNode *)data->wd_CycleChain.mlh_Head)->obj;
-    else
-        return NULL;
-}
-
-/* Return the borrowed object in the last cycle-chain node, or NULL for an
- * empty chain. Do not filter disabled or hidden state; no ownership or
- * state changes occur.
- */
-static Object *GetLastActiveObject(struct MUI_WindowData *data)
-{
-    ASSERT_VALID_PTR(data);
-
-    if (!IsListEmpty(&data->wd_CycleChain))
-        return ((struct ObjNode *)data->wd_CycleChain.mlh_TailPred)->obj;
-    else
-        return NULL;
-}
-
-/* Cycle-chain iterator signature. Receive a linked live ObjNode and return
- * the borrowed adjacent node or NULL at the sentinel. Do not mutate the
- * chain or transfer ownership.
- */
-typedef struct ObjNode *objnode_iterator_t(struct ObjNode *curr_node);
-
-/* Forward declaration of the next-node iterator; its contract is defined
- * with the implementation below. Input links must remain valid and the
- * return value is borrowed.
- */
-static objnode_iterator_t NextObjNodeIterator;
-/* Forward declaration of the previous-node iterator; its contract is
- * defined with the implementation below. Input links must remain valid and
- * the return value is borrowed.
- */
-static objnode_iterator_t PrevObjNodeIterator;
-
-/* Return the next borrowed cycle-chain node or NULL at the tail sentinel.
- * curr_node must be a linked live node; no wrapping, mutation or ownership
- * transfer occurs.
- */
-static struct ObjNode *NextObjNodeIterator(struct ObjNode *curr_node)
-{
-    if (curr_node->node.mln_Succ->mln_Succ)
-        return (struct ObjNode *)curr_node->node.mln_Succ;
-    else
-        return NULL;
-}
-
-/* Return the previous borrowed cycle-chain node or NULL at the head
- * sentinel. curr_node must be a linked live node; no wrapping, mutation or
- * ownership transfer occurs.
- */
-static struct ObjNode *PrevObjNodeIterator(struct ObjNode *curr_node)
-{
-    if (curr_node->node.mln_Pred->mln_Pred)
-        return (struct ObjNode *)curr_node->node.mln_Pred;
-    else
-        return NULL;
-}
-
-/* Traverse from the supplied node with a callable next/previous iterator,
- * selecting a non-disabled object with SHOWME set. Require valid stable
- * chain links and live Area targets. Return a borrowed target or NULL; this
- * helper does not wrap at a sentinel.
- */
-static Object *GetPrevNextActiveObject(struct ObjNode *old_activenode,
-    objnode_iterator_t node_iterator)
-{
-    struct ObjNode *curr_node;
-    struct ObjNode *node;
-    Object *obj;
-
-    ASSERT_VALID_PTR(old_activenode);
-
-    curr_node = old_activenode;
-    node = NULL;
-    obj = NULL;
-
-    while (curr_node)
+    while (!(_flags(obj) & MADF_CANDRAW))
     {
-        node = node_iterator(curr_node);
-
-        if (node)
-            obj = node->obj;
-
-        /* let's see if this object meets cycle requirements
-         * (enabled & visible) */
-        if (obj)
-        {
-            IPTR is_disabled = 0;
-
-            get(obj, MUIA_Disabled, &is_disabled);
-
-            if (!is_disabled && (_flags(obj) & MADF_SHOWME))
-            {
-                return obj;
-            }
-        }
-
-        curr_node = node;
-        obj = NULL;
-        node = NULL;
+        if (!(_flags(obj) & MADF_SHOWME) || !(parent = _parent(obj)))
+            return FALSE;
+        if ((_flags(parent) & (MADF_CANDRAW | MADF_ISVIRTUALGROUP))
+            == MADF_CANDRAW)
+            return FALSE;       /* a hidden page's, a disappeared one */
+        obj = parent;
     }
-    return obj;
+    return TRUE;
+}
+
+/* Whether obj can be the active object: shown and not disabled (MUI 3.8,
+ * tests/native/cyclechain.c: an object of a hidden page or a disabled one
+ * is skipped by Next and Prev and cannot be made active) */
+static BOOL ChainEligible(Object *obj)
+{
+    IPTR disabled = 0;
+
+    get(obj, MUIA_Disabled, &disabled);
+    return !disabled && ChainShown(obj);
+}
+
+/* The eligible chain object after (next) or before from, wrapping around
+ * at the ends; from NULL: the first or last eligible one. NULL if the
+ * chain has none. The objects are borrowed. */
+static Object *ChainStep(struct MUI_WindowData *data, struct ObjNode *from,
+    BOOL next)
+{
+    struct MinNode *n = from ? &from->node : NULL;
+    int lap;
+
+    for (lap = 0; lap < 2; lap++)
+    {
+        if (!from || lap)
+            n = next ? data->wd_CycleChain.mlh_Head
+                : data->wd_CycleChain.mlh_TailPred;
+        else
+            n = next ? n->mln_Succ : n->mln_Pred;
+        for (; next ? n->mln_Succ != NULL : n->mln_Pred != NULL;
+            n = next ? n->mln_Succ : n->mln_Pred)
+        {
+            if (ChainEligible(((struct ObjNode *)n)->obj))
+                return ((struct ObjNode *)n)->obj;
+        }
+    }
+    return NULL;
 }
 
 
@@ -4635,10 +4577,12 @@ Basically, it will:
 **************************************************************************/
 /* While closed, remember the pointer or special selection value for later.
  * While open, deactivate the previous valid setup target, resolve
- * None/Next/Prev or store an explicit borrowed target, and send GoActive
- * only to an eligible root descendant. Wraparound first/last fallback does
- * not filter hidden/disabled state. Return no status; keep all callback
- * targets alive.
+ * None/Next/Prev or take an explicit borrowed target, and send GoActive
+ * only to an eligible root descendant. As in MUI 3.8: Next and Prev skip
+ * hidden and disabled objects and wrap around; from none, or from an
+ * active object since hidden or disabled, both go to the first; a hidden
+ * or disabled target leaves none active. Return no status; keep all
+ * callback targets alive.
  */
 static void SetActiveObject(struct MUI_WindowData *data, Object *obj,
     IPTR newval)
@@ -4665,8 +4609,9 @@ static void SetActiveObject(struct MUI_WindowData *data, Object *obj,
     {
         if ((IPTR) data->wd_ActiveObject != newval)
         {
-            old_activenode =
-                FindObjNode(&data->wd_CycleChain, data->wd_ActiveObject);
+            if (ChainEligible(data->wd_ActiveObject))
+                old_activenode = FindObjNode(&data->wd_CycleChain,
+                    data->wd_ActiveObject);
             if ((data->wd_Flags & MUIWF_OBJECTGOACTIVESENT)
                 && (_flags(data->wd_ActiveObject) & MADF_SETUP))
             {
@@ -4687,23 +4632,14 @@ static void SetActiveObject(struct MUI_WindowData *data, Object *obj,
         break;
 
     case MUIV_Window_ActiveObject_Next:
-        if (old_activenode != NULL)
-            data->wd_ActiveObject = GetPrevNextActiveObject(old_activenode,
-                NextObjNodeIterator);
-        if (NULL == data->wd_ActiveObject)
-            data->wd_ActiveObject = GetFirstActiveObject(data);
-        break;
-
     case MUIV_Window_ActiveObject_Prev:
-        if (old_activenode)
-            data->wd_ActiveObject = GetPrevNextActiveObject(old_activenode,
-                PrevObjNodeIterator);
-        if (NULL == data->wd_ActiveObject)
-            data->wd_ActiveObject = GetLastActiveObject(data);
+        data->wd_ActiveObject = ChainStep(data, old_activenode,
+            !old_activenode || newval == MUIV_Window_ActiveObject_Next);
         break;
 
     default:
-        data->wd_ActiveObject = (Object *) newval;
+        if (ChainEligible((Object *)newval))
+            data->wd_ActiveObject = (Object *) newval;
         break;
     }
 
@@ -5145,7 +5081,6 @@ IPTR Window__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
     if (data->wd_ChildMenustrip)
         MUI_DisposeObject(data->wd_ChildMenustrip);
     if (data->wd_MemoryPool) DeletePool(data->wd_MemoryPool);
-    FreeVec(data->wd_CycleOrder);
     return DoSuperMethodA(cl, obj, msg);
 }
 
@@ -6425,75 +6360,102 @@ IPTR Window__MUIM_Cleanup(struct IClass *cl, Object *obj, Msg msg)
 }
 
 
-/**************************************************************************
- This adds the the control char handler and also does the MUIA_CycleChain
- stuff. Orginal MUI does this another way.
-**************************************************************************/
-static LONG CycleOrder(struct MUI_WindowData *data, Object *obj)
+/* Whether a comes before b in the window's object tree (depth first, a
+ * group before its children) */
+static BOOL TreeBefore(Object *a, Object *b)
 {
-    LONG i;
-    if (!data->wd_CycleOrder) return -1;
-    for (i = 0; data->wd_CycleOrder[i]; i++)
-        if (data->wd_CycleOrder[i] == obj) return i;
-    return -1;
+    struct MinList *children = NULL;
+    Object *o;
+    APTR st;
+    int da = 0, db = 0;
+
+    for (o = a; (o = _parent(o)); da++)
+        ;
+    for (o = b; (o = _parent(o)); db++)
+        ;
+    if (da > db)
+    {
+        while (da-- > db)
+            a = _parent(a);
+        if (a == b)
+            return FALSE;   /* b contains a */
+    }
+    else if (db > da)
+    {
+        while (db-- > da)
+            b = _parent(b);
+        if (a == b)
+            return TRUE;    /* a contains b */
+    }
+    while (a != b && _parent(a) != _parent(b))
+    {
+        a = _parent(a);
+        b = _parent(b);
+    }
+    if (a == b || !_parent(a)
+        || !get(_parent(a), MUIA_Group_ChildList, &children) || !children)
+        return FALSE;
+    st = children->mlh_Head;
+    while ((o = NextObject(&st)))
+    {
+        if (o == a || o == b)
+            return o == a;
+    }
+    return FALSE;
 }
 
+/* Clear MUIA_CycleChain on o and on the objects of its tree that the
+ * NULL-terminated list does not name */
+static void ChainClear(Object *o, Object **list)
+{
+    struct MinList *children = NULL;
+    Object **l;
+    APTR st;
+
+    if (_flags(o) & MADF_CYCLECHAIN)
+    {
+        for (l = list; *l && *l != o; l++)
+            ;
+        if (!*l)
+            set(o, MUIA_CycleChain, FALSE);
+    }
+    if (get(o, MUIA_Group_ChildList, &children) && children)
+    {
+        st = children->mlh_Head;
+        while ((o = NextObject(&st)))
+            ChainClear(o, list);
+    }
+}
+
+/* MUIM_Window_SetCycleChain as in MUI 3.8 (tests/native/cyclechain.c): the
+ * listed objects get MUIA_CycleChain, the window's others lose it; the
+ * chain keeps the order of the window's tree, not the list's */
 IPTR Window__MUIM_SetCycleChain(struct IClass *cl, Object *obj,
     struct MUIP_Window_SetCycleChain *msg)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
-    Object **order;
-    ULONG count = 0, i;
-    struct MinList replacement;
-    struct ObjNode *node;
+    Object **l;
 
-    while (msg->obj[count]) count++;
-    order = AllocVec((count + 1) * sizeof(Object *), MEMF_ANY);
-    if (!order) return FALSE;
-    CopyMem(msg->obj, order, (count + 1) * sizeof(Object *));
-    NewList((struct List *)&replacement);
-    for (i = 0; i < count; i++)
-    {
-        Object *child = order[i];
-        if (!FindObjNode(&replacement, child)
-            && (_flags(child) & MADF_SETUP) && muiRenderInfo(child)
-            && _win(child) == obj)
-        {
-            node = AllocPooled(data->wd_MemoryPool, sizeof(*node));
-            if (!node)
-            {
-                while ((node = (struct ObjNode *)RemHead((struct List *)&replacement)))
-                    FreePooled(data->wd_MemoryPool, node, sizeof(*node));
-                FreeVec(order);
-                return FALSE;
-            }
-            node->obj = child;
-            AddTail((struct List *)&replacement, (struct Node *)node);
-        }
-    }
-    while ((node = (struct ObjNode *)RemHead((struct List *)&data->wd_CycleChain)))
-        FreePooled(data->wd_MemoryPool, node, sizeof(*node));
-    while ((node = (struct ObjNode *)RemHead((struct List *)&replacement)))
-        AddTail((struct List *)&data->wd_CycleChain, (struct Node *)node);
-    FreeVec(data->wd_CycleOrder);
-    data->wd_CycleOrder = order;
-    /* Arrange control-handler setup/cleanup for legacy gadgets as well. */
-    for (i = 0; i < count; i++)
-        set(order[i], MUIA_CycleChain, TRUE);
+    if (data->wd_RootObject)
+        ChainClear(data->wd_RootObject, msg->obj);
+    for (l = msg->obj; *l; l++)
+        set(*l, MUIA_CycleChain, TRUE);
     return TRUE;
 }
 
 /* Private MUIM_Window_AddControlCharHandler: borrow ccnode; enqueue it when
- * ehn_Events is nonzero and append a pooled cycle node when its live Area
- * target has CYCLECHAIN. Return TRUE even if cycle-node allocation fails.
- * Do not duplicate registration; node and target must remain valid until
- * matching removal.
+ * ehn_Events is nonzero and add a pooled cycle node when its live Area
+ * target has CYCLECHAIN: at the window's setup in setup (tree) order, in
+ * an open window where the tree has it, as in MUI 3.8. Return TRUE even if
+ * cycle-node allocation fails. Do not duplicate registration; node and
+ * target must remain valid until matching removal.
  */
 IPTR Window__MUIM_AddControlCharHandler(struct IClass *cl, Object *obj,
     struct MUIP_Window_AddControlCharHandler *msg)
 {
     struct MUI_WindowData *data = INST_DATA(cl, obj);
     struct ObjNode *node;
+    struct MinNode *pred;
 
     if (msg->ccnode->ehn_Events)
     {
@@ -6506,35 +6468,19 @@ IPTR Window__MUIM_AddControlCharHandler(struct IClass *cl, Object *obj,
 #endif
 	Enqueue((struct List *)&data->wd_CCList, (struct Node *)msg->ccnode);
     }
-    /* Due to the lack of a better idea ... */
-    if ((data->wd_CycleOrder ? CycleOrder(data, msg->ccnode->ehn_Object) >= 0 :
-            !!(muiAreaData(msg->ccnode->ehn_Object)->mad_Flags & MADF_CYCLECHAIN))
-        && (!data->wd_CycleOrder ||
-            !FindObjNode(&data->wd_CycleChain, msg->ccnode->ehn_Object)))
+    if ((muiAreaData(msg->ccnode->ehn_Object)->mad_Flags & MADF_CYCLECHAIN)
+        && (node = AllocPooled(data->wd_MemoryPool, sizeof(struct ObjNode))))
     {
-        node = AllocPooled(data->wd_MemoryPool, sizeof(struct ObjNode));
-        if (node)
+        node->obj = msg->ccnode->ehn_Object;
+        pred = data->wd_CycleChain.mlh_TailPred;
+        if (data->wd_Flags & MUIWF_OPENED)
         {
-            struct ObjNode *next;
-            struct MinNode *pred = (struct MinNode *)&data->wd_CycleChain;
-            LONG rank;
-            node->obj = msg->ccnode->ehn_Object;
-            if (!data->wd_CycleOrder)
-            {
-                AddTail((struct List *)&data->wd_CycleChain, (struct Node *)node);
-                return TRUE;
-            }
-            rank = CycleOrder(data, node->obj);
-            for (next = (struct ObjNode *)data->wd_CycleChain.mlh_Head;
-                next->node.mln_Succ; next = (struct ObjNode *)next->node.mln_Succ)
-            {
-                if (data->wd_CycleOrder && CycleOrder(data, next->obj) > rank)
-                    break;
-                pred = &next->node;
-            }
-            Insert((struct List *)&data->wd_CycleChain,
-                (struct Node *)node, (struct Node *)pred);
+            while (pred->mln_Pred
+                && !TreeBefore(((struct ObjNode *)pred)->obj, node->obj))
+                pred = pred->mln_Pred;
         }
+        Insert((struct List *)&data->wd_CycleChain, (struct Node *)node,
+            (struct Node *)pred);
     }
     return TRUE;
 }
@@ -7378,22 +7324,16 @@ static IPTR Window__MUIM_Import(struct IClass *cl, Object *obj,
 *           NULL);
 *
 *   FUNCTION
-*       Replace the window's cycle chain with the listed objects in list
-*       order, skipping repeated entries and objects not set up in this
-*       window. Each listed object then gets MUIA_CycleChain TRUE.
+*       As in MUI 3.8: the listed objects get MUIA_CycleChain TRUE, the
+*       window's other objects that have it get FALSE. The chain keeps the
+*       order of the window's object tree, not the order of the list.
 *
 *   INPUTS
 *       obj1, ... - NULL-terminated list of Area objects. The message is
 *       declared under MUI_OBSOLETE.
 *
 *   RESULT
-*       FALSE on allocation failure, leaving the chain unchanged; otherwise
 *       TRUE.
-*
-*   NOTES
-*       The window keeps a copy of the order. An object registered later
-*       through control-character handling joins the chain only if listed,
-*       at its listed position.
 *
 */
 

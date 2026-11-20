@@ -6,7 +6,7 @@ from check_notifications import NotifyHarness
 from check_class_lifetime import EXEC, INTUITION
 
 CLASS, OBJECT, DATA = 0x70000, 0x71000, 0x71040
-POOL, CHAIN, ORDER = DATA + 406, DATA + 410, DATA + 648
+POOL, CHAIN = DATA + 406, DATA + 410
 SETUP, CYCLE = 1 << 28, 1 << 5
 
 
@@ -77,26 +77,20 @@ def check(path):
     a, ah = h.child()
     b, bh = h.child()
     c, ch = h.child()
-    assert h.order(b, a, b)
-    assert h.chain() == [b, a], 'requested order and duplicate suppression'
-    h.control('Rem', ah)
-    h.control('Rem', bh)
-    assert not h.chain()
+    # at the window's setup (not open yet) the chain is the setup order
     h.control('Add', ah)
     h.control('Add', ch)
     h.control('Add', bh)
-    assert h.chain() == [b, a], 'setup order must not override explicit order'
-    h.fail_alloc = True
-    assert not h.order(c)
-    assert h.chain() == [b, a], 'OOM must retain old chain'
+    assert h.chain() == [a, c, b], 'setup order'
     h.control('Rem', bh)
-    assert h.chain() == [a], 'removed child must leave the live chain'
-    assert h.order()
+    assert h.chain() == [a, c], 'removed child must leave the live chain'
+    # MUI 3.8's SetCycleChain only sets MUIA_CycleChain (TRUE on the
+    # listed objects, FALSE on the window's others): no order of its own
+    assert h.order(b, a, b)
+    assert h.chain() == [a, c], 'SetCycleChain keeps the tree order'
+    h.control('Rem', ah)
+    h.control('Rem', ch)
     assert not h.chain()
-    order = h.mem.r32(ORDER)
-    assert order in h.allocations, 'explicit order storage must remain owned'
-    h.cpu.w_reg(9, order)
-    h.free_vec()
     h.check_freed()
     assert not h.allocations
     h.machine.cleanup()
@@ -171,7 +165,7 @@ def check(path):
                   virtual_dimension(0x80423038))
         assert actual == expected, (actual, expected)
     h.machine.cleanup()
-    print(f'{path}: explicit cycle order, cleanup and dynamic relayout pass')
+    print(f'{path}: tree-ordered cycle chain, cleanup and dynamic relayout pass')
 
 
 if __name__ == '__main__':
