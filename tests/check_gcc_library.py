@@ -55,9 +55,9 @@ def check(path):
     expected = ['_LibOpen', '_LibClose', '_LibExpunge', '_LibReserved']
     expected += [PRIVATE.get(name, '_Gate_' + name) for name, _ in ENTRIES]
     # MUI's private functions follow the FD entries from LVO -240 to -306;
-    # Voyager calls -240. Reserved entries return 0 up to MUI 5's 127.
+    # Voyager calls -240, AmIRC -264. Reserved entries return 0 up to MUI 5's 127.
     expected += ['_MUIP_GetVirtualRect', '_MUIP_ObjectInRect',
-                 '_LibReserved', '_LibReserved', '_LibReserved',
+                 '_LibReserved', '_LibReserved', '_MUIP_Applist',
                  '_MUIP_ConfigItemAllowed', '_LibReserved',
                  '_MUIP_RegistrationLevel', '_LibReserved',
                  '_MUIP_ForceRegistered', '_LibReserved', '_LibReserved']

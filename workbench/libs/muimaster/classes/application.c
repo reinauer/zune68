@@ -4563,6 +4563,88 @@ static IPTR Application__MUIM_ShowHelp(struct IClass *cl, Object *obj,
 *
 */
 
+/**************************************************************************
+ MUI's application list object (private LVO -264, mui_private.c)
+
+ MUI 3.8 and MUI 5 return from their private library function at LVO -264
+ one global object: a subclass of Semaphore.mui (MUI 5 names it
+ Applist.mui), whose private method 0x8042e50f takes an attribute and a
+ string and returns the first application whose attribute reads as that
+ string (strcmp, case counts), else 0. Measured by calling them (not read
+ from their code): Base, Title and Author of two applications found, an
+ unknown value or other case not, a disposed application not. AmIRC 3.6
+ asks it for "AMIRC.1", "AMIRC.2"... to find a free ARexx base name.
+**************************************************************************/
+#define MUIM_Applist_Find 0x8042e50f   /* private in MUI */
+struct MUIP_Applist_Find { STACKED ULONG MethodID; STACKED ULONG attr; STACKED IPTR value; };
+
+/* Search tracked applications under ZuneSemaphore for one whose attr gets
+ * as the string value. Return a borrowed application or NULL. */
+static Object *find_application_by_string(ULONG attr, CONST_STRPTR value)
+{
+    struct MUIMasterBase_intern *intZuneBase = (struct MUIMasterBase_intern *)MUIMasterBase;
+    struct TrackingNode *tn;
+    Object *retval = NULL;
+
+    if (!value)
+        return NULL;
+    ObtainSemaphore(&intZuneBase->ZuneSemaphore);
+    ForeachNode(&intZuneBase->Applications, tn)
+    {
+        IPTR v = 0;
+
+        if (GetAttr(attr, tn->tn_Application, &v) && v
+            && !strcmp((CONST_STRPTR)v, value))
+        {
+            retval = tn->tn_Application;
+            break;
+        }
+    }
+    ReleaseSemaphore(&intZuneBase->ZuneSemaphore);
+    return retval;
+}
+
+BOOPSI_DISPATCHER(IPTR, Applist_Dispatcher, cl, obj, msg)
+{
+    if (msg->MethodID == MUIM_Applist_Find)
+    {
+        struct MUIP_Applist_Find *m = (struct MUIP_Applist_Find *)msg;
+        return (IPTR)find_application_by_string(m->attr,
+            (CONST_STRPTR)m->value);
+    }
+    return DoSuperMethodA(cl, obj, msg);
+}
+BOOPSI_DISPATCHER_END
+
+/* The object, made the first time it is asked for; NULL without memory.
+ * It lives until the library is expunged (zune_applist_free). */
+Object *zune_applist_get(void)
+{
+    struct MUIMasterBase_intern *base = MUIMB(MUIMasterBase);
+
+    ObtainSemaphore(&base->ZuneSemaphore);
+    if (!base->ApplistClass)
+        base->ApplistClass = MUI_CreateCustomClass(NULL, MUIC_Semaphore,
+            NULL, 0, (APTR)Applist_Dispatcher);
+    if (base->ApplistClass && !base->Applist)
+        base->Applist = NewObject(base->ApplistClass->mcc_Class, NULL,
+            TAG_DONE);
+    ReleaseSemaphore(&base->ZuneSemaphore);
+    return base->Applist;
+}
+
+void zune_applist_free(void)
+{
+    struct MUIMasterBase_intern *base = MUIMB(MUIMasterBase);
+
+    if (base->Applist)
+        DisposeObject(base->Applist);
+    base->Applist = NULL;
+    if (base->ApplistClass)
+        MUI_DeleteCustomClass(base->ApplistClass);
+    base->ApplistClass = NULL;
+}
+
 /* Dispatch supported Application operations and inherited user-data/member
  * overrides, returning handler results. Forward unknown methods to Notify.
  * Header-only method IDs are not silently implemented here; messages must

@@ -82,6 +82,9 @@ struct MUIMasterBase_intern
     struct SignalSemaphore      ZuneSemaphore; /* Used when accessing global data */
     APTR                        SpecialMemory;
 
+    /* What MUI's private LVO -264 returns (classes/application.c) */
+    Object                      *Applist;
+    struct MUI_CustomClass      *ApplistClass;
     /* Borrowed built-in classes, cleared before any expunge attempt. */
     Class                       *BuiltinClassCache[32];
     struct MinList              BuiltinClasses;
@@ -99,6 +102,9 @@ extern struct Library *MUIMasterBase;
 extern struct Library *MUIScreenBase;
 extern struct Library *CyberGfxBase;
 BOOL ZUNE_FreeBuiltinClasses(struct Library *base);
+/* classes/application.c: MUI's private application list object */
+Object *zune_applist_get(void);
+void zune_applist_free(void);
 #endif
 
 #endif /* MUIMASTER_INTERN_H */

@@ -26,6 +26,7 @@ void MUIP_FreePooled(void);
 void MUIP_ObtainImage(void);
 void MUIP_ReleaseImage(void);
 void MUIP_ObjectInRect(void);
+void MUIP_Applist(void);
 void MUIP_ConfigItemAllowed(void);
 void MUIP_RegistrationLevel(void);
 void MUIP_ForceRegistered(void);
@@ -38,6 +39,8 @@ struct Library *LibOpen(struct MUIMasterBase_intern *base __asm("a6"))
 BPTR LibExpunge(struct MUIMasterBase_intern *base __asm("a6"))
 {
     BPTR segment;
+    if (!base->library.lib_OpenCnt)
+        zune_applist_free(); /* it holds a Semaphore subclass */
     if (base->library.lib_OpenCnt || !ZUNE_FreeBuiltinClasses(&base->library)) {
         base->library.lib_Flags |= LIBF_DELEXP;
         return 0;
@@ -118,11 +121,11 @@ static const APTR LibVectors[] = {
   MUI_VECTOR(MUI_Offset),
   (APTR) MUIP_GetVirtualRect,
   (APTR) MUIP_ObjectInRect,
-  /* -252 to -306: MUI 3.8's configuration item table, application and
-   * class lists and keyfile data, which Zune does not have. */
+  /* -252 to -306: MUI 3.8's configuration item table, class list and
+   * keyfile data, which Zune does not have, and its application list. */
   RESERVED,
   RESERVED,
-  RESERVED,
+  (APTR) MUIP_Applist,
   (APTR) MUIP_ConfigItemAllowed,
   RESERVED,
   (APTR) MUIP_RegistrationLevel,

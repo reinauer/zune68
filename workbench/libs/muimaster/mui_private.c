@@ -59,6 +59,13 @@ ULONG MUIP_ObjectInRect(Object *obj __asm("a0"), LONG *rect __asm("a1"))
         && bottom >= rect[1] && top <= rect[3];
 }
 
+/* -264: MUI's application list object, a Semaphore subclass. AmIRC 3.6
+ * asks it for a free ARexx base name (classes/application.c). */
+Object *MUIP_Applist(void)
+{
+    return zune_applist_get();
+}
+
 /* -270: whether the user may change a configuration item, which MUI 3.8
  * limited by registration. */
 ULONG MUIP_ConfigItemAllowed(void)
