@@ -1195,6 +1195,10 @@ struct MUI_WindowData
     struct ZunePointer *wd_Pointer;
     IPTR wd_PointerType;
     LONG wd_Opacity;
+    Object *wd_ArrowGadget;     /* the border arrow held, or NULL */
+    ULONG wd_ArrowSeconds;      /* the time of its last message */
+    ULONG wd_ArrowMicros;
+    UWORD wd_ArrowTicks;        /* its timer ticks since the press */
 };
 
 #ifndef WFLG_SIZEGADGET
@@ -2466,6 +2470,7 @@ static void UndisplayWindow(Object *obj, struct MUI_WindowData *data)
     data->wd_RenderInfo.mri_Window = NULL;
     data->wd_RenderInfo.mri_VertProp = NULL;
     data->wd_RenderInfo.mri_HorizProp = NULL;
+    data->wd_ArrowGadget = NULL;
 
     data->wd_Flags &= ~MUIWF_ACTIVE;
 
@@ -3383,6 +3388,87 @@ static struct MenuItem *FindCaseShortcut(struct MenuItem *item, UBYTE key)
     return NULL;
 }
 
+/* Whether another IDCMPUPDATE of gadget id waits in the window's port */
+static BOOL ArrowQueued(struct Window *win, ULONG id)
+{
+    struct Node *n;
+    BOOL queued = FALSE;
+
+    Forbid();
+    for (n = win->UserPort->mp_MsgList.lh_Head; n->ln_Succ && !queued;
+        n = n->ln_Succ)
+    {
+        struct IntuiMessage *im = (struct IntuiMessage *)n;
+
+        queued = im->IDCMPWindow == win && im->Class == IDCMP_IDCMPUPDATE
+            && GetTagData(GA_ID, ~0, (struct TagItem *)im->IAddress) == id;
+    }
+    Permit();
+    return queued;
+}
+
+/* Whether a border arrow's message steps its Prop. buttongclass sends one
+ * at the press and one at every Intuition timer tick while held, both with
+ * IEQUALIFIER_REPEAT, and one without it at the release. MUI 3.8 steps at
+ * the press, lets three ticks pass, then steps at every tick
+ * (tests/native/borderarrows.c: the second step 360-480 ms after the
+ * press, then one per tick). A message more than 300 ms after the
+ * arrow's last one starts a new press. A tick whose arrow has a newer
+ * message waiting (a step took longer than a tick) is left to that one,
+ * so a held arrow never scrolls on after its release. */
+static BOOL ArrowStep(struct MUI_WindowData *data, Object *gad,
+    struct IntuiMessage *imsg)
+{
+    ULONG secs = imsg->Seconds - data->wd_ArrowSeconds;
+    LONG micros = (LONG)imsg->Micros - (LONG)data->wd_ArrowMicros;
+    BOOL step;
+
+    if (!(imsg->Qualifier & IEQUALIFIER_REPEAT))
+    {
+        data->wd_ArrowGadget = NULL;
+        return FALSE;
+    }
+    if (gad != data->wd_ArrowGadget || secs > 1
+        || (LONG)secs * 1000000 + micros > 300000)
+    {
+        data->wd_ArrowGadget = gad;
+        data->wd_ArrowTicks = 0;
+        step = TRUE;
+    }
+    else
+        step = ++data->wd_ArrowTicks > 3
+            && !ArrowQueued(data->wd_RenderInfo.mri_Window,
+                GADGETID(gad));
+    data->wd_ArrowSeconds = imsg->Seconds;
+    data->wd_ArrowMicros = imsg->Micros;
+    return step;
+}
+
+/* A message of a window border arrow: step the Prop that the border
+ * prop's UserData names (see classes/prop.c) when ArrowStep says so.
+ * Return whether id is a border arrow's. */
+static BOOL BorderArrow(struct MUI_WindowData *data, ULONG id,
+    struct IntuiMessage *imsg)
+{
+    Object *gad, *propgad, *prop;
+    ULONG method;
+
+    if ((gad = data->wd_UpButton) && id == GADGETID(gad))
+        propgad = data->wd_VertProp, method = MUIM_Prop_Decrease;
+    else if ((gad = data->wd_DownButton) && id == GADGETID(gad))
+        propgad = data->wd_VertProp, method = MUIM_Prop_Increase;
+    else if ((gad = data->wd_LeftButton) && id == GADGETID(gad))
+        propgad = data->wd_HorizProp, method = MUIM_Prop_Decrease;
+    else if ((gad = data->wd_RightButton) && id == GADGETID(gad))
+        propgad = data->wd_HorizProp, method = MUIM_Prop_Increase;
+    else
+        return FALSE;
+    prop = propgad ? (Object *)((struct Gadget *)propgad)->UserData : NULL;
+    if (ArrowStep(data, gad, imsg) && prop)
+        DoMethod(prop, method, 1);
+    return TRUE;
+}
+
 /* Reply to imsg if handled */
 /* Handle activation, geometry, refresh, close, menu, scrollbar and help
  * events for a live open window. Return TRUE for consumed events and
@@ -3551,65 +3637,7 @@ BOOL HandleWindowEvent(Object *oWin, struct MUI_WindowData *data,
             struct TagItem *tag;
             tag = FindTagItem(GA_ID, (struct TagItem *)imsg->IAddress);
             if (tag)
-            {
-                /* If there's a propclass object connected to the prop
-                   gadget, the prop gadget's userdata will point to
-                   that propclass object. See classes/prop.c */
-
-                if (data->wd_VertProp)
-                {
-                    if (tag->ti_Data == GADGETID(data->wd_VertProp))
-                        ;
-
-                    if (tag->ti_Data == GADGETID(data->wd_UpButton))
-                    {
-                        Object *prop =
-                            (Object *) ((struct Gadget *)data->
-                            wd_VertProp)->UserData;
-                        is_handled = TRUE;
-                        if (prop)
-                            DoMethod(prop, MUIM_Prop_Decrease, 1);
-                    }
-
-                    if (tag->ti_Data == GADGETID(data->wd_DownButton))
-                    {
-                        Object *prop =
-                            (Object *) ((struct Gadget *)data->
-                            wd_VertProp)->UserData;
-                        is_handled = TRUE;
-                        if (prop)
-                            DoMethod(prop, MUIM_Prop_Increase, 1);
-                    }
-
-                }
-
-                if (data->wd_HorizProp)
-                {
-                    if (tag->ti_Data == GADGETID(data->wd_HorizProp))
-                        ;
-
-                    if (tag->ti_Data == GADGETID(data->wd_LeftButton))
-                    {
-                        Object *prop =
-                            (Object *) ((struct Gadget *)data->
-                            wd_HorizProp)->UserData;
-                        is_handled = TRUE;
-                        if (prop)
-                            DoMethod(prop, MUIM_Prop_Decrease, 1);
-                    }
-
-                    if (tag->ti_Data == GADGETID(data->wd_RightButton))
-                    {
-                        Object *prop =
-                            (Object *) ((struct Gadget *)data->
-                            wd_HorizProp)->UserData;
-                        is_handled = TRUE;
-                        if (prop)
-                            DoMethod(prop, MUIM_Prop_Increase, 1);
-                    }
-
-                }
-            }
+                is_handled = BorderArrow(data, tag->ti_Data, imsg);
         }
         break;
 

@@ -58,8 +58,9 @@
 *       creation. A nonborder gadget is created only when entirely inside every
 *       virtual ancestor's inner rectangle; it is not partially clipped. Draw
 *       skips border mode, otherwise draws Area and refreshes the gadget for
-*       full drawing. Hide leaves a borrowed border gadget alive; Cleanup clears
-*       only the local pointer, not the gadget UserData backlink.
+*       full drawing. In border mode Show links to the window's gadget at
+*       every Show (its UserData names the Prop the border arrows step) and
+*       Hide unlinks it; the gadget itself stays the window's.
 *       HandleEvent accepts IDCMPUPDATE only with matching GA_ID and a PGA_Top
 *       tag. It converts native Top to the logical range, suppresses unchanged
 *       repeat events, and sends First plus private release/trigger tags through
@@ -1146,9 +1147,9 @@ AROS_UFH3
 
 /*
  * Call Area Show then create/replace owned nonborder gadget only if fully
- * visible through virtual ancestors, or borrow Right/Bottom border gadget
- * and set UserData. Return Area result regardless of gadget failure.
- * Requires valid setup/window.
+ * visible through virtual ancestors, or link to the open window's
+ * Right/Bottom border gadget and set its UserData. Return Area result
+ * regardless of gadget failure. Requires valid setup/window.
  */
 IPTR Prop__MUIM_Show(struct IClass *cl, Object *obj, struct MUIP_Show *msg)
 {
@@ -1334,38 +1335,19 @@ IPTR Prop__MUIM_Show(struct IClass *cl, Object *obj, struct MUIP_Show *msg)
             }
         }
     }
-    else if (!data->prop_object)
+    else
     {
-        switch (data->usewinborder)
-        {
-        case MUIV_Prop_UseWinBorder_Right:
-            data->prop_object = muiRenderInfo(obj)->mri_VertProp;
-            if (data->prop_object)
-            {
-                /* Store pointer to this propclass object in
-                   propgadget->UserData,
-                   so that window class when receiving IDCMP_IDCMUPDATE from
-                   arrow gadgets can notify propclass object */
-
-                ((struct Gadget *)data->prop_object)->UserData = obj;
-            }
-            break;
-
-        case MUIV_Prop_UseWinBorder_Bottom:
-            data->prop_object = muiRenderInfo(obj)->mri_HorizProp;
-            if (data->prop_object)
-            {
-                /* Store pointer to this propclass object in
-                   propgadget->UserData,
-                   so that window class when receiving IDCMP_IDCMUPDATE from
-                   arrow gadgets can notify propclass object */
-
-                ((struct Gadget *)data->prop_object)->UserData = obj;
-            }
-            break;
-        }
+        /* Link to the window's border gadget at every Show: it is the
+         * open window's (a reopened window has new ones). Its UserData
+         * tells the window which Prop its border arrows step. */
+        data->prop_object =
+            data->usewinborder == MUIV_Prop_UseWinBorder_Right
+            ? muiRenderInfo(obj)->mri_VertProp
+            : data->usewinborder == MUIV_Prop_UseWinBorder_Bottom
+            ? muiRenderInfo(obj)->mri_HorizProp : NULL;
         if (data->prop_object)
         {
+            ((struct Gadget *)data->prop_object)->UserData = obj;
             data->gadgetid = ((struct Gadget *)data->prop_object)->GadgetID;
 
             /* As in OM_SET: the gadget keeps its ICTARGET_IDCMP */
@@ -1434,10 +1416,10 @@ IPTR Prop__MUIM_Draw(struct IClass *cl, Object *obj,
 }
 
 /*
- * Remove and dispose only owned nonborder gadget, clearing its pointer,
- * then return Area Hide result. Requires live window and shown state.
- * Borrowed border gadget and custom buffers remain; Cleanup is still
- * required.
+ * Remove and dispose an owned nonborder gadget, or unlink a borrowed
+ * border gadget (its UserData cleared if it names this Prop), clearing the
+ * pointer, then return Area Hide result. Requires live window and shown
+ * state. Custom buffers remain; Cleanup is still required.
  */
 IPTR Prop__MUIM_Hide(struct IClass *cl, Object *obj,
     struct MUIP_Hide *msg)
@@ -1450,8 +1432,14 @@ IPTR Prop__MUIM_Hide(struct IClass *cl, Object *obj,
         {
             RemoveGadget(_window(obj), (struct Gadget *)data->prop_object);
             DisposeObject(data->prop_object);
-            data->prop_object = NULL;
         }
+        else if (((struct Gadget *)data->prop_object)->UserData
+            == (APTR)obj)
+        {
+            /* the border arrows step no hidden Prop */
+            ((struct Gadget *)data->prop_object)->UserData = NULL;
+        }
+        data->prop_object = NULL;
     }
 
     return DoSuperMethodA(cl, obj, (Msg) msg);

@@ -21,6 +21,9 @@
 #include "support_classes.h"
 #include "scrollgroup_private.h"
 
+/* pixels per arrow step of a Scrollgroup's bars (MUIA_Prop_DeltaFactor) */
+#define SCROLLGROUP_STEP 8
+
 /****** Scrollgroup.mui/MUIC_Scrollgroup ************
 *
 *   NAME
@@ -64,9 +67,11 @@
 *
 *   NOTES
 *       UseWinBorder selects existing bottom/right window proportional gadgets
-*       instead of laying bars beside the content. Those gadgets must be
-*       supplied by the enclosing window; this class does not request window
-*       border scrollers itself.
+*       instead of laying bars beside the content: the bars stay shown with
+*       no place in the group and their Props drive the border gadgets and
+*       arrows. Those gadgets must be supplied by the enclosing window; this
+*       class does not request window border scrollers itself. An arrow
+*       step is 8 pixels (the bars' MUIA_Prop_DeltaFactor), as in MUI 3.8.
 *       FreeHoriz, FreeVert, NoHorizBar and NoVertBar are declared but not
 *       implemented. Adding unrelated children or replacing the internal
 *       layout hook does not extend the fixed-child layout algorithm. Retain the
@@ -666,6 +671,11 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
         vbordertag = MUIA_Prop_UseWinBorder;
     }
 
+    /* An arrow step is 8 pixels, the group's own arrows' and the window
+     * border's, whatever the font, as MUI 3.8 (tests/native/
+     * borderarrows.c). In the window border the bars stay shown without
+     * a place in the group: a Prop links itself to the border gadget in
+     * its MUIM_Show. The move button has no use there. */
     obj = (Object *) DoSuperNewTags
         (cl, obj, NULL,
         MUIA_Group_Horiz, FALSE,
@@ -674,14 +684,17 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
             Child, (IPTR) contents,
             Child, (IPTR) (vert =
                 (Object *) ScrollbarObject, MUIA_Group_Horiz, FALSE,
+                MUIA_Prop_DeltaFactor, SCROLLGROUP_STEP,
                 vbordertag, MUIV_Prop_UseWinBorder_Right,
                 End),
             Child, (IPTR) (horiz =
                 (Object *) ScrollbarObject, MUIA_Group_Horiz, TRUE,
+                MUIA_Prop_DeltaFactor, SCROLLGROUP_STEP,
                 hbordertag, MUIV_Prop_UseWinBorder_Bottom,
                 End),
             Child, (IPTR) (button =
                 (Object *) ScrollbuttonObject,
+                MUIA_ShowMe, !usewinborder,
                 End),
             End),
         TAG_MORE, msg->ops_AttrList);

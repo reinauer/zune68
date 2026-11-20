@@ -2628,7 +2628,9 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
         if (child != data->titlegroup)
             ++page;
 
-        if (_flags(child) & MADF_DISAPPEARED)
+        /* a window border scroller (Scrollgroup's UseWinBorder) is shown
+         * but has no place in the group: Intuition draws it */
+        if (_flags(child) & (MADF_DISAPPEARED | MADF_BORDERGADGET))
             continue;
 
         if ((data->flags & GROUP_PAGEMODE) && ((page != data->active_page)
