@@ -17,6 +17,7 @@
 #undef TNF_LIST
 #include "Listtree_mcc.h"
 #include "listtree_private.h"
+#include "listtree_config.h"
 #include "support.h"
 
 #include <aros/debug.h>
@@ -841,6 +842,60 @@ IPTR Listtree__MUIM_Listtree_Close(struct IClass *cl, Object *obj, struct MUIP_L
     }
 
     return DoMethod(data->nlisttree, MUIM_NListtree_Close, ln, tn, msg->Flags);
+}
+
+/* NListtree's own configuration attributes (MUICFG_NListtree_..., the
+ * ones NListtree.mcp's sample is set with) */
+#define NLTCFG_ImageClosed      0xfec81001
+#define NLTCFG_ImageOpen        0xfec81002
+#define NLTCFG_PenLines         0xfec81004
+#define NLTCFG_PenShadow        0xfec81005
+#define NLTCFG_Remember         0xfec81007
+#define NLTCFG_Indent           0xfec81008
+#define NLTCFG_OpenAutoScroll   0xfec8100a
+#define NLTCFG_LineType         0xfec8100b
+
+static IPTR ConfigItem(Object *obj, ULONG id, IPTR def)
+{
+    IPTR d;
+
+    return DoMethod(obj, MUIM_GetConfigItem, id, (IPTR)&d) ? d : def;
+}
+
+static LONG ConfigNumber(Object *obj, ULONG id, LONG def, LONG max)
+{
+    IPTR d = ConfigItem(obj, id, 0);
+
+    return d && *(ULONG *)d <= (ULONG)max ? *(LONG *)d : def;
+}
+
+/* The tree is drawn by the NListtree inside, which reads its own settings
+ * in its Setup (during ours). Afterwards it gets the Listtree settings of
+ * MUI 3.8 (listtree_config.h, MUI 3.8's defaults when missing) instead.
+ * NListtree's line types are none, solid, dotted and 3D; Win95's boxes
+ * and the other styles' arrows are its Right and Down images. */
+IPTR Listtree__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
+{
+    static const UBYTE linetype[LTSTYLE_Count] = { 0, 0, 1, 2, 0, 3 };
+    struct Listtree_DATA *data = INST_DATA(cl, obj);
+    IPTR r = DoSuperMethodA(cl, obj, msg);
+
+    if (r)
+        SetAttrs(data->nlisttree,
+            NLTCFG_ImageClosed, ConfigItem(obj, LTCFG_Right, (IPTR)LTCFG_Right_Default),
+            NLTCFG_ImageOpen, ConfigItem(obj, LTCFG_Down, (IPTR)LTCFG_Down_Default),
+            NLTCFG_PenLines, ConfigItem(obj, LTCFG_Lines, (IPTR)LTCFG_Lines_Default),
+            NLTCFG_PenShadow, ConfigItem(obj, LTCFG_Shadow, (IPTR)LTCFG_Shadow_Default),
+            NLTCFG_LineType, linetype[ConfigNumber(obj, LTCFG_Style,
+                LTCFG_Style_Default, LTSTYLE_Count - 1)],
+            NLTCFG_Indent, ConfigNumber(obj, LTCFG_Space, LTCFG_Space_Default,
+                LTCFG_Space_Max),
+            NLTCFG_Remember, ConfigNumber(obj, LTCFG_Remember,
+                LTCFG_Remember_Default, 1),
+            NLTCFG_OpenAutoScroll, ConfigNumber(obj, LTCFG_Opened,
+                LTCFG_Opened_Default, 1),
+            TAG_DONE);
+    return r;
 }
 
 #define FORWARDNLISTTREEMETHOD(methodname)                                          \

@@ -22,8 +22,8 @@ Object *DoSuperNewTags(struct IClass *cl, Object *obj, void *unused, ...);
 #define SUPERCLASS MUIC_List
 #define INSTDATA Listtree_DATA
 #define VERSION 20
-#define REVISION 1
-#define USERLIBID CLASS " 20.1 (10.10.2026) AROS native AmigaOS port"
+#define REVISION 2
+#define USERLIBID CLASS " 20.2 (20.11.2026) AROS native AmigaOS port"
 #define MASTERVERSION 19
 #define MIN_STACKSIZE 16384
 #define CLASSINIT
@@ -70,6 +70,7 @@ DISPATCHER(_Dispatcher)
     case OM_GET: return Listtree__OM_GET(cl, obj, (APTR)msg);
     case OM_DISPOSE: return Listtree__OM_DISPOSE(cl, obj, msg);
     case MUIM_Notify: return Listtree__MUIM_Notify(cl, obj, (APTR)msg);
+    case MUIM_Setup: return Listtree__MUIM_Setup(cl, obj, msg);
     case MUIM_Listtree_Insert:
         return Listtree__MUIM_Listtree_Insert(cl, obj, (APTR)msg);
     case MUIM_Listtree_GetEntry:
