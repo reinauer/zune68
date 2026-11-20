@@ -651,15 +651,23 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
     BOOL usewinborder;
     Tag hbordertag = TAG_IGNORE;
     Tag vbordertag = TAG_IGNORE;
+    static const Tag contents_tag[] = { MUIA_Scrollgroup_Contents, TAG_DONE };
+    /* The contents go to the inner group below. Group's OM_NEW must not
+     * find them in the tag list it gets too: one that fails disposes the
+     * objects in its list (zune_dispose_children()), and would dispose
+     * the contents a second time after the inner group. */
+    struct TagItem *supertags = CloneTagItems(msg->ops_AttrList);
+    struct Hook *layout_hook = supertags ? mui_alloc_struct(struct Hook) : NULL;
 
-    struct Hook *layout_hook = mui_alloc_struct(struct Hook);
     if (!layout_hook)
     {
         /* MUI's rule: a failed call leaves no created object behind */
+        FreeTagItems(supertags);
         if (contents)
             MUI_DisposeObject(contents);
         return 0;
     }
+    FilterTagItems(supertags, (Tag *)contents_tag, TAGFILTER_NOT);
 
     layout_hook->h_Entry = (HOOKFUNC) Scrollgroup_Layout_Function;
 
@@ -697,7 +705,8 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
                 MUIA_ShowMe, !usewinborder,
                 End),
             End),
-        TAG_MORE, msg->ops_AttrList);
+        TAG_MORE, (IPTR) supertags);
+    FreeTagItems(supertags);
 
     if (!obj)
     {
