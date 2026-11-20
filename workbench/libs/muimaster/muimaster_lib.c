@@ -10,11 +10,7 @@
 struct ExecBase *SysBase;
 ULONG L_InitLib(struct Library *base);
 void L_ExpungeLib(struct Library *base);
-#ifdef MUIMASTER_DROPIN
 #define LIBNAME "muimaster.library"
-#else
-#define LIBNAME "zunemaster.library"
-#endif
 #define IDSTRING "$VER: " LIBNAME " " ZUNE68_LIBRARY_VERSION_STRING \
     " (" ZUNE68_LIBRARY_DATE ") Zune68 " ZUNE68_RELEASE_STAGE "\r\n"
 

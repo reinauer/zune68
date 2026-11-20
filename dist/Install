@@ -410,10 +410,7 @@
 )
 
 ; Check the entire payload before offering any system changes.
-(if (or
-        (<> (exists (tackon #package "Libs/zunemaster.library")) 1)
-        (<> (exists (tackon #package "Libs/muimaster.library")) 1)
-    )
+(if (<> (exists (tackon #package "Libs/muimaster.library")) 1)
     (abort "The package is incomplete. Extract the complete Zune68 archive.")
 )
 (foreach (tackon #package "Libs") "#?.library"
@@ -518,8 +515,8 @@
     )
 )
 
-(P_InstallLibrary "zunemaster.library")
-(complete 50)
+; Beta 4 and earlier also installed zunemaster.library.
+(P_RestoreFile #syslibs "zunemaster.library" "Libs/zunemaster.library" 1)
 (P_InstallLibrary "muimaster.library")
 ; COMPONENT_INSTALL
 (complete 100)

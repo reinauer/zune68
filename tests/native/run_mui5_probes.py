@@ -21,7 +21,7 @@ def main():
                         help='optional replacement libraries; omit for reference MUI')
     parser.add_argument('--timeout', type=int, default=600)
     parser.add_argument('--argument', default='screen',
-                        choices=('screen', 'muimaster.library', 'zunemaster.library'),
+                        choices=('screen', 'muimaster.library'),
                         help='probe argument; older ABI probes take a library name')
     parser.add_argument('probes', nargs='+')
     args = parser.parse_args()
@@ -35,8 +35,7 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         destinations = [script, *(guest / ('mui5-' + name + '-probe')
                                    for name in args.probes)]
-        libraries = [guest / 'package/Libs' / name for name in
-                     ('muimaster.library', 'zunemaster.library')]
+        libraries = [guest / 'package/Libs/muimaster.library']
         if args.libraries:
             destinations += libraries
         saved = {p: p.read_bytes() if p.exists() else None for p in destinations}

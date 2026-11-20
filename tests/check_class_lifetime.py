@@ -59,7 +59,7 @@ class Harness:
         self.mem.w32(MASTER + 34, EXEC)
         self.mem.w32(MASTER + 38, 0x1234)  # Segment BPTR returned by expunge.
         self.mem.w16(MASTER + 18, size)
-        self.mem.w_block(TEXT, b'zunemaster.library\0')
+        self.mem.w_block(TEXT, b'muimaster.library\0')
         self.mem.w32(MASTER + 10, TEXT)
         for offset, fn in [(234, self.insert), (246, self.add_tail),
                            (252, self.remove), (414, self.close_library),

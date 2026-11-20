@@ -2,7 +2,7 @@
 """Compare two library builds in an exclusively owned disposable UAE guest.
 
 The fixture must boot by executing Bench:run-tests, with Bench: mounted
-from fixture/guest. Each build directory must contain both library names.
+from fixture/guest. Each build directory must contain muimaster.library.
 ROMs, the OS disk, preferences and emulator configuration are user supplied.
 """
 import argparse
@@ -36,7 +36,7 @@ def main():
     config = root / "run.uae"
     args.output.mkdir(parents=True, exist_ok=True)
     output = args.output.resolve()
-    names = ("muimaster.library", "zunemaster.library")
+    names = ("muimaster.library",)
     builds = {"baseline": args.baseline, "candidate": args.candidate}
     metadata = {
         "binary_sha256": digest(args.binary),

@@ -2,7 +2,7 @@
  * m68k-amigaos-gcc -m68000 -msoft-float -noixemul -O2 -Wall \
  *   -I"$MUI5_SDK/C/include" -Wl,-u,___stkinit -o mui5-layout-probe \
  *   tests/native/mui5_layout_probe.c
- * Run: mui5-layout-probe [muimaster.library|zunemaster.library] [case 0..5]
+ * Run: mui5-layout-probe [muimaster.library] [case 0..5]
  */
 #include <stdio.h>
 #include <string.h>

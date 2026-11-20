@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from components import CLASS_FILES, EXAMPLES, LANGUAGES, MUI_CLASSES, catalog_paths
 
-LIBRARIES = ('zunemaster.library', 'muimaster.library')
+LIBRARIES = ('muimaster.library',)
 
 
 def component_version(path):
@@ -50,11 +50,8 @@ def library_version(path):
 
 
 def identity(build_dir):
-    """The shared identity of both library names, used for release naming."""
-    versions = [library_version(build_dir / name) for name in LIBRARIES]
-    if versions[0] != versions[1]:
-        raise ValueError('library versions differ; rebuild both variants')
-    return versions[0]
+    """The library's identity, used for release naming."""
+    return library_version(build_dir / 'muimaster.library')
 
 
 def substitute(text, version, date, stage):

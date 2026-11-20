@@ -6,7 +6,7 @@ Zune for classic AmigaOS 3, starting from current AROS source.
 long as MUI 3.8. Zune68 reporting MUI 5 is level with or faster than MUI 3.8
 in all eight tests.**
 
-The native GCC port builds both library names, Zune Prefs, every class under
+The native GCC port builds muimaster.library, Zune Prefs, every class under
 `workbench/classes/zune` (MCC/MCP plugins, image classes, and the AROS
 utility classes such as Calltips and Calendar), catalogs, SDK headers,
 examples and an Installer package.

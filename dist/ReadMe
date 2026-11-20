@@ -32,11 +32,8 @@ NList or TextEditor, is installed; the answer can apply to all such
 classes. MUI's own classes and libraries are replaced whatever their
 version. The protocol lists each replaced version.
 
-  zunemaster.library  -> LIBS:zunemaster.library
-    Installs alongside MUI. opentest uses this name by default.
-
   muimaster.library   -> LIBS:muimaster.library
-    Replaces MUI for applications using the standard library name.
+    Replaces MUI. The zunemaster.library of earlier betas is removed.
 
   Prefs/Zune         -> SYS:Prefs/Zune (with Workbench icon)
     The preferences editor used by application settings menus.
@@ -50,9 +47,7 @@ version. The protocol lists each replaced version.
     Graph, IconImage, Lamp, Listtree, LoginWindow, PrefsEditor, PrefsWindow,
     QRCode and SystemPrefsWindow are the AROS utility classes. Textinput and
     Textinputscroll 29 are names for String, which has the Textinput API.
-    These plugins open the standard muimaster.library name. For use with
-    Zune68, install its muimaster.library variant too. Side-by-side tests
-    with a different MUI implementation and these plugins are unverified.
+    These plugins open the standard muimaster.library name.
     Plugins are loaded on demand, not added to every application's cost.
 
   Locale/Catalogs/*  -> LOCALE:Catalogs/<system-language>/
@@ -101,14 +96,11 @@ without startup-sequence and restore the main library in a Shell:
 
 Without that backup there was no muimaster.library before Zune68;
 delete SYS:Libs/muimaster.library or install MUI again. Check that a
-backup is the MUI version you want before copying it back. Removing
-zunemaster.library alone does not restore muimaster.library: they are
-independent builds.
+backup is the MUI version you want before copying it back.
 Pretend mode shows the run without copying files.
 
 After installation, close applications and reboot before trying Zune68.
-Run Tests/opentest from the extracted drawer. To exercise the replacement
-name explicitly, run Tests/opentest muimaster.library.
+Run Tests/opentest from the extracted drawer.
 
 The native executables request at least 65536 bytes of stack and free
 any replacement stack on exit.

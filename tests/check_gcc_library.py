@@ -171,7 +171,6 @@ def check(path):
 
 
 if __name__ == '__main__':
-    paths = sys.argv[1:] or [ROOT / 'build/muimaster' / name for name in
-                            ['zunemaster.library', 'muimaster.library']]
+    paths = sys.argv[1:] or [ROOT / 'build/muimaster/muimaster.library']
     for path in paths:
         check(Path(path))

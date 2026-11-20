@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from components import CLASS_FILES, LANGUAGES, MUI_CLASSES, catalog_paths
 from release import install_script
 
-NAMES = ('zunemaster.library', 'muimaster.library')
+LIBRARY = 'muimaster.library'
 WELCOME = '(welcome "Install Zune68\'s native AmigaOS libraries.")'
 
 
@@ -65,18 +65,17 @@ def scenario(installer, label, *, installed=None, backup=None, pretend=False,
         payload.mkdir()
         target.mkdir()
         mui.mkdir()
-        for name in NAMES:
-            (payload / name).write_bytes(version_file(name, '35.6'))
-        destination = target / NAMES[0]
-        backup_path = target / (NAMES[0] + '.zune68-old')
+        (payload / LIBRARY).write_bytes(version_file(LIBRARY, '35.6'))
+        destination = target / LIBRARY
+        backup_path = target / (LIBRARY + '.zune68-old')
         if installed is not None:
             destination.write_bytes(installed)
         if backup is not None:
             backup_path.write_bytes(backup)
         if missing:
-            (payload / NAMES[1]).unlink()
+            (payload / LIBRARY).unlink()
         if invalid:
-            (payload / NAMES[1]).write_bytes(b'no version here')
+            (payload / LIBRARY).write_bytes(b'no version here')
         if directory:
             destination.mkdir()
 
@@ -96,19 +95,16 @@ def scenario(installer, label, *, installed=None, backup=None, pretend=False,
         protocol = mui / 'Zune68/Install.log'
         if missing or invalid or directory:
             assert 'Aborting' in out, out
-            assert not (target / NAMES[1]).exists()
             if not directory:
                 assert not destination.exists()
             print(f'Installer: {label} passed')
             return
-        for name in NAMES:
-            original = installed if name == NAMES[0] else None
-            expected = original if pretend else version_file(name, '35.6')
-            assert (target / name).exists() == (expected is not None), out
-            if expected is not None:
-                assert (target / name).read_bytes() == expected, out
-            marker = mui / 'Zune68/Created/Libs' / name
-            assert marker.exists() == (not pretend and original is None), (name, out)
+        expected = installed if pretend else version_file(LIBRARY, '35.6')
+        assert destination.exists() == (expected is not None), out
+        if expected is not None:
+            assert destination.read_bytes() == expected, out
+        marker = mui / 'Zune68/Created/Libs' / LIBRARY
+        assert marker.exists() == (not pretend and installed is None), out
         expected_backup = backup
         if expected_backup is None and installed is not None and not pretend:
             expected_backup = installed
@@ -120,7 +116,6 @@ def scenario(installer, label, *, installed=None, backup=None, pretend=False,
             assert 'Pretend mode finished' in out, out
         else:
             log = protocol.read_text()
-            assert f'Installed {target / NAMES[1]} v35.6\n' in log, log
             if installed is None:
                 assert f'Installed {destination} v35.6\n' in log, log
             elif b'$VER:' in installed:
@@ -141,19 +136,19 @@ def set_back_scenario(installer):
         payload.mkdir()
         target.mkdir()
         mui.mkdir()
-        for name in NAMES:
-            (payload / name).write_bytes(version_file(name, '35.6'))
-        mui_library = version_file(NAMES[1], '19.1')
-        (target / NAMES[1]).write_bytes(mui_library)
+        (payload / LIBRARY).write_bytes(version_file(LIBRARY, '35.6'))
+        mui_library = version_file(LIBRARY, '19.1')
+        (target / LIBRARY).write_bytes(mui_library)
+        # Beta 4 and earlier also installed zunemaster.library.
+        (target / 'zunemaster.library').write_bytes(version_file('zunemaster.library', '35.5'))
         script = (ROOT / 'dist/Install').read_text()
         (root / 'Install').write_text(localize(script, root, target, mui))
-        run(installer, root, '')
-        assert (target / (NAMES[1] + '.zune68-old')).read_bytes() == mui_library
-        assert (mui / 'Zune68/Created/Libs' / NAMES[0]).is_file()
+        out = run(installer, root, '')
+        assert (target / (LIBRARY + '.zune68-old')).read_bytes() == mui_library
+        assert not (target / 'zunemaster.library').exists(), out
         (root / 'Install').write_text(localize(script, root, target, mui, mode=1))
         out = run(installer, root, '')
-        assert not (target / NAMES[0]).exists(), out
-        assert (target / NAMES[1]).read_bytes() == mui_library, out
+        assert (target / LIBRARY).read_bytes() == mui_library, out
         assert not list(target.glob('*.zune68-old')), out
         assert not list((mui / 'Zune68/Created').rglob('*.library')), out
         protocol = (mui / 'Zune68/Install.log').read_text()
@@ -177,7 +172,7 @@ def components_scenario(installer, *, pretend=False, missing=False,
         files = ['Prefs/Zune', 'Prefs/Zune.info']
         files += ['Libs/MUI/' + name for name in CLASS_FILES]
         files += catalog_paths(package)
-        for relative in ['Libs/' + name for name in NAMES] + files:
+        for relative in ['Libs/' + LIBRARY] + files:
             path = package / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(version_file(path.name, '35.6'))
@@ -234,7 +229,7 @@ def components_scenario(installer, *, pretend=False, missing=False,
             # Written in parts: one header, and a line for every file.
             assert log.count('--- Zune68 ') == 1, log
             # Prefs/Zune.info is copied with Prefs/Zune and not listed.
-            installed = len(NAMES) + 1 + len(CLASS_FILES) + len(catalog_paths(package))
+            installed = 2 + len(CLASS_FILES) + len(catalog_paths(package))
             assert log.count('\nInstalled ') == installed, (log.count('\nInstalled '), installed)
             if set_back:
                 write_script(1)
@@ -268,7 +263,7 @@ def newer_scenario(installer, answers, kept):
         libs = target / 'Libs'
         libs.mkdir()
         files = ['Prefs/Zune'] + ['Libs/MUI/' + name for name in CLASS_FILES]
-        for relative in ['Libs/' + name for name in NAMES] + files:
+        for relative in ['Libs/' + LIBRARY] + files:
             path = package / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(version_file(path.name, '35.6'))
@@ -310,11 +305,11 @@ def upgrade_scenario(installer):
         libs = target / 'Libs'
         (libs / 'MUI').mkdir(parents=True)
         files = ['Prefs/Zune'] + ['Libs/MUI/' + name for name in CLASS_FILES]
-        for relative in ['Libs/' + name for name in NAMES] + files:
+        for relative in ['Libs/' + LIBRARY] + files:
             path = package / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(version_file(path.name, '35.6'))
-        (libs / NAMES[0]).write_bytes(version_file(NAMES[0], '35.5'))
+        (libs / 'zunemaster.library').write_bytes(version_file('zunemaster.library', '35.5'))
         ours, theirs = libs / 'MUI/NList.mcc', libs / 'MUI/Busy.mcc'
         ours.write_bytes(version_file(ours.name, '35.6'))
         theirs.write_bytes(version_file(theirs.name, '19.1'))
@@ -325,6 +320,7 @@ def upgrade_scenario(installer):
         log = (mui / 'Zune68/Install.log').read_text()
         assert not ours.exists() and not ours.with_name('NList.mcc.zune68-old').exists(), log
         assert f'Deleted {ours} (an earlier Zune68 installed it)' in log, log
+        assert not (libs / 'zunemaster.library').exists(), log
         assert theirs.with_name('Busy.mcc.zune68-old').read_bytes() == version_file('Busy.mcc', '19.1'), log
         for name in CLASS_FILES:
             assert (mui / 'Libs/MUI' / name).read_bytes() == version_file(name, '35.6'), name
@@ -337,11 +333,11 @@ def main():
                         help='host InstallerLG executable built with UI=CLI')
     args = parser.parse_args()
     installer = args.installer.resolve()
-    old = version_file(NAMES[0], '35.4')
+    old = version_file(LIBRARY, '35.4')
     scenario(installer, 'fresh install')
     scenario(installer, 'upgrade', installed=old)
-    scenario(installer, 'newer installed', installed=version_file(NAMES[0], '36.0'))
-    scenario(installer, 'same version', installed=version_file(NAMES[0], '35.6'))
+    scenario(installer, 'newer installed', installed=version_file(LIBRARY, '36.0'))
+    scenario(installer, 'same version', installed=version_file(LIBRARY, '35.6'))
     scenario(installer, 'unknown version', installed=b'original unversioned data')
     scenario(installer, 'retain backup', installed=old, backup=b'original backup')
     scenario(installer, 'resident version', resident=40 * 65536 + 1)

@@ -38,18 +38,6 @@ class ReleaseTests(unittest.TestCase):
         (self.build / name).write_bytes(header + code + symbols +
                                        struct.pack('>3I', 0, 0, 1010))
 
-    def test_mismatched_versions(self):
-        self.library('muimaster.library', '35.4')
-        with self.assertRaisesRegex(ValueError, 'versions differ'):
-            release.release(self.build, self.output, 'lha', full=False)
-        self.assertEqual(list(self.output.iterdir()), [])
-
-    def test_mismatched_dates(self):
-        self.library('muimaster.library', '35.6', date='11.10.2026')
-        with self.assertRaisesRegex(ValueError, 'versions differ'):
-            release.release(self.build, self.output, 'lha', full=False)
-        self.assertEqual(list(self.output.iterdir()), [])
-
     def test_missing_date(self):
         self.library('muimaster.library', '35.6', date='test')
         with self.assertRaisesRegex(ValueError, 'matching'):
@@ -85,8 +73,8 @@ class ReleaseTests(unittest.TestCase):
             release.release(self.build, self.output, 'lha', full=False)
 
     def test_wrong_library_name(self):
-        shutil.copyfile(self.build / 'muimaster.library',
-                        self.build / 'zunemaster.library')
+        self.library('zunemaster.library', '35.6')
+        (self.build / 'zunemaster.library').replace(self.build / 'muimaster.library')
         with self.assertRaisesRegex(ValueError, 'matching'):
             release.release(self.build, self.output, 'lha', full=False)
 

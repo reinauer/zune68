@@ -32,7 +32,7 @@
 
 #ifndef __AROS__
 #ifndef MUIMASTER_NAME
-#define MUIMASTER_NAME "zunemaster.library"
+#define MUIMASTER_NAME "muimaster.library"
 #endif
 #define MUIMASTER_VMIN    0
 #define MUIMASTER_VLATEST 0

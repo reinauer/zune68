@@ -98,7 +98,7 @@ these specific workflows, not every version-gated browser feature.
 
 ## Version identity
 
-Both library names and built-in class getters report 21.227; external MCC
+The library and built-in class getters report 21.227; external MCC
 versions stay independent. `MUI5_TEST=0` builds the 19.81 identity; use a
 separate build directory for it. Switching MUI5_TEST in one directory also
 regenerates the configuration and rebuilds the affected objects. CI checks

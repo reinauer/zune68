@@ -141,8 +141,8 @@ python3 tests/native/compare_toolkits.py \
   says `prefetch and cycle-exact`.
 
 To compare two Zune68 builds, use `compare_perf.py` with `--baseline` and
-`--candidate` instead of `--profiles`. Each is a directory with both library
-names, and the fixture needs `guest/package/Libs`. It runs `perfbench screen`
+`--candidate` instead of `--profiles`. Each is a directory with
+`muimaster.library`, and the fixture needs `guest/package/Libs`. It runs `perfbench screen`
 on a 640x256 screen, so its times do not mix with the table above. Build with
 `-DPERFBENCH_REPS=5` for shorter 68000 runs.
 

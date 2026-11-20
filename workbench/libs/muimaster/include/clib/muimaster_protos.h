@@ -39,7 +39,7 @@ extern "C" {
  * The quoted form resolves to the library's own header: SAS/C looks in the
  * directory of the file containing the #include first (include/clib, no match)
  * and then in the current directory, which for this makefile is the library
- * source root.  MUIMASTER_LIBRARY_BUILD comes from CFLAGS in the smakefile and
+ * source root.  MUIMASTER_LIBRARY_BUILD comes from the library's CFLAGS and
  * is never set when an application compiles against the installed SDK, so the
  * shipped behaviour below is unchanged.
  */

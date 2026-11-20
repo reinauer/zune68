@@ -65,8 +65,7 @@ struct Library *MUIMasterBase, *LocaleBase, *MUIScreenBase;
 APTR *appaddr;
 static int open_libs(void)
 {
-    MUIMasterBase = OpenLibrary("zunemaster.library", 19);
-    if (!MUIMasterBase) MUIMasterBase = OpenLibrary("muimaster.library", 19);
+    MUIMasterBase = OpenLibrary("muimaster.library", 19);
     if (!MUIMasterBase) return 0;
     LocaleBase = OpenLibrary("locale.library", 38);
     MUIScreenBase = OpenLibrary("muiscreen.library", 0);
