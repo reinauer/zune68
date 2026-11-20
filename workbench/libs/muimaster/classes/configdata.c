@@ -1443,7 +1443,8 @@ static IPTR Configdata_LoadPubScreens(struct IClass *cl, Object *obj,
             struct MUI_PubScreenDesc *desc;
             while ((desc = MUIS_ReadPubFile(pfh))) {
                 DPSD(bug("[MUI:Cfg] %s: descriptor @ 0x%p\n", __func__, desc);)
-                psNode = AllocVec(sizeof(struct Node), MEMF_CLEAR);
+                if (!(psNode = AllocVec(sizeof(struct Node), MEMF_CLEAR)))
+                    break;
                 psNode->ln_Name = (char *)desc;
                 AddTail(&data->pubscreens, psNode);
             }

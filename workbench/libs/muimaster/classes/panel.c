@@ -488,6 +488,10 @@ IPTR PanelTitle__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));) {
         switch (tag->ti_Tag) {
         case MUIA_PanelTitle_Text:
+            /* its own string set again (got and set back): freed, then
+             * copied from the freed block */
+            if ((STRPTR)tag->ti_Data == data->text)
+                break;
             if (data->text)
                 FreeVec(data->text);
             data->text = StrDup((STRPTR) tag->ti_Data);

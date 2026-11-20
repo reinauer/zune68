@@ -644,6 +644,10 @@ static int SetListSize(struct MUI_ListData *data, LONG size)
     new_entries_allocated = data->entries_allocated * 2 + 4;
     if (new_entries_allocated < size + 1)
         new_entries_allocated = size + 1 + 10;  /* 10 is just random */
+    /* a count no memory can hold (an Insert's bogus count): the byte size
+     * below would wrap to a small block and the copy run past it */
+    if ((ULONG)new_entries_allocated > 0x1FFFFFFF)
+        return 0;
 
     D(bug("List %p : SetListSize allocating %ld bytes\n", data,
             new_entries_allocated * sizeof(struct ListEntry *)));

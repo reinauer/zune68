@@ -758,6 +758,9 @@ static BOOL MakePopupWin(Object *obj, struct MUI_CycleData *data)
 
     if (!data->popwin)
     {
+        /* Free the item texts and the background made above: the next
+         * MakePopupWin clears the children's UserData first */
+        KillPopupWin(obj, data);
         return FALSE;
     }
 

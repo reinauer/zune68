@@ -356,7 +356,8 @@ IPTR Gauge__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Gauge_InfoText:
-            if (!data->info || strcmp(data->info, (STRPTR) tag->ti_Data))
+            if (!data->info || !tag->ti_Data
+                || strcmp(data->info, (STRPTR) tag->ti_Data))
             {
                 if (data->dupinfo)
                 {
