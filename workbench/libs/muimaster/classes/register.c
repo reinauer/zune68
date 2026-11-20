@@ -639,9 +639,8 @@ IPTR Register__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 
 /*
  * Set up Group, choose title font, create owned parsed text per borrowed
- * label, set margins and register the event handler. Return FALSE on Group
- * failure, otherwise TRUE. Text allocation failures are unchecked;
- * nontruncating width calculation and later Cleanup can dereference NULL.
+ * label, set margins and register the event handler. Return FALSE when
+ * Group or a title's text fails, with nothing of this Setup left.
  * Requires connected application/window and labels still alive.
  */
 IPTR Register__MUIM_Setup(struct IClass *cl, Object *obj,
@@ -678,6 +677,16 @@ IPTR Register__MUIM_Setup(struct IClass *cl, Object *obj,
         /* MUI 3.9 centres the titles on their tabs */
         data->items[i].ztext = zune_text_new("\33c", data->labels[i],
             ZTEXT_ARG_NONE, 0);
+        if (!data->items[i].ztext)
+        {
+            while (--i >= 0)
+            {
+                zune_text_destroy(data->items[i].ztext);
+                data->items[i].ztext = NULL;
+            }
+            DoSuperMethod(cl, obj, MUIM_Cleanup);
+            return FALSE;
+        }
         zune_text_get_bounds(data->items[i].ztext, obj);
     }
 
@@ -711,9 +720,8 @@ IPTR Register__MUIM_Setup(struct IClass *cl, Object *obj,
 
 /*
  * Destroy each parsed text, clear its pointer and remove the window
- * handler, then return Group Cleanup result. Requires successful matching
- * Setup with non-NULL parsed text objects; text destroy has no NULL guard.
- * Does not free labels or item array.
+ * handler, then return Group Cleanup result. Requires a successful
+ * matching Setup. Does not free labels or item array.
  */
 IPTR Register__MUIM_Cleanup(struct IClass *cl, Object *obj,
     struct MUIP_Cleanup *msg)
