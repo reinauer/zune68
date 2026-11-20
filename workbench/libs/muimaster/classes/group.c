@@ -1215,6 +1215,14 @@ IPTR Group__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             case MUIA_FillArea:
             case MUIA_Group_ActivePage:
             case MUIA_Group_LayoutHook:
+            /* A group's own shape: MUI 3.8 does not pass these on to
+             * child groups (tests/native/groupset.c) */
+            case MUIA_Group_Columns:
+            case MUIA_Group_Horiz:
+            case MUIA_Group_HorizSpacing:
+            case MUIA_Group_Rows:
+            case MUIA_Group_Spacing:
+            case MUIA_Group_VertSpacing:
             case MUIA_Frame:
             case MUIA_FrameTitle:
             case MUIA_HorizWeight:
