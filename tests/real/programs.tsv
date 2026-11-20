@@ -1,0 +1,183 @@
+# id	group	key	archive	dir	exe	wait	title	notes
+up-demo	mcc	upmcc		UP-MCC/Demo	UP-Demo	30		archive not in the list (fetch by hand)
+nlist-demo	mui3	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Demos/AmigaOS3	NList-Demo	30		NList demos MCC_NList 0.128; NList, NListview, NListtree, NFloattext, NBalance; two windows
+nlisttree-demo	mui3	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Demos/AmigaOS3	NListtree-Demo	30		NList demos MCC_NList 0.128; NList, NListview, NListtree, NFloattext, NBalance; two windows
+texteditor-demo	mui3	texteditor	dev/mui/MCC_TextEditor-15.56.lha	MCC_TextEditor/Demos	TextEditor-Demo-AmigaOS3	30	^TextEditor	TextEditor demo MCC_TextEditor 15.56; TextEditor, its own process
+thebar-demo1	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo1-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo2	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo2-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo3	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo3-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo4	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo4-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo5	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo5-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo6	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo6-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo7	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo7-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo8	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo8-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo9	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo9-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+thebar-demo10	mui3	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Demos	demo10-AmigaOS3	30		TheBar demos MCC_TheBar 26.22; TheBar/TheButton, MUIA_Group_Horiz after creation, KnowsDisabled
+textinput-demo	mui3	textinput	dev/mui/MCC_TextInput.lha	MCC_Textinput/Demos	Textinput-Demo	30		Textinput demo MCC_TextInput 29.5; Textinput, Textinputscroll
+yam25	mui3	yam25	https://github.com/jens-maus/yam/releases/download/2.5/YAM25-AmigaOS3.lha	YAM 2.5	YAM	120		YAM (mail) 2.5; NList, TextEditor, BetterString, TheBar, codesets; config and address book windows; start-up requesters to answer
+muimine	mui3	muimine	game/think/MUIMine.lha	MUIMineInstall/progfiles	MUIMine	40		MUIMine (game) 1.2; custom class drawing, images; needs files from elsewhere in the archive
+installerng	mui3	installerng	util/sys/InstallerNG.lha	InstallerNG	c/InstallerNG.020 Install	40		InstallerNG (installer) 1.5 pre; Image buttons, Radio, pages (its own Install script)
+amftp	mui3	amftp	comm/tcp/AmFTP191.lha	AmFTP	AmFTP	60	^AmFTP	AmFTP (FTP) 1.91; Busy, Listtree, Textinput; its prefs program first; start-up requesters to answer
+atc	mui3	atc	comm/tcp/AmiTradeCenter.lha	AmiTradeCenter	AmiTradeCenter	60		AmiTradeCenter (FTP) 1.4; small toolbar window; with reqtools.library installed (MCP's, since 2026-11-11) it opens its Server Manager at start instead, on MUI 3.8 as well (bisected 2026-11-12): the program's
+simplemail	mui3	simplemail	https://downloads.sourceforge.net/project/simplemail/simplemail/simplemail-0.45/simplemail-0.45-os3.lha	SimpleMail	SimpleMail	90	^SimpleMail	SimpleMail (mail) 0.45; NList(tree), TextEditor, BetterString, TheBar, Popplaceholder, expat
+newscoaster	mui3	newscoaster	comm/news/newscoaster.lha	NewsCoaster	NewsCoaster	60		NewsCoaster (news) 1.61; Toolbar 15.6, NListtree, NFloattext, TextEditor; first-run user window; start-up requesters to answer
+ibrowse25	mui3	ibrowse25	https://www.ibrowse-dev.net/resources/IBrowse2.5.9-020%2B.lha	IBrowse2.5.9-020+	IBrowse	90		IBrowse (web) 2.5.9 (68020); NList family, Newstring, StringHistory, TextHistory, IBCacheBrowser, big windows; start-up requesters to answer
+amirc	mui3	amirc	comm/irc/amirc_362_68000.lha	AmIRC-68000	AmIRC	60		AmIRC (IRC) 3.6.2 (68000); Listtree, NListtree, Textinput, Popplaceholder, Busy, CManager.library
+wookiechat	mui3	wookiechat	comm/irc/WookieChat2.11_OS3.lha	WookieChat2.11_OS3_Installer	WookieChat_OS3	60		WookieChat (IRC) 2.11; NList, NListtree, BetterString, NBalance, NBitmap; server window; quit asks for confirmation
+amtelnet	mui3	amtelnet	comm/tcp/amtelnet.lha	AmTelnet-II-24	AmTelnet	60		AmTelnet II (telnet/SSH) 2.4; Term.mcc, Textinput, Popplaceholder; demo requester; starts again from RAM: (run from RAM:); start-up requesters to answer
+scout	mui3	scout	util/moni/Scout_os3.lha	Scout	Scout.os3	60		Scout (system monitor) 3.6; NList, NListtree, Urltext
+muibase	mui3	muibase	https://downloads.sourceforge.net/project/beebase/muibase/MUIbase-4.5/MUIbase-4.5.lha	MUIbase	MUIbase-m68k-amigaos	90		MUIbase (database) 4.5; NList, BetterString, TextEditor, a 1.3 MB program
+homebank	mui3	homebank	biz/misc/HomeBank.lha	HomeBank	HomeBank	60		HomeBank (accounts) 3.1; NList, NListtree, BetterString
+cmanager	mui3	cmanager	comm/misc/CManager.lha	CManager	CManager	60	^(Contact Manager|Select the directory)	Contact Manager 34.2; TheBar, Urltext, Lamp, Calendar, Textinput, Popplaceholder; an ASL drawer requester on first start; start-up requesters to answer
+ro	mui3	ro	util/dir/RO_V127.lha	RO	Binary/RO,binary	60		RO (file manager) 1.27; Register pages, lists, a "really quit?" MUI requester
+multiren	mui3	multiren	util/misc/MultiRen.lha	MultiRen	MultiRen	60		MultiRen (renamer) 1.71; NList, TextEditor, BetterString, Busy; two windows, preferences; start-up requesters to answer
+archiver	mui3	archiver	util/arc/Archiver.lha	Archiver	Archiver020_fpu	60		Archiver (archive GUI) 2.3.24; big vertical window, a problem requester (no C:Lha)
+annotate	mui3	annotate	text/edit/Annotate_usr.lha	Annotate	Ann.AmigaOS3	60		Annotate (editor) 3.1.1; TextEditor, NListtree, a 620 KB program from 2025
+amigaampprefs	mui3	amigaampprefs	mus/play/AmigaAMP-Prefs.lha	AmigaAMP-Prefs	AmigaAMP-Prefs	40		AmigaAMP-Prefs (player settings) 1.25a; small window, pages; start-up requesters to answer
+viewcsv	mui3	viewcsv	biz/dbase/ViewCSV.lha	ViewCSV	ViewCSV.020	40		ViewCSV (CSV viewer) 1.3; NList with columns, BetterString
+todo	mui3	todo	util/misc/ToDo.lha	ToDo	ToDo	40		ToDo (task list) 1.0 (2026); Register, List, String: plain MUI 3.8 classes, written in 2026
+yam210	mui5	yam210	https://github.com/jens-maus/yam/releases/download/nightly-builds/YAM210dev-20260726-79ed41-AmigaOS3.lha	YAM 2.10dev-20260726	YAM	120		YAM (mail) 2.10dev (2026-07-26 nightly); MUI 3.8+, uses MUI 4 features when there; start-up requesters to answer
+ibrowse30	mui5	ibrowse30	https://www.ibrowse-dev.net/resources/IBrowse3.0a-OS3.lha	IBrowse3.0-OS3	IBrowse	90		IBrowse (web) 3.0a; MUI 3.8, recommends 3.9+; start-up requesters to answer
+dizzytorrent	mui5	dizzytorrent	comm/tcp/dizzytorrent2.lha	dizzytorrent2.22	DizzyTorrent	60		DizzyTorrent (BitTorrent) 2.22; MUI 3.9+, 68020, 8 MB fast
+amigagpt	mui5	amigagpt	util/misc/AmigaGPT.lha	AmigaGPT/AmigaGPT	AmigaGPT_OS3	90		AmigaGPT (AI chat) 3.4.0; MUI 3, "MUI 5 recommended for all features"; Aboutbox, Guigfx, ActionTextEditor, AudioPlayer. Asks for muimaster.library version 19 (2026-11-12), so under Automatic it is a MUI 3.8 program on OpenMUI (590x255) and a MUI 5 one on MUI 5 (576x230): its line in "Behave as" would give it MUI 5
+mqttexplorer	mui5	mqttexplorer	comm/net/MQTTExplorer.lha	MQTTExplorer	MqttExplorer	40		MQTTExplorer 0.3; MUI 3.8+/4.x, Listtree
+mui5-aboutbox	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Aboutbox	30		MUI 5's own demos that MUI 3.8 does not have: Aboutbox, Animals, Calltips, Class4, Clock, ElidedText, EmbeddedImages, GIFAnim, Hyperlink, LayGroup, List1, MenuImages, Pointers, Textdata, Title MUI 5.0-20210831; MUI 5 classes and features: Aboutbox, Calltips, Clock, Hyperlink, LayGroup, GIFAnim, Process, Pixmap/Rawimage (bzip2, Z), elided text, editable and sortable lists, menu images, pointer types, Textdata, Title (draggable tabs)
+mui5-animals	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Animals	30		MUI 5 demo Animals from MUI 5.0-20210831
+mui5-calltips	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Calltips	30		MUI 5 demo Calltips from MUI 5.0-20210831
+mui5-class4	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Class4	30		MUI 5 demo Class4 from MUI 5.0-20210831
+mui5-clock	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Clock	30		MUI 5 demo Clock from MUI 5.0-20210831
+mui5-elidedtext	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	ElidedText	30		MUI 5 demo ElidedText from MUI 5.0-20210831
+mui5-embeddedimages	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	EmbeddedImages	150	^Embedded images	MUI 5 demo EmbeddedImages from MUI 5.0-20210831
+mui5-gifanim	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	GIFAnim	30		MUI 5 demo GIFAnim from MUI 5.0-20210831
+mui5-hyperlink	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Hyperlink	30		MUI 5 demo Hyperlink from MUI 5.0-20210831
+mui5-laygroup	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	LayGroup	30		MUI 5 demo LayGroup from MUI 5.0-20210831
+mui5-list1	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	List1	30		MUI 5 demo List1 from MUI 5.0-20210831
+mui5-menuimages	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	MenuImages	30		MUI 5 demo MenuImages from MUI 5.0-20210831
+mui5-pointers	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Pointers	30		MUI 5 demo Pointers from MUI 5.0-20210831
+mui5-textdata	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Textdata	30		MUI 5 demo Textdata from MUI 5.0-20210831
+mui5-title	mui5	mui5	https://github.com/amiga-mui/muidev/releases/download/MUI-5.0-20210831/MUI-5.0-20210831-os3.lha	MUI/Demos	Title	30		MUI 5 demo Title from MUI 5.0-20210831
+passpocket	mui5	passpocket	util/misc/PassPocket.lha	PassPocket/PassPocket OS3	PassPocket	40		PassPocket (passwords) 1.1; MUI 3.9+ (resets MUI 3.8 at quit), 68020, TextEditor
+ticklish	mui5	ticklish	util/misc/Ticklish_m68k.lha	Ticklish	Ticklish	60		Ticklish (to-do list, made with Hollywood) 1.1.1; MUI 3.8, MUI 5 for button icons; on the AGA test machines it stops at "Error allocating bitmap!" on every target
+tabgroup-demo	mui5	tabgroup	dev/mui/MCC_TabGroup.lha	MCC_TabGroup/Demos	TabGroup-Demo	30		TabGroup demo MCC_TabGroup 19.2 (2026); TabGroup.mcc: a Register subclass with draggable tabs; MUI 3.8+
+lumizip	mui5	lumizip	util/arc/LumiZip.lha	LumiZip	LumiZip	40		LumiZip (7-Zip archiver) 1.0 (2026); MUI 3.8+, NList, TheBar, codesets; asks for muimaster v11
+voyager	mui3	voyager	comm/www/Voyager-3.5.3-AmigaOS.lha	Voyager	V	90		Voyager (web) 3.5.3 (2026-11-03); Textinput, Popplaceholder, SpeedBar, TearOff, CManager; a toolbar with its own images, [1] Voyager · About Voyager; resets the machine when quit by its close gadget on OpenMUI (below; 2026-11-12: a clear into the page bitmap its own quit routine freed, by its own task; memcheck/gfxwatch/chipwatch in tests/lean/memtally; open)
+evenmore	mui3	evenmore	text/show/EvenMore.lha	EvenMore	EvenMore	40		EvenMore (text viewer) 0.94; BetterString, plugins
+igame	mui3	igame	util/misc/iGame.lha	iGame-v2.6.1	iGame	60		iGame (WHDLoad front-end) 2.6.1 (2026); NList, lists with columns, a filter string
+yam29	mui3	yam29	comm/yam/YAM29p1-AmigaOS3.lha	YAM 2.9p1	YAM	120		YAM (mail) 2.9p1; the YAM between 2.5 and 2.10: NList, TextEditor, TheBar, codesets; its configuration window; start-up requesters to answer
+amigg	mui3	amigg	comm/misc/amigg.lha	AmiGG	AmiGG_m68k	60		AmiGG (instant messenger) 0.43.114; TextEditor, NList; a "graphics resolver" window; it does not end at quit on any target
+freeciv	mui3	freeciv	game/strat/freeciv.lha	Freeciv	civclient	90		Freeciv client 1.17; ends at once on every target (wants its server)
+apdf	mui3	apdf	gfx/show/Apdf_nofpu.lha	Apdf	Apdf	60		Apdf (PDF viewer) 1.3 (020, no FPU); an ASL "Open..." requester first
+mcpprefs	mui3	mcp	util/cdity/MCP130.lha	MCP	Prefs/MCPPrefs	60		MCP's preferences 1.30; a MUI 2-era prefs program with many pages (reqtools, mcpgfx.library from the archive)
+screentabprefs	mui3	screentab	util/cdity/ScreenTab_3_2.lha	ScreenTab	Prefs/ScreenTabPrefs	40		ScreenTab's preferences 3.2; no window on any target (wants ScreenTab running)
+tinymeterprefs	mui3	tinymeter	util/wb/Tinymeter_V431.lha	TinyMeter	Prefs/TinyMeter	40		TinyMeter's preferences 4.31; Register pages, a bitmap logo; 549x237 against MUI 3.8's 553x250, 553x239 since the root object keeps its frame (2026-11-12; the rest is its default height)
+newsrog	mui3	newsrog	comm/news/NewsRogDemo.lha	NewsRog	NewsRog	90		NewsRog (news) demo 1.7b; its own 30 MCCs in PROGDIR:MUI; a first-start window 272x166 against 280x170
+md2	mui3	md2	comm/news/md2_14.lha	MicroDot-II-14	MicroDot	90		MicroDot-II (mail/news) 1.4; Textinput, Listtree, CManager; asks for its database drawer (MUI_AslRequest); does not end at quit on OpenMUI and MUI 3.8, ends at once on MUI 5
+amplifier	mui3	amplifier	mus/play/AMPlifier.lha	amplifier	AMPlifier	60		AMPlifier (audio player) 2.10; a skinned player window with MUI gadgets
+makecd	mui3	makecd	disk/cdrom/MakeCD_3.2d.lha	MakeCD_3.2d	MakeCD	60		MakeCD (CD writing) 3.2d; a big main window, many pages
+ahiprefs	mui3	ahiusr	driver/audio/ahiusr_4.18.lha	AHI/User	Prefs/AHI_MUI	40		AHI's MUI preferences 4.18; Prefs/AHI_MUI with ahi.device from the same archive (hook pre_host_ahiprefs); reset the MUI 3.8 machine once; needs files from elsewhere in the archive
+fiasco	mui3	fiasco	biz/dbase/Fiasco_main.lha	Fiasco_2.22	Fiasco	60		Fiasco (database) 2.22; gtlayout.library from the archive; does not end at quit on any target
+amster	mui3	amster	comm/tcp/Amster-main.lha	Amster_Install	Amster	60		Amster (Napster client) 0.8a; NList, Textinput, Lamp; a configuration window and the main window
+beebase	mui3	beebase	biz/dbase/BeeBase-1.2.lha	BeeBase	BeeBase-m68k-amigaos	120		BeeBase (database, MUIbase's successor) 1.2 (2025); the 1.3 MB m68k program; froze MUI 5 at quit once
+amimodradio	mui3	amimodradio	mus/play/AmiModRadio.lha	AmiModRadio	AmiModRadio_MUI	90		AmiModRadio (module player from the net) 1.2 (2025); its MUI front end AmiModRadio_MUI
+dmodp	mui3	dmodp	mus/play/DMODP35b.lha	DASModPlayer	DASModPlayer	60		D.A.S. ModulePlayer 3.5b; a MUI 2.2 program: ends at once on every target
+amfinger	mui3	amfinger	comm/tcp/AmFinger1.5.lha		AmFinger	40		AmFinger 1.5; Term and Busy from its own mui drawer
+abacus	mui3	abacus	game/board/abacus220.lha	Abacus	Abacus	40		Abacus (board game) 2.20; a MUI 3.6 game: images, a "Quit Abacus now?" requester whose buttons have no key letters (the suite presses Return now)
+address	mui3	address	biz/dbase/Address.lha	Address	Bin/Address	40		Address (address book) 1.0; a small list window
+rqchoicemui	mui3	rqchoicemui	util/sys/2b_RqChoiceMUI.lha	RequestChoiceMUI_1.1	RequestChoiceMUI Suite "A question for the suite?" Yes	30		RequestChoiceMUI 1.1; MUI_Request from a shell command (TITLE/A,BODY/A,GADGETS/A)
+assampler	mui3	assampler	mus/edit/Assampler.lha	Assampler	Assampler	60		Assampler (sound processor) 0.99; ends at once on every target (wants AHI)
+cyclone	mui3	cyclone	comm/fido/Cyclone125c.lha	Cyclone_125	Bin020/Cyclone	60		Cyclone (Fido point) 1.25c; its 68020 build, a first-start window
+amigamark	mui3	amigamark	util/moni/AmigaMARK-amigaos3.lha	AmigaMARK	AmigaMARK	60		AmigaMARK (benchmark) 1.1; ends at once on every target
+ali	mui3	ali	comm/irc/ALI-amigaos3.lha	ALI	ALI	40		ALI (AmIRC log inspector) 2.2; ends at once on every target
+lumiamp	mui3	lumiamp	mus/play/LumiAMP.lha	LumiAMP	LumiAMP	60		LumiAMP (audio player) 0.5 (2026); NList; 408x103
+lumipass	mui3	lumipass	util/crypt/LumiPass.lha	LumiPass	LumiPass	90		LumiPass (passwords) 1.5 (2026); NList, NListtree, BetterString, TextEditor, TheBar; 556 wide against MUI 3.8's 552
+lumitorrent	mui3	lumitorrent	comm/net/LumiTorrent.lha	LumiTorrent	LumiTorrent	60		LumiTorrent (BitTorrent) 1.0 (2026); NList, TheBar; 556 against 552
+lumiftp	mui3	lumiftp	comm/tcp/LumiFTP.lha	LumiFTP	LumiFTP	60		LumiFTP (FTP/SFTP) 1.3 (2026); opens its window without AmiSSL; 556 against 552
+tunefinder	mui3	tunefinder	comm/misc/TuneFinderMUI.lha	TuneFinderMUI	TuneFinderMUI	40		TuneFinderMUI (net radio) 1.0 beta (2026); a list and strings
+u64ctl	mui3	u64ctl	comm/misc/u64ctl.lha	u64	u64mui	40		u64mui (Ultimate64 control) 0.5.0 (2026); 500x226 against MUI 3.8's 500x218
+amifritzi	mui3	amifritzi	comm/tcp/AmiFritzi.lha	AmiFritzi	AmiFritzi	40		AmiFritzi (FRITZ!Box) 0.5 (2026); a settings window first
+nfsgui	mui3	nfsgui	comm/net/NFS-GUI.lha	NFS-GUI	NFS-GUI	40		NFS-GUI (nfs-handler GUI) 1.1 (2026); fixed 2026-11-12 (Register's frame spacing in the fitting stages: the window did not fit 640x256 by 3 pixels; 446x256 as on MUI 3.8 now)
+ami2ha	mui3	ami2ha	comm/tcp/ami2ha-0.5.lha	ami2ha	ami2ha.020	40		ami2ha (Home Assistant) 0.5 (2026); its 020 build ends at once on every target (wants a configuration)
+amihomeassist	mui3	amihomeassist	comm/tcp/AmiHomeassist.lha	AmiHomeassist	AmiHomeassist	40		AmiHomeassist 0.9.1 (2026); NList; a settings window and the dashboard
+amiatari2600	mui3	amiatari2600	misc/emu/AmiAtari2600.lha	AmiAtari2600	AmiAtari2600	40		AmiAtari2600's launcher 0.1 (2026); a list of games
+amipg	mui3	amipg	mus/midi/AmiPG_MUI.lha	AmiPG	AmiPG_MUI	40		AmiPG (Roland synth editor) 17.340 (2026); ends at once on OpenMUI and MUI 3.8 (OS 3.1), opens on MUI 5 (OS 3.2.1)
+xsysinfo	mui3	xsysinfo	util/moni/xSysInfo.lha	xSysInfo-0.12.0	xSysInfo MUI	40		xSysInfo (system information) 0.12.0 (2026); xSysInfo MUI with identify.library from the archive
+kompensator	mui3	kompensator	util/batch/Kompensator.lha	Kompensator	Kompensator	40		Kompensator (startup editor) 2.1 (2026); lists and strings
+rsgui	mui3	rsgui	comm/net/RSGUI.lha	rsGUI	RSGUI	40		RSGUI (Roadshow settings) 1.2 (2026); opens without Roadshow
+layview	mui3	layview	misc/sci/LayView.lha	LayView	LayView	40		LayView (PCB viewer) 1.1 (2026); an FPU program (68882 on the test machines)
+3doc	mui3	3doc	gfx/3d/3doc-m68k-amigaos_v1.90.lha	3dconverter	3dconverter	90		3D Object Converter 1.90 (2026); a 6 MB program; ends at once on every target
+aminetuploader	mui3	aminetuploader	util/misc/AminetUploader.lha	Aminet-Uploader	Aminet-Uploader-MUI	40		Aminet-Uploader (MUI) 1.0 (2026); no window on any target within 40 s
+jmri	mui3	jmri	misc/misc/JMRIController.lha	JMRIController	JMRIController	40		JMRIController (model trains) 0.92 (2026); a MUI 3.1 program
+amidrop	mui3	amidrop	comm/net/AmiDrop_MUI.lha	AmiDrop_MUI	Setup/AmiDrop_MUI	40		AmiDrop (MUI version) 1.1 (2026); Setup/AmiDrop_MUI; MUI 3.8's run did not end at quit once
+netsurf	mui3	netsurf	comm/www/netsurf-m68k.lha	NetSurf	NetSurf	120		NetSurf 3.6 (2016); CSS web browser; ends at once on both (needs more than the test machine gives: it says so on a console)
+haracz	mui3	haracz	comm/misc/2b_Haracz.lha	Haracz	Haracz	40		Haracz 2.24; internet fee calculator (MonthNavigator); freezes the MUI 3.8 test machine inside the suite's quit (left out of the MUI 3.8 baseline run)
+amifish	mui3	amifish	comm/tcp/amifish.lha	amifish	amifish	40		amifish 1.122; babelfish front end; ends at once (no TCP stack)
+albin	mui3	albin	biz/dbase/Albin_free.lha		AlbIn_MUI	40		AlbIn 1.09; music database
+amichess	mui3	amichess	game/board/AmiChess.lha	AmiChess	AmiChess68k	90		AmiChess 2.0; chess (GNUChess); froze the OpenMUI machine once in the suite's quit
+aminetchess	mui3	aminetchess	game/2play/AmiNetChess.lha	aminetchess	AmiNetChess	60		AmiNetChess 0.9; network chess (its own chess.pmcc)
+animmaker	mui3	animmaker	gfx/edit/BF_AnimMaker.lha	AnimMaker	AnimMaker	40		AnimMaker alpha -20; vector animation editor
+dpoker	mui3	dpoker	game/wb/DPoker_v1.0b.lha	DPoker	DPoker	40		DPoker 1.0b; poker
+monkeyclock	mui3	monkeyclock	util/time/MonkeyClock.lha	MonkeyClockV1.1	MonkeyClock	40		MonkeyClock 1.1; clock
+scaleicon	mui3	scaleicon	gfx/misc/ScaleIcon.lha	scaleicon	ScaleIcon	40		ScaleIcon 1993; scales Workbench icons
+voodoox	mui3	voodoox	util/arc/Voodoo-X.lha	Voodoo-X	Voodoo-X	60		Voodoo-X 1.5; archiver front end (XAD)
+amiplexamp	mui3	amiplexamp	mus/play/AmiPlexAmp.lha	AmiPlexAmp	AmiPlexAmp	60		AmiPlexAmp 0.70 (2026-10); Plex audio client
+amifleet	mui3	amifleet	comm/net/amifleet68-0.5.0.lha	amifleet68	amifleet68	60		amifleet68 0.5.0 (2026-10); console for Amigas running amiagent
+ilona	mui3	ilona	comm/irc/Ilona.lha	Ilona/Ilona	Ilona	40		Ilona 1.3; IRC bot with a MUI window
+amimdc800	mui3	amimdc800	gfx/misc/amimdc800.lha		AmiMDC800	40		AmiMDC800 1.71; Mustek camera control (ImageButton, InfoText, Toolbar, Lamp from its own libs/mui)
+pvtree	mui3	pvtree	util/wb/PVTree1_2.lha	pvtree	PVTreeMUI	40		PVTreeMUI 1.2; disk tree viewer
+datestring-demo	mcc	datestring	dev/mui/MCC_DateString.lha	MCC_DateString/Demos	DateString-Demo	30		DateString, TimeString 12.3, 12.5; same (date.library from the archives)
+datetext-demo	mcc	datetext	dev/mui/MCC_DateText.lha	MCC_DateText/Demos	DateText-Demo	30		DateText 12.0; date text
+envelope-demo	mcc	envelope	dev/mui/MCC_Envelope.lha	MCC_Envelope/Demos	Envelope-Demo	30		Envelope 14.1; no window everywhere
+hotkeystr-demo	mcc	hotkeystr	dev/mui/MCC_HotkeyStr.lha	MCC_HotkeyString/AmigaOS-68k/Demos	HotkeyStringTest	30		HotkeyString 2.x; the test program; the suite's HotkeyString.mcc (BetterString 11.36) serves it
+mimeeditor-demo	mcc	mimeeditor	dev/mui/MCC_MimeEditor.lha	MCC_MimeEditor1_4/Demos	MimeEditor-demo	30		MimeEditor 1.4; MIME types editor
+readargs-demo	mcc	readargsgroup	dev/mui/MCC_Readargsgr.lha	Readargsgroup/demos	ReadArgsGUI	30		Readargsgroup 1998; a GUI from a ReadArgs template
+setwin-demo	mcc	settingswindow	dev/mui/MCC_SettingsWi.lha	MCC_SettingsWindow/Demos	SettingsWindow-Demo	30		SettingsWindow 1.00; settings window
+timetext-demo	mcc	timetext	dev/mui/MCC_TimeText.lha	MCC_TimeText/Demos	TimeText-Demo	30		TimeText 12.1; time text
+tron-demo	mcc	tron	dev/mui/MCC_Tron0_8.lha	MCC_Tron/Demos	Tron-Demo	30		Tron (MUI 3.8's example class) 3.8; ends at once everywhere (its Tron.mcc is not installed)
+imagebutton-demo	mcc	imagebutton	dev/mui/MCC_ImageButto.lha	inner/MCC_ImageButton/Demos	ImageButton-Demo	30		ImageButton 11.2; image button; archive holds an lzh: unpack it into x/inner
+bbalance-demo	mcc	betterbalance	dev/mui/MCC_BetterBala.lha	inner/MCC_BetterBalance/Demos	BetterBalance-Demo	30		BetterBalance 11.1; balance object; archive holds an lzh: unpack it into x/inner
+htmlview-demo	mcc	htmlview	dev/mui/MCC_HTMLview-13.4.lha	MCC_HTMLview/Demos	HTMLview-Demo	30	^HTMLview	HTMLview 13.4; a time-bombed beta: a system requester first (answered by the hook), then the demo; start-up requesters to answer
+toolbar-demo	mcc	toolbar	dev/mui/mcc_toolbar-15.12.lha	MCC_Toolbar/Demos	Toolbar-Demo	30		Toolbar 15.12's demo on 15.6; buttons from a brush
+lamp-demo	mcc	lamp	dev/mui/MCC_Lamp.lha	MCC_Lamp/Demos	Lamp-Demo	30		Lamp 11.1's demo; Lamp with Coloradjust and Register pages; 338x219 on OpenMUI against 640x256 on MUI 3.8 until 2026-11-12; Coloradjust is MUI 3.8's 60x84/126x84 since (plain labels, the popup under the gradient slider; tests/lean/probe/labels.c)
+speedbar-demo1	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo1	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+speedbar-demo2	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo2	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+speedbar-demo3	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo3	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+speedbar-demo4	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo4	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+speedbar-demo5	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo5	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+speedbar-demo6	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo6	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+speedbar-demo7	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo7	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+speedbar-demo8	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo8	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+speedbar-demo9	mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/Demos	demo9	30		SpeedBar, SpeedButton, SpeedBarCfg, SpeedBarVirt 19.4; nine toolbar demos; demo6 1 px wider on OpenMUI
+bwin-demo1	mcc	bwin	dev/mui/MCC_BWin.lha	MCC_BWin/Demos	demo1	30		BWin 22.0; borderless windows with their own drag bar (Boopsi gadgets); demo1 and demo3 opened no window on OpenMUI, fixed; demo2 resets every target
+bwin-demo2	mcc	bwin	dev/mui/MCC_BWin.lha	MCC_BWin/Demos	demo2	30		BWin 22.0; borderless windows with their own drag bar (Boopsi gadgets); demo1 and demo3 opened no window on OpenMUI, fixed; demo2 resets every target
+bwin-demo3	mcc	bwin	dev/mui/MCC_BWin.lha	MCC_BWin/Demos	demo3	30		BWin 22.0; borderless windows with their own drag bar (Boopsi gadgets); demo1 and demo3 opened no window on OpenMUI, fixed; demo2 resets every target
+calendar-demo1	mcc	calendar	dev/mui/MCC_Calendar.lha	MCC_Calendar/Demos	demo1	30		Calendar 18.3's demos; demo4 ends at once everywhere
+calendar-demo2	mcc	calendar	dev/mui/MCC_Calendar.lha	MCC_Calendar/Demos	demo2	30		Calendar 18.3's demos; demo4 ends at once everywhere
+calendar-demo3	mcc	calendar	dev/mui/MCC_Calendar.lha	MCC_Calendar/Demos	demo3	30		Calendar 18.3's demos; demo4 ends at once everywhere
+calendar-demo4	mcc	calendar	dev/mui/MCC_Calendar.lha	MCC_Calendar/Demos	demo4	30		Calendar 18.3's demos; demo4 ends at once everywhere
+monthnavi-demo	mcc	monthnavi	dev/mui/MCC_MonthNavi.lha	MCC_MonthNavigator/Demos	MonthNavigator-Demo	30		MonthNavigator 16.8; no window everywhere (date.library?)
+busy-demo	mcc	busy24	dev/mui/MCC_Busy2_4.lha	MCC_Busy/Demos	Busy-Demo	30		Busy 2.4's demo; three Busy bars: thinner and smaller on OpenMUI's own Busy.mcc (136x130 against MUI 3.8's 148x151)
+hexedit-demo	mcc	hexedit	dev/mui/MCC_HexEdit.lha	MCC_HexEdit/Demos	HexEdit-Demo	30		HexEdit 14.0; 230 wide against 237
+twfmultiled-demo	mcc	twfmultiled	dev/mui/MCC_TWFmultiLE.lha	MCC_TWFmultiLED/Demos	TWFmultiLED-demo	30		TWFmultiLED 12.6; no window everywhere
+tearoff-demo	mcc	tearoff	dev/mui/MCC_TearOff.lha	MCC_TearOff/demo	TearOffDemo	30		TearOffPanel, TearOffBay, CompactWindow 13.0; "Second TearOff Demo" 326 wide against 256
+compactwin-demo	mcc	compactwin	dev/mui/MCC_CompactWin.lha	MCC_CompactWindow/demo	CompactWindowDemo	30		CompactWindow 12.5; ends at once everywhere
+tablegroup-demo	mcc	tablegroup	dev/mui/MCC_TableGroup.lha	MCC_TableGroup/Demos	MCCTableDemo	30		TableGroup 1.0 beta; 278x142 against 286x151
+mailtext-demo	mcc	mailtext	dev/mui/MCC_Mailtext.lha	MCC_Mailtext/Demos	Mailtext-Demo	30		Mailtext 3.1; same
+mathstring-demo	mcc	mathstring	dev/mui/MCC_MathString.lha	MCC_MathString/Demos	MathString-Demo	30		MathString 1.5; same
+tipofday-demo	mcc	tipofday	dev/mui/MCC_TipOfDay.lha	MCC_TipOfDay/Demos	tip_demo	30		tipboard, tipwindow 15.8; the tip window; the custom title shows since 2026-11-12 (Window's OM_GET stored 0 for tipwindow's MUIA_Tip_WindowObject), its list scroller gone since 2026-11-12 (a List on its own has none on MUI 3.8; the window min 365x121 on both)
+transferanim-demo	mcc	transferanim	dev/mui/MCC_TransferAn.lha	mcc_transferanim/demos	TransferAnim-Demo	30		TransferAnim 1.5; no window everywhere (imagepool.library)
+minimailer-demo	mcc	minimailer	dev/mui/MCC_MiniMailer.lha	MCC_MiniMailer/Demos	demo	30		MiniMailer 20.1; same
+htmltext-demo	mcc	htmltext	dev/mui/MCC_HTMLtext.lha	MCC_HTMLtext/Demos	HTMLtext-DEMO	30		HTMLtext 14.8; an untitled 85x71 window against 143x83 (and 1 = did not end at quit, everywhere); 2026-11-12: HTMLtext's own layout hook reports a measured 54x12/max 58 on OpenMUI and its fixed 28x24/no maximum on MUI 3.8 at MUILM_MINMAX, the scrollers in the window border (tests/lean/probe/virtsize.c: a Virtgroup with a hook measures the same on both)
+settingswindow-demo	mcc	settingswindow	dev/mui/MCC_SettingsWi.lha	MCC_SettingsWindow/Demos	SettingsWindow-Demo	30		SettingsWindow 1.01; no window everywhere
+mysticview-demo	mcc	mysticview	dev/mui/MCC_MysticView.lha	mcc_mysticview/demos	MysticView-Demo	30		MysticView 13.1; ends at once everywhere (wants a picture)
+icon-demo	mcc	iconmcc	dev/mui/MCCIcon_1_1.lha	MCC_Icon/Demos	Icon-Demo	30		Icon 1.1; same
+timestring-demo	mcc	timestring	dev/mui/MCC_TimeString.lha	MCC_TimeString/Demos	TimeString-Demo	30		DateString, TimeString 12.3, 12.5; same (date.library from the archives)
+pkb-demo	mcc	pkb	dev/mui/MCC_Pkb14_6.lha	MCC_Pkb/Demos	Pkb-Demo	30		Pkb (piano keyboard) 14.6; same
+wheel-demo	mcc	wheel	dev/mui/MCC_Wheel.lha	MCC_Wheel/Demos	Wheel-Demo	30		Wheel 1.0 beta; same (MUI 3.8 froze at its quit once)
+hotkeystring-test	mcc	hotkeystring	dev/mui/MCC_HotkeyStr.lha	MCC_HotkeyString/AmigaOS-68k/Demos	HotkeyStringTest	30		HotkeyString 12.1's test on 11.36; no window everywhere
+popph-demo	mcc	popph	dev/mui/MCC_Popph.lha	MCC_Popph/Demos	popph_demo	30		Popplaceholder 15.5; same
+urltext-demo	mcc	urltext	dev/mui/MCC_Urltext.lha	MCC_Urltext/Demos	Urltext	30		Urltext 19.7; same
+guigfx-demo	mcc	guigfxmcc	dev/mui/MCC_Guigfx.lha	MCC_Guigfx/Demos	Guigfx-Demo	30		Guigfx 19.2; ends at once on OpenMUI and MUI 3.8 (OS 3.1: no PNG datatype for its Test.PNG), opens on MUI 5 (OS 3.2.1)
+laygroup-demo	mcc	laygroup	dev/mui/MCC_LayGroup-19.2.lha	MCC_LayGroup-19.2/Demos	LayGroup-Demo	30		LayGroup 19.2; same
+gifanim-demo	mcc	gifanim	dev/mui/MCC_GIFAnim.lha	MCC_GIFAnim/Demos	demo	30		GIFAnim 19.5; 424 wide against 400
+nbitmap-demo	mcc	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Demos/AmigaOS3	NBitmap-Demo	30		NBitmap 0.128; ends at once on OpenMUI and MUI 3.8 (its icon.png: no PNG datatype on OS 3.1); reset MUI 5 once
+nlist102-demo	mcc	nlist102	dev/mui/MCC_NList-0.102_68k.lha	demo	NList-Demo	30		NList 0.102's demo on 0.128 0.102; an old demo on the new class: same

@@ -1,0 +1,132 @@
+# kind	name	key	archive	path
+class	UP-Balance.mcc	upmcc		UP-MCC/Libs/mui/UP-Balance.mcc
+class	UP-Button.mcc	upmcc		UP-MCC/Libs/mui/UP-Button.mcc
+class	UP-Cycle.mcc	upmcc		UP-MCC/Libs/mui/UP-Cycle.mcc
+class	UP-Field.mcc	upmcc		UP-MCC/Libs/mui/UP-Field.mcc
+class	UP-List.mcc	upmcc		UP-MCC/Libs/mui/UP-List.mcc
+class	UP-Panel.mcc	upmcc		UP-MCC/Libs/mui/UP-Panel.mcc
+class	UP-Progress.mcc	upmcc		UP-MCC/Libs/mui/UP-Progress.mcc
+class	UP-Scroller.mcc	upmcc		UP-MCC/Libs/mui/UP-Scroller.mcc
+class	UP-Slider.mcc	upmcc		UP-MCC/Libs/mui/UP-Slider.mcc
+class	UP-Tabs.mcc	upmcc		UP-MCC/Libs/mui/UP-Tabs.mcc
+class	UP-Text.mcc	upmcc		UP-MCC/Libs/mui/UP-Text.mcc
+class	UP-MCC.mcp	upmcc		UP-MCC/Libs/mui/UP-MCC.mcp
+class	NBalance.mcc	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Libs/MUI/AmigaOS3/NBalance.mcc
+class	NBitmap.mcc	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Libs/MUI/AmigaOS3/NBitmap.mcc
+class	NFloattext.mcc	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Libs/MUI/AmigaOS3/NFloattext.mcc
+class	NList.mcc	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Libs/MUI/AmigaOS3/NList.mcc
+class	NListtree.mcc	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Libs/MUI/AmigaOS3/NListtree.mcc
+class	NListtree.mcp	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Libs/MUI/AmigaOS3/NListtree.mcp
+class	NListview.mcc	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Libs/MUI/AmigaOS3/NListview.mcc
+class	NListviews.mcp	nlist	dev/mui/MCC_NList-0.128.lha	MCC_NList/Libs/MUI/AmigaOS3/NListviews.mcp
+class	TextEditor.mcc	texteditor	dev/mui/MCC_TextEditor-15.56.lha	MCC_TextEditor/Libs/MUI/AmigaOS3/TextEditor.mcc
+class	TextEditor.mcp	texteditor	dev/mui/MCC_TextEditor-15.56.lha	MCC_TextEditor/Libs/MUI/AmigaOS3/TextEditor.mcp
+class	BetterString.mcc	betterstring	dev/mui/MCC_BetterString-11.36.lha	MCC_BetterString/Libs/MUI/AmigaOS3/BetterString.mcc
+class	BetterString.mcp	betterstring	dev/mui/MCC_BetterString-11.36.lha	MCC_BetterString/Libs/MUI/AmigaOS3/BetterString.mcp
+class	HotkeyString.mcc	betterstring	dev/mui/MCC_BetterString-11.36.lha	MCC_BetterString/Libs/MUI/AmigaOS3/HotkeyString.mcc
+class	TheBar.mcc	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Libs/MUI/AmigaOS3/TheBar.mcc
+class	TheBar.mcp	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Libs/MUI/AmigaOS3/TheBar.mcp
+class	TheBarVirt.mcc	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Libs/MUI/AmigaOS3/TheBarVirt.mcc
+class	TheButton.mcc	thebar	dev/mui/MCC_TheBar-26.22.lha	MCC_TheBar/Libs/MUI/AmigaOS3/TheButton.mcc
+class	Toolbar.mcc	newscoaster	comm/news/newscoaster.lha	NewsCoaster/MUI/Toolbar.mcc
+class	Toolbar.mcp	newscoaster	comm/news/newscoaster.lha	NewsCoaster/MUI/Toolbar.mcp
+class	InfoText.mcc	newscoaster	comm/news/newscoaster.lha	NewsCoaster/MUI/InfoText.mcc
+class	Textinput.mcc	textinput	dev/mui/MCC_TextInput.lha	MCC_Textinput/MUI/Textinput.mcc
+class	Textinput.mcp	textinput	dev/mui/MCC_TextInput.lha	MCC_Textinput/MUI/Textinput.mcp
+class	Textinputscroll.mcc	textinput	dev/mui/MCC_TextInput.lha	MCC_Textinput/MUI/Textinputscroll.mcc
+class	Popplaceholder.mcc	popph	dev/mui/MCC_Popph.lha	MCC_Popph/Libs/mui/Popplaceholder.mcc
+class	Urltext.mcc	urltext	dev/mui/MCC_Urltext.lha	MCC_Urltext/MUI/Urltext.mcc
+class	Urltext.mcp	urltext	dev/mui/MCC_Urltext.lha	MCC_Urltext/MUI/Urltext.mcp
+class	Busy.mcc	mui38usr	util/libs/mui38usr.lha	MUI/Libs/mui/Busy.mcc
+class	Busy.mcp	mui38usr	util/libs/mui38usr.lha	MUI/Libs/mui/Busy.mcp
+class	Crawling.mcc	mui38usr	util/libs/mui38usr.lha	MUI/Libs/mui/Crawling.mcc
+class	Listtree.mcc	mui38usr	util/libs/mui38usr.lha	MUI/Libs/mui/Listtree.mcc
+class	Listtree.mcp	mui38usr	util/libs/mui38usr.lha	MUI/Libs/mui/Listtree.mcp
+class	ListtreeName.mcc	mui38usr	util/libs/mui38usr.lha	MUI/Libs/mui/ListtreeName.mcc
+class	Term.mcc	amtelnet	comm/tcp/amtelnet.lha	AmTelnet-II-24/MUI/Term.mcc
+class	Calendar.mcc	cmanager	comm/misc/CManager.lha	CManager/MUI/Calendar.mcc
+class	Calendar.mcp	cmanager	comm/misc/CManager.lha	CManager/MUI/Calendar.mcp
+class	CManager.mcc	cmanager	comm/misc/CManager.lha	CManager/MUI/CManager.mcc
+class	Lamp.mcc	cmanager	comm/misc/CManager.lha	CManager/MUI/lamp.mcc
+class	Lamp.mcp	cmanager	comm/misc/CManager.lha	CManager/MUI/lamp.mcp
+class	MiniMailer.mcc	cmanager	comm/misc/CManager.lha	CManager/MUI/MiniMailer.mcc
+class	Newstring.mcc	ibrowse25	https://www.ibrowse-dev.net/resources/IBrowse2.5.9-020%2B.lha	IBrowse2.5.9-020+/mui/Newstring.mcc
+class	Newstring.mcp	ibrowse25	https://www.ibrowse-dev.net/resources/IBrowse2.5.9-020%2B.lha	IBrowse2.5.9-020+/mui/Newstring.mcp
+class	StringHistory.mcc	ibrowse25	https://www.ibrowse-dev.net/resources/IBrowse2.5.9-020%2B.lha	IBrowse2.5.9-020+/mui/StringHistory.mcc
+class	TextHistory.mcc	ibrowse25	https://www.ibrowse-dev.net/resources/IBrowse2.5.9-020%2B.lha	IBrowse2.5.9-020+/mui/TextHistory.mcc
+class	IBCacheBrowser.mcc	ibrowse25	https://www.ibrowse-dev.net/resources/IBrowse2.5.9-020%2B.lha	IBrowse2.5.9-020+/ibcc/IBCacheBrowser.mcc
+class	Guigfx.mcc	guigfxmcc	dev/mui/MCC_Guigfx.lha	MCC_Guigfx/Libs/MUI/Guigfx.mcc
+class	ActionTextEditor.mcc	amigagpt	util/misc/AmigaGPT.lha	AmigaGPT/MCC/ActionTextEditor_OS3.mcc
+class	AudioPlayer.mcc	amigagpt	util/misc/AmigaGPT.lha	AmigaGPT/MCC/AudioPlayer_OS3.mcc
+class	TabGroup.mcc	tabgroup	dev/mui/MCC_TabGroup.lha	MCC_TabGroup/Libs/MUI/TabGroup.mcc
+class	TabGroup.mcp	tabgroup	dev/mui/MCC_TabGroup.lha	MCC_TabGroup/Libs/MUI/TabGroup.mcp
+class	LayGroup.mcc	laygroup	dev/mui/MCC_LayGroup-19.2.lha	MCC_LayGroup-19.2/Libs/MUI/LayGroup.mcc
+class	LayGroup.mcp	laygroup	dev/mui/MCC_LayGroup-19.2.lha	MCC_LayGroup-19.2/Libs/MUI/LayGroup.mcp
+class	GIFAnim.mcc	gifanim	dev/mui/MCC_GIFAnim.lha	MCC_GIFAnim/MUI/GIFAnim.mcc
+class	HTMLview.mcc	htmlview	dev/mui/MCC_HTMLview-13.4.lha	MCC_HTMLview/Libs/MUI/AmigaOS3/HTMLview.mcc
+class	HTMLview.mcp	htmlview	dev/mui/MCC_HTMLview-13.4.lha	MCC_HTMLview/Libs/MUI/AmigaOS3/HTMLview.mcp
+class	SpeedBar.mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/MUI/SpeedBar.mcc
+class	SpeedBar.mcp	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/MUI/SpeedBar.mcp
+class	SpeedBarCfg.mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/MUI/SpeedBarCfg.mcc
+class	SpeedBarVirt.mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/MUI/SpeedBarVirt.mcc
+class	SpeedButton.mcc	speedbar	dev/mui/MCC_SpeedBar.lha	MCC_SpeedBar/MUI/SpeedButton.mcc
+class	BWin.mcc	bwin	dev/mui/MCC_BWin.lha	MCC_BWin/MUI/BWin.mcc
+class	BWin.mcp	bwin	dev/mui/MCC_BWin.lha	MCC_BWin/MUI/BWin.mcp
+class	MonthNavigator.mcc	monthnavi	dev/mui/MCC_MonthNavi.lha	MCC_MonthNavigator/Libs/mui/MonthNavigator.mcc
+class	MonthNavigator.mcp	monthnavi	dev/mui/MCC_MonthNavi.lha	MCC_MonthNavigator/Libs/mui/MonthNavigator.mcp
+class	HexEdit.mcc	hexedit	dev/mui/MCC_HexEdit.lha	MCC_HexEdit/Libs/MUI/HexEdit.mcc
+class	HexEdit.mcp	hexedit	dev/mui/MCC_HexEdit.lha	MCC_HexEdit/Libs/MUI/HexEdit.mcp
+class	TWFmultiLED.mcc	twfmultiled	dev/mui/MCC_TWFmultiLE.lha	MCC_TWFmultiLED/Libs/mui/TWFmultiLED.mcc
+class	TWFmultiLED.mcp	twfmultiled	dev/mui/MCC_TWFmultiLE.lha	MCC_TWFmultiLED/Libs/mui/TWFmultiLED.mcp
+class	CompactWindow.mcc	tearoff	dev/mui/MCC_TearOff.lha	MCC_TearOff/libs/CompactWindow.mcc
+class	CompactWindow.mcp	tearoff	dev/mui/MCC_TearOff.lha	MCC_TearOff/libs/CompactWindow.mcp
+class	TearOff.mcp	tearoff	dev/mui/MCC_TearOff.lha	MCC_TearOff/libs/TearOff.mcp
+class	TearOffBay.mcc	tearoff	dev/mui/MCC_TearOff.lha	MCC_TearOff/libs/TearOffBay.mcc
+class	TearOffPanel.mcc	tearoff	dev/mui/MCC_TearOff.lha	MCC_TearOff/libs/TearOffPanel.mcc
+class	TableGroup.mcc	tablegroup	dev/mui/MCC_TableGroup.lha	MCC_TableGroup/Libs/mui/TableGroup.mcc
+class	Mailtext.mcc	mailtext	dev/mui/MCC_Mailtext.lha	MCC_Mailtext/Libs/MUI/Mailtext.mcc
+class	Mailtext.mcp	mailtext	dev/mui/MCC_Mailtext.lha	MCC_Mailtext/Libs/MUI/Mailtext.mcp
+class	MathString.mcc	mathstring	dev/mui/MCC_MathString.lha	MCC_MathString/Libs/MUI/MathString.mcc
+class	tipboard.mcc	tipofday	dev/mui/MCC_TipOfDay.lha	MCC_TipOfDay/Libs/mui/tipboard.mcc
+class	tipwindow.mcc	tipofday	dev/mui/MCC_TipOfDay.lha	MCC_TipOfDay/Libs/mui/tipwindow.mcc
+class	TransferAnim.mcc	transferanim	dev/mui/MCC_TransferAn.lha	mcc_transferanim/libs/mui/TransferAnim.mcc
+class	TransferAnim.mcp	transferanim	dev/mui/MCC_TransferAn.lha	mcc_transferanim/libs/mui/TransferAnim.mcp
+class	HTMLtext.mcc	htmltext	dev/mui/MCC_HTMLtext.lha	MCC_HTMLtext/Libs/MUI/HTMLtext.mcc
+class	HTMLtext.mcp	htmltext	dev/mui/MCC_HTMLtext.lha	MCC_HTMLtext/Libs/MUI/HTMLtext.mcp
+class	SettingsWindow.mcc	settingswindow	dev/mui/MCC_SettingsWi.lha	MCC_SettingsWindow/Libs/MUI/SettingsWindow.mcc
+class	MysticView.mcc	mysticview	dev/mui/MCC_MysticView.lha	mcc_mysticview/libs/mui/MysticView.mcc
+class	Icon.mcc	iconmcc	dev/mui/MCCIcon_1_1.lha	MCC_Icon/Libs/MUI/Icon.mcc
+class	DateString.mcc	datestring	dev/mui/MCC_DateString.lha	MCC_DateString/Libs/mui/DateString.mcc
+class	TimeString.mcc	timestring	dev/mui/MCC_TimeString.lha	MCC_TimeString/Libs/mui/TimeString.mcc
+class	Envelope.mcc	envelope	dev/mui/MCC_Envelope.lha	MCC_Envelope/Libs/MUI/Envelope.mcc
+class	Envelope.mcp	envelope	dev/mui/MCC_Envelope.lha	MCC_Envelope/Libs/MUI/Envelope.mcp
+class	Pkb.mcc	pkb	dev/mui/MCC_Pkb14_6.lha	MCC_Pkb/Libs/MUI/Pkb.mcc
+class	Pkb.mcp	pkb	dev/mui/MCC_Pkb14_6.lha	MCC_Pkb/Libs/MUI/Pkb.mcp
+class	Wheel.mcc	wheel	dev/mui/MCC_Wheel.lha	MCC_Wheel/Libs/mui/Wheel.mcc
+class	Wheel.mcp	wheel	dev/mui/MCC_Wheel.lha	MCC_Wheel/Libs/mui/Wheel.mcp
+class	DateText.mcc	datetext	dev/mui/MCC_DateText.lha	MCC_DateText/Libs/mui/DateText.mcc
+class	MimeEditor.mcc	mimeeditor	dev/mui/MCC_MimeEditor.lha	MCC_MimeEditor1_4/Libs/mui/MimeEditor.mcc
+class	Readargsgroup.mcc	readargsgroup	dev/mui/MCC_Readargsgr.lha	Readargsgroup/libs/Readargsgroup.mcc
+class	TimeText.mcc	timetext	dev/mui/MCC_TimeText.lha	MCC_TimeText/Libs/mui/TimeText.mcc
+class	Tron.mcc	tron	dev/mui/MCC_Tron0_8.lha	MCC_Tron/Libs/MUI/Tron.mcc
+class	Tron.mcp	tron	dev/mui/MCC_Tron0_8.lha	MCC_Tron/Libs/MUI/Tron.mcp
+class	ImageButton.mcc	imagebutton	dev/mui/MCC_ImageButto.lha	inner/MCC_ImageButton/Libs/MUI/ImageButton.mcc
+class	BetterBalance.mcc	betterbalance	dev/mui/MCC_BetterBala.lha	inner/MCC_BetterBalance/Libs/MUI/BetterBalance.mcc
+class	ImageDB.mcc	imagedb	dev/mui/MCC_ImageDB.lha	MCC_ImageDB/Libs/ImageDB.mcc
+library	up-mcc.library	upmcc		UP-MCC/Libs/up-mcc.library
+library	codesets.library	codesets	util/libs/codesets-6.22.lha	codesets/Libs/AmigaOS3/codesets.library
+library	vapor_toolkit.library	textinput	dev/mui/MCC_TextInput.lha	MCC_Textinput/Libs/vapor_toolkit.library
+library	vapor_update.library	amtelnet	comm/tcp/amtelnet.lha	AmTelnet-II-24/Libs/vapor_update.library
+library	vapor_registration.library	amtelnet	comm/tcp/amtelnet.lha	AmTelnet-II-24/Libs/vapor_registration.library
+library	CManager.library	cmanager	comm/misc/CManager.lha	CManager/Libs/CManager.library
+library	guigfx.library	guigfxmcc	dev/mui/MCC_Guigfx.lha	MCC_Guigfx/Libs/guigfx.library
+library	render.library	guigfxmcc	dev/mui/MCC_Guigfx.lha	MCC_Guigfx/Libs/render.library
+library	expat.library	simplemail	https://downloads.sourceforge.net/project/simplemail/simplemail/simplemail-0.45/simplemail-0.45-os3.lha	SimpleMail/Libs/expat.library
+library	amitls.library	voyager	comm/www/Voyager-3.5.3-AmigaOS.lha	Voyager/Libs/amitls.library
+library	gtlayout.library	fiasco	biz/dbase/Fiasco_main.lha	Fiasco_2.22/gtlayout.library
+library	identify.library	xsysinfo	util/moni/xSysInfo.lha	xSysInfo-0.12.0/Libs/identify.library
+library	mcpgfx.library	mcp	util/cdity/MCP130.lha	MCP/Libs/mcpgfx.library
+library	reqtools.library	mcp	util/cdity/MCP130.lha	MCP/Libs/reqtools.library
+library	date.library	monthnavi	dev/mui/MCC_MonthNavi.lha	MCC_MonthNavigator/Libs/date.library
+library	imagepool.library	transferanim	dev/mui/MCC_TransferAn.lha	mcc_transferanim/libs/imagepool.library
+library	mysticview.library	mysticview	dev/mui/MCC_MysticView.lha	mcc_mysticview/mysticviewlibrary/libs/mysticview.library
