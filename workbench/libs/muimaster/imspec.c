@@ -890,6 +890,10 @@ static void imspec_draw(struct MUI_ImageSpec_intern *spec,
         D(bug("*** zune_imspec_draw called on null imspec\n"));
         return;
     }
+    /* Nothing to draw in an empty box: OS 3.1's RectFill with its corners
+     * crossed writes outside the rastport. */
+    if (width <= 0 || height <= 0)
+        return;
 
     if ((spec->type == IST_BITMAP && !spec->u.bitmap.dt)
         || (spec->type == IST_BRUSH && !spec->u.brush.dt[0]))
