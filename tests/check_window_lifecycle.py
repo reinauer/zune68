@@ -13,7 +13,7 @@ from check_window_pens import (PenHarness, CLASS, OBJECT, GLOBAL, DATA, SCREEN,
 
 ROOT, WINDOW, RP, FONT = 0x7c000, 0x7d000, 0x7d200, 0x7d400
 TAGS, UTILITY, GADTOOLS = 0x7e000, 0x7b000, 0x7f000
-ROOT_SLOT, FLAGS = DATA + 522, DATA + 526
+ROOT_SLOT, FLAGS = DATA + 526, DATA + 530
 WINDOW_SETUP, WINDOW_CLEANUP = 0x8042c34c, 0x8042ab26
 ROOT_CLEANUP = 0x8042d985
 
@@ -74,9 +74,9 @@ class WindowHarness(PenHarness):
         self.mem.w32(where, tag + 8)
 
     def resources_live(self):
-        assert self.mem.r32(DATA + 4) == SCREEN, 'screen unavailable inside hook'
-        assert self.mem.r32(DATA + 8) == DRAWINFO, 'DrawInfo unavailable inside hook'
-        assert self.mem.r32(DATA + 12), 'pens unavailable inside hook'
+        assert self.mem.r32(DATA + 8) == SCREEN, 'screen unavailable inside hook'
+        assert self.mem.r32(DATA + 12) == DRAWINFO, 'DrawInfo unavailable inside hook'
+        assert self.mem.r32(DATA + 16), 'pens unavailable inside hook'
         assert not self.released, 'pens released before custom cleanup returned'
 
     def make_hook(self, method, name, address):
@@ -142,7 +142,7 @@ def check(path):
                 assert h.mem.r32(FLAGS) & 1
                 h.resources_live()
                 h.opened(0)
-            assert h.mem.r32(DATA + 4) == 0, (mode, 'stale screen')
+            assert h.mem.r32(DATA + 8) == 0, (mode, 'stale screen')
             assert not h.mem.r32(FLAGS) & 1
             if mode in ('no root', 'drawinfo failure'):
                 assert not h.requests and not h.released and not h.events

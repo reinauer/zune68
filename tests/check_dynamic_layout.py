@@ -6,8 +6,9 @@ from check_notifications import NotifyHarness
 from check_class_lifetime import EXEC, INTUITION
 
 CLASS, OBJECT, DATA = 0x70000, 0x71000, 0x71040
+MRI = DATA + 4  # the render info follows the area render info pointer
 # wd_Chain (a block of object pointers) and wd_ChainCount
-CHAIN, CHAIN_COUNT = DATA + 406, DATA + 410
+CHAIN, CHAIN_COUNT = DATA + 410, DATA + 414
 SETUP, CYCLE = 1 << 28, 1 << 5
 
 
@@ -18,8 +19,8 @@ class LayoutHarness(NotifyHarness):
         self.trap(EXEC - 624, self.copy)
         self.trap(INTUITION - 648, lambda: self.cpu.w_reg(0, 0))
         self.trap(self.symbols['_DoMethod'], self.method)
-        self.mem.w32(OBJECT + 28, DATA)  # render info is first window member
-        self.mem.w32(DATA, OBJECT)
+        self.mem.w32(OBJECT + 28, MRI)
+        self.mem.w32(MRI, OBJECT)
 
     def copy(self):
         self.mem.w_block(self.cpu.r_reg(9), self.mem.r_block(
@@ -30,7 +31,7 @@ class LayoutHarness(NotifyHarness):
 
     def child(self):
         obj = self.blob(bytes(128))
-        self.mem.w32(obj + 28, DATA)
+        self.mem.w32(obj + 28, MRI)
         self.mem.w32(obj + 64, SETUP | CYCLE)
         # MUI_EventHandlerNode: ehn_Object at 12, ehn_Events at 20.
         handler = self.blob(bytes(32))

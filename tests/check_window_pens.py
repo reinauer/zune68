@@ -15,8 +15,8 @@ SCREEN, DRAWINFO, DRAWPENS, COLORMAP = 0x75000, 0x76000, 0x76100, 0x77000
 GFX, SPECS, MESSAGE = 0x78000, 0x79000, 0x7a000
 # Native offsets checked with offsetof against window.c and the classic SDK.
 DATA = OBJECT + 64
-USER_SCREEN, CREATE_FLAGS = DATA + 618, DATA + 462
-PUBLIC_PENS = DATA + 36
+USER_SCREEN, CREATE_FLAGS = DATA + 622, DATA + 466
+PUBLIC_PENS = DATA + 40
 
 
 class PenHarness(Harness):
@@ -74,7 +74,7 @@ class PenHarness(Harness):
 
     def obtain_pen(self):
         sp = self.cpu.r_sp()
-        assert self.mem.r32(sp + 4) == DATA
+        assert self.mem.r32(sp + 4) == DATA + 4  # the render info
         assert self.mem.r32(sp + 12) == 0
         spec = self.mem.r_cstr(self.mem.r32(sp + 8))
         if self.derived and spec == 'rc0c0c0c0,c0c0c0c0,c0c0c0c0':
@@ -109,7 +109,7 @@ def check(path):
                     # takes the window's resource cleanup path.
                     h.opened(1)
                     assert len(h.requests) == 8, 'MARK must also be initialized'
-                    pens = h.mem.r32(DATA + 12)
+                    pens = h.mem.r32(DATA + 16)
                     assert pens == PUBLIC_PENS
                     for i, handle in enumerate(handles):
                         # Failed BACKGROUND allocation borrows BACKGROUNDPEN=7.

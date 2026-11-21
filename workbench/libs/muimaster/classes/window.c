@@ -1095,8 +1095,19 @@ struct WindowEventCursor
     struct MinNode *next;
 };
 
+/* What the SDK's area macros read on a Window object. _window(),
+ * _screen(), _rp() and the others are for area objects: on a Window object
+ * they read the long after the notify data as a MUI_RenderInfo pointer.
+ * MUI 3.8 has a pointer to zeros there, so they are all NULL, open or
+ * closed (tests/native/winarea.c), and a program that passes _window(win)
+ * as ASLFR_Window gets asl.library's default screen. With the render info
+ * itself there, _window(win) pointed into the notify data and asl.library
+ * took that for a window. The fields up to mri_Flags. */
+static const IPTR window_area_renderinfo[8];
+
 struct MUI_WindowData
 {
+    const IPTR *wd_AreaRenderInfo;  /* window_area_renderinfo, see above */
     struct MUI_RenderInfo wd_RenderInfo;
     struct MUI_MinMax wd_MinMax;
     struct IBox wd_AltDim;      /* zoomed dimensions */
@@ -4817,6 +4828,7 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     /* Initial local instance data */
     data = INST_DATA(cl, obj);
 
+    data->wd_AreaRenderInfo = window_area_renderinfo;
     data->wd_Opacity = 255;
     data->wd_Class = cl;
     data->wd_EventCursors = NULL;

@@ -1,0 +1,5 @@
+closed: screen NULL window NULL rastport NULL
+open yes
+open: screen NULL window NULL rastport NULL
+closed again: screen NULL window NULL rastport NULL
+[rc 0]

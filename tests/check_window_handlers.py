@@ -11,7 +11,7 @@ from check_class_lifetime import Harness, EXEC, INTUITION
 
 CLASS, OBJECT, ROOT, IWINDOW = 0x70000, 0x71000, 0x71800, 0x71a00
 DATA = OBJECT + 28
-EH, CC, ACTIVE, DEFAULT, CURSORS = [DATA + n for n in (422, 434, 466, 474, 690)]
+EH, CC, ACTIVE, DEFAULT, CURSORS = [DATA + n for n in (426, 438, 470, 478, 694)]
 GLOBAL, PREFS, MESSAGE, NESTED, DEADKEY = 0x78000, 0x79000, 0x7b000, 0x7b100, 0x7b200
 HANDLE, PARENT = 0x80426d66, 0x8042e35f
 RAW, NORMAL = 0x400, 0x4000
@@ -28,8 +28,8 @@ class HandlerHarness(Harness):
         self.mem.w16(CLASS + 32, 28)
         self.mem.w32(OBJECT, GLOBAL)
         self.mem.w32(GLOBAL + 20, PREFS)
-        self.mem.w32(DATA + 522, ROOT)
-        self.mem.w32(DATA + 16, IWINDOW)
+        self.mem.w32(DATA + 526, ROOT)
+        self.mem.w32(DATA + 20, IWINDOW)
         self.mem.w32(IWINDOW + 120, OBJECT)
         for head in (EH, CC):
             self.mem.w32(head, head + 4)
@@ -74,7 +74,7 @@ class HandlerHarness(Harness):
     def dispose_window(self):
         self.window_freed = True
         self.poisoned.add(OBJECT)
-        self.mem.w_block(OBJECT, b'\xa5' * (28 + 694))
+        self.mem.w_block(OBJECT, b'\xa5' * (28 + 698))
         self.cpu.w_reg(0, 0)
 
     def blob(self, contents):
@@ -153,7 +153,7 @@ class HandlerHarness(Harness):
     def dispatch(self):
         self.call('_zune_window_message', MESSAGE)
         if self.window_freed:
-            assert bytes(self.mem.r_block(OBJECT, 28 + 694)) == b'\xa5' * (28 + 694), 'dispatch wrote freed Window data'
+            assert bytes(self.mem.r_block(OBJECT, 28 + 698)) == b'\xa5' * (28 + 698), 'dispatch wrote freed Window data'
         else:
             assert self.mem.r32(CURSORS) == 0, 'dispatch cursor escaped its stack frame'
 
