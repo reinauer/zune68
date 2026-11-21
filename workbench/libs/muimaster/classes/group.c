@@ -2056,6 +2056,10 @@ IPTR Group__MUIM_Setup(struct IClass *cl, Object *obj,
 #endif
                 DoMethod(child, MUIM_Cleanup);
             }
+            /* and undo Area's Setup: a group left marked as set up gets
+             * MUIM_Cleanup later (Window's OM_DISPOSE), which would reach
+             * children that were never set up or are cleaned up already */
+            DoSuperMethod(cl, obj, MUIM_Cleanup);
             return FALSE;
         }
     }
