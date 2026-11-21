@@ -7,7 +7,6 @@
 /*** Instance data **********************************************************/
 struct Dtpic_DATA
 {
-    struct Library *datatypesbase;
 
     STRPTR name;
     APTR dto;

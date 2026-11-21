@@ -38,12 +38,6 @@
 
 extern struct Library *MUIMasterBase;
 
-#ifdef DataTypesBase
-#undef DataTypesBase
-#endif
-
-#define DataTypesBase data->datatypesbase
-
 static void killdto(struct Dtpic_DATA *data)
 {
     if (data->bm_selected) FreeBitMap(data->bm_selected);
@@ -71,12 +65,6 @@ static void killdto(struct Dtpic_DATA *data)
     {
         DisposeDTObject(data->dto);
         data->dto = NULL;
-    }
-
-    if (data->datatypesbase)
-    {
-        CloseLibrary(data->datatypesbase);
-        data->datatypesbase = NULL;
     }
 }
 
@@ -227,7 +215,9 @@ IPTR setup_datatype(struct IClass *cl, Object *obj)
 
     if (data->name)
     {
-        if ((data->datatypesbase = OpenLibrary("datatypes.library", 39)))
+        /* The library's own DataTypesBase, opened on first use: the
+         * varargs NewDTObject() and GetDTAttrs() call through it */
+        if (ZUNE_DATATYPES())
         {
             /* Prevent DOS Requesters from showing up */
 
@@ -236,7 +226,7 @@ IPTR setup_datatype(struct IClass *cl, Object *obj)
 
             me->pr_WindowPtr = (APTR) - 1;
 
-            data->dto = !ZUNE_DATATYPES() ? NULL : NewDTObject(data->name, DTA_GroupID, GID_PICTURE,
+            data->dto = NewDTObject(data->name, DTA_GroupID, GID_PICTURE,
                 OBP_Precision, PRECISION_IMAGE,
                 PDTA_Screen, _screen(obj),
                 PDTA_DestMode, PMODE_V43,
