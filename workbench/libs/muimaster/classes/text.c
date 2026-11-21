@@ -300,9 +300,9 @@ struct MUI_TextData
  * Create owned parsed text from PreParse and Contents, or the Text_Data
  * conversion when set, selecting HiChar before HiCharIdx, then measure
  * bounds. Requires live font/render context and no
- * unreleased previous parsed object. Stores NULL on allocation failure
- * without reporting status; later sizing/drawing assume non-NULL. Caller
- * owns lifecycle and must destroy parsed text.
+ * unreleased previous parsed object. Stores NULL on allocation failure:
+ * sizing and drawing then take the text as empty. Caller owns lifecycle
+ * and must destroy parsed text.
  */
 static void setup_text(struct MUI_TextData *data, Object *obj);
 
@@ -669,9 +669,9 @@ IPTR Text__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
  * Create owned parsed text from PreParse and Contents, or the Text_Data
  * conversion when set, selecting HiChar before HiCharIdx, then measure
  * bounds. Requires live font/render context and no
- * unreleased previous parsed object. Stores NULL on allocation failure
- * without reporting status; later sizing/drawing assume non-NULL. Caller
- * owns lifecycle and must destroy parsed text.
+ * unreleased previous parsed object. Stores NULL on allocation failure:
+ * sizing and drawing then take the text as empty. Caller owns lifecycle
+ * and must destroy parsed text.
  */
 static void setup_text(struct MUI_TextData *data, Object *obj)
 {
@@ -709,10 +709,9 @@ static void setup_text(struct MUI_TextData *data, Object *obj)
 MUIM_Setup
 **************************************************************************/
 /*
- * Call Area setup and return FALSE on failure; otherwise create/measure
- * parsed text and return TRUE even if parsing allocation failed. Requires
- * live font/context and paired Cleanup; no previous unreleased parsed
- * object.
+ * Call Area setup, create and measure the parsed text; return FALSE, set
+ * up no more, when either fails. Requires live font/context and paired
+ * Cleanup; no previous unreleased parsed object.
  */
 IPTR Text__MUIM_Setup(struct IClass *cl, Object *obj,
     struct MUIP_Setup *msg)
@@ -723,6 +722,11 @@ IPTR Text__MUIM_Setup(struct IClass *cl, Object *obj,
         return FALSE;
 
     setup_text(data, obj);
+    if (!data->ztext)
+    {
+        DoSuperMethod(cl, obj, MUIM_Cleanup);
+        return FALSE;
+    }
     if (data->mark)
         DoMethod(_win(obj), MUIM_Window_AddEventHandler, &data->mark->handler);
 
@@ -796,18 +800,19 @@ MUIM_AskMinMax
 /*
  * Call Area, read measured text bounds and font height, then apply
  * SetMin/SetMax/SetVMax rules to writable size fields. Return TRUE ignoring
- * superclass result. Requires successful non-NULL parsed text; does not
- * parse or request relayout.
+ * superclass result. Text that could not be parsed sizes as empty; does
+ * not parse or request relayout.
  */
 IPTR Text__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUIP_AskMinMax *msg)
 {
-    int height;
+    int height, width;
     struct MUI_TextData *data = INST_DATA(cl, obj);
 
     DoSuperMethodA(cl, obj, (Msg) msg);
 
-    height = data->ztext->height;
+    height = data->ztext ? data->ztext->height : 0;
+    width = data->ztext ? data->ztext->width : 0;
     if (_font(obj)->tf_YSize > height)
         height = _font(obj)->tf_YSize;
 /*      D(bug("YSize=%ld\n", _font(obj)->tf_YSize)); */
@@ -818,8 +823,8 @@ IPTR Text__MUIM_AskMinMax(struct IClass *cl, Object *obj,
      * default content width is three 'W' glyphs. */
     if ((data->mtd_Flags & MTDF_SETMIN) && !data->shorten)
     {
-        msg->MinMaxInfo->MinWidth += data->ztext->width;
-        msg->MinMaxInfo->DefWidth += data->ztext->width + _subwidth(obj);
+        msg->MinMaxInfo->MinWidth += width;
+        msg->MinMaxInfo->DefWidth += width + _subwidth(obj);
     }
     else
     {
@@ -831,7 +836,7 @@ IPTR Text__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     }
 
     if (data->mtd_Flags & MTDF_SETMAX)
-        msg->MinMaxInfo->MaxWidth += data->ztext->width;
+        msg->MinMaxInfo->MaxWidth += width;
     else
         msg->MinMaxInfo->MaxWidth += MUI_MAXMAX;
 
@@ -903,6 +908,11 @@ IPTR Text__MUIM_Draw(struct IClass *cl, Object *obj,
         DoMethod(obj, MUIM_DrawBackground, _mleft(obj), _mtop(obj),
             _mwidth(obj), _mheight(obj), _mleft(obj), _mtop(obj),
             _flags(obj));
+    }
+    if (!data->ztext)
+    {
+        data->update = 0;
+        return TRUE;
     }
 
     /* Installing a clip region rebuilds the layer's clip rectangles.
@@ -1004,7 +1014,7 @@ static IPTR Text_HandleEvent(struct IClass *cl, Object *obj,
     struct TextMark *mark = data->mark;
     struct IntuiMessage *imsg = msg->imsg;
     BOOL inside;
-    if (!mark || !imsg || !(_flags(obj) & MADF_CANDRAW) ||
+    if (!mark || !imsg || !data->ztext || !(_flags(obj) & MADF_CANDRAW) ||
         muiAreaData(obj)->mad_DisableCount) return 0;
     inside = imsg->MouseX >= _mleft(obj) && imsg->MouseX <= _mright(obj) &&
         imsg->MouseY >= _mtop(obj) && imsg->MouseY <= _mbottom(obj);

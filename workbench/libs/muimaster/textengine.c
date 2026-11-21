@@ -470,13 +470,15 @@ void zune_text_set_plain(ZText *text, ZTextChunk *chunk, STRPTR s,
 }
 
 /**************************************************************************
-Completely frees a ZText
+Completely frees a ZText; NULL does nothing
 **************************************************************************/
 void zune_text_destroy(ZText * text)
 {
     struct ZTextLine *ztl;
     struct ZTextChunk *ztc;
 
+    if (!text)
+        return;
     while ((ztl = (struct ZTextLine *)RemTail((struct List *)&text->lines)))
     {
         while ((ztc =
