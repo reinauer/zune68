@@ -54,7 +54,9 @@ classes that failed to open meanwhile. Start-up requesters are not
 answered: such a requester counts as the first window. A program that
 does not quit ends the boot, and the rest go on in a new one; so do the
 remaining programs after a guest stops making progress (a crash or a
-hang, --stall seconds beyond the program's wait) or resets.
+hang, --stall seconds beyond the program's wait) or resets. A boot that
+runs no program is tried again; after three such boots in a row the run
+stops and writes what it has.
 
 Results go to build/real/<target>/ (or --out):
 

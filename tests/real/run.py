@@ -193,7 +193,7 @@ def run_batch(fix, rows, assigns, outdir, stall_extra):
     if cur:
         results[cur] = (block, 'reset' if why == 'reset' else 'hang' if why == 'stall' else why)
     if why == 'stall' and not results and not text:
-        raise SystemExit('%s: the guest did not start wintool' % fix.dir)
+        print('%s: the guest did not start wintool' % fix.dir, flush=True)
     for r in rows:
         for ext in ('.con', '.snap'):
             src = os.path.join(out, r['id'] + ext)
@@ -248,13 +248,21 @@ def main():
             continue
         shutil.copytree(src, os.path.join(real, 'p', r['id']), symlinks=True)
         todo.append(r)
+    fails = 0
     while todo:
         batch = todo[:a.batch]
         got, left = run_batch(fix, batch, assigns, outdir, a.stall)
         results.update(got)
         done = [r for r in batch if r['id'] in got]
         if not done:
-            raise SystemExit('no progress in a boot; stopping')
+            # a boot that ran nothing: try again, then give up but keep the
+            # results so far
+            fails += 1
+            if fails == 3:
+                print('no progress in three boots; stopping', flush=True)
+                break
+            continue
+        fails = 0
         todo = [r for r in todo if r['id'] not in got]
 
     with open(os.path.join(outdir, 'results.tsv'), 'w', encoding='utf-8') as f:
