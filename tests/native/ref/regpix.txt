@@ -1,0 +1,4 @@
+open yes
+first page after page 2: as at opening
+first page after page 3: as at opening
+[rc 0]

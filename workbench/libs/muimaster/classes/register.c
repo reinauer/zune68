@@ -414,8 +414,12 @@ static void RenderRegisterTab(struct IClass *cl, Object *obj, ULONG flags)
             old_width, old_height, old_left, old_top, 0);
         SetDrMd(_rp(obj), JAM1);
         SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
+        /* the line under the erased tab, as wide as the erase: one pixel
+         * more painted the frame's shadow corner when the last tab of a
+         * row had been the active one (tests/native/regpix.c: MUI 3.8
+         * gives the opening's pixels back) */
         RectFill(_rp(obj), old_left, old_top + old_height,
-            old_left + old_width, old_top + old_height);
+            old_left + old_width - 1, old_top + old_height);
     }
 
     SetDrMd(_rp(obj), JAM1);
