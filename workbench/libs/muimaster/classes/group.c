@@ -3224,7 +3224,6 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUI_GroupData *data = INST_DATA(cl, obj);
     struct MUI_LayoutMsg lm;
     struct MUIP_AskMinMax childMsg;
-    struct MUI_MinMax childMinMax;
     APTR cstate;
     Object *child;
     LONG super_minwidth, super_minheight;
@@ -3240,7 +3239,6 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
      * Ask children
      */
     childMsg.MethodID = msg->MethodID;
-    childMsg.MinMaxInfo = &childMinMax;
     lm.lm_Children = group_children(data);
 
     /* every child counts again; the layout decides which disappear */
@@ -3256,12 +3254,13 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
         if (!(_flags(child) & MADF_SHOWME) && !data->layout_hook)
             /* BORDERGADGETs should handle this itself */
             continue;
-        /*  Ask child; Area points the message at the child's minmax  */
-        childMsg.MinMaxInfo = &childMinMax;
+        /*  Ask child. Like MUI 3.8 and 5 the message carries no buffer:
+         *  Area points it at the child's own minmax, and a subclass
+         *  finds it there after its super call. */
+        childMsg.MinMaxInfo = NULL;
         DoMethodA(child, (Msg) & childMsg);
-        /*  D(bug("*** group 0x%p, child 0x%p min=%ld,%ld\n", */
-        /*      obj, child, childMinMax.MinWidth, childMinMax.MinHeight)); */
-        __area_finish_minmax(child, childMsg.MinMaxInfo);
+        __area_finish_minmax(child, childMsg.MinMaxInfo
+            ? childMsg.MinMaxInfo : &muiAreaData(child)->mad_MinMax);
     }
 
     /*

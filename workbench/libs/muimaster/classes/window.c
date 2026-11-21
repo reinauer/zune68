@@ -5708,9 +5708,9 @@ static void SetRootObjInnerSpacing(Object *obj,
 static void WindowMinMax(Object *obj, struct MUI_WindowData *data)
 {
     SetRootObjInnerSpacing(obj, data);
-    /* inquire about sizes; like MUI, Area stores them in the root's own
-     * minmax */
-    DoMethod(data->wd_RootObject, MUIM_AskMinMax, (IPTR) & data->wd_MinMax);
+    /* inquire about sizes; like MUI, the message carries no buffer and
+     * Area stores them in the root's own minmax */
+    DoMethod(data->wd_RootObject, MUIM_AskMinMax, (IPTR) NULL);
     {
         const struct MUI_MinMax *mm =
             &muiAreaData(data->wd_RootObject)->mad_MinMax;
@@ -6074,8 +6074,7 @@ IPTR Window__MUIM_RecalcDisplay(struct IClass *cl, Object *obj,
                 break;
         if (o && o != data->wd_RootObject)
         {
-            DoMethod(current_obj, MUIM_AskMinMax,
-                (IPTR) & muiAreaData(current_obj)->mad_MinMax);
+            DoMethod(current_obj, MUIM_AskMinMax, (IPTR) NULL);
             __area_finish_minmax(current_obj,
                 &muiAreaData(current_obj)->mad_MinMax);
         }

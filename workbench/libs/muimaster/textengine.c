@@ -986,8 +986,7 @@ void zune_text_get_bounds(ZText * text, Object * obj)
             }
             else if (chunk_node->obj)
             {
-                struct MUI_MinMax MinMax;
-                struct MUIP_AskMinMax amm = { MUIM_AskMinMax, &MinMax };
+                struct MUIP_AskMinMax amm = { MUIM_AskMinMax, NULL };
 
                 /* Area points the message at the object's own minmax and
                  * __area_finish_minmax updates it in place. */

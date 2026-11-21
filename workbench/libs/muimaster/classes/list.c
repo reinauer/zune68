@@ -1023,7 +1023,7 @@ static ULONG BeginCellObject(Object *list, Object *cell, struct MUI_MinMax *mm)
         { if (state & 1) DoMethod(cell, MUIM_DisconnectParent); return 0; }
         state |= 2;
     }
-    struct MUIP_AskMinMax ask = {MUIM_AskMinMax, mm};
+    struct MUIP_AskMinMax ask = {MUIM_AskMinMax, NULL};
     DoMethodA(cell, (Msg)&ask);
     if (ask.MinMaxInfo)
     {
@@ -5371,7 +5371,6 @@ static IPTR ListEdit(struct IClass *cl, Object *obj, LONG row, LONG column)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
     Object *editor;
-    struct MUI_MinMax minmax = {0};
     if (row == MUIV_List_Edit_Active) row = data->entries_active;
     if (!data->editable || !(_flags(obj) & MADF_CANDRAW) || row < 0 ||
         row >= data->entries_num || column < 0 || column >= data->columns) return FALSE;
@@ -5386,7 +5385,7 @@ static IPTR ListEdit(struct IClass *cl, Object *obj, LONG row, LONG column)
         DoMethod(editor, MUIM_DisconnectParent); MUI_DisposeObject(editor);
         return FALSE;
     }
-    struct MUIP_AskMinMax ask = {MUIM_AskMinMax, &minmax};
+    struct MUIP_AskMinMax ask = {MUIM_AskMinMax, NULL};
     DoMethodA(editor, (Msg)&ask);
     if (ask.MinMaxInfo) __area_finish_minmax(editor, ask.MinMaxInfo);
     data->edit_object = editor; data->edit_row = row; data->edit_column = column;
