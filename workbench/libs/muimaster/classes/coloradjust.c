@@ -49,9 +49,9 @@
 *       sliders and replicates each byte into all four bytes, so all components
 *       are quantized to eight-bit precision by that interaction.
 *       The constructor opens gadgets/colorwheel.gadget and
-*       gadgets/gradientslider.gadget. It returns NULL on superclass
-*       construction failure. The interface-acquisition/drop macros are no-ops
-*       and do not test library availability. Dispose disposes Group
+*       gadgets/gradientslider.gadget; without one of them the wheel or the
+*       gradient slider is left out. It returns NULL on superclass
+*       construction failure. Dispose disposes Group
 *       children and closes opened libraries. Normal Cleanup must precede
 *       disposal for the gradient pen.
 *
@@ -393,8 +393,7 @@ static void GradFunc(struct Hook *hook, Object *obj, struct MUIP_CANotifyMsg *ms
  * Open gadget libraries, construct Group controls, initialize white RGB,
  * synchronize controls and register hooks. Return object or zero on
  * superclass failure; the interface macro cannot fail. Requires
- * readable RGB input. Missing-library and ignored-child limitations follow
- * the class contract; do not infer a safe degraded mode.
+ * readable RGB input. A gadget whose library is missing is left out.
  */
 IPTR Coloradjust__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 {
@@ -477,6 +476,21 @@ IPTR Coloradjust__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 (IPTR)HVSpace,
         End),
         TAG_MORE, (IPTR) msg->ops_AttrList);
+
+    /* A missing gadget's wrapper is made all the same (Boopsi makes the
+     * gadget only when shown) but not added: without the library it must
+     * not be used, or ConvertRGBToHSB() went through a NULL library base
+     * (Lamp's demo on a system without colorwheel.gadget) */
+    if (!colorwheelbase && wheel)
+    {
+        MUI_DisposeObject(wheel);
+        wheel = NULL;
+    }
+    if (!gradientsliderbase && grad)
+    {
+        MUI_DisposeObject(grad);
+        grad = NULL;
+    }
 
     if (!obj)
     {
@@ -589,7 +603,7 @@ IPTR Coloradjust__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             (IPTR) obj, 3, MUIM_CallHook, (IPTR) & data->wheelhook,
             (IPTR) data);
     }
-    if (data->grad)
+    if (data->grad && data->wheel)  /* GradFunc reads the wheel */
     {
         DoMethod(data->grad, MUIM_Notify, GRAD_CurVal, MUIV_EveryTime,
             (IPTR) obj, 3, MUIM_CallHook, (IPTR) & data->gradhook,
