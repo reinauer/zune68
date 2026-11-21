@@ -34,14 +34,15 @@ from uaefixture import Fixture, WINUAE, stage_zune  # noqa: E402
 # Probes whose MUI 3.8 output is the same in every boot and depends on no
 # addresses, timing or MUI 4/5 features.
 PROBES = [
-    'appsignals', 'backfillrect', 'balancebounds', 'baldraw', 'balweight', 'barfmt',
-    'centrestyle', 'colgroup', 'compoundwalk', 'cornerbg', 'defclamp', 'demolayout',
-    'disappear', 'emptyfixprobe', 'gaugetext', 'getunknown', 'ghostclasses',
-    'ghostdump', 'hdist', 'imgdef', 'imgsizes', 'imgspec', 'layoutmsg', 'listbounds',
-    'listempty', 'listfmt', 'listjump', 'listkey', 'listpartial', 'listprop', 'lvfix',
-    'newset', 'patternphase', 'radiopix', 'regpix', 'regrows', 'stringscroll',
-    'textstyles', 'titleframe', 'ulprobe', 'undermin', 'virtbounds', 'virtualnotify',
-    'weightset', 'widgetsizes', 'winarea', 'winclamp', 'windowpercent', 'winsize',
+    'appbase', 'appsignals', 'backfillrect', 'balancebounds', 'baldraw', 'balweight',
+    'barfmt', 'centrestyle', 'colgroup', 'compoundwalk', 'cornerbg', 'defclamp',
+    'demolayout', 'disappear', 'emptyfixprobe', 'gaugetext', 'getunknown',
+    'ghostclasses', 'ghostdump', 'hdist', 'imgdef', 'imgsizes', 'imgspec', 'layoutmsg',
+    'listbounds', 'listempty', 'listfmt', 'listjump', 'listkey', 'listpartial',
+    'listprop', 'lvfix', 'newset', 'patternphase', 'radiopix', 'regpix', 'regrows',
+    'stringscroll', 'textstyles', 'titleframe', 'ulprobe', 'undermin', 'virtbounds',
+    'virtualnotify', 'weightset', 'widgetsizes', 'winarea', 'winclamp', 'windowpercent',
+    'winsize',
 ]
 
 CC = 'm68k-amigaos-gcc'

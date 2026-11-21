@@ -353,11 +353,11 @@ struct timerequest_ext
 *       STRPTR; initialize and get.
 *
 *   NOTES
-*       The stored result is an allocated copy, freed at application disposal.
-*       With SingleTask FALSE, the constructor tries suffixes .1 through .999
-*       against tracked application bases. SingleTask TRUE uses the supplied
-*       name without a suffix. The getter returns the actual borrowed stored
-*       name.
+*       The stored result is an allocated copy in upper case, as in MUI 3.8,
+*       freed at application disposal. With SingleTask FALSE, the constructor
+*       tries suffixes .1 through .999 against tracked application bases.
+*       SingleTask TRUE uses the name without a suffix. The getter returns
+*       the actual borrowed stored name.
 *
 *   BUGS
 *       Suffix construction uses a 255-byte buffer and can truncate. Exhaustion
@@ -501,10 +501,10 @@ struct timerequest_ext
 *       MUIA_Application_UseRexx
 *
 *   FUNCTION
-*       Request a public Rexx message port named from the uppercased actual
-*       Base when rexxsyslib.library is available. Default TRUE when a
-*       non-NULL Commands table or RexxHook is supplied at initialization,
-*       otherwise FALSE.
+*       Request a public Rexx message port named after the actual Base
+*       when rexxsyslib.library is available and the settings do not switch
+*       ARexx off. Default TRUE, as in MUI 3.8, with or without a Commands
+*       table or RexxHook.
 *
 *   INPUTS
 *       BOOL; initialize only.
@@ -522,8 +522,7 @@ struct timerequest_ext
 *
 *   FUNCTION
 *       Store a borrowed command table terminated by an entry whose mc_Name is
-*       NULL. Default NULL. A non-NULL table at initialization also enables
-*       the Rexx-port request unless UseRexx is given.
+*       NULL. Default NULL.
 *
 *   INPUTS
 *       MUI_Command table pointer; initialize, set, get.
@@ -1349,21 +1348,35 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
         goto fail;
     }
 
-    if (!data->app_SingleTask)
+    /* MUI 3.8 gives the base back in upper case, as its ARexx port is
+     * named ("lowBase" -> LOWBASE.1, LOWBASE.2: tests/native/appbase.c) */
     {
-        /* must append .1, .2, ... to the base name */
-        LONG i;
         char portname[255];
+        char *c;
 
-        for (i = 1; i < 1000; i++)
+        if (!data->app_SingleTask)
         {
-            snprintf(portname, 255, "%s.%d", data->app_Base, (int)i);
-            if (!find_application_by_base(cl, obj, portname))
-                break;
+            /* must append .1, .2, ... to the base name */
+            LONG i;
+
+            for (i = 1; i < 1000; i++)
+            {
+                snprintf(portname, 255, "%s.%d", data->app_Base, (int)i);
+                for (c = portname; *c; c++)
+                    *c = toupper(*c);
+                if (!find_application_by_base(cl, obj, portname))
+                    break;
+            }
+        }
+        else
+        {
+            snprintf(portname, 255, "%s", data->app_Base);
+            for (c = portname; *c; c++)
+                *c = toupper(*c);
         }
         data->app_Base = StrDup(portname);
     }
-    else
+    if (data->app_Base && data->app_SingleTask)
     {
         Object *other_app;
 
@@ -1375,11 +1388,10 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
             DoMethod(other_app, MUIM_Application_PushMethod,
                 (IPTR) other_app, 3, MUIM_Set, MUIA_Application_DoubleStart,
                 TRUE);
+            FreeVec(data->app_Base);
             data->app_Base = NULL;
         }
         ReleaseSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
-
-        data->app_Base = StrDup(data->app_Base);
     }
 
     if (!data->app_Base)
@@ -1526,15 +1538,8 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
             }
             break;
 
-        case MUIA_Application_UseRexx:
-            data->app_UseRexx = tag->ti_Data ? TRUE : FALSE;
-            break;
-
         case MUIA_Application_Commands:
             data->app_Commands = (struct MUI_Command *)tag->ti_Data;
-            /* MUI by default enables Rexx port. Zune does not. Enable port at least
-             * if the commands are passed */
-            data->app_UseRexx = TRUE;
             break;
 
         case MUIA_Application_RexxHook:
@@ -1558,11 +1563,11 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
         }
     }
 
-    if (GetTagData(MUIA_Application_UseRexx,
-            data->app_Commands || data->app_RexxHook, msg->ops_AttrList))
-        data->app_UseRexx = TRUE;
-    else
-        data->app_UseRexx = FALSE;
+    /* MUI 3.8 makes the ARexx port at once, also without Commands or a
+     * RexxHook; only MUIA_Application_UseRexx FALSE leaves it out
+     * (tests/native/appbase.c) */
+    data->app_UseRexx = GetTagData(MUIA_Application_UseRexx, TRUE,
+        msg->ops_AttrList) ? TRUE : FALSE;
 
     /* create MUIA_Application_Version if NULL */
     if (data->app_Version == NULL
@@ -1662,8 +1667,10 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
         }
     }
 
-    /* rexxsyslib.library is opened when the first message arrives. */
-    if (data->app_UseRexx)
+    /* rexxsyslib.library is opened when the first message arrives. No
+     * port when the settings switch ARexx off (System page). */
+    if (data->app_UseRexx
+        && data->app_GlobalInfo.mgi_Prefs->interfaces_enable_arexx)
     {
         data->app_RexxPort = CreateMsgPort();
         if (data->app_RexxPort)

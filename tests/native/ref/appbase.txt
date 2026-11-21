@@ -1,0 +1,5 @@
+commands     base LOWBASE.1, port
+plain        base LOWBASE.2, port
+UseRexx off  base NOREXX.1, no port
+after dispose: LOWBASE.1 no port, lowBase.1 no port
+[rc 0]
