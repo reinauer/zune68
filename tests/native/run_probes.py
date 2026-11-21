@@ -40,9 +40,9 @@ PROBES = [
     'ghostclasses', 'ghostdump', 'hdist', 'imgdef', 'imgsizes', 'imgspec', 'layoutmsg',
     'listbounds', 'listempty', 'listfmt', 'listjump', 'listkey', 'listpartial',
     'listprop', 'lvfix', 'newset', 'patternphase', 'radiopix', 'regpix', 'regrows',
-    'stringscroll', 'textstyles', 'titleframe', 'ulprobe', 'undermin', 'virtbounds',
-    'virtualnotify', 'weightset', 'widgetsizes', 'winarea', 'winclamp', 'windowpercent',
-    'winsize',
+    'rootframe', 'stringscroll', 'textstyles', 'titleframe', 'ulprobe', 'undermin',
+    'virtbounds', 'virtualnotify', 'weightset', 'widgetsizes', 'winarea', 'winclamp',
+    'windowpercent', 'winsize',
 ]
 
 CC = 'm68k-amigaos-gcc'

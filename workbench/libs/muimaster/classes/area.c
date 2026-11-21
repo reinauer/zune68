@@ -586,8 +586,8 @@ extern struct Library *MUIMasterBase;
 *       and getter also implemented.
 *
 *   NOTES
-*       Keep a string alive while the object uses it. Setup removes a nonzero
-*       frame and its title from the Window root object. The getter returns the
+*       Keep a string alive while the object uses it. A Window's root object
+*       keeps its frame, as in MUI 3.8. The getter returns the
 *       stored request. The setter recomputes inner/title sizes when global
 *       information exists, but does not request layout or redraw.
 *
@@ -3226,15 +3226,8 @@ static IPTR Area__MUIM_Setup(struct IClass *cl, Object *obj,
     muiRenderInfo(obj) = msg->RenderInfo;
     data->mad_Flags2 &= ~(MADF2_BGCHECKED | MADF2_BUILTINBG);
 
-    if (data->mad_Frame) {
-        /* no frame allowed for root object (see Area.doc) */
-        Object *rootobj = NULL;
-        get(_win(obj), MUIA_Window_RootObject, &rootobj);
-        if (rootobj == obj) {
-            data->mad_Frame = MUIV_Frame_None;
-            data->mad_FrameTitle = NULL;
-        }
-    }
+    /* A root object keeps its frame and frame title: MUI 3.8 draws them
+     * inside the window's spacing (tests/native/rootframe.c). */
 
     set_inner_sizes(obj, data);
     set_title_sizes(obj, data);

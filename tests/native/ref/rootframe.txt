@@ -1,0 +1,4 @@
+plain    window 80x35 root at 4,11 size 72x14 inner 4,3 sub 8,6
+framed   window 88x39 root at 4,11 size 80x18 inner 8,5 sub 16,10
+titled   window 88x44 root at 4,11 size 80x23 inner 8,10 sub 16,15
+[rc 0]
