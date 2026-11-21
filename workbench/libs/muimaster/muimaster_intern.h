@@ -119,6 +119,7 @@ Object *zune_applist_get(void);
 void zune_applist_free(void);
 /* mui_newobject.c: the child objects of a tag list nothing has read yet */
 void zune_dispose_children(struct TagItem *tags);
+BOOL ZUNE_IsBuiltinClass(CONST_STRPTR id);
 /* support_classes.c: MakeClass() that undoes OS 3.1's raised subclass
  * count when it fails */
 struct IClass *zune_make_class(CONST_STRPTR id, CONST_STRPTR superid,

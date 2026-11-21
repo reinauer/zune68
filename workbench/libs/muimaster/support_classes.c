@@ -310,6 +310,17 @@ static Class *ZUNE_MakeBuiltinClass(CONST_STRPTR classid,
     return cl;
 }
 
+/* Whether ID names a class built into the library */
+BOOL ZUNE_IsBuiltinClass(CONST_STRPTR id)
+{
+    int i;
+
+    for (i = 0; id && i < sizeof(builtins) / sizeof(builtins[0]); i++)
+        if (!strcmp(builtins[i]->name, id))
+            return TRUE;
+    return FALSE;
+}
+
 Class *ZUNE_GetBuiltinClass(CONST_STRPTR id, struct Library *base)
 {
     Class *cl;

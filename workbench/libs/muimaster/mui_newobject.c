@@ -108,7 +108,10 @@ void zune_dispose_children(struct TagItem *tags)
     Class  *cl;
 
     /* Without the class nothing reads the tag list, and its objects stay
-     * the caller's: MUI 3.8 keeps them too (tests/native/fixpaths.c). */
+     * the caller's: MUI 3.8 keeps them too (tests/native/fixpaths.c).
+     * A built-in class that could not be made for lack of memory fails
+     * like a class whose OM_NEW fails: it disposes them (MUI 3.8 makes
+     * its classes when the library opens, and never gets here). */
     cl = MUI_GetClass(classid);
     if (cl)
     {
@@ -125,6 +128,8 @@ void zune_dispose_children(struct TagItem *tags)
         bug("*** Could not create object of %s\n", classid);
         MUI_FreeClass(cl);
     }
+    else if (ZUNE_IsBuiltinClass(classid))
+        zune_dispose_children(tags);
     else
         bug("*** Couldn't find %s\n", classid);
 
