@@ -73,6 +73,8 @@ struct ZuneWindowGuard
 };
 void ZuneRememberWindowPosition(Object *window);
 void ZuneWatchWindow(Object *window, struct ZuneWindowGuard *guard);
+/* The window's active object as stored, not checked to be in its tree */
+Object *ZuneWindowActiveObject(Object *window);
 void ZuneUnwatchWindow(Object *window, struct ZuneWindowGuard *guard);
 
 void ZuneResetWindowPointer(Object *window);

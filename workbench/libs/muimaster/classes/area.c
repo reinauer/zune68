@@ -3345,7 +3345,10 @@ static IPTR Area__MUIM_Cleanup(struct IClass *cl, Object *obj,
 
     D(bug("Area cleanup %p active=%p\n", obj,
           (Object *)XGET(_win(obj), MUIA_Window_ActiveObject)));
-    if (obj == (Object *)XGET(_win(obj), MUIA_Window_ActiveObject)) {
+    /* The window's field first: the getter (intuition, the window's
+     * classes and a search of the whole tree) only when it can say yes */
+    if (obj == ZuneWindowActiveObject(_win(obj))
+        && obj == (Object *)XGET(_win(obj), MUIA_Window_ActiveObject)) {
         D(bug("we are active, unset us\n"));
         set(_win(obj), MUIA_Window_ActiveObject, MUIV_Window_ActiveObject_None);
     }

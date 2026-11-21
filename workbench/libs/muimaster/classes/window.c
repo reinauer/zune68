@@ -1848,6 +1848,11 @@ void ZuneWatchWindow(Object *window, struct ZuneWindowGuard *guard)
     data->wd_Guards = guard;
 }
 
+Object *ZuneWindowActiveObject(Object *window)
+{
+    return window ? muiWindowData(window)->wd_ActiveObject : NULL;
+}
+
 void ZuneUnwatchWindow(Object *window, struct ZuneWindowGuard *guard)
 {
     struct MUI_WindowData *data = muiWindowData(window);
@@ -4292,12 +4297,9 @@ static void HandleInputEvent(Object *win, struct MUI_WindowData *data,
 
         if (ehn->ehn_Events & mask)
         {
-            IPTR disabled = 0;
-
-            get(ehn->ehn_Object, MUIA_Disabled, &disabled);
-            if (!cursor.next)
-                goto finished;
-            if (disabled)
+            /* The Area's own state, not an OM_GET through intuition and
+             * every class of the object (MUI 3.8 sends none here) */
+            if (muiAreaData(ehn->ehn_Object)->mad_DisableCount)
                 continue;
 
             res = InvokeEventHandler(ehn, event, MUIKEY_NONE, &cursor);

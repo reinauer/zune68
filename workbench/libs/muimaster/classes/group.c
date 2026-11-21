@@ -836,10 +836,12 @@ static IPTR Group__MUIM_AddObject(struct IClass *cl, Object *obj, Msg msg)
         DoMethod(msgint->obj, MUIM_ConnectParent, (IPTR) obj);
     }
 
-    /* Ensure new children are disabled if their parent is */
-    GET(obj, MUIA_Disabled, &nestedDisableAttrs[2].ti_Data);
-    if (nestedDisableAttrs[2].ti_Data == (IPTR)TRUE)
+    /* Ensure new children are disabled if their parent is: the group's
+     * own state, not an OM_GET through intuition and every class (one
+     * per child at creation; MUI 3.8 sends none) */
+    if (muiAreaData(obj)->mad_DisableCount)
     {
+        nestedDisableAttrs[2].ti_Data = TRUE;
         SetAttrsA(msgint->obj, nestedDisableAttrs);
     }
 
