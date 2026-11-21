@@ -6,7 +6,8 @@ from check_notifications import NotifyHarness
 from check_class_lifetime import EXEC, INTUITION
 
 CLASS, OBJECT, DATA = 0x70000, 0x71000, 0x71040
-POOL, CHAIN = DATA + 406, DATA + 410
+# wd_Chain (a block of object pointers) and wd_ChainCount
+CHAIN, CHAIN_COUNT = DATA + 406, DATA + 410
 SETUP, CYCLE = 1 << 28, 1 << 5
 
 
@@ -14,12 +15,6 @@ class LayoutHarness(NotifyHarness):
     def __init__(self, path):
         super().__init__(path)
         self.mem.w16(CLASS + 32, 64)
-        self.mem.w32(CHAIN, CHAIN + 4)
-        self.mem.w32(CHAIN + 8, CHAIN)
-        self.mem.w32(POOL, 0x1234)
-        self.trap(EXEC - 258, self.rem_head)
-        self.trap(EXEC - 708, self.alloc_vec)
-        self.trap(EXEC - 714, self.free_pooled)
         self.trap(EXEC - 624, self.copy)
         self.trap(INTUITION - 648, lambda: self.cpu.w_reg(0, 0))
         self.trap(self.symbols['_DoMethod'], self.method)
@@ -29,19 +24,6 @@ class LayoutHarness(NotifyHarness):
     def copy(self):
         self.mem.w_block(self.cpu.r_reg(9), self.mem.r_block(
             self.cpu.r_reg(8), self.cpu.r_reg(0)))
-
-    def free_pooled(self):
-        self.free_vec()
-
-    def rem_head(self):
-        head = self.cpu.r_reg(8)
-        node = self.mem.r32(head)
-        if self.mem.r32(node):
-            self.cpu.w_reg(9, node)
-            self.remove()
-            self.cpu.w_reg(0, node)
-        else:
-            self.cpu.w_reg(0, 0)
 
     def method(self):
         self.events.append((self.argument(0), self.argument(1)))
@@ -60,12 +42,9 @@ class LayoutHarness(NotifyHarness):
                          CLASS, OBJECT, self.words(0, handler))
 
     def chain(self):
-        objects = []
-        node = self.mem.r32(CHAIN)
-        while self.mem.r32(node):
-            objects.append(self.mem.r32(node + 8))
-            node = self.mem.r32(node)
-        return objects
+        block = self.mem.r32(CHAIN)
+        return [self.mem.r32(block + 4 * i)
+                for i in range(self.mem.r16(CHAIN_COUNT))]
 
     def order(self, *objects):
         return self.call('Window__MUIM_SetCycleChain', CLASS, OBJECT,
@@ -90,7 +69,30 @@ def check(path):
     assert h.chain() == [a, c], 'SetCycleChain keeps the tree order'
     h.control('Rem', ah)
     h.control('Rem', ch)
-    assert not h.chain()
+    assert not h.chain() and not h.mem.r32(CHAIN), 'empty chain is freed'
+    # More objects than the first block holds keep their order
+    many = [h.child() for _ in range(11)]
+    for obj, handler in many:
+        h.control('Add', handler)
+    assert h.chain() == [obj for obj, _ in many], 'grown chain order'
+    for obj, handler in many[::2]:
+        h.control('Rem', handler)
+    assert h.chain() == [obj for obj, _ in many[1::2]], 'removal order'
+    for obj, handler in many[1::2]:
+        h.control('Rem', handler)
+    assert not h.chain() and not h.mem.r32(CHAIN)
+    # Gadget IDs: the lowest free one, and the documented reuse bug (a
+    # freed gap is recorded after the larger ID, so it is handed out twice)
+    def alloc_id():
+        return h.call('Window__MUIM_AllocGadgetID', CLASS, OBJECT, h.words(0))
+    def free_id(gid):
+        h.call('Window__MUIM_FreeGadgetID', CLASS, OBJECT, h.words(0, gid))
+    assert [alloc_id() for _ in range(10)] == list(range(1, 11))
+    free_id(4)
+    assert alloc_id() == 4 and alloc_id() == 4
+    for gid in [1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 99]:
+        free_id(gid)
+    assert not h.mem.r32(DATA + 414), 'empty ID record is freed'
     h.check_freed()
     assert not h.allocations
     h.machine.cleanup()
