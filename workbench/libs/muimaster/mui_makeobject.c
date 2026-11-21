@@ -55,8 +55,9 @@ STATIC int get_control_char(const char *label)
 /* Build a menustrip from an NM_END-terminated NewMenu array. The caller
  * owns the returned object tree; menu label and shortcut storage is borrowed.
  * Return NULL if the root cannot be allocated. Later allocation failures
- * skip individual objects and may leave a partial tree. Require NM_TITLE
- * before NM_ITEM and a valid parent item before NM_SUB.
+ * skip individual objects, with the items under them, and may leave a
+ * partial tree. Require NM_TITLE before NM_ITEM and a valid parent item
+ * before NM_SUB.
  */
 STATIC Object *CreateMenuString(struct NewMenu * newmenu, ULONG flags,
     struct Library * MUIMasterBase)
@@ -100,8 +101,12 @@ STATIC Object *CreateMenuString(struct NewMenu * newmenu, ULONG flags,
             else
                 commkey = (char *)newmenu[i].nm_CommKey;
 
-            if (newmenu[i].nm_Type == NM_ITEM || (menuitem != NULL
-                    && newmenu[i].nm_Type == NM_SUB))
+            /* An item whose menu (or a subitem whose item) could not be
+             * made is skipped: nothing would own it */
+            if (newmenu[i].nm_Type == NM_ITEM)
+                menuitem = NULL;
+            if ((newmenu[i].nm_Type == NM_ITEM && menu != NULL)
+                || (newmenu[i].nm_Type == NM_SUB && menuitem != NULL))
             {
                 Object *item = (Object *)(MenuitemObject,
                     MUIA_Menuitem_Title,    (IPTR)label,
