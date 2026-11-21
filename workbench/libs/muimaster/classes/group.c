@@ -3279,7 +3279,14 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     }
     else if (data->layout_hook)
     {
+        /* MUI 3.8 hands the hook lm_MinMax filled with a 20x20 minimum
+         * and default and MUI_MAXMAX maximum, whatever the children
+         * (tests/native/layoutmsg.c); the HTMLtext MCC's hook fills only
+         * part of it */
         lm.lm_Type = MUILM_MINMAX;
+        lm.lm_MinMax.MinWidth = lm.lm_MinMax.MinHeight = 20;
+        lm.lm_MinMax.DefWidth = lm.lm_MinMax.DefHeight = 20;
+        lm.lm_MinMax.MaxWidth = lm.lm_MinMax.MaxHeight = MUI_MAXMAX;
         CallHookPkt(data->layout_hook, obj, &lm);
 
         if (lm.lm_MinMax.MaxHeight < lm.lm_MinMax.MinHeight)

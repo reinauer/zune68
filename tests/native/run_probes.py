@@ -37,7 +37,7 @@ PROBES = [
     'appsignals', 'backfillrect', 'balancebounds', 'baldraw', 'balweight', 'barfmt',
     'centrestyle', 'colgroup', 'compoundwalk', 'cornerbg', 'defclamp', 'demolayout',
     'disappear', 'emptyfixprobe', 'gaugetext', 'getunknown', 'ghostclasses', 'ghostdump', 'hdist',
-    'imgdef', 'imgsizes', 'imgspec', 'listbounds', 'listempty', 'listjump',
+    'imgdef', 'imgsizes', 'imgspec', 'layoutmsg', 'listbounds', 'listempty', 'listjump',
     'listpartial', 'listprop', 'lvfix', 'patternphase', 'radiopix', 'regrows', 'stringscroll',
     'textstyles', 'titleframe', 'ulprobe', 'undermin', 'virtbounds', 'virtualnotify',
     'weightset', 'widgetsizes', 'windowpercent', 'winsize',

@@ -1,0 +1,5 @@
+plain    calls=yes min=20x20 def=20x20 max=10000x10000
+framed   calls=yes min=20x20 def=20x20 max=10000x10000
+children calls=yes min=20x20 def=20x20 max=10000x10000
+virtual  calls=yes min=20x20 def=20x20 max=10000x10000
+[rc 0]
