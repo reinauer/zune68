@@ -36,7 +36,7 @@ from uaefixture import Fixture, WINUAE, stage_zune  # noqa: E402
 PROBES = [
     'appsignals', 'backfillrect', 'balancebounds', 'baldraw', 'balweight', 'barfmt',
     'centrestyle', 'colgroup', 'compoundwalk', 'cornerbg', 'defclamp', 'demolayout',
-    'disappear', 'emptyfixprobe', 'gaugetext', 'ghostclasses', 'ghostdump', 'hdist',
+    'disappear', 'emptyfixprobe', 'gaugetext', 'getunknown', 'ghostclasses', 'ghostdump', 'hdist',
     'imgdef', 'imgsizes', 'imgspec', 'listbounds', 'listempty', 'listjump',
     'listpartial', 'listprop', 'lvfix', 'patternphase', 'radiopix', 'regrows', 'stringscroll',
     'textstyles', 'titleframe', 'ulprobe', 'undermin', 'virtbounds', 'virtualnotify',

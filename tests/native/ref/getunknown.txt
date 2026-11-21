@@ -1,0 +1,6 @@
+window       rc=0 value=12345678
+application  rc=0 value=12345678
+group        rc=0 value=12345678
+text         rc=0 value=12345678
+window open  rc=0 value=12345678
+[rc 0]

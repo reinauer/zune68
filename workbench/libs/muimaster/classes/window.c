@@ -5360,19 +5360,17 @@ IPTR Window__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     return DoSuperMethodA(cl, obj, (Msg) msg);
 }
 
-/* Initialize writable opg_Storage to zero, then return recognized stored or
- * native-window fields, or delegate unknown attributes to Notify. Native
- * geometry is zero while closed; pointer results are borrowed. Some
- * declared header getters have no case here and do not become implemented
- * merely through zero initialization.
+/* Return recognized stored or native-window fields, or delegate unknown
+ * attributes to Notify. Native geometry is zero while closed; pointer
+ * results are borrowed. Nothing is stored for an attribute no class
+ * knows, as on MUI 3.8: a subclass that stores its own value and then
+ * calls its superclass keeps it (tipwindow.mcc's MUIA_Tip_WindowObject).
  */
 IPTR Window__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 {
 #define STORE *(msg->opg_Storage)
 
     struct MUI_WindowData *data = INST_DATA(cl, obj);
-
-    STORE = (IPTR) 0;
 
     switch (msg->opg_AttrID)
     {

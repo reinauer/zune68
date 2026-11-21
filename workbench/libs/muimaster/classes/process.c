@@ -135,8 +135,6 @@ IPTR Process__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     struct Process_DATA *data = INST_DATA(cl, obj);
 
-    STORE = 0;
-
     switch (msg->opg_AttrID)
     {
     case MUIA_Process_Task:
