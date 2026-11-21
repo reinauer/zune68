@@ -1,0 +1,4 @@
+large  window 316x169 contents 300x150
+small  window 116x59 contents 100x40
+boopsi object get: answer TRUE, value NULL
+[rc 0]

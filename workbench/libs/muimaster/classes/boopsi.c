@@ -229,6 +229,10 @@ IPTR Boopsi__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     {
     case MUIA_Boopsi_Object:
         STORE = (IPTR) data->boopsi_object;
+        /* it fell into the default case: the gadget and the superclass
+         * were asked for an attribute they do not know, and get()
+         * answered FALSE (MUI 3.8: TRUE, tests/native/winclamp.c) */
+        return TRUE;
 
     default:
         {

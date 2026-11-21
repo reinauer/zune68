@@ -41,7 +41,7 @@ PROBES = [
     'listempty', 'listfmt', 'listjump', 'listpartial', 'listprop', 'lvfix', 'newset',
     'patternphase', 'radiopix', 'regpix', 'regrows', 'stringscroll', 'textstyles',
     'titleframe', 'ulprobe', 'undermin', 'virtbounds', 'virtualnotify', 'weightset',
-    'widgetsizes', 'winarea', 'windowpercent', 'winsize',
+    'widgetsizes', 'winarea', 'winclamp', 'windowpercent', 'winsize',
 ]
 
 CC = 'm68k-amigaos-gcc'
