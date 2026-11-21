@@ -13,6 +13,7 @@
 #include <prefs/prefhdr.h>
 
 #include <ctype.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -85,7 +86,7 @@ struct MUI_ApplicationData
     STRPTR                  app_Version_Number;
     STRPTR                  app_Version_Date;
     STRPTR                  app_Version_Extra;
-    ULONG                   app_TimerOutstanding;
+    struct MinList          app_Timers;     /* timerequest_ext.link */
     ULONG                   app_MenuAction; /* Remember last action */
     BOOL                    app_ForceQuit;
     BOOL                    app_Iconified;
@@ -124,6 +125,7 @@ struct timerequest_ext
 {
     struct timerequest treq;
     struct MUI_InputHandlerNode *ihn;
+    struct MinNode link;    /* in app_Timers until RemInputHandler */
 };
 
 /****** Application.mui/MUIC_Application ************
@@ -1313,6 +1315,7 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
 
     /* init input handler list */
     NewList((struct List *)&(data->app_IHList));
+    NewList((struct List *)&data->app_Timers);
 
     /* init input queue */
     NewList((struct List *)&(data->app_MethodQueue));
@@ -1885,12 +1888,20 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
     {
         if (data->app_TimerReq->tr_node.io_Device)
         {
-            while (data->app_TimerOutstanding)
+            /* Timers a class did not remove would otherwise stay with
+             * timer.device and later be replied to the deleted port */
+            struct MinNode *n;
+
+            while ((n = (struct MinNode *)RemHead(
+                    (struct List *)&data->app_Timers)))
             {
-                if (Wait(1L << data->app_TimerPort->
-                        mp_SigBit | 4096) & 4096)
-                    break;
-                data->app_TimerOutstanding--;
+                struct timerequest_ext *time_ext = (struct timerequest_ext *)
+                    ((UBYTE *)n - offsetof(struct timerequest_ext, link));
+
+                if (!CheckIO((struct IORequest *)time_ext))
+                    AbortIO((struct IORequest *)time_ext);
+                WaitIO((struct IORequest *)time_ext);
+                FreeVec(time_ext);
             }
             CloseDevice((struct IORequest *)data->app_TimerReq);
         }
@@ -2520,7 +2531,7 @@ static IPTR Application__OM_REMMEMBER(struct IClass *cl, Object *obj,
 *       (UWORD milliseconds).
 *
 *   RESULT
-*       Always TRUE, including timer-request allocation failure.
+*       TRUE; FALSE when a timer request cannot be allocated.
 *
 *   NOTES
 *       Signal nodes are linked directly into the application list. Timer
@@ -2530,10 +2541,7 @@ static IPTR Application__OM_REMMEMBER(struct IClass *cl, Object *obj,
 *       removal has completed.
 *
 *   BUGS
-*       Timer allocation failure leaves no valid registered timer request but
-*       still reports TRUE. A later RemInputHandler cannot safely assume success
-*       from this return value. No duplicate-registration or interval validation
-*       is performed.
+*       No duplicate-registration or interval validation is performed.
 *
 */
 static IPTR Application__MUIM_AddInputHandler(struct IClass *cl,
@@ -2558,7 +2566,16 @@ static IPTR Application__MUIM_AddInputHandler(struct IClass *cl,
             time_ext->treq.tr_time.tv_micro =
                 (msg->ihnode->ihn_Millis % 1000) * 1000;
             time_ext->ihn = msg->ihnode;
+            AddTail((struct List *)&data->app_Timers,
+                (struct Node *)&time_ext->link);
             SendIO((struct IORequest *)time_ext);
+        }
+        else
+        {
+            /* No request: RemInputHandler must not take a stale link for
+             * one */
+            msg->ihnode->ihn_Node.mln_Pred = NULL;
+            return FALSE;
         }
     }
     else
@@ -2594,23 +2611,28 @@ static IPTR Application__MUIM_AddInputHandler(struct IClass *cl,
 *       before invoking it.
 *
 *   BUGS
-*       An unregistered node, repeated removal, or a failed timer registration
-*       is not checked. Signal-list iteration does not protect a callback that
-*       removes its current node and frees it before NewInput advances.
+*       An unregistered signal node is not checked; a timer whose
+*       registration failed, or that was removed already, is skipped.
+*       Signal-list iteration does not protect a callback that removes its
+*       current node and frees it before NewInput advances.
 *
 */
 static IPTR Application__MUIM_RemInputHandler(struct IClass *cl,
     Object *obj, struct MUIP_Application_RemInputHandler *msg)
 {
-    //struct MUI_ApplicationData *data = INST_DATA(cl, obj);
     if (msg->ihnode->ihn_Flags & MUIIHNF_TIMER)
     {
         struct timerequest_ext *time_ext =
             (struct timerequest_ext *)msg->ihnode->ihn_Node.mln_Pred;
+        /* NULL: AddInputHandler had no memory, or already removed */
+        if (!time_ext)
+            return TRUE;
         if (!CheckIO((struct IORequest *)time_ext))
             AbortIO((struct IORequest *)time_ext);
         WaitIO((struct IORequest *)time_ext);
+        Remove((struct Node *)&time_ext->link);
         FreeVec(time_ext);
+        msg->ihnode->ihn_Node.mln_Pred = NULL;
     }
     else
         Remove((struct Node *)msg->ihnode);

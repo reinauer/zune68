@@ -15,8 +15,8 @@ WINDOW_PORT, APP_PORT, REXX_PORT = 0x72600, 0x72700, 0x72800
 INPUT, BUFFERED, RETURN_ID = 0x80423ba6, 0x80427e59, 0x804276ef
 # Checked using offsetof with the target compiler and application.c.
 FIELDS = dict(family=28, handlers=32, methods=44, ids=102, timer=122,
-              rexx_port=6232, rexx_msg=6236, rexx_hook=6240, commands=6244,
-              rexx_string=6248, app_port=6254, drop=6270, help=166)
+              rexx_port=6240, rexx_msg=6244, rexx_hook=6248, commands=6252,
+              rexx_string=6256, app_port=6262, drop=6278, help=166)
 
 
 class ApplicationHarness(NotifyHarness):
