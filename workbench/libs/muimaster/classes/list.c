@@ -2054,16 +2054,27 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_List_First:
+        {
+            /* The first entry shown: what get returns is where the list
+             * stands, never past the last full page or before 0 */
+            LONG first = tag->ti_Data, last = data->entries_visible > 0
+                ? data->entries_num - data->entries_visible
+                : data->entries_num - 1;
+
+            if (first > last)
+                first = last;
+            if (first < 0)
+                first = 0;
             data->update_pos = data->entries_first;
-            data->entries_first = tag->ti_Data;
+            data->entries_first = first;
             if (!(data->flags & LIST_QUIET))
             {
                 data->update = data->update == 0 && List_CanScroll(obj, data)
                     ? (UPDATEMODE_ENTRY | UPDATEMODE_ALL) : UPDATEMODE_ALL;
                 MUI_Redraw(obj, MADF_DRAWUPDATE);
-                if (data->vertprop_first != tag->ti_Data)
+                if (data->vertprop_first != first)
                 {
-                    set(obj, MUIA_List_VertProp_First, tag->ti_Data);
+                    set(obj, MUIA_List_VertProp_First, first);
                 }
             }
             else
@@ -2072,6 +2083,7 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 data->flags |= LIST_CHANGED;
             }
             break;
+        }
 
         case MUIA_List_Visible:    /* get-only; set only to notify */
             break;
