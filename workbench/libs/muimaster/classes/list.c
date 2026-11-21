@@ -5430,13 +5430,17 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                 {
                 case RAWKEY_NM_WHEEL_UP:
                     DoWheelMove(cl, obj, -delta);
+                    result = MUI_EventHandlerRC_Eat;
                     break;
 
                 case RAWKEY_NM_WHEEL_DOWN:
                     DoWheelMove(cl, obj, delta);
+                    result = MUI_EventHandlerRC_Eat;
                     break;
                 }
-                result = MUI_EventHandlerRC_Eat;
+                /* only the wheel is eaten: other keys stay for the window's
+                 * control chars and the active object, as on MUI 3.8
+                 * (tests/native/listkey.c) */
             }
             break;
         }

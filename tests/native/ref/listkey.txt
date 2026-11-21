@@ -1,0 +1,4 @@
+open yes
+pointer over the check mark: toggled
+pointer over the list: toggled
+[rc 0]
