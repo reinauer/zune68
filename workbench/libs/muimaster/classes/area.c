@@ -3087,17 +3087,21 @@ static void set_inner_sizes(Object *obj, struct MUI_AreaData *data)
 {
     const struct MUI_FrameSpec_intern *frame;
     struct MUI_FrameSpec_intern tempframe;
+    struct MUI_RenderInfo *mri = muiRenderInfo(obj);
+    /* MUI 3.8 drops the frames' inner spacing in the last stage of
+     * fitting a window into the screen (tests/native/fitframes.c) */
+    BOOL noinner = mri && mri->mri_Fallback >= 4;
 
     frame = get_intframe(obj, data, &tempframe);
     // Use frame inner spacing when not hardcoded
     if (!(data->mad_Flags & MADF_INNERLEFT))
-        data->mad_InnerLeft = frame->innerLeft;
+        data->mad_InnerLeft = noinner ? 0 : frame->innerLeft;
     if (!(data->mad_Flags & MADF_INNERTOP))
-        data->mad_InnerTop = frame->innerTop;
+        data->mad_InnerTop = noinner ? 0 : frame->innerTop;
     if (!(data->mad_Flags & MADF_INNERRIGHT))
-        data->mad_InnerRight = frame->innerRight;
+        data->mad_InnerRight = noinner ? 0 : frame->innerRight;
     if (!(data->mad_Flags & MADF_INNERBOTTOM))
-        data->mad_InnerBottom = frame->innerBottom;
+        data->mad_InnerBottom = noinner ? 0 : frame->innerBottom;
 }
 
 /* If a borrowed frame-title string exists, resolve frame and title font and

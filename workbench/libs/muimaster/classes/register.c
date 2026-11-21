@@ -504,7 +504,14 @@ static void SetHardCoord(Object *obj, struct Register_DATA *data)
     //    * (data->rows - 1 - data->active/data->columns)
     //    +  REGISTER_FRAMEBOTTOM;
 
+    struct MUI_FrameSpec_intern noinner = {0};
+
     frame = &muiGlobalInfo(obj)->mgi_Prefs->frames[MUIV_Frame_Group];
+    /* MUI 3.8 drops the frame's inner spacing in the last stage of fitting
+     * a window into the screen, as Area does for other frames: NFS-GUI
+     * 1.1 opened no window on a 640x256 screen (tests/native/fitframes.c) */
+    if (muiRenderInfo(obj) && muiRenderInfo(obj)->mri_Fallback >= 4)
+        frame = &noinner;
 
     adata->mad_InnerLeft = frame->innerLeft + 1;
     adata->mad_InnerTop =

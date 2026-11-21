@@ -2027,14 +2027,15 @@ IPTR Group__MUIM_Setup(struct IClass *cl, Object *obj,
         data->horiz_spacing = muiGlobalInfo(obj)->mgi_Prefs->group_hspacing;
     if (!(data->flags & GROUP_VSPACING))
         data->vert_spacing = muiGlobalInfo(obj)->mgi_Prefs->group_vspacing;
-    /* MUI 3.9 halves the spacing from the third stage of fitting a window
-     * into the screen (tests/native/fontfallback.c) */
+    /* MUI 3.8 and 3.9 halve the spacing from the third stage of fitting a
+     * window into the screen: 4 to 2 on MUI 3.9 (tests/native/
+     * fontfallback.c), 3 to 1 on MUI 3.8 (tests/native/fitframes.c) */
     if (muiRenderInfo(obj)->mri_Fallback >= 3)
     {
         if (!(data->flags & GROUP_HSPACING))
-            data->horiz_spacing = MIN(data->horiz_spacing, 2);
+            data->horiz_spacing /= 2;
         if (!(data->flags & GROUP_VSPACING))
-            data->vert_spacing = MIN(data->vert_spacing, 2);
+            data->vert_spacing /= 2;
     }
     ChildList = group_children(data);
     cstate = ChildList->mlh_Head;
