@@ -225,6 +225,7 @@ static BOOL Buffer_Alloc(struct MUI_StringData *data)
             data->BufferSize * sizeof(char));
         return FALSE;
     }
+    data->Buffer[0] = 0;    /* Buffer_SetNewContents compares with it */
     if (data->msd_useSecret)
     {
         data->SecBuffer =

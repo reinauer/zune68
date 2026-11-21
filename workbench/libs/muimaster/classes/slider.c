@@ -678,7 +678,9 @@ IPTR Slider__MUIM_Draw(struct IClass *cl, Object *obj,
             if (data->text_buffer) FreeVec((APTR)data->text_buffer);
             data->text_buffer = StrDup((CONST_STRPTR) DoMethod(obj,
                 MUIM_Numeric_Stringify, val));
-            data->text_length = strlen(data->text_buffer);
+            /* No memory: no text this time, not a crash */
+            data->text_length = data->text_buffer
+                ? strlen(data->text_buffer) : 0;
             data->text_width =
                 TextLength(_rp(obj), data->text_buffer, data->text_length);
             data->flags |= SLIDER_VALIDSTRING;
