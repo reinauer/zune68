@@ -4815,6 +4815,20 @@ static void WindowSelectDimensions(struct MUI_WindowData *data)
 }
 
 
+IPTR Window__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg);
+
+/* Set an OM_NEW tag through this class's OM_SET, not set(): set() reaches
+ * the subclass's OM_SET before its OM_NEW has finished. BWin.mcc takes
+ * MUIA_Window_RootObject there and keeps it, so its window had no root
+ * and never opened; on MUI 3.8 and MUI 5 it opens. */
+static void Window_OwnSet(struct IClass *cl, Object *obj, Tag attr, IPTR val)
+{
+    struct TagItem tags[2] = { { attr, val }, { TAG_DONE, 0 } };
+    struct opSet msg = { OM_SET, tags, NULL };
+
+    Window__OM_SET(cl, obj, &msg);
+}
+
 /* Construct Notify, create the private node pool, initialize lists/defaults
  * and process supported tags in order. Return the object or NULL after
  * superclass/pool failure or explicit NULL RootObject. Adopt the current
@@ -4940,7 +4954,7 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Window_ID:
-            set(obj, MUIA_Window_ID, tag->ti_Data);
+            Window_OwnSet(cl, obj, MUIA_Window_ID, tag->ti_Data);
             break;
 
         case MUIA_Window_IsSubWindow:
@@ -4949,11 +4963,11 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Window_Title:
-            set(obj, MUIA_Window_Title, tag->ti_Data);
+            Window_OwnSet(cl, obj, MUIA_Window_Title, tag->ti_Data);
             break;
 
         case MUIA_Window_ScreenTitle:
-            set(obj, MUIA_Window_ScreenTitle, tag->ti_Data);
+            Window_OwnSet(cl, obj, MUIA_Window_ScreenTitle, tag->ti_Data);
             break;
 
         case MUIA_Window_Activate:
@@ -4962,7 +4976,7 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             break;
 
         case MUIA_Window_DefaultObject:
-            set(obj, MUIA_Window_DefaultObject, tag->ti_Data);
+            Window_OwnSet(cl, obj, MUIA_Window_DefaultObject, tag->ti_Data);
             break;
 
         case MUIA_Window_Menustrip:
@@ -4979,7 +4993,7 @@ IPTR Window__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 CoerceMethod(cl, obj, OM_DISPOSE);
                 return 0;
             }
-            set(obj, MUIA_Window_RootObject, tag->ti_Data);
+            Window_OwnSet(cl, obj, MUIA_Window_RootObject, tag->ti_Data);
             break;
 
         case MUIA_Window_AltHeight:
