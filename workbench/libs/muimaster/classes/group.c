@@ -987,9 +987,12 @@ IPTR Group__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
+    /* The children added so far go with the group, and the other objects
+     * of the list (a subclass's, after TAG_MORE: a popup's object) too */
     if (bad_children)
     {
         CoerceMethod(cl, obj, OM_DISPOSE);
+        zune_dispose_children_but(msg->ops_AttrList, MUIA_Group_Child);
         return 0;
     }
 

@@ -3,7 +3,10 @@
  * each printed as one line.
  *
  *   nochild    MUI_NewObject() of a class that does not exist, given a
- *              MUIA_Group_Child: is the child disposed? (MUI: yes)
+ *              MUIA_Group_Child: is the child disposed? (MUI 3.8: no)
+ *   nullbutton a Popobject given a NULL button (a failed PopButton()), a
+ *              string and an object: how often each is disposed (MUI 3.8:
+ *              string once, object never, lost; Zune68: both once)
  *   dataspace  a record whose data has no terminator, added where an
  *              earlier record of 0xFF bytes was: the byte after its data
  *              (0 when each record ends with a zero byte)
@@ -35,12 +38,18 @@ struct Library *MUIMasterBase;
 #endif
 
 static int disposed;
+static Object *watched[2];
+static int watched_disposed[2];
 
 static IPTR tracked_dispatch(struct IClass *cl __asm("a0"),
     Object *obj __asm("a2"), Msg msg __asm("a1"))
 {
     if (msg->MethodID == OM_DISPOSE)
+    {
         disposed++;
+        if (obj == watched[0]) watched_disposed[0]++;
+        if (obj == watched[1]) watched_disposed[1]++;
+    }
     return DoSuperMethodA(cl, obj, msg);
 }
 
@@ -59,6 +68,42 @@ static void nochild(void)
         disposed ? "disposed" : "kept");
     if (!disposed)
         MUI_DisposeObject(child);
+    MUI_DeleteCustomClass(mcc);
+}
+
+static void nullbutton(void)
+{
+    struct MUI_CustomClass *mcc;
+    Object *o;
+
+    mcc = MUI_CreateCustomClass(NULL, MUIC_Rectangle, NULL, 4,
+        (APTR)tracked_dispatch);
+    if (!mcc) { printf("nullbutton: no class\n"); return; }
+    watched[0] = NewObject(mcc->mcc_Class, NULL, TAG_DONE);
+    watched[1] = NewObject(mcc->mcc_Class, NULL, TAG_DONE);
+    if (!watched[0] || !watched[1])
+    {
+        printf("nullbutton: no objects\n");
+        MUI_DisposeObject(watched[0]);
+        MUI_DisposeObject(watched[1]);
+        MUI_DeleteCustomClass(mcc);
+        return;
+    }
+    o = MUI_NewObject(MUIC_Popobject,
+        MUIA_Popstring_String, (IPTR)watched[0],
+        MUIA_Popstring_Button, 0,
+        MUIA_Popobject_Object, (IPTR)watched[1],
+        TAG_DONE);
+    printf("nullbutton: object %s, string disposed %d, object disposed %d\n",
+        o ? "made" : "NULL", watched_disposed[0], watched_disposed[1]);
+    if (o)
+        MUI_DisposeObject(o);
+    else
+    {
+        if (!watched_disposed[0]) MUI_DisposeObject(watched[0]);
+        if (!watched_disposed[1]) MUI_DisposeObject(watched[1]);
+    }
+    watched[0] = watched[1] = NULL;
     MUI_DeleteCustomClass(mcc);
 }
 
@@ -160,6 +205,7 @@ int main(int argc, char **argv)
     printf("muimaster.library %ld.%ld\n", (long)MUIMasterBase->lib_Version,
         (long)MUIMasterBase->lib_Revision);
     nochild();
+    nullbutton();
     dataspace();
     gauge();
     popobject();

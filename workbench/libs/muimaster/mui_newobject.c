@@ -47,12 +47,29 @@ static BOOL zune_child_tag(Tag t)
  * appearance disposes it. */
 void zune_dispose_children(struct TagItem *tags)
 {
-    struct TagItem *tag, *rest, *t;
+    zune_dispose_children_but(tags, TAG_DONE);
+}
+
+/* The same, but leave the objects that appear under tag OWNED: a group
+ * whose OM_NEW fails at a NULL child has added its other children, and
+ * disposes them with itself. */
+void zune_dispose_children_but(struct TagItem *tags, Tag owned)
+{
+    struct TagItem *tag, *rest, *t, *all = tags;
 
     while ((tag = NextTagItem(&tags)))
     {
         if (!zune_child_tag(tag->ti_Tag) || !tag->ti_Data)
             continue;
+        if (owned != TAG_DONE)
+        {
+            rest = all;
+            while ((t = NextTagItem(&rest)))
+                if (t->ti_Tag == owned && t->ti_Data == tag->ti_Data)
+                    break;
+            if (t)
+                continue;
+        }
         rest = tag + 1;
         while ((t = NextTagItem(&rest)))
             if (t->ti_Data == tag->ti_Data && zune_child_tag(t->ti_Tag))
