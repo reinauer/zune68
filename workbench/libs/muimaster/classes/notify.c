@@ -366,7 +366,7 @@ static struct NotifyNode *CreateNNode(struct MUI_NotifyData *data,
     {
         IX ix = { IX_VERSION };
 
-        if (ParseIX((CONST_STRPTR) msg->TrigVal, &ix) != 0)
+        if (!ZUNE_CX() || ParseIX((CONST_STRPTR) msg->TrigVal, &ix) != 0)
             return NULL;
 
         if ((nnode =

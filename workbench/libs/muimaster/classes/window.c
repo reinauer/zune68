@@ -2428,7 +2428,7 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
             data->wd_Flags |= MUIWF_ACTIVE;
         }
 
-        if (data->wd_Flags & MUIWF_ISAPPWINDOW)
+        if ((data->wd_Flags & MUIWF_ISAPPWINDOW) && ZUNE_WB())
         {
             data->wd_AppWindow = AddAppWindowA(0, (IPTR) obj, win,
                 muiGlobalInfo(obj)->mgi_AppPort, NULL);

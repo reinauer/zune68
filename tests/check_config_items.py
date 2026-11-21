@@ -118,13 +118,14 @@ def check(path):
 def check_font_fallback(path):
     h = Harness(path)
     mri, prefs, dos, diskfont = 0x77000, 0x78000, 0x79000, 0x7a000
-    normal, opened = 0x7b000, 0x7b100
+    normal, opened, gfx = 0x7b000, 0x7b100, 0x7c000
     h.mem.w32(OBJECT, GLOBAL)
     h.mem.w32(OBJECT + 28, mri)
     h.mem.w32(GLOBAL + 20, prefs)
     h.mem.w32(mri + 52 + 4, normal)  # Normal owns its cached font.
     h.mem.w32(h.symbols['_DOSBase'], dos)
     h.mem.w32(h.symbols['_DiskfontBase'], diskfont)
+    h.mem.w32(h.symbols['_GfxBase'], gfx)
     disk_calls = []
     disk_result = 0
 
@@ -151,6 +152,8 @@ def check_font_fallback(path):
     h.trap(dos - 876, pathpart)
     h.trap(dos - 816, number)
     h.trap(diskfont - 30, openfont)
+    # Not in memory: OpenFont fails and OpenDiskFont is asked.
+    h.trap(gfx - 72, lambda: h.cpu.w_reg(0, 0))
     for preset, size in ((3, 9), (5, 9), (6, 15)):
         h.mem.w_block(PAYLOAD, f'helvetica/{size}\0'.encode())
         h.mem.w32(prefs + 4 * preset, PAYLOAD)
@@ -169,6 +172,15 @@ def check_font_fallback(path):
     assert h.mem.r32(mri + 52 + 12) == opened
     count = len(disk_calls)
     assert h.call('zune_font_get', OBJECT, 0xfffffffd) == opened
+    assert len(disk_calls) == count and not h.allocations
+
+    # A font already in memory at the asked size comes from OpenFont alone.
+    memfont = 0x7c100
+    h.mem.w16(memfont + 20, 9)  # tf_YSize
+    h.trap(gfx - 72, lambda: h.cpu.w_reg(0, memfont))
+    h.mem.w32(mri + 52 + 12, 0)
+    h.mem.w_block(PAYLOAD, b'helvetica/9\0')
+    assert h.call('zune_font_get', OBJECT, 0xfffffffd) == memfont
     assert len(disk_calls) == count and not h.allocations
     h.machine.cleanup()
 

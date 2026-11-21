@@ -1626,9 +1626,8 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
         return 0;
     }
 
-    if (CxBase
-        && GetTagData(MUIA_Application_UseCommodities, TRUE,
-            msg->ops_AttrList))
+    if (GetTagData(MUIA_Application_UseCommodities, TRUE,
+            msg->ops_AttrList) && ZUNE_CX())
     {
         data->app_BrokerPort = CreateMsgPort();
 
@@ -1663,7 +1662,8 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
         }
     }
 
-    if (data->app_UseRexx && RexxSysBase)
+    /* rexxsyslib.library is opened when the first message arrives. */
+    if (data->app_UseRexx)
     {
         data->app_RexxPort = CreateMsgPort();
         if (data->app_RexxPort)
@@ -2085,7 +2085,7 @@ static IPTR Application__OM_SET(struct IClass *cl, Object *obj,
                             (struct DiskObject *)XGET(obj,
                             MUIA_Application_DiskObject);
 
-                        if (dobj == NULL)
+                        if (dobj == NULL && ZUNE_ICON())
                         {
                             /* Get default AppIcon in ENV:SYS or ENVARC:SYS */
                             dobj = GetDefDiskObject(WBAPPICON);
@@ -2116,7 +2116,7 @@ static IPTR Application__OM_SET(struct IClass *cl, Object *obj,
                             }
                         }
 
-                        if (dobj == NULL)
+                        if (dobj == NULL || !ZUNE_WB())
                             break;
 
                         dobj->do_CurrentX = NO_ICON_POSITION;
@@ -3088,7 +3088,7 @@ static IPTR application_input(struct IClass *cl, Object *obj,
             struct RexxMsg *rmsg;
             while ((rmsg = (struct RexxMsg *)GetMsg(data->app_RexxPort)))
             {
-                if (IsRexxMsg(rmsg))
+                if (ZUNE_REXX() && IsRexxMsg(rmsg))
                     application_rexx(data, obj, rmsg);
 
                 ReplyMsg((struct Message *)rmsg);
@@ -4118,7 +4118,7 @@ static IPTR Application__MUIM_Load(struct IClass *cl, Object *obj,
     }
     if (fh)
     {
-        if ((iff = AllocIFF()))
+        if (ZUNE_IFFPARSE() && (iff = AllocIFF()))
         {
             iff->iff_Stream = (IPTR) fh;
 
@@ -4239,7 +4239,7 @@ static IPTR Application__MUIM_Save(struct IClass *cl, Object *obj,
     }
     if (fh)
     {
-        if ((iff = AllocIFF()))
+        if (ZUNE_IFFPARSE() && (iff = AllocIFF()))
         {
             iff->iff_Stream = (IPTR) fh;
 

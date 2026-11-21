@@ -100,11 +100,18 @@ class InitHarness(Harness):
     def locale_exit(self):
         self.locale = False
 
-    def call(self, name):
-        self.mem.w32(STACK, MASTER)
+    def call(self, name, argument=MASTER):
+        self.mem.w32(STACK, argument)
         self.machine.prepare(self.symbols['_' + name], STACK)
         assert self.machine.was_exit(self.machine.execute(200000))
         return self.cpu.r_reg(0)
+
+
+# Opened on first use by zune_lazylib_open(), in ZUNE_LIB_* order.
+LAZY = ['asl.library', 'commodities.library', 'rexxsyslib.library',
+        'datatypes.library', 'iffparse.library', 'diskfont.library',
+        'icon.library', 'workbench.library', 'mathieeedoubbas.library',
+        'mathieeedoubtrans.library']
 
 
 def check(path):
@@ -127,12 +134,22 @@ def check(path):
     assert h.added == ['muigfx.library'], h.added
     count = len(h.opens)
     names = list(h.opens)
-    # ARexx is optional; the other libraries are required
-    assert names.count('rexxsyslib.library') == 1, names
+    assert not set(names) & set(LAZY), names
     size = h.mem.r32(h.symbols['_LibInitTable'])
     pens = h.mem.r32(MASTER + size - 4)
     for index, expected in enumerate([b's3', b'', b's7', b'', b's4', b's2', b's5', b'rffa997']):
         assert h.mem.r_cstr(pens + 32 * index).encode() == expected, (index, h.mem.r_cstr(pens + 32 * index), expected)
+    # A failed optional library is not searched for again; the IEEE
+    # transcendental library opens the basic one first; both stay open
+    # until expunge.
+    h.fail = count + 1
+    assert h.call('zune_lazylib_open', LAZY.index('asl.library')) == 0
+    assert h.call('zune_lazylib_open', LAZY.index('asl.library')) == 0
+    trans = h.call('zune_lazylib_open', LAZY.index('mathieeedoubtrans.library'))
+    assert trans and h.call('zune_lazylib_open', LAZY.index('mathieeedoubtrans.library')) == trans
+    assert h.call('zune_lazylib_open', LAZY.index('icon.library'))
+    assert h.opens[count:] == ['asl.library', 'mathieeedoubbas.library',
+                               'mathieeedoubtrans.library', 'icon.library'], h.opens[count:]
     h.call('L_ExpungeLib')
     assert h.mem.r32(h.lib_list) == h.lib_list + 4, 'muigfx.library not removed'
     del h.allocations[h.lib_list]
@@ -141,13 +158,6 @@ def check(path):
     for failed_open in range(1, count + 1):
         h = InitHarness(path, fail=failed_open)
         restore_cleanup(h)
-        if names[failed_open - 1] == 'rexxsyslib.library':
-            assert h.call('L_InitLib')
-            h.call('L_ExpungeLib')
-            del h.allocations[h.lib_list]
-            assert not h.live_libraries and not h.allocations
-            h.machine.cleanup()
-            continue
         assert not h.call('L_InitLib')
         assert not h.added
         del h.allocations[h.lib_list]
@@ -159,7 +169,7 @@ def check(path):
     del h.allocations[h.lib_list]
     assert not h.live_libraries and not h.allocations
     h.machine.cleanup()
-    print(f'{path.name}: native startup, pens, muigfx.library, optional ARexx and {count} failed opens unwind cleanly')
+    print(f'{path.name}: native startup, pens, muigfx.library, optional libraries on first use and {count} failed opens unwind cleanly')
 
 
 if __name__ == '__main__':

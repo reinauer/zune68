@@ -3,6 +3,7 @@
 #include <clib/alib_protos.h>
 #include <intuition/classusr.h>
 
+/* The soft-float runtime calls these; opened on first use (lazylib.h). */
 struct Library *MathIeeeDoubBasBase;
 struct Library *MathIeeeDoubTransBase;
 
@@ -21,27 +22,4 @@ ULONG __stdargs SetSuperAttrs(struct IClass *cl, Object *obj,
     msg.ops_AttrList = (struct TagItem *)&tag1;
     msg.ops_GInfo = NULL;
     return DoSuperMethodA(cl, obj, (Msg)&msg);
-}
-
-void ZuneGccCleanup(void)
-{
-    if (MathIeeeDoubTransBase)
-        CloseLibrary(MathIeeeDoubTransBase);
-    if (MathIeeeDoubBasBase)
-        CloseLibrary(MathIeeeDoubBasBase);
-    MathIeeeDoubTransBase = NULL;
-    MathIeeeDoubBasBase = NULL;
-}
-
-BOOL ZuneGccInit(void)
-{
-    MathIeeeDoubBasBase = OpenLibrary("mathieeedoubbas.library", 0);
-    if (MathIeeeDoubBasBase)
-        MathIeeeDoubTransBase = OpenLibrary("mathieeedoubtrans.library", 0);
-    if (!MathIeeeDoubBasBase || !MathIeeeDoubTransBase)
-    {
-        ZuneGccCleanup();
-        return FALSE;
-    }
-    return TRUE;
 }

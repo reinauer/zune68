@@ -236,7 +236,7 @@ IPTR setup_datatype(struct IClass *cl, Object *obj)
 
             me->pr_WindowPtr = (APTR) - 1;
 
-            data->dto = NewDTObject(data->name, DTA_GroupID, GID_PICTURE,
+            data->dto = !ZUNE_DATATYPES() ? NULL : NewDTObject(data->name, DTA_GroupID, GID_PICTURE,
                 OBP_Precision, PRECISION_IMAGE,
                 PDTA_Screen, _screen(obj),
                 PDTA_DestMode, PMODE_V43,

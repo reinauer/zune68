@@ -293,6 +293,9 @@ IPTR Knob__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
     if (!(msg->flags & (MADF_DRAWOBJECT | MADF_DRAWUPDATE)))
         return FALSE;
+    /* The needle is drawn with sin and cos (mathieeedoubtrans). */
+    if (!ZUNE_MATHTRANS())
+        return FALSE;
 
     x1 = _mleft(obj);
     y1 = _mtop(obj);
@@ -455,7 +458,8 @@ IPTR Knob__MUIM_HandleEvent(struct IClass *cl, Object *obj,
 {
     struct Knob_DATA *data = INST_DATA(cl, obj);
 
-    if (!msg->imsg)
+    /* Mouse positions become angles in double precision. */
+    if (!msg->imsg || !ZUNE_MATHTRANS())
     {
         return 0;
     }

@@ -454,6 +454,10 @@ IPTR Dataspace__MUIM_ReadIFF(struct IClass *cl, Object *obj,
     LONG len;
     ULONG id;
 
+    /* The handle may be the program's own: iffparse.library is opened on
+     * first use (lazylib.h) and may not be open here yet. */
+    if (!ZUNE_IFFPARSE())
+        return IFFERR_NOMEM;
     cn = CurrentChunk(msg->handle);
     if (!cn)
     {
@@ -543,6 +547,8 @@ IPTR Dataspace__MUIM_WriteIFF(struct IClass *cl, Object *obj,
     struct Dataspace_Node *iter;
     LONG rc;
 
+    if (!ZUNE_IFFPARSE())   /* as in ReadIFF */
+        return IFFERR_NOMEM;
     if ((rc = PushChunk(msg->handle, msg->type, msg->id, IFFSIZE_UNKNOWN)))
         return rc;
 

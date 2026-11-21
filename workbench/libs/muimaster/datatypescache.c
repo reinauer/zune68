@@ -184,7 +184,7 @@ static Object *LoadDTPicture(CONST_STRPTR filename, struct Screen *scr, BOOL dtD
         dtDoRemap = FALSE;
     }
 
-    o = NewDTObject((APTR) filename,
+    o = !ZUNE_DATATYPES() ? NULL : NewDTObject((APTR) filename,
         DTA_SourceType,         DTST_FILE,
         DTA_GroupID,            GID_PICTURE,
         OBP_Precision,          PRECISION_EXACT,
@@ -399,7 +399,7 @@ struct NewImage *GetImageFromFile(char *name, struct Screen *scr)
     UBYTE mask;
     ni = NULL;
 
-    pic = NewDTObject(name, DTA_SourceType, DTST_FILE,
+    pic = !ZUNE_DATATYPES() ? NULL : NewDTObject(name, DTA_SourceType, DTST_FILE,
         DTA_GroupID, GID_PICTURE,
         PDTA_Remap, FALSE, PDTA_DestMode, PMODE_V43, TAG_DONE);
     if (pic)

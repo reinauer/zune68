@@ -112,6 +112,8 @@ static void native_result(struct Request *r)
 }
 APTR ZuneAllocAslRequest(ULONG type, struct TagItem *tags)
 {
+    if (!ZUNE_ASL())
+        return NULL;
     if (type != ASL_FileRequest && type != ASL_FontRequest)
         return AllocAslRequest(type, tags);
     struct Request *r = AllocVec(sizeof(*r), MEMF_ANY | MEMF_CLEAR);
@@ -141,7 +143,9 @@ APTR ZuneAllocAslRequest(ULONG type, struct TagItem *tags)
 void ZuneFreeAslRequest(APTR public)
 {
     struct Request *r = find_request(public), **link;
-    if (!r) { FreeAslRequest(public); return; }
+    /* A requester the program allocated itself may reach here before
+     * this library has opened asl.library. */
+    if (!r) { if (public && ZUNE_ASL()) FreeAslRequest(public); return; }
     if (r->running) return;
     ObtainSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
     for (link = &requests; *link != r; link = &(*link)->next);
@@ -305,7 +309,7 @@ AROS_UFH3S(IPTR, native_filter,
 BOOL ZuneAslRequest(APTR public, struct TagItem *tags)
 {
     struct Request *r = find_request(public);
-    if (!r) return AslRequest(public, tags);
+    if (!r) return ZUNE_ASL() ? AslRequest(public, tags) : FALSE;
     if (r->running) return FALSE;
     struct TagItem state[17];
     ULONG count;

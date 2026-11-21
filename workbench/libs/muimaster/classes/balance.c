@@ -881,6 +881,9 @@ static void handle_move(struct IClass *cl, Object *obj, WORD mouse)
 {
     struct Balance_DATA *data = INST_DATA(cl, obj);
 
+    /* The weights are computed in double precision. */
+    if (!ZUNE_MATH())
+        return;
     if (data->state == CLICKED)
         recalc_weights_all(cl, obj, mouse);
     else if (data->state == SHIFT_CLICKED)

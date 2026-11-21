@@ -474,7 +474,8 @@ IPTR Popasl__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         GetTagData(MUIA_Popasl_Type, ASL_FileRequest, msg->ops_AttrList);
     APTR asl_req;
 
-    if (!(asl_req = AllocAslRequest(asl_type, msg->ops_AttrList)))
+    if (!ZUNE_ASL()
+        || !(asl_req = AllocAslRequest(asl_type, msg->ops_AttrList)))
     {
         /* Nothing has read the tag list: its string and button go too */
         zune_dispose_children(msg->ops_AttrList);

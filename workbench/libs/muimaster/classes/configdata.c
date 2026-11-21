@@ -368,7 +368,7 @@ static void Configdata__SetKey(ZuneKeySpec *key, CONST_STRPTR val)
             key->ix_well = keycache[i].well;
             return;
         }
-    key->ix_well = !ParseIX(key->readable_hotkey, &key->ix);
+    key->ix_well = ZUNE_CX() && !ParseIX(key->readable_hotkey, &key->ix);
     if (is_default_string(val))
     {
         Forbid();
@@ -1291,7 +1291,7 @@ IPTR Configdata__MUIM_Save(struct IClass *cl, Object *obj,
     struct MUIP_Configdata_Save *msg)
 {
     struct IFFHandle *iff;
-    if ((iff = AllocIFF()))
+    if (ZUNE_IFFPARSE() && (iff = AllocIFF()))
     {
         if (!(iff->iff_Stream = (IPTR) Open(msg->filename, MODE_NEWFILE)))
         {
@@ -1353,7 +1353,7 @@ IPTR Configdata__MUIM_Load(struct IClass *cl, Object *obj,
     struct IFFHandle *iff;
     IPTR res = TRUE;
 
-    if ((iff = AllocIFF()))
+    if (ZUNE_IFFPARSE() && (iff = AllocIFF()))
     {
         D(bug("loading prefs from %s\n", msg->filename));
         if ((iff->iff_Stream = (IPTR) Open(msg->filename, MODE_OLDFILE)))

@@ -94,6 +94,8 @@ struct MUIMasterBase_intern
     struct MsgPort              IdPort;
     struct NotifyRequest        IdNotify;
 #endif
+    struct SignalSemaphore      LazyLibSemaphore; /* zune_lazylib_open() */
+    ULONG                       LazyLibFailed;    /* 1 << ZUNE_LIB_* */
     /* What MUI's private LVO -264 returns (classes/application.c) */
     Object                      *Applist;
     struct MUI_CustomClass      *ApplistClass;

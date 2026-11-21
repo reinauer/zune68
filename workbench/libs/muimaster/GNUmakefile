@@ -33,7 +33,7 @@ CFLAGS ?= -std=gnu17 -Os -g -Wall -Wno-pointer-sign \
 # Every native build is a release build: compile out assert().
 CPPFLAGS += -DNDEBUG -DMUIMASTER_YES_INLINE_STDARG= -DZUNE68_GCC_NATIVE \
   -DMUI_OBSOLETE -DMUIMASTER_LIBRARY_BUILD \
-  -I$(BUILD)/include -I$(BUILD) -Igcc -Iinclude -I. -include include/clib/muimaster_protos.h \
+  -I$(BUILD)/include -I$(BUILD) -Igcc -Iinclude -I. -include include/clib/muimaster_protos.h -include lazylib.h \
   -include $(BUILD)/trace-config.h
 # LTO=1: link-time optimization makes the library about 20 KB (5%)
 # smaller at the same speed, but the m68k-amigaos linker (binutils 2.46)

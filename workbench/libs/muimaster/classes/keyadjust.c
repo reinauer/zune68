@@ -39,7 +39,7 @@ static BOOL valid_keys(CONST_STRPTR value, BOOL multiple)
         if (length >= sizeof(key) || (!multiple && comma)) return FALSE;
         memcpy(key, value, length); key[length] = 0;
         struct InputXpression ix;
-        if (ParseIX(key, &ix)) return FALSE;
+        if (!ZUNE_CX() || ParseIX(key, &ix)) return FALSE;
         if (!comma) return TRUE;
         value = (CONST_STRPTR)comma + 1;
     }

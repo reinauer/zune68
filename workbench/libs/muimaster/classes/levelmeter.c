@@ -340,6 +340,9 @@ IPTR Levelmeter__MUIM_Draw(struct IClass *cl, Object *obj,
 
     if (!(msg->flags & (MADF_DRAWOBJECT | MADF_DRAWUPDATE)))
         return FALSE;
+    /* The needle is drawn with sin and cos (mathieeedoubtrans). */
+    if (!ZUNE_MATHTRANS())
+        return FALSE;
 
     x1 = _mleft(obj);
     y1 = _mtop(obj);

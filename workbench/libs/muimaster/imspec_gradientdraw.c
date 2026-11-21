@@ -146,6 +146,8 @@ void FillPixelArrayGradientRelative(struct RastPort *rp, int xt, int yt,
      *
      * TODO: Remove the remaining use of floating point variables
      */
+    if (!ZUNE_MATHTRANS())  /* sin/cos come from mathieeedoubtrans */
+        return;
     double rad = angle * M_PI / 180;
     double cosarc = cos(rad);
     double sinarc = sin(rad);
@@ -327,6 +329,8 @@ STATIC int FillPixelArrayGradient(struct RastPort *rp, int xt, int yt,
      * TODO: Remove the remaining use of floating point variables
      */
 
+    if (!ZUNE_MATHTRANS())  /* sin/cos come from mathieeedoubtrans */
+        return 0;
     double rad = angle * M_PI / 180;
     double cosarc = cos(rad);
     double sinarc = sin(rad);

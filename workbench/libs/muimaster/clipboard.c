@@ -35,7 +35,7 @@ void clipboard_write_text(STRPTR text, LONG textlen)
 {
     struct IFFHandle *iff;
 
-    if ((iff = AllocIFF()))
+    if (ZUNE_IFFPARSE() && (iff = AllocIFF()))
     {
         if ((iff->iff_Stream = (IPTR) OpenClipboard(0)))
         {
@@ -67,7 +67,7 @@ STRPTR clipboard_read_text(void)
     struct ContextNode *cn;
     STRPTR retval = 0;
 
-    if ((iff = AllocIFF()))
+    if (ZUNE_IFFPARSE() && (iff = AllocIFF()))
     {
         if ((iff->iff_Stream = (IPTR) OpenClipboard(0)))
         {

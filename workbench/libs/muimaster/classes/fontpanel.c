@@ -271,7 +271,7 @@ static void font_preview(struct FontpanelData *d)
     char name[256];
     snprintf(name, sizeof(name), "%s.font", (STRPTR)XGET(d->name, MUIA_String_Contents));
     struct TextAttr attr = {(STRPTR)name, font_size(d), 0, 0};
-    struct TextFont *font = OpenDiskFont(&attr);
+    struct TextFont *font = ZUNE_DISKFONT() ? OpenDiskFont(&attr) : NULL;
     if (!font) font = OpenFont(&attr);
     if (!font) return;
     struct TagItem tags[] = {
@@ -333,7 +333,7 @@ static void font_inventory(struct FontpanelData *d)
     LONG size = 4096, extra;
     for (;;)
     {
-        d->fonts = AllocVec(size, MEMF_ANY);
+        d->fonts = ZUNE_DISKFONT() ? AllocVec(size, MEMF_ANY) : NULL;
         if (!d->fonts) return;
         extra = AvailFonts((STRPTR)d->fonts, size, AFF_MEMORY | AFF_DISK);
         if (!extra) break;
