@@ -1704,7 +1704,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         case MUIA_Listview_DragType:
             data->drag_type = tag->ti_Data;
             if (data->drag_type != MUIV_Listview_DragType_None)
-                set(obj, MUIA_Draggable, TRUE);
+                superset(cl, obj, MUIA_Draggable, TRUE);
             break;
         }
     }
@@ -1728,7 +1728,10 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->layout_hook.h_Entry = HookEntry;
     data->layout_hook.h_SubEntry = (HOOKFUNC) List_LayoutFunction;
     data->layout_hook.h_Data = data;
-    set(obj, MUIA_Group_LayoutHook, (IPTR) &data->layout_hook);
+    /* Attributes this class applies itself in OM_NEW go to the superclass,
+     * not through a subclass's OM_SET, whose OM_NEW has not finished: MUI
+     * 3.8's subclasses see none of them (tests/native/newset.c) */
+    superset(cl, obj, MUIA_Group_LayoutHook, (IPTR) &data->layout_hook);
 
     if (!data->pool)
     {

@@ -388,7 +388,10 @@ IPTR Popobject__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
-    SetAttrs(obj,
+    /* Popstring's attributes go to Popstring, not through a subclass's
+     * OM_SET: MUI 3.8's Popobject subclasses see no OM_SET during OM_NEW
+     * (tests/native/newset.c) */
+    SetSuperAttrs(cl, obj,
         MUIA_Popstring_OpenHook, (IPTR) & data->open_hook,
         MUIA_Popstring_CloseHook, (IPTR) & data->close_hook,
         MUIA_Popstring_Toggle, TRUE,

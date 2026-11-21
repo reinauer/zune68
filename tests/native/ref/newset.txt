@@ -1,0 +1,9 @@
+Group      made OM_SET during OM_NEW: none
+List       made OM_SET during OM_NEW: none
+Floattext  made OM_SET during OM_NEW: none
+Scale      made OM_SET during OM_NEW: none
+Popobject  made OM_SET during OM_NEW: none
+Popasl     made OM_SET during OM_NEW: none
+Poplist    made OM_SET during OM_NEW: 8042fbe1 8042db44
+Application made OM_SET during OM_NEW: none
+[rc 0]

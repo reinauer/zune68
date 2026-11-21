@@ -518,7 +518,7 @@ IPTR Popasl__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     data->asl_req = asl_req;
     data->type = asl_type;
 
-    SetAttrs(obj,
+    SetSuperAttrs(cl, obj,   /* not through a subclass's OM_SET (newset.c) */
         MUIA_Popstring_OpenHook, (IPTR) & data->open_hook,
         MUIA_Popstring_CloseHook, (IPTR) & data->close_hook,
         MUIA_Popstring_Toggle, FALSE, TAG_DONE);

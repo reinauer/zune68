@@ -657,7 +657,9 @@ IPTR Floattext__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
     data = INST_DATA(cl, obj);
 
-    SetAttrs(obj, MUIA_List_ConstructHook, MUIV_List_ConstructHook_String,
+    /* not through a subclass's OM_SET, as on MUI 3.8 (tests/native/newset.c) */
+    SetSuperAttrs(cl, obj,
+        MUIA_List_ConstructHook, MUIV_List_ConstructHook_String,
         MUIA_List_DestructHook, MUIV_List_DestructHook_String, TAG_DONE);
 
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
