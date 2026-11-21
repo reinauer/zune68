@@ -1,0 +1,7 @@
+new                format first, 3 entries
+open yes
+100 columns        format first, 3 entries
+two columns again  format second, 3 entries
+inserted           format second, 4 entries
+done
+[rc 0]

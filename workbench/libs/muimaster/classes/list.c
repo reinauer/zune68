@@ -236,6 +236,7 @@ struct MUI_ListData
     LONG title_columns;
     STRPTR *mapped_strings;
     BOOL format_layout, max_columns_explicit;
+    LONG columns_used;          /* highest column number the format shows + 1 */
 };
 
 #define MOUSE_CLICK_ENTRY 1     /* on entry clicked */
@@ -604,8 +605,12 @@ static BOOL IncreaseColumns(struct MUI_ListData *data, int new_columns);
 static struct ListEntry *AllocListEntry(struct MUI_ListData *data)
 {
     struct ListEntry *le;
-    /* use IncreaseColumns() to enlarge column entry array */
-    IPTR size = sizeof(struct ListEntry) + sizeof(LONG) * (data->columns + 1);
+    /* use IncreaseColumns() to enlarge column entry array. Sized for
+     * columns_allocated, not the current format: IncreaseColumns() copies
+     * that many from every entry, also after a format with fewer columns
+     * made this one. */
+    IPTR size = sizeof(struct ListEntry)
+        + sizeof(LONG) * (data->columns_allocated + 1);
 
     le = (struct ListEntry *) AllocVecPooled(data->pool, size);
     D(bug("List AllocListEntry %p, %ld bytes\n", le, size));
@@ -720,12 +725,99 @@ static void FreeListFormat(struct MUI_ListData *data)
     data->columns = 0;
 }
 
+/* Strings in a row of MUIV_List_ConstructHook/DisplayHook_StringArray:
+ * as many as MUIA_List_MaxColumns if the program set it, else the
+ * columns the format shows */
+static LONG StringArrayColumns(struct MUI_ListData *data)
+{
+    return data->max_columns_explicit ? data->max_columns
+        : MIN(data->columns_used, data->max_columns);
+}
+
+/* String col of a string array row, NULL past its end. Our own copies
+ * (ConstructHook_StringArray) know their length, the format may have
+ * grown since; a program's own array has StringArrayColumns(). */
+static CONST_STRPTR StringArrayGet(struct MUI_ListData *data, APTR entry,
+    LONG col)
+{
+    LONG n;
+
+    if (!entry)
+        return NULL;
+    n = (IPTR)data->construct_hook == MUIV_List_ConstructHook_StringArray
+        ? (LONG)((ULONG *)entry)[-1] : StringArrayColumns(data);
+    return col < n ? ((CONST_STRPTR *)entry)[col] : NULL;
+}
+
+/* A parsed format, kept aside while a new one is parsed */
+struct ListFormatParts
+{
+    LONG columns, columns_used;
+    struct ColumnInfo *ci;
+    STRPTR *preparses, *strings_mem, *strings, *mapped_strings;
+    BOOL format_layout;
+};
+
+static void TakeListFormat(struct MUI_ListData *data,
+    struct ListFormatParts *f)
+{
+    f->columns = data->columns;
+    f->columns_used = data->columns_used;
+    f->ci = data->ci;
+    f->preparses = data->preparses;
+    f->strings_mem = data->strings_mem;
+    f->strings = data->strings;
+    f->mapped_strings = data->mapped_strings;
+    f->format_layout = data->format_layout;
+    data->columns = 0;
+    data->ci = NULL;
+    data->preparses = data->strings_mem = data->strings = NULL;
+    data->mapped_strings = NULL;
+}
+
+static void PutListFormat(struct MUI_ListData *data,
+    struct ListFormatParts *f)
+{
+    data->columns = f->columns;
+    data->columns_used = f->columns_used;
+    data->ci = f->ci;
+    data->preparses = f->preparses;
+    data->strings_mem = f->strings_mem;
+    data->strings = f->strings;
+    data->mapped_strings = f->mapped_strings;
+    data->format_layout = f->format_layout;
+}
+
+static BOOL ParseListFormatNew(struct MUI_ListData *data, STRPTR format,
+    BOOL initial);
+
 /**************************************************************************
- Parses the given format string (also frees a previously parsed format).
+ Parses the given format string and replaces the previous format with it.
  Use initial=FALSE for format changes outside OM_NEW.
- Return FALSE on failure.
+ Return FALSE on failure; the previous format is then kept, as MUI 3.8
+ keeps it (tests/native/listfmt.c): a list left without one wrote its
+ display strings through NULL arrays at the next redraw.
 **************************************************************************/
 static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
+    BOOL initial)
+{
+    struct ListFormatParts old, fresh;
+
+    TakeListFormat(data, &old);
+    if (!ParseListFormatNew(data, format, initial))
+    {
+        FreeListFormat(data);   /* what was made of the new one */
+        PutListFormat(data, &old);
+        return FALSE;
+    }
+    TakeListFormat(data, &fresh);
+    PutListFormat(data, &old);
+    FreeListFormat(data);
+    PutListFormat(data, &fresh);
+    return TRUE;
+}
+
+static BOOL ParseListFormatNew(struct MUI_ListData *data, STRPTR format,
     BOOL initial)
 {
     int new_columns, i;
@@ -741,7 +833,6 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
 
     ptr = format;
 
-    FreeListFormat(data);
     data->format_layout = FALSE;
 
     new_columns = 1;
@@ -768,6 +859,8 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
 
     if (!(data->ci = AllocVec(new_columns * sizeof(struct ColumnInfo), MEMF_CLEAR)))
         return FALSE;
+    /* Counted at once so that a failure below frees the preparse strings */
+    data->columns = new_columns;
 
     // set defaults
     for (i = 0; i < new_columns; i++)
@@ -904,6 +997,10 @@ static BOOL ParseListFormat(struct MUI_ListData *data, STRPTR format,
         }
     }
     data->columns = new_columns;
+    data->columns_used = new_columns;
+    for (i = 0; i < new_columns; i++)
+        if (data->ci[i].colno >= data->columns_used)
+            data->columns_used = data->ci[i].colno + 1;
     /* Skip entry pos (-1) and enough indexes to get (-9). Based on MPlayer source codes. */
     data->strings += 10;
 
@@ -1932,9 +2029,10 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_List_Format:
             ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
-            data->format = (STRPTR) tag->ti_Data;
-            ParseListFormat(data, data->format, FALSE);
-            // FIXME: ParseListFormat() failure is ignored.
+            /* A format that cannot be used (more columns than
+             * MUIA_List_MaxColumns, no memory) leaves the old one */
+            if (ParseListFormat(data, (STRPTR) tag->ti_Data, FALSE))
+                data->format = (STRPTR) tag->ti_Data;
             DoMethod(obj, MUIM_List_Redraw, MUIV_List_Redraw_All);
             break;
 
@@ -2318,6 +2416,8 @@ IPTR List__MUIM_Setup(struct IClass *cl, Object *obj,
 
     struct ListImage *li;
     ForeachNode((struct List *)&data->images, li) {
+        if (_flags(li->obj) & MADF_SETUP)
+            continue;   /* already set up by CreateImage */
         DoMethod(li->obj, MUIM_ConnectParent, (IPTR) obj);
         DoSetupMethod(li->obj, muiRenderInfo(obj));
     }
@@ -2325,6 +2425,17 @@ IPTR List__MUIM_Setup(struct IClass *cl, Object *obj,
     DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR) &data->ehn);
 
     return 1;
+}
+
+/* Clean up and disconnect a list image if it is set up or connected: an
+ * image of a list that was never shown has neither, and MUIM_Cleanup on
+ * it went through a NULL render info. */
+static void ListImageCleanup(Object *img)
+{
+    if (_flags(img) & MADF_SETUP)
+        DoMethod(img, MUIM_Cleanup);
+    if (muiNotifyData(img)->mnd_GlobalInfo)
+        DoMethod(img, MUIM_DisconnectParent);
 }
 
 /**************************************************************************
@@ -2339,6 +2450,14 @@ IPTR List__MUIM_Cleanup(struct IClass *cl, Object *obj,
     zune_imspec_cleanup(data->list_cursor);
     zune_imspec_cleanup(data->list_select);
     zune_imspec_cleanup(data->list_selcur);
+
+    /* Undo Setup's image setup: images still listed at a window's close
+     * were set up again at the next open and leaked each time */
+    {
+        struct ListImage *li;
+        ForeachNode((struct List *)&data->images, li)
+            ListImageCleanup(li->obj);
+    }
 
     DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR) &data->ehn);
     data->mouse_click = 0;
@@ -3369,7 +3488,7 @@ IPTR List__MUIM_Remove(struct IClass *cl, Object *obj,
     if (data->edit_object) ListEndEdit(cl, obj, MUIV_List_EndEdit_Abort, TRUE);
     LONG pos;
     LONG new_act;
-    UWORD i;
+    LONG i;
     BOOL found, done = FALSE;
     struct ListEntry *lentry;
     Tag active_tag = TAG_DONE;
@@ -3404,6 +3523,43 @@ IPTR List__MUIM_Remove(struct IClass *cl, Object *obj,
         return 0;
 
     new_act = data->entries_active;
+
+    /* All selected entries in one pass: removing them one at a time moved
+     * the rest of the list once per entry. Without a selected one, the
+     * active entry goes as before. */
+    if (msg->pos == MUIV_List_Remove_Selected)
+    {
+        LONG n = data->confirm_entries_num, w;
+        LONG active = data->entries_active;
+
+        for (i = 0; i < n; i++)
+            if (data->entries[i]->flags & ENTRY_SELECTED)
+                break;
+        if (i < n)
+        {
+            for (w = i; i < n; i++)
+            {
+                lentry = data->entries[i];
+                if (!(lentry->flags & ENTRY_SELECTED))
+                {
+                    data->entries[w++] = lentry;
+                    continue;
+                }
+                DoMethod(obj, MUIM_List_Destruct, (IPTR) lentry->data,
+                    (IPTR) data->pool);
+                FreeListEntry(data, lentry);
+                if (i < active)
+                {
+                    new_act--;
+                    active_tag = MUIA_List_Active;
+                }
+                else if (i == active)
+                    active_tag = MUIA_List_Active;
+            }
+            data->confirm_entries_num = w;
+            done = TRUE;
+        }
+    }
 
     while (!done)
     {
@@ -3978,9 +4134,14 @@ IPTR List__MUIM_Construct(struct IClass *cl, Object *obj,
         CONST_STRPTR *src = msg->entry;
         ULONG bytes, *allocation;
         STRPTR *copy, dest;
-        if (!src || data->max_columns <= 0) return 0;
-        bytes = sizeof(ULONG) + data->max_columns * sizeof(STRPTR);
-        for (LONG i = 0; i < data->max_columns; i++)
+        /* The program's array has a string per column: as many as
+         * MUIA_List_MaxColumns if it set that, else the columns the
+         * format shows. Reading 64 (the default maximum) ran past short
+         * arrays into strlen() of whatever followed. */
+        LONG n = StringArrayColumns(data);
+        if (!src || n <= 0) return 0;
+        bytes = 2 * sizeof(ULONG) + n * sizeof(STRPTR);
+        for (LONG i = 0; i < n; i++)
             if (src[i])
             {
                 ULONG len = strlen(src[i]) + 1;
@@ -3989,10 +4150,12 @@ IPTR List__MUIM_Construct(struct IClass *cl, Object *obj,
             }
         allocation = AllocPooled(msg->pool, bytes);
         if (!allocation) return 0;
-        *allocation = bytes;
-        copy = (APTR)(allocation + 1);
-        dest = (STRPTR)(copy + data->max_columns);
-        for (LONG i = 0; i < data->max_columns; i++)
+        /* bytes, the number of strings, the strings */
+        allocation[0] = bytes;
+        allocation[1] = n;
+        copy = (APTR)(allocation + 2);
+        dest = (STRPTR)(copy + n);
+        for (LONG i = 0; i < n; i++)
         {
             copy[i] = NULL;
             if (src[i])
@@ -4033,10 +4196,14 @@ IPTR List__MUIM_Destruct(struct IClass *cl, Object *obj,
     if (NULL == data->destruct_hook)
         return 0;
 
-    if ((IPTR)data->destruct_hook == MUIV_List_DestructHook_String ||
-        (IPTR)data->destruct_hook == MUIV_List_DestructHook_StringArray)
+    if ((IPTR)data->destruct_hook == MUIV_List_DestructHook_String)
     {
         ULONG *mem = ((ULONG *) msg->entry) - 1;
+        FreePooled(msg->pool, mem, mem[0]);
+    }
+    else if ((IPTR)data->destruct_hook == MUIV_List_DestructHook_StringArray)
+    {
+        ULONG *mem = ((ULONG *) msg->entry) - 2;  /* see Construct */
         FreePooled(msg->pool, mem, mem[0]);
     }
     else
@@ -4083,8 +4250,8 @@ IPTR List__MUIM_Compare(struct IClass *cl, Object *obj,
         if (column >= 0 && column < data->columns)
             column = data->ci[column].colno;
         if (column < 0 || column >= data->max_columns) column = 0;
-        CONST_STRPTR a = ((CONST_STRPTR *)msg->entry1)[column];
-        CONST_STRPTR b = ((CONST_STRPTR *)msg->entry2)[column];
+        CONST_STRPTR a = StringArrayGet(data, msg->entry1, column);
+        CONST_STRPTR b = StringArrayGet(data, msg->entry2, column);
         return Stricmp(a ? a : (CONST_STRPTR)"", b ? b : (CONST_STRPTR)"");
     }
     if (!data->compare_hook || (IPTR)data->compare_hook == MUIV_List_CompareHook_String)
@@ -4103,8 +4270,7 @@ IPTR List__MUIM_Display(struct IClass *cl, Object *obj,
     if ((IPTR)data->display_hook == MUIV_List_DisplayHook_StringArray)
     {
         for (LONG i = 0; i < MAX(data->columns, data->max_columns); i++)
-            msg->array[i] = msg->entry && i < data->max_columns ?
-                ((STRPTR *)msg->entry)[i] : NULL;
+            msg->array[i] = (STRPTR)StringArrayGet(data, msg->entry, i);
         return TRUE;
     }
     if (NULL == data->display_hook ||
@@ -4235,8 +4401,7 @@ IPTR List__MUIM_DeleteImage(struct IClass *cl, Object *obj,
 
     if (li)
     {
-        DoMethod(li->obj, MUIM_Cleanup);
-        DoMethod(li->obj, MUIM_DisconnectParent);
+        ListImageCleanup(li->obj);
         Remove((struct Node *)li);
         FreePooled(data->pool, li, sizeof(struct ListImage));
     }
