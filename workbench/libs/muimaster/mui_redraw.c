@@ -355,8 +355,12 @@ void ZuneDrawDisabled(Object *obj)
     
     ((struct __dummyAreaData__ *)(obj))->mad.mad_Flags = (((struct __dummyAreaData__ *)(obj))->mad.mad_Flags & ~MADF_DRAWFLAGS) | (flags & MADF_DRAWFLAGS);
 
+    /* MUI 5 sends the flags in the message too (MUI 3.8 sends 0), so a
+     * class can test them before its super call; Area sets them again */
     dmsg.MethodID = MUIM_Draw;
-    dmsg.flags = 0;
+    dmsg.flags = flags & MADF_DRAWFLAGS;
+    if (dmsg.flags & MADF_DRAWALL)
+        dmsg.flags |= MADF_DRAWOBJECT;
     ZuneTrace(("zune: MUI_Redraw DoMethodA obj=%lx flags=%lx\n",
         (ULONG)obj, flags));
     DoMethodA(obj, (Msg)&dmsg);
