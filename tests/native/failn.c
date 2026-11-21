@@ -245,12 +245,20 @@ static void out(const char *s)
     Write(Output(), (APTR)s, strlen(s));
 }
 
+/* Expunge until nothing more goes: a library expunged in one pass can
+ * close one that exec's list holds before it, which goes in the next. */
 static void flush_libs(void)
 {
-    APTR m = AllocMem(0x7FFFFFF0, MEMF_PUBLIC);
+    ULONG last, now = AvailMem(MEMF_ANY);
+    APTR m;
+    int i = 0;
 
-    if (m)
-        FreeMem(m, 0x7FFFFFF0);
+    do {
+        last = now;
+        if ((m = AllocMem(0x7FFFFFF0, MEMF_PUBLIC)))
+            FreeMem(m, 0x7FFFFFF0);
+        now = AvailMem(MEMF_ANY);
+    } while (now != last && ++i < 8);
 }
 
 static ULONG mui126(void)
