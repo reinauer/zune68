@@ -45,6 +45,17 @@
 
 extern struct Library *MUIMasterBase;
 
+/* The settings' pens, made at MUIM_Setup and freed at MUIM_Cleanup: a
+ * String that is not set up does not carry them */
+struct StringPens
+{
+    struct MUI_PenSpec_intern inactive_text;
+    struct MUI_PenSpec_intern active_text;
+    struct MUI_PenSpec_intern marked_text;
+    struct MUI_PenSpec_intern marked_bg;
+    struct MUI_PenSpec_intern cursor;
+};
+
 struct MUI_StringData
 {
     ULONG msd_Flags;
@@ -76,11 +87,7 @@ struct MUI_StringData
     WORD Columns;
 
     struct MUI_EventHandlerNode ehn;
-    struct MUI_PenSpec_intern inactive_text;
-    struct MUI_PenSpec_intern active_text;
-    struct MUI_PenSpec_intern marked_text;
-    struct MUI_PenSpec_intern marked_bg;
-    struct MUI_PenSpec_intern cursor;
+    struct StringPens *pens;    /* only while set up */
 
     BOOL is_active;
     STRPTR AckBuffer;           /* pointer to buffer of MUIA_String_Acknowledge */
@@ -1456,38 +1463,45 @@ IPTR String__MUIM_Setup(struct IClass *cl, Object *obj,
     struct MUIP_Setup *msg)
 {
     struct MUI_StringData *data = INST_DATA(cl, obj);
+    struct ZunePrefsNew *prefs;
+    struct StringPens *pens;
 
-    if (0 == DoSuperMethodA(cl, obj, (Msg) msg))
+    if (!(pens = AllocMem(sizeof(*pens), MEMF_ANY | MEMF_CLEAR)))
         return FALSE;
+    if (0 == DoSuperMethodA(cl, obj, (Msg) msg))
+    {
+        FreeMem(pens, sizeof(*pens));
+        return FALSE;
+    }
+    data->pens = pens;
+    prefs = muiGlobalInfo(obj)->mgi_Prefs;
 
     data->is_active = FALSE;
-    set(obj, MUIA_Background,
-        (IPTR) muiGlobalInfo(obj)->mgi_Prefs->string_bg_inactive);
+    set(obj, MUIA_Background, (IPTR) prefs->string_bg_inactive);
 
     zune_pen_spec_to_intern(
-        (const struct MUI_PenSpec *)muiGlobalInfo(obj)->mgi_Prefs->
-        string_text_inactive, &data->inactive_text);
-    zune_penspec_setup(&data->inactive_text, muiRenderInfo(obj));
+        (const struct MUI_PenSpec *)prefs->string_text_inactive,
+        &pens->inactive_text);
+    zune_penspec_setup(&pens->inactive_text, muiRenderInfo(obj));
 
     zune_pen_spec_to_intern(
-        (const struct MUI_PenSpec *)muiGlobalInfo(obj)->mgi_Prefs->
-        string_text_active, &data->active_text);
-    zune_penspec_setup(&data->active_text, muiRenderInfo(obj));
+        (const struct MUI_PenSpec *)prefs->string_text_active,
+        &pens->active_text);
+    zune_penspec_setup(&pens->active_text, muiRenderInfo(obj));
 
     zune_pen_spec_to_intern(
-        (const struct MUI_PenSpec *)muiGlobalInfo(obj)->mgi_Prefs->
-        string_text_marked, &data->marked_text);
-    zune_penspec_setup(&data->marked_text, muiRenderInfo(obj));
+        (const struct MUI_PenSpec *)prefs->string_text_marked,
+        &pens->marked_text);
+    zune_penspec_setup(&pens->marked_text, muiRenderInfo(obj));
 
     zune_pen_spec_to_intern(
-        (const struct MUI_PenSpec *)muiGlobalInfo(obj)->mgi_Prefs->
-        string_bg_marked, &data->marked_bg);
-    zune_penspec_setup(&data->marked_bg, muiRenderInfo(obj));
+        (const struct MUI_PenSpec *)prefs->string_bg_marked,
+        &pens->marked_bg);
+    zune_penspec_setup(&pens->marked_bg, muiRenderInfo(obj));
 
     zune_pen_spec_to_intern(
-        (const struct MUI_PenSpec *)muiGlobalInfo(obj)->mgi_Prefs->
-        string_cursor, &data->cursor);
-    zune_penspec_setup(&data->cursor, muiRenderInfo(obj));
+        (const struct MUI_PenSpec *)prefs->string_cursor, &pens->cursor);
+    zune_penspec_setup(&pens->cursor, muiRenderInfo(obj));
 
     DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR) & data->ehn);
     return TRUE;
@@ -1504,11 +1518,16 @@ IPTR String__MUIM_Cleanup(struct IClass *cl, Object *obj,
     D(bug("[MUI:String] Cleanup %p\n", obj));
     DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR) & data->ehn);
 
-    zune_penspec_cleanup(&data->inactive_text);
-    zune_penspec_cleanup(&data->active_text);
-    zune_penspec_cleanup(&data->marked_text);
-    zune_penspec_cleanup(&data->marked_bg);
-    zune_penspec_cleanup(&data->cursor);
+    if (data->pens)
+    {
+        zune_penspec_cleanup(&data->pens->inactive_text);
+        zune_penspec_cleanup(&data->pens->active_text);
+        zune_penspec_cleanup(&data->pens->marked_text);
+        zune_penspec_cleanup(&data->pens->marked_bg);
+        zune_penspec_cleanup(&data->pens->cursor);
+        FreeMem(data->pens, sizeof(*data->pens));
+        data->pens = NULL;
+    }
 
     return (DoSuperMethodA(cl, obj, (Msg) msg));
 }
@@ -1790,9 +1809,9 @@ static VOID TextM(Object *obj, struct MUI_StringData *data,
     LONG len;
 
     if (data->is_active)
-        textpen = data->active_text.p_pen;
+        textpen = data->pens->active_text.p_pen;
     else
-        textpen = data->inactive_text.p_pen;
+        textpen = data->pens->inactive_text.p_pen;
 
     //kprintf("TextM: textlen %d  markstart %d  markend %d ... \n",
     //    textlen, markstart, markend);
@@ -1822,8 +1841,8 @@ static VOID TextM(Object *obj, struct MUI_StringData *data,
     if (len)
     {
         //kprintf("B: %d   ", len);
-        SetABPenDrMd(_rp(obj), data->marked_text.p_pen,
-            data->marked_bg.p_pen, JAM2);
+        SetABPenDrMd(_rp(obj), data->pens->marked_text.p_pen,
+            data->pens->marked_bg.p_pen, JAM2);
         Text(rp, text, len);
 
         text += len;
@@ -1920,8 +1939,8 @@ static void Ml_Draw(Object *obj, struct MUI_StringData *data,
             if (data->is_active && (LONG)data->BufferPos >= from
                 && (LONG)data->BufferPos <= end)
             {
-                SetABPenDrMd(rp, data->active_text.p_pen,
-                    data->cursor.p_pen, JAM2);
+                SetABPenDrMd(rp, data->pens->active_text.p_pen,
+                    data->pens->cursor.p_pen, JAM2);
                 Move(rp, _mleft(obj) + TextLength(rp, text + from,
                     data->BufferPos - from), top);
                 Text(rp, (LONG)data->BufferPos < end ?
@@ -1990,9 +2009,9 @@ IPTR String__MUIM_Draw(struct IClass *cl, Object *obj,
     PrepareVisualBuffer(data);
     SetFont(_rp(obj), _font(obj));
     if (data->is_active)
-        textpen = data->active_text.p_pen;
+        textpen = data->pens->active_text.p_pen;
     else
-        textpen = data->inactive_text.p_pen;
+        textpen = data->pens->inactive_text.p_pen;
 
     /* Update the stringdata in case of user change */
     UpdateStringData(cl, obj);
@@ -2061,8 +2080,8 @@ IPTR String__MUIM_Draw(struct IClass *cl, Object *obj,
             dispstr = data->VisualBuffer + data->DispPos;
             text_left = textleft_save;
 
-            SetABPenDrMd(_rp(obj), data->active_text.p_pen,
-                data->cursor.p_pen, JAM2);
+            SetABPenDrMd(_rp(obj), data->pens->active_text.p_pen,
+                data->pens->cursor.p_pen, JAM2);
             text_left += TextLength(_rp(obj), dispstr, cursoroffset);
 
 

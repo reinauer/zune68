@@ -178,7 +178,7 @@ def check(path):
     assert h.get(UP) == 0x1111 and h.get(DOWN) == 0x2222
     h.mem.w32(OBJECT + 28, MRI)
     h.mem.w32(MRI, WINDOW)
-    h.mem.w16(DATA + 242, 1)  # active String
+    h.mem.w16(DATA + 116, 1)  # active String
     h.key(2); h.key(3)
     assert h.focus_events == [(WINDOW, 0x80427925, 0x1111),
                               (WINDOW, 0x80427925, 0x2222)]
@@ -193,7 +193,7 @@ def check(path):
     h.focus_events.clear()
     h.key(2)
     assert h.focus_events == [(0x4444, 0x8042391c, (-4) & 0xffffffff)]
-    h.mem.w16(DATA + 242, 0)
+    h.mem.w16(DATA + 116, 0)
     h.focus_events.clear()
     assert h.key(2) == 0 and not h.focus_events
     h.finish()
