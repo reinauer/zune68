@@ -142,10 +142,13 @@ def check_virtual_paint(path):
             h.mem.w_block(OBJECT + 52, struct.pack('>4h', 10, 20, 100, 80))
             h.mem.w_block(OBJECT + 60, bytes([3, 4, 8, 10]))
             h.mem.w32(data + 64, update)
-            h.mem.w32(data + 92, (100 + dx) & 0xffffffff)
-            h.mem.w32(data + 96, (100 + dy) & 0xffffffff)
-            h.mem.w32(data + 100, 100)
-            h.mem.w32(data + 104, 100)
+            # the virtual offsets, in the group's block (struct GroupVirt)
+            virt = h.words(*[0] * 16)
+            h.mem.w32(data + 68, virt)
+            h.mem.w32(virt + 24, (100 + dx) & 0xffffffff)
+            h.mem.w32(virt + 28, (100 + dy) & 0xffffffff)
+            h.mem.w32(virt + 32, 100)
+            h.mem.w32(virt + 36, 100)
             if fail_second:
                 def rect():
                     h.rect()

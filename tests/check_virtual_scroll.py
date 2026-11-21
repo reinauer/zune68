@@ -15,7 +15,10 @@ DATA = OBJECT + GROUP_OFFSET
 LEFT, TOP, FORWARD = 0x80429371, 0x80425200, 0x80421422
 CANDRAW, SHOWME = 1 << 14, 1 << 9
 GROUP_VIRTUAL = 1 << 6
-OFFX, OFFY, OLDX, OLDY, EXTW, EXTH = 92, 96, 100, 104, 108, 112
+# A virtual group's state is a block of its own (struct GroupVirt), whose
+# pointer is at offset 68 of the group data
+VIRT, VIRT_PTR = 0x76000, 68
+OFFX, OFFY, OLDX, OLDY, EXTW, EXTH = 24, 28, 32, 36, 40, 44
 
 
 class ScrollHarness(BackfillHarness):
@@ -23,11 +26,12 @@ class ScrollHarness(BackfillHarness):
         super().__init__(path)
         self.mem.w16(CLASS + 32, GROUP_OFFSET)
         self.mem.w32(DATA + 8, GROUP_VIRTUAL)
+        self.mem.w32(DATA + VIRT_PTR, VIRT)
         self.mem.w16(OBJECT + 56, 100)
         self.mem.w16(OBJECT + 58, 80)
         for offset, value in ((OFFX, 20), (OFFY, 30), (OLDX, 20),
                               (OLDY, 30), (EXTW, 300), (EXTH, 240)):
-            self.mem.w32(DATA + offset, value)
+            self.mem.w32(VIRT + offset, value)
         self.mem.w32(0x70100 + 24, CLASS)  # Custom Group subclass.
         self.mem.w32(0x70200 + 24, 0)  # An Area, not a Group.
         self.families = {}
@@ -103,7 +107,7 @@ def check(path):
                         ('draw', OBJECT, 1)]
     assert h.hidden_boxes == [(70, 80), (80, 90)]
     assert h.mem.r32(DATA + 64) == 2
-    assert h.mem.r32(DATA + OLDX) == 20 and h.mem.r32(DATA + OLDY) == 30
+    assert h.mem.r32(VIRT + OLDX) == 20 and h.mem.r32(VIRT + OLDY) == 30
     h.events.clear()
     h.scroll(50, 70)
     assert not h.events  # No geometry or drawing work for unchanged offsets.
@@ -111,14 +115,14 @@ def check(path):
     h.mem.w32(OBJECT + 64, 0)
     h.mem.w32(DATA + 64, 0)
     h.scroll(10000, -5)
-    assert h.mem.r32(DATA + OFFX) == 200 and h.mem.r32(DATA + OFFY) == 0
+    assert h.mem.r32(VIRT + OFFX) == 200 and h.mem.r32(VIRT + OFFY) == 0
     assert h.boxes() == [(x - 180, y + 30, w, v) for x, y, w, v in initial]
     assert not h.events  # Hidden parent still moves every descendant.
     assert not h.mem.r32(DATA + 64)
-    h.mem.w32(DATA + EXTW, 50)
-    h.mem.w32(DATA + EXTH, 40)
+    h.mem.w32(VIRT + EXTW, 50)
+    h.mem.w32(VIRT + EXTH, 40)
     h.scroll(1, 1)
-    assert h.mem.r32(DATA + OFFX) == 0 and h.mem.r32(DATA + OFFY) == 0
+    assert h.mem.r32(VIRT + OFFX) == 0 and h.mem.r32(VIRT + OFFY) == 0
     assert h.boxes() == [(x + 20, y + 30, w, v) for x, y, w, v in initial]
     assert not h.events and not h.allocations
     h.machine.cleanup()
