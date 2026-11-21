@@ -2568,8 +2568,7 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
 *       a valid RastPort and layout.
 *
 *   RESULT
-*       Zero when neither DRAWOBJECT nor DRAWFRAME is set; TRUE after
-*       background/frame processing.
+*       Always 0, as in MUI 3.8 and MUI 5.
 *
 *   NOTES
 *       Custom subclasses call the superclass and inspect the updated message
@@ -2673,7 +2672,7 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
 
     /*    MUI_RemoveClipping(muiRenderInfo(obj), areaclip);*/
 
-    return TRUE;
+    return 0;
 }
 
 static IPTR area_draw_parent_background(Object *obj,
@@ -3263,7 +3262,7 @@ static IPTR Area__MUIM_Setup(struct IClass *cl, Object *obj,
 *       after dependent subclass resources have been released.
 *
 *   RESULT
-*       Always TRUE.
+*       Always 0, as in MUI 3.8 and MUI 5.
 *
 *   NOTES
 *       The method does not dispose the object, its context-menu object,
@@ -3321,7 +3320,7 @@ static IPTR Area__MUIM_Cleanup(struct IClass *cl, Object *obj,
 
     muiRenderInfo(obj) = NULL;
 
-    return TRUE;
+    return 0;
 }
 
 /****** Area.mui/MUIM_Show ************
@@ -3380,7 +3379,7 @@ static IPTR Area__MUIM_Show(struct IClass *cl, Object *obj,
 *       resources must still exist.
 *
 *   RESULT
-*       Always TRUE.
+*       Always 0, as in MUI 3.8 and MUI 5.
 *
 *   NOTES
 *       The framework wrapper clears CANDRAW before calling this method. This
@@ -3408,7 +3407,7 @@ static IPTR Area__MUIM_Hide(struct IClass *cl, Object *obj,
         data->mad_ContextZMenu = NULL;
     }
 
-    return TRUE;
+    return 0;
 }
 
 /****** Area.mui/MUIM_GoActive ************

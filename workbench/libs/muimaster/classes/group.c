@@ -668,7 +668,7 @@ IPTR Group__MUIM_Show(struct IClass *cl, Object *obj,
     struct MUIP_Show *msg);
 /*
  * Hide title/selected page in page mode or drawable children otherwise.
- * Call Area only for non-NULL message, returning its result, otherwise one.
+ * Call Area only for non-NULL message, returning its result, otherwise 0.
  * Requires stable list and valid shown state. Does not cleanup or release
  * children; NULL message is the internal child-only path.
  */
@@ -2504,8 +2504,8 @@ static void __attribute__((noinline)) group_draw_area(struct IClass *cl,
 
 /*
  * Draw Area and children under temporary regions, with separate page-switch
- * and virtual-scroll update paths. Return FALSE during InitChange,
- * otherwise normally TRUE; ignore child draw results. Requires drawable
+ * and virtual-scroll update paths. Return 0, as MUI 3.8 and MUI 5 do;
+ * ignore child draw results. Requires drawable
  * render state and stable membership. Scroll path updates old offsets.
  * Nonvirtual use of virtual offset updates can leave a clip installed
  * because final removal is virtual-only.
@@ -2523,7 +2523,7 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
     ULONG fill = _flags(obj) & MADF_FILLAREA;
 
     if (data->flags & GROUP_CHANGING)
-        return FALSE;
+        return 0;
 
     /* Move existing pixels before BeginPaint lets a subclass restrict the
      * drawing region. Layout hooks must retain their previous scroll state
@@ -2539,9 +2539,9 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
         LONG bottom = MIN(_mbottom(obj), bounds->MaxY);
 
         if (!dx && !dy)
-            return TRUE;
+            return 0;
         if (right < left || bottom < top)
-            return TRUE;
+            return 0;
 
         ScrollWindowRaster(_window(obj), dx, dy, left, top, right, bottom);
     }
@@ -2584,7 +2584,7 @@ IPTR Group__MUIM_Draw(struct IClass *cl, Object *obj,
             data->old_virt_offx = data->virt_offx;
             data->old_virt_offy = data->virt_offy;
             data->update = 0;
-            return FALSE;
+            return 0;
         }
     }
 
@@ -2665,7 +2665,7 @@ finish:
     data->old_virt_offy = data->virt_offy;
     data->update = 0;
 
-    return TRUE;
+    return 0;
 }
 
 
@@ -4745,7 +4745,7 @@ IPTR Group__MUIM_Show(struct IClass *cl, Object *obj,
 **************************************************************************/
 /*
  * Hide title/selected page in page mode or drawable children otherwise.
- * Call Area only for non-NULL message, returning its result, otherwise one.
+ * Call Area only for non-NULL message, returning its result, otherwise 0.
  * Requires stable list and valid shown state. Does not cleanup or release
  * children; NULL message is the internal child-only path.
  */
@@ -4792,7 +4792,7 @@ IPTR Group__MUIM_Hide(struct IClass *cl, Object *obj,
      * this call */
     if (msg)
         return DoSuperMethodA(cl, obj, (Msg) msg);
-    return 1;
+    return 0;
 }
 
 /*
