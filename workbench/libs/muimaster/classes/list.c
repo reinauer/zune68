@@ -1478,7 +1478,7 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
      * this, but this seems least evil approach, as this hack is
      * encapsulated in the List class itself.
      */
-    muiAreaData(obj)->mad_ehn.ehn_Priority--;
+    muiAreaData(obj)->mad_EventPri--;
 
     data->hook.h_Entry = HookEntry;
     data->hook.h_SubEntry = (HOOKFUNC) List_Function;

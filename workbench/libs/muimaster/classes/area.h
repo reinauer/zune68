@@ -546,6 +546,21 @@ struct MUIP_CreateFrameClippingRegion
 
 struct MUI_ImageSpec_intern;
 
+/* The parts of an object's Area data that only a set-up object uses:
+ * allocated by MUIM_Setup, freed by MUIM_Cleanup, so that the objects of
+ * closed windows do not carry them. */
+struct MUI_AreaLive
+{
+    struct MUI_EventHandlerNode ehn;    /* input */
+    struct MUI_EventHandlerNode ccn;    /* gross hack for control char */
+    struct MUI_EventHandlerNode hiehn;  /* to simulate MUIM_HandleInput */
+    struct MUI_InputHandlerNode timer;  /* MUIA_Timer */
+    LONG clickx;                /* position of the initial SELECTDOWN click */
+    LONG clicky;
+};
+
+struct MUI_AreaLive *zune_area_live(Object *obj);
+
 struct MUI_AreaData
 {
     struct MUI_RenderInfo *mad_RenderInfo;      /* RenderInfo for this object */
@@ -601,16 +616,13 @@ struct MUI_AreaData
     CONST_STRPTR mad_HardHeightTxt;
 // TODO: move SelBack in RenderInfo as it's common for all objects
     struct MUI_ImageSpec_intern *mad_SelBack;   /* selected state background */
-// there's an event handler at 114
-    struct MUI_EventHandlerNode mad_ehn;
-    struct MUI_InputHandlerNode mad_Timer;      /* MUIA_Timer */
+    /* The event and timer nodes, between MUIM_Setup and MUIM_Cleanup only */
+    struct MUI_AreaLive *mad_Live;
     ULONG mad_Timeval;          /* just to trigger notifications */
-    struct MUI_EventHandlerNode mad_ccn;        /* gross hack for control char */
+    ULONG mad_HiEvents;         /* MUI_RequestIDCMP's events, kept while not set up */
+    BYTE mad_EventPri;          /* priority of the input handler node */
     Object *mad_ContextMenu;    /* menu strip */
-    LONG mad_ClickX;            /* x position of the initial SELECTDOWN click */
-    LONG mad_ClickY;            /* y position of the intiial SELECTDOWN click */
     struct ZMenu *mad_ContextZMenu;
-    struct MUI_EventHandlerNode mad_hiehn;      /* Eventhandler to simulate MUIM_HandleInput */
 
     LONG mad_DisableCount;      /* counts number of disables */
     IPTR mad_PointerType;       /* built-in type or borrowed pointerclass */

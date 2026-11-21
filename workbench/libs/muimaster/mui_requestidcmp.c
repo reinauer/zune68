@@ -50,23 +50,30 @@
     AROS_LIBFUNC_INIT
 
     /* Use the Eventhandler to simulate a MUIM_HandleInput */
-    if (muiRenderInfo(obj) && (_flags(obj) & MADF_SETUP) && _win(obj))
+    struct MUI_AreaData *ad = muiAreaData(obj);
+    struct MUI_AreaLive *live = NULL;
+
+    /* The events are kept in the Area data; a set-up object's node
+     * (area.c's struct MUI_AreaLive) is in the window while it has any. */
+    if (muiRenderInfo(obj) && (_flags(obj) & MADF_SETUP) && _win(obj)
+        && (live = zune_area_live(obj)))
     {
-        if (muiAreaData(obj)->mad_hiehn.ehn_Events)
+        if (live->hiehn.ehn_Events)
         {
             DoMethod(_win(obj), MUIM_Window_RemEventHandler,
-                (IPTR)&muiAreaData(obj)->mad_hiehn);
+                (IPTR)&live->hiehn);
         }
-        muiAreaData(obj)->mad_hiehn.ehn_Events |= flags;
-        if (muiAreaData(obj)->mad_hiehn.ehn_Events)
+        live->hiehn.ehn_Events |= flags;
+        ad->mad_HiEvents = live->hiehn.ehn_Events;
+        if (live->hiehn.ehn_Events)
         {
             DoMethod(_win(obj), MUIM_Window_AddEventHandler,
-                (IPTR)&muiAreaData(obj)->mad_hiehn);
+                (IPTR)&live->hiehn);
         }
     }
     else
     {
-        muiAreaData(obj)->mad_hiehn.ehn_Events |= flags;
+        ad->mad_HiEvents |= flags;
     }
 
     AROS_LIBFUNC_EXIT

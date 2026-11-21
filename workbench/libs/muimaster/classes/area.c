@@ -1453,20 +1453,8 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         data->mad_Flags &= ~MADF_SELECTED;
     }
 
-    data->mad_ehn.ehn_Events = 0; /* Will be filled on demand */
-    data->mad_ehn.ehn_Priority = -5;
-
-    /* Please also send mui key events to us, no idea if mui handles this
-     * like this */
-    data->mad_ehn.ehn_Flags = MUI_EHF_ALWAYSKEYS | MUI_EHF_GUIMODE;
-    data->mad_ehn.ehn_Object = obj;
-    data->mad_ehn.ehn_Class = cl;
-
-    data->mad_hiehn.ehn_Events = 0;
-    data->mad_hiehn.ehn_Priority = -10;
-    data->mad_hiehn.ehn_Flags = MUI_EHF_HANDLEINPUT;
-    data->mad_hiehn.ehn_Object = obj;
-    data->mad_hiehn.ehn_Class = 0;
+    /* The input handler node is made at setup (area_live_setup) */
+    data->mad_EventPri = -5;
 
     return (IPTR)obj;
 }
@@ -1736,6 +1724,9 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
 
         case MUIA_ContextMenu:
             data->mad_ContextMenu = (Object *)tag->ti_Data;
+            /* A release (disable) adds the input handler for the menu */
+            if (data->mad_ContextMenu && (_flags(obj) & MADF_SETUP))
+                zune_area_live(obj);
             break;
 
         case MUIA_Font:
@@ -3017,24 +3008,25 @@ Area__MUIM_DrawBackgroundBuffered(struct IClass *cl, Object *obj,
 static void setup_control_char(struct MUI_AreaData *data, Object *obj,
                                struct IClass *cl)
 {
-    if (data->mad_ControlChar != 0 || data->mad_Flags & MADF_CYCLECHAIN) {
-        data->mad_ccn.ehn_Events = data->mad_ControlChar;
+    if ((data->mad_ControlChar != 0 || data->mad_Flags & MADF_CYCLECHAIN)
+            && zune_area_live(obj)) {
+        data->mad_Live->ccn.ehn_Events = data->mad_ControlChar;
         switch (data->mad_InputMode) {
         case MUIV_InputMode_RelVerify:
-            data->mad_ccn.ehn_Flags = MUIKEY_PRESS;
+            data->mad_Live->ccn.ehn_Flags = MUIKEY_PRESS;
             break;
         case MUIV_InputMode_Toggle:
-            data->mad_ccn.ehn_Flags = MUIKEY_TOGGLE;
+            data->mad_Live->ccn.ehn_Flags = MUIKEY_TOGGLE;
             break;
         case MUIV_InputMode_Immediate:
-            data->mad_ccn.ehn_Flags = MUIKEY_PRESS;
+            data->mad_Live->ccn.ehn_Flags = MUIKEY_PRESS;
             break;
         }
-        data->mad_ccn.ehn_Priority = 0;
-        data->mad_ccn.ehn_Object = obj;
-        data->mad_ccn.ehn_Class = cl;
+        data->mad_Live->ccn.ehn_Priority = 0;
+        data->mad_Live->ccn.ehn_Object = obj;
+        data->mad_Live->ccn.ehn_Class = cl;
         DoMethod(_win(obj), MUIM_Window_AddControlCharHandler,
-                 (IPTR)&data->mad_ccn);
+                 (IPTR)&data->mad_Live->ccn);
     }
 }
 
@@ -3045,9 +3037,10 @@ static void setup_control_char(struct MUI_AreaData *data, Object *obj,
  */
 static void cleanup_control_char(struct MUI_AreaData *data, Object *obj)
 {
-    if (data->mad_ControlChar != 0 || data->mad_Flags & MADF_CYCLECHAIN) {
+    if ((data->mad_ControlChar != 0 || data->mad_Flags & MADF_CYCLECHAIN)
+            && data->mad_Live) {
         DoMethod(_win(obj), MUIM_Window_RemControlCharHandler,
-                 (IPTR)&data->mad_ccn);
+                 (IPTR)&data->mad_Live->ccn);
     }
 }
 
@@ -3176,6 +3169,50 @@ static void set_title_sizes(Object *obj, struct MUI_AreaData *data)
 *       nonzero frame and title settings during this method.
 *
 */
+/* The event and timer nodes of a set-up object (struct MUI_AreaLive):
+ * made at its setup when it has input, a context menu, a shortcut, a
+ * place in the cycle chain or MUI_RequestIDCMP events, and otherwise on
+ * the first such need while it is set up (zune_area_live). NULL if there
+ * is no memory. */
+static Class *area_class;
+
+struct MUI_AreaLive *zune_area_live(Object *obj)
+{
+    struct MUI_AreaData *data = muiAreaData(obj);
+    struct MUI_AreaLive *live;
+
+    if ((live = data->mad_Live))
+        return live;
+    if (!(live = AllocMem(sizeof(*live), MEMF_ANY | MEMF_CLEAR)))
+        return NULL;
+    live->ehn.ehn_Priority = data->mad_EventPri;
+    /* Please also send mui key events to us, no idea if mui handles this
+     * like this */
+    live->ehn.ehn_Flags = MUI_EHF_ALWAYSKEYS | MUI_EHF_GUIMODE;
+    live->ehn.ehn_Object = obj;
+    live->ehn.ehn_Class = area_class;
+    live->hiehn.ehn_Events = data->mad_HiEvents;
+    live->hiehn.ehn_Priority = -10;
+    live->hiehn.ehn_Flags = MUI_EHF_HANDLEINPUT;
+    live->hiehn.ehn_Object = obj;
+    live->timer.ihn_Flags = MUIIHNF_TIMER;
+    live->timer.ihn_Method = MUIM_Timer;
+    live->timer.ihn_Object = obj;
+    data->mad_Live = live;
+    return live;
+}
+
+static BOOL area_live_setup(struct IClass *cl, Object *obj,
+                            struct MUI_AreaData *data)
+{
+    area_class = cl;
+    if (data->mad_InputMode == MUIV_InputMode_None && !data->mad_ContextMenu
+        && !data->mad_ControlChar && !(data->mad_Flags & MADF_CYCLECHAIN)
+        && !data->mad_HiEvents)
+        return TRUE;
+    return zune_area_live(obj) != NULL;
+}
+
 static IPTR Area__MUIM_Setup(struct IClass *cl, Object *obj,
                              struct MUIP_Setup *msg)
 {
@@ -3184,6 +3221,8 @@ static IPTR Area__MUIM_Setup(struct IClass *cl, Object *obj,
     const struct MUI_FrameSpec_intern *frame;
     struct MUI_FrameSpec_intern tempframe;
 
+    if (!area_live_setup(cl, obj, data))
+        return FALSE;
     muiRenderInfo(obj) = msg->RenderInfo;
     data->mad_Flags2 &= ~(MADF2_BGCHECKED | MADF2_BUILTINBG);
 
@@ -3217,13 +3256,13 @@ static IPTR Area__MUIM_Setup(struct IClass *cl, Object *obj,
     }
 
     if (data->mad_InputMode != MUIV_InputMode_None || data->mad_ContextMenu) {
-        data->mad_ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
-        DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_ehn);
+        data->mad_Live->ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
+        DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_Live->ehn);
     }
 
     /* Those are filled by RequestIDCMP() */
-    if (data->mad_hiehn.ehn_Events)
-        DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_hiehn);
+    if (data->mad_HiEvents)
+        DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_Live->hiehn);
 
     setup_control_char(data, obj, cl);
     //    setup_cycle_chain (data, obj);
@@ -3241,10 +3280,6 @@ static IPTR Area__MUIM_Setup(struct IClass *cl, Object *obj,
     }
 
     _flags(obj) |= MADF_SETUP;
-
-    data->mad_Timer.ihn_Flags = MUIIHNF_TIMER;
-    data->mad_Timer.ihn_Method = MUIM_Timer;
-    data->mad_Timer.ihn_Object = obj;
 
     return TRUE;
 }
@@ -3290,19 +3325,23 @@ static IPTR Area__MUIM_Cleanup(struct IClass *cl, Object *obj,
     //    cleanup_cycle_chain (data, obj);
     cleanup_control_char(data, obj);
 
-    if (data->mad_Timer.ihn_Millis) {
-        DoMethod(_app(obj), MUIM_Application_RemInputHandler,
-                 (IPTR)&data->mad_Timer);
-        data->mad_Timer.ihn_Millis = 0;
+    if (data->mad_Live) {
+        struct MUI_AreaLive *live = data->mad_Live;
+
+        if (live->timer.ihn_Millis) {
+            DoMethod(_app(obj), MUIM_Application_RemInputHandler,
+                     (IPTR)&live->timer);
+            live->timer.ihn_Millis = 0;
+        }
+
+        /* Remove the handler if it is added */
+        if (live->hiehn.ehn_Events)
+            DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&live->hiehn);
+
+        /* Remove the event handler if it has been added */
+        if (live->ehn.ehn_Events)
+            DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&live->ehn);
     }
-
-    /* Remove the handler if it is added */
-    if (data->mad_hiehn.ehn_Events)
-        DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&data->mad_hiehn);
-
-    /* Remove the event handler if it has been added */
-    if (data->mad_ehn.ehn_Events)
-        DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&data->mad_ehn);
 
     D(bug("Area cleanup %p active=%p\n", obj,
           (Object *)XGET(_win(obj), MUIA_Window_ActiveObject)));
@@ -3323,6 +3362,9 @@ static IPTR Area__MUIM_Cleanup(struct IClass *cl, Object *obj,
     }
 
     muiRenderInfo(obj) = NULL;
+    if (data->mad_Live)
+        FreeMem(data->mad_Live, sizeof(struct MUI_AreaLive));
+    data->mad_Live = NULL;
 
     return 0;
 }
@@ -3623,10 +3665,10 @@ static void handle_press(struct IClass *cl, Object *obj)
     case MUIV_InputMode_RelVerify:
         SetAttrs(obj, MUIA_Selected, TRUE, MUIA_Pressed, TRUE, TAG_DONE);
         set(obj, MUIA_Timer, ++muiAreaData(obj)->mad_Timeval);
-        if (!data->mad_Timer.ihn_Millis && data->mad_DisableCount == 0) {
-            data->mad_Timer.ihn_Millis = 300;
+        if (!data->mad_Live->timer.ihn_Millis && data->mad_DisableCount == 0) {
+            data->mad_Live->timer.ihn_Millis = 300;
             DoMethod(_app(obj), MUIM_Application_AddInputHandler,
-                     (IPTR)&data->mad_Timer);
+                     (IPTR)&data->mad_Live->timer);
         }
         break;
 
@@ -3665,10 +3707,14 @@ static void handle_release(struct IClass *cl, Object *obj, int cancel)
 {
     struct MUI_AreaData *data = INST_DATA(cl, obj);
 
-    if (data->mad_ehn.ehn_Events)
-        DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&data->mad_ehn);
-    data->mad_ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
-    DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_ehn);
+    /* An object without input or context menu has no live block and
+     * nothing that a release changes */
+    if (!data->mad_Live)
+        return;
+    if (data->mad_Live->ehn.ehn_Events)
+        DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&data->mad_Live->ehn);
+    data->mad_Live->ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
+    DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_Live->ehn);
 
     if (data->mad_InputMode == MUIV_InputMode_RelVerify) {
         if (data->mad_Flags & MADF_SELECTED) {
@@ -3681,10 +3727,10 @@ static void handle_release(struct IClass *cl, Object *obj, int cancel)
         }
     }
 
-    if (data->mad_Timer.ihn_Millis) {
+    if (data->mad_Live->timer.ihn_Millis) {
         DoMethod(_app(obj), MUIM_Application_RemInputHandler,
-                 (IPTR)&data->mad_Timer);
-        data->mad_Timer.ihn_Millis = 0;
+                 (IPTR)&data->mad_Live->timer);
+        data->mad_Live->timer.ihn_Millis = 0;
     }
 }
 
@@ -3707,19 +3753,19 @@ static IPTR event_button(Class *cl, Object *obj, struct IntuiMessage *imsg)
 
         if (in) {
             //            set(_win(obj), MUIA_Window_ActiveObject, obj);
-            data->mad_ClickX = imsg->MouseX;
-            data->mad_ClickY = imsg->MouseY;
+            data->mad_Live->clickx = imsg->MouseX;
+            data->mad_Live->clicky = imsg->MouseY;
 
             if ((data->mad_InputMode != MUIV_InputMode_Toggle) &&
                     (data->mad_Flags & MADF_SELECTED))
                 break;
             nnset(obj, MUIA_Timer, 0);
             if (data->mad_InputMode == MUIV_InputMode_RelVerify) {
-                if (data->mad_ehn.ehn_Events)
+                if (data->mad_Live->ehn.ehn_Events)
                     DoMethod(_win(obj), MUIM_Window_RemEventHandler,
-                             (IPTR)&data->mad_ehn);
-                data->mad_ehn.ehn_Events |= IDCMP_MOUSEMOVE | IDCMP_RAWKEY;
-                DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_ehn);
+                             (IPTR)&data->mad_Live->ehn);
+                data->mad_Live->ehn.ehn_Events |= IDCMP_MOUSEMOVE | IDCMP_RAWKEY;
+                DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_Live->ehn);
             }
             handle_press(cl, obj);
             return MUI_EventHandlerRC_Eat;
@@ -3730,7 +3776,7 @@ static IPTR event_button(Class *cl, Object *obj, struct IntuiMessage *imsg)
         if (data->mad_InputMode == MUIV_InputMode_None)
             break;
 
-        if (data->mad_ehn.ehn_Events != IDCMP_MOUSEBUTTONS) {
+        if (data->mad_Live->ehn.ehn_Events != IDCMP_MOUSEBUTTONS) {
             handle_release(cl, obj, FALSE /* cancel */);
             return 0;
         }
@@ -3756,11 +3802,11 @@ static IPTR event_button(Class *cl, Object *obj, struct IntuiMessage *imsg)
                     data->mad_ContextZMenu = zune_open_menu(_window(obj), newmenu);
                 }
 
-                if (data->mad_ehn.ehn_Events)
+                if (data->mad_Live->ehn.ehn_Events)
                     DoMethod(_win(obj), MUIM_Window_RemEventHandler,
-                             (IPTR)&data->mad_ehn);
-                data->mad_ehn.ehn_Events |= IDCMP_MOUSEMOVE;
-                DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_ehn);
+                             (IPTR)&data->mad_Live->ehn);
+                data->mad_Live->ehn.ehn_Events |= IDCMP_MOUSEMOVE;
+                DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_Live->ehn);
             }
             return MUI_EventHandlerRC_Eat;
         }
@@ -3770,9 +3816,9 @@ static IPTR event_button(Class *cl, Object *obj, struct IntuiMessage *imsg)
         if (data->mad_ContextZMenu) {
             struct MenuItem *item = zune_leave_menu(data->mad_ContextZMenu);
 
-            DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&data->mad_ehn);
-            data->mad_ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
-            DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_ehn);
+            DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&data->mad_Live->ehn);
+            data->mad_Live->ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
+            DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_Live->ehn);
 
             if (item) {
                 Object *itemobj = (Object *)GTMENUITEM_USERDATA(item);
@@ -3821,27 +3867,27 @@ static IPTR event_motion(Class *cl, Object *obj, struct IntuiMessage *imsg)
 
         if (in) {
             if ((data->mad_Flags & MADF_DRAGGABLE) &&
-                    ((abs(data->mad_ClickX - imsg->MouseX) >= 3) ||
-                     (abs(data->mad_ClickY - imsg->MouseY) >= 3)))
+                    ((abs(data->mad_Live->clickx - imsg->MouseX) >= 3) ||
+                     (abs(data->mad_Live->clicky - imsg->MouseY) >= 3)))
                 /* should be user configurable */
             {
                 if (data->mad_InputMode == MUIV_InputMode_RelVerify)
                     set(obj, MUIA_Selected, FALSE);
                 nnset(obj, MUIA_Pressed, FALSE);
 
-                if (data->mad_ehn.ehn_Events)
+                if (data->mad_Live->ehn.ehn_Events)
                     DoMethod(_win(obj), MUIM_Window_RemEventHandler,
-                             (IPTR)&data->mad_ehn);
-                data->mad_ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
-                DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_ehn);
-                if (data->mad_Timer.ihn_Millis) {
+                             (IPTR)&data->mad_Live->ehn);
+                data->mad_Live->ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
+                DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_Live->ehn);
+                if (data->mad_Live->timer.ihn_Millis) {
                     DoMethod(_app(obj), MUIM_Application_RemInputHandler,
-                             (IPTR)&data->mad_Timer);
-                    data->mad_Timer.ihn_Millis = 0;
+                             (IPTR)&data->mad_Live->timer);
+                    data->mad_Live->timer.ihn_Millis = 0;
                 }
 
-                DoMethod(obj, MUIM_DoDrag, data->mad_ClickX - _left(obj),
-                         data->mad_ClickY - _top(obj), 0);
+                DoMethod(obj, MUIM_DoDrag, data->mad_Live->clickx - _left(obj),
+                         data->mad_Live->clicky - _top(obj), 0);
                 return MUI_EventHandlerRC_Eat;
             }
         }
@@ -3901,7 +3947,7 @@ static IPTR Area__MUIM_HandleEvent(struct IClass *cl, Object *obj,
 {
     struct MUI_AreaData *data = INST_DATA(cl, obj);
 
-    if (data->mad_DisableCount)
+    if (data->mad_DisableCount || !data->mad_Live)
         return 0;
     if (data->mad_InputMode == MUIV_InputMode_None && !data->mad_ContextMenu)
         return 0;
@@ -3911,10 +3957,10 @@ static IPTR Area__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         case MUIKEY_PRESS:
             if (data->mad_Flags & MADF_SELECTED)
                 break;
-            if (data->mad_ehn.ehn_Events)
-                DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&data->mad_ehn);
-            data->mad_ehn.ehn_Events |= IDCMP_RAWKEY;
-            DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_ehn);
+            if (data->mad_Live->ehn.ehn_Events)
+                DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR)&data->mad_Live->ehn);
+            data->mad_Live->ehn.ehn_Events |= IDCMP_RAWKEY;
+            DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR)&data->mad_Live->ehn);
             handle_press(cl, obj);
             return MUI_EventHandlerRC_Eat;
 
@@ -3959,7 +4005,7 @@ static IPTR Area__MUIM_HandleEvent(struct IClass *cl, Object *obj,
             /* Keys reach an idle active or default object through
              * MUI_EHF_ALWAYSKEYS; other objects' shortcuts need them. Only
              * a pressed object, which asked for IDCMP_RAWKEY, takes them. */
-            if (!(data->mad_ehn.ehn_Events & IDCMP_RAWKEY))
+            if (!(data->mad_Live->ehn.ehn_Events & IDCMP_RAWKEY))
                 return 0;
 
             if (msg->imsg->Qualifier & (IEQUALIFIER_LSHIFT | IEQUALIFIER_RSHIFT)) {
@@ -4128,11 +4174,13 @@ static IPTR Area__MUIM_Import(struct IClass *cl, Object *obj,
 static IPTR Area__MUIM_Timer(struct IClass *cl, Object *obj, Msg msg)
 {
     struct MUI_AreaData *data = INST_DATA(cl, obj);
-    if (data->mad_Timer.ihn_Millis)
+    if (!data->mad_Live)
+        return 0;
+    if (data->mad_Live->timer.ihn_Millis)
         DoMethod(_app(obj), MUIM_Application_RemInputHandler,
-                 (IPTR)&data->mad_Timer);
-    data->mad_Timer.ihn_Millis = 50;
-    DoMethod(_app(obj), MUIM_Application_AddInputHandler, (IPTR)&data->mad_Timer);
+                 (IPTR)&data->mad_Live->timer);
+    data->mad_Live->timer.ihn_Millis = 50;
+    DoMethod(_app(obj), MUIM_Application_AddInputHandler, (IPTR)&data->mad_Live->timer);
 
     if (data->mad_Flags & MADF_SELECTED)
         set(obj, MUIA_Timer, ++muiAreaData(obj)->mad_Timeval);
