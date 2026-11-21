@@ -361,6 +361,28 @@ static BOOL store_contents(struct MUI_TextData *data, CONST_STRPTR src)
     return store_contents_len(data, src, strlen(src));
 }
 
+/* The common preparse strings (a button's, a label's) are shared, not
+ * copied for every object */
+static const char text_shared_preparse[][4] = { "\33c", "\33r", "\33l", "" };
+
+static STRPTR text_preparse_dup(CONST_STRPTR s)
+{
+    int i;
+
+    for (i = 0; i < 4; i++)
+        if (!strcmp(s, text_shared_preparse[i]))
+            return (STRPTR)text_shared_preparse[i];
+    return StrDup(s);
+}
+
+static void text_preparse_free(CONST_STRPTR p)
+{
+    const char *c = (const char *)p;
+
+    if (c < text_shared_preparse[0] || c >= text_shared_preparse[4])
+        FreeVec((APTR)p);
+}
+
 /**************************************************************************
 OM_NEW
 **************************************************************************/
@@ -434,7 +456,7 @@ IPTR Text__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     if (initial_preparse && *initial_preparse)
-        data->preparse = StrDup(initial_preparse);
+        data->preparse = text_preparse_dup(initial_preparse);
     if (!store_contents(data, initial_contents) ||
         (initial_preparse && *initial_preparse && !data->preparse))
     {
@@ -471,7 +493,7 @@ IPTR Text__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
 
     FreeVec(data->mark);
     FreeVec(data->owned_contents);
-    FreeVec((APTR) data->preparse);
+    text_preparse_free(data->preparse);
     if (data->textdata) MUI_DisposeObject(data->textdata);
 
     return DoSuperMethodA(cl, obj, msg);
@@ -577,7 +599,7 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         case MUIA_Text_PreParse:
             {
                 char *new_preparse =
-                    StrDup(((char *)tag->ti_Data) ? (char *)tag->
+                    text_preparse_dup(((char *)tag->ti_Data) ? (char *)tag->
                     ti_Data : "");
                 if (new_preparse)
                 {
@@ -587,7 +609,7 @@ IPTR Text__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                         data->ztext = NULL;
                         data->plain_chunk = NULL;
                     }
-                    FreeVec((APTR) data->preparse);
+                    text_preparse_free(data->preparse);
                     data->preparse = new_preparse;
                     if (_flags(obj) & MADF_SETUP)
                         setup_text(data, obj);

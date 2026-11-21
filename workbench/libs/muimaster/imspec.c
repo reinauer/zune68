@@ -1078,28 +1078,31 @@ void zune_imspec_draw_at(struct MUI_ImageSpec_intern *spec,
  in the future it might be that the MUII_#? stuff is not converted to
  a string
 **************************************************************************/
+/* The strings of the MUII_ numbers: an object given one shares it (most
+ * backgrounds are given so), the others get a copy. */
+static const char builtin_specs[MUII_LASTPAT][6] = {
+    "6:0", "6:1", "6:2", "6:3", "6:4", "6:5", "6:6", "6:7", "6:8", "6:9",
+    "6:10", "6:11", "6:12", "6:13", "6:14", "6:15", "6:16", "6:17", "6:18", "6:19",
+    "6:20", "6:21", "6:22", "6:23", "6:24", "6:25", "6:26", "6:27", "6:28", "6:29",
+    "6:30", "6:31", "6:32", "6:33", "6:34", "6:35", "6:36", "6:37", "6:38", "6:39",
+    "6:40", "6:41", "6:42", "6:43", "6:44", "6:45", "6:46", "6:47", "6:48", "6:49",
+    "6:50", "6:51", "6:52", "6:53", "6:54", "6:55", "6:56", "6:57", "6:58", "6:59",
+    "6:60", "6:61", "6:62", "6:63", "6:64", "6:65", "6:66", "6:67", "6:68", "6:69",
+    "6:70", "6:71", "6:72", "6:73", "6:74", "6:75", "6:76", "6:77", "6:78", "6:79",
+    "6:80", "6:81", "6:82", "6:83", "6:84", "6:85", "6:86", "6:87", "6:88", "6:89",
+    "6:90", "6:91", "6:92", "6:93", "6:94", "6:95", "6:96", "6:97", "6:98", "6:99",
+    "6:100", "6:101", "6:102", "6:103", "6:104", "6:105", "6:106", "6:107", "6:108", "6:109",
+    "6:110", "6:111", "6:112", "6:113", "6:114", "6:115", "6:116", "6:117", "6:118", "6:119",
+    "6:120", "6:121", "6:122", "6:123", "6:124", "6:125", "6:126", "6:127", "0:128", "0:129",
+    "0:130", "0:131", "0:132", "0:133", "0:134", "0:135", "0:136", "0:137", "0:138", "0:139",
+    "0:140", "0:141", "0:142", "0:143", "0:144", "0:145",
+};
+
 STRPTR zune_image_spec_duplicate(IPTR in)
 {
-    char *spec;
-    char spec_buf[20];
-
-    if (in >= MUII_WindowBack && in < MUII_BACKGROUND)
-    {
-        sprintf(spec_buf, "6:%lu", in);
-        spec = spec_buf;
-    }
-    else
-    {
-        if (in >= MUII_BACKGROUND && in < MUII_LASTPAT)
-        {
-            sprintf(spec_buf, "0:%lu", in);
-            spec = spec_buf;
-        }
-        else
-            spec = (char *)in;
-    }
-
-    return StrDup(spec);
+    if (in < MUII_LASTPAT)
+        return (STRPTR)builtin_specs[in];
+    return StrDup((CONST_STRPTR)in);
 }
 
 /**************************************************************************
@@ -1107,6 +1110,8 @@ STRPTR zune_image_spec_duplicate(IPTR in)
 **************************************************************************/
 void zune_image_spec_free(CONST_STRPTR spec)
 {
-    if (spec)
+    const char *p = (const char *)spec;
+
+    if (p && (p < builtin_specs[0] || p >= builtin_specs[MUII_LASTPAT]))
         FreeVec((APTR) spec);
 }
