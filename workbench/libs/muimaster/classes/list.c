@@ -1226,10 +1226,13 @@ static BOOL IncreaseColumns(struct MUI_ListData *data, int new_columns)
     newsize = sizeof(struct ListEntry) + sizeof(LONG) * (new_columns             + 1);
     oldsize = sizeof(struct ListEntry) + sizeof(LONG) * (data->columns_allocated + 1);
 
-    if (data->title)
-    {
-        i = -1;
-    }
+    /* The title entry (AllocVec'd, see List__OM_NEW) grows with or
+     * without a title, as one may be set later */
+    if (!(le = AllocVec(newsize, MEMF_CLEAR)))
+        return FALSE;
+    CopyMem(data->entries[ENTRY_TITLE], le, oldsize);
+    FreeVec(data->entries[ENTRY_TITLE]);
+    data->entries[ENTRY_TITLE] = le;
 
     for (; i < data->entries_num; i++)
     {
@@ -1664,7 +1667,11 @@ IPTR List__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         return 0;
     }
 
-    if (!(data->entries[ENTRY_TITLE] = AllocListEntry(data)))
+    /* The title entry is not in the pool, so that a list without entries
+     * holds no puddle of it (2 KB by default) */
+    data->entries[ENTRY_TITLE] = AllocVec(sizeof(struct ListEntry)
+        + sizeof(LONG) * (data->columns_allocated + 1), MEMF_CLEAR);
+    if (!data->entries[ENTRY_TITLE])
     {
         CoerceMethod(cl, obj, OM_DISPOSE);
         return 0;
@@ -1743,7 +1750,10 @@ IPTR List__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
     if (data->intern_pool)
         DeletePool(data->intern_pool);
     if (data->entries)
+    {
+        FreeVec(data->entries[ENTRY_TITLE]);
         FreeVec(data->entries - 1);
+    }
             /* title is currently before all other elements */
 
     FreeListFormat(data);
