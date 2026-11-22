@@ -2750,15 +2750,7 @@ static void CalcAltDimensions(Object *obj, struct MUI_WindowData *data,
     {
         altdims->Width = data->wd_MinMax.MinWidth
             - altdims->Width
-            * (data->wd_MinMax.MaxWidth - data->wd_MinMax.MinWidth);
-    }
-    else if
-        (_between
-        (MUIV_Window_AltWidth_Screen(100),
-            altdims->Width, MUIV_Window_AltWidth_Screen(0)))
-    {
-        altdims->Width = data->wd_RenderInfo.mri_Screen->Width
-            * (-(altdims->Width + 200)) / 100;
+            * (data->wd_MinMax.MaxWidth - data->wd_MinMax.MinWidth) / 100;
     }
     else if
         (_between
@@ -2768,6 +2760,14 @@ static void CalcAltDimensions(Object *obj, struct MUI_WindowData *data,
         altdims->Width = data->wd_RenderInfo.mri_Screen->Width
             * (-(altdims->Width + 100)) / 100;
     }
+    else if
+        (_between
+        (MUIV_Window_AltWidth_Screen(100),
+            altdims->Width, MUIV_Window_AltWidth_Screen(0)))
+    {
+        altdims->Width = data->wd_RenderInfo.mri_Screen->Width
+            * (-(altdims->Width + 200)) / 100;
+    }
 
     if (_between
         (MUIV_Window_AltHeight_MinMax(100),
@@ -2775,15 +2775,7 @@ static void CalcAltDimensions(Object *obj, struct MUI_WindowData *data,
     {
         altdims->Height = data->wd_MinMax.MinHeight
             - altdims->Height
-            * (data->wd_MinMax.MaxHeight - data->wd_MinMax.MinHeight);
-    }
-    else if
-        (_between
-        (MUIV_Window_AltHeight_Screen(100),
-            altdims->Height, MUIV_Window_AltHeight_Screen(0)))
-    {
-        altdims->Height = data->wd_RenderInfo.mri_Screen->Height
-            * (-(altdims->Height + 200)) / 100;
+            * (data->wd_MinMax.MaxHeight - data->wd_MinMax.MinHeight) / 100;
     }
     else if
         (_between
@@ -2792,6 +2784,14 @@ static void CalcAltDimensions(Object *obj, struct MUI_WindowData *data,
     {
         altdims->Height = data->wd_RenderInfo.mri_Screen->Height
             * (-(altdims->Height + 100)) / 100;
+    }
+    else if
+        (_between
+        (MUIV_Window_AltHeight_Screen(100),
+            altdims->Height, MUIV_Window_AltHeight_Screen(0)))
+    {
+        altdims->Height = data->wd_RenderInfo.mri_Screen->Height
+            * (-(altdims->Height + 200)) / 100;
     }
 
     altdims->Width = CLAMP
@@ -4739,17 +4739,19 @@ static void WindowSelectDimensions(struct MUI_WindowData *data)
                 - (data->wd_ReqWidth
                 * (data->wd_MinMax.MaxWidth - data->wd_MinMax.MinWidth)) / 100;
         }
-        else if (_between(MUIV_Window_Width_Screen(100),
-                data->wd_ReqWidth, MUIV_Window_Width_Screen(0)))
-        {
-            data->wd_Width = scr->Width
-                * (-(data->wd_ReqWidth + 200)) / 100 - hborders;
-        }
+        /* Visible before Screen: Visible(100) is Screen(0), and the
+         * Lamp demo's Visible(100) window fills the screen on MUI 3.8 */
         else if (_between(MUIV_Window_Width_Visible(100),
                 data->wd_ReqWidth, MUIV_Window_Width_Visible(0)))
         {
             data->wd_Width = scr->Width
                 * (-(data->wd_ReqWidth + 100)) / 100 - hborders;
+        }
+        else if (_between(MUIV_Window_Width_Screen(100),
+                data->wd_ReqWidth, MUIV_Window_Width_Screen(0)))
+        {
+            data->wd_Width = scr->Width
+                * (-(data->wd_ReqWidth + 200)) / 100 - hborders;
         }
 
         if (data->wd_ReqHeight > 0)
@@ -4764,17 +4766,17 @@ static void WindowSelectDimensions(struct MUI_WindowData *data)
                 * (data->wd_MinMax.MaxHeight - data->wd_MinMax.MinHeight))
                 / 100;
         }
-        else if (_between(MUIV_Window_Height_Screen(100),
-                data->wd_ReqHeight, MUIV_Window_Height_Screen(0)))
-        {
-            data->wd_Height = scr->Height
-                * (-(data->wd_ReqHeight + 200)) / 100 - vborders;
-        }
         else if (_between(MUIV_Window_Height_Visible(100),
                 data->wd_ReqHeight, MUIV_Window_Height_Visible(0)))
         {
             data->wd_Height = scr->Height
                 * (-(data->wd_ReqHeight + 100)) / 100 - vborders;
+        }
+        else if (_between(MUIV_Window_Height_Screen(100),
+                data->wd_ReqHeight, MUIV_Window_Height_Screen(0)))
+        {
+            data->wd_Height = scr->Height
+                * (-(data->wd_ReqHeight + 200)) / 100 - vborders;
         }
 
         /* scaled */
