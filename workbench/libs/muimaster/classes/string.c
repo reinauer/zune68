@@ -107,6 +107,8 @@ struct MUI_StringData
     UBYTE TiFont;
     LONG MlTopLine;             /* Multiline: first visible line */
     LONG MlLeftCol;             /* Multiline: first visible column */
+    LONG MlScrollPos, MlScrollLen; /* cursor and length Draw followed */
+    LONG MlSeen[6];             /* scroll state last published */
 };
 
 #define MSDF_ADVANCEONCR    (1<<0)
@@ -126,6 +128,8 @@ struct MUI_StringData
 #define MSDF_SETMAX         (1<<14)
 #define MSDF_SETVMIN        (1<<15)
 #define MSDF_SETVMAX        (1<<16)
+#define MSDF_GROW           (1<<17) /* Textinput MaxLen 0: no limit */
+#define MSDF_TISIZE         (1<<18) /* sized as Textinput.mcc */
 
 #define TIP_UPDATE 1
 #define TIP_EDITED 2
@@ -251,6 +255,45 @@ static BOOL Buffer_Alloc(struct MUI_StringData *data)
     return TRUE;
 }
 
+/* Room for a text of size characters: the buffer grows without a limit
+ * (MSDF_GROW), as Textinput's does */
+static BOOL Buffer_Fit(struct MUI_StringData *data, ULONG size)
+{
+    ULONG want = data->BufferSize;
+    STRPTR buffer, secret = NULL;
+
+    if (size < data->BufferSize)
+        return TRUE;
+    if (!(data->msd_Flags & MSDF_GROW) || !data->Buffer)
+        return FALSE;
+    while (want <= size)
+        want *= 2;
+    if (!(buffer = AllocVec(want, MEMF_ANY)))
+        return FALSE;
+    if (data->SecBuffer)
+    {
+        if (!(secret = AllocVec(want, MEMF_ANY)))
+        {
+            FreeVec(buffer);
+            return FALSE;
+        }
+        memset(secret, SECRET_CHAR, want - 1);
+        secret[want - 1] = 0;
+        if (!data->msd_useSecret)
+            secret[data->NumChars] = 0;
+        else
+            secret[data->NumChars] = SECRET_CHAR;
+        FreeVec(data->SecBuffer);
+        data->SecBuffer = secret;
+    }
+    memcpy(buffer, data->Buffer, data->NumChars + 1);
+    FreeVec(data->Buffer);
+    data->Buffer = buffer;
+    data->BufferSize = want;
+    data->VisualBuffer = data->msd_useSecret ? data->SecBuffer : buffer;
+    return TRUE;
+}
+
 static inline VOID PrepareVisualBuffer(struct MUI_StringData *data)
 {
     if (data->msd_useSecret)
@@ -284,6 +327,7 @@ static BOOL Buffer_SetNewContents(struct MUI_StringData *data,
         if (!strcmp(data->Buffer, str))
             return FALSE;
 
+        Buffer_Fit(data, strlen(str));
         data->NumChars = strlen(str);
         if (data->NumChars >= data->BufferSize)
             data->NumChars = data->BufferSize - 1;
@@ -306,6 +350,32 @@ static BOOL Buffer_SetNewContents(struct MUI_StringData *data,
  Multiline: lines end at '\n'. Columns are character counts.
 **************************************************************************/
 #define MULTILINE(data) ((data)->msd_Flags & MSDF_MULTILINE)
+
+/* Zune68's own, between String and Textinputscroll.mcc
+ * (tools/imageclass/textinput_library.c): the scroll state of a multiline
+ * String, notified as it changes, with MUIA_Textinput_Lines and _TopLine.
+ * Columns are character counts, in the font's XSize for the visible
+ * ones. */
+#define MUIA_ZuneTextinput_VisLines   MCC_TI_ID(0x7e01) /* ..gn LONG */
+#define MUIA_ZuneTextinput_Columns    MCC_TI_ID(0x7e02) /* ..gn LONG */
+#define MUIA_ZuneTextinput_VisColumns MCC_TI_ID(0x7e03) /* ..gn LONG */
+#define MUIA_ZuneTextinput_LeftCol    MCC_TI_ID(0x7e04) /* .sgn LONG */
+/* Textinput.mcc's sizes rather than String's */
+#define MUIA_ZuneTextinput_Size       MCC_TI_ID(0x7e05) /* i... BOOL */
+
+enum { ML_LINES, ML_VISLINES, ML_TOP, ML_COLUMNS, ML_VISCOLUMNS, ML_LEFT };
+
+static void Ml_State(Object *obj, struct MUI_StringData *data, LONG *state);
+static void Ml_Publish(struct IClass *cl, Object *obj);
+
+/* Draw scrolls to the cursor only after the cursor or the text changed
+ * since it last did: a new text or a TopLine set from outside keeps its
+ * scroll position, as on MUI 3.8 (tests/native/tiscroll.c) */
+static void Ml_Settle(struct MUI_StringData *data)
+{
+    data->MlScrollPos = data->BufferPos;
+    data->MlScrollLen = data->NumChars;
+}
 
 static LONG Ml_LineStart(struct MUI_StringData *data, LONG pos)
 {
@@ -369,7 +439,7 @@ static BOOL Buffer_AddChar(struct MUI_StringData *data, unsigned char code)
     if (data->Buffer == NULL)
         return FALSE;
 
-    if (data->NumChars + 1 >= data->BufferSize)
+    if (!Buffer_Fit(data, data->NumChars + 1))
         return FALSE;
 
     dst = &data->Buffer[data->BufferPos + 1];
@@ -693,6 +763,7 @@ static LONG Buffer_InsertText(struct MUI_StringData *data, ULONG pos,
         return 0;
     while ((len < 0 || count < len) && text[count])
         count++;
+    Buffer_Fit(data, data->NumChars + count);
     count = MIN(count, (LONG)(data->BufferSize - 1 - data->NumChars));
     if (count <= 0)
         return 0;
@@ -821,6 +892,7 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     struct TagItem *tags, *tag;
     CONST_STRPTR str = NULL;
     char integerbuf[22];
+    int i;
     BOOL fixed = GetTagData(MUIA_Textinput_Font, MUIV_Textinput_Font_Normal,
         msg->ops_AttrList) == MUIV_Textinput_Font_Fixed;
 
@@ -957,6 +1029,13 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         case MUIA_Textinput_MaxLen:
         case MUIA_String_MaxLen:
             data->BufferSize = tag->ti_Data;
+            data->msd_Flags &= ~MSDF_GROW;
+            /* Textinput.mcc's default: no limit */
+            if (!data->BufferSize && tag->ti_Tag == MUIA_Textinput_MaxLen)
+            {
+                data->msd_Flags |= MSDF_GROW;
+                data->BufferSize = 80;
+            }
             if (data->BufferSize < 1)
                 data->BufferSize = 1;
             break;
@@ -982,12 +1061,17 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 MSDF_STAYACTIVE);
             break;
 
+        case MUIA_ZuneTextinput_Size:
+            _handle_bool_tag(data->msd_Flags, tag->ti_Data, MSDF_TISIZE);
+            break;
+
         }
     }
 
     if (Buffer_Alloc(data))
     {
         Buffer_SetNewContents(data, str);
+        Ml_Settle(data);
         if (data->NumChars)
             data->msd_Flags |= MSDF_CHANGED;
         /* Marks given at creation refer to the initial contents */
@@ -1002,6 +1086,9 @@ IPTR String__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
     }
 
     D(bug("[MUI:String] New(%p)\n", obj));
+
+    for (i = 0; i < 6; i++)
+        data->MlSeen[i] = -1;
 
     data->ehn.ehn_Events = IDCMP_MOUSEBUTTONS;
     data->ehn.ehn_Priority = 0;
@@ -1052,6 +1139,32 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     {
         switch (tag->ti_Tag)
         {
+        case MUIA_Textinput_TopLine:
+        case MUIA_ZuneTextinput_LeftCol:
+            if (MULTILINE(data))
+            {
+                LONG state[6], v = (LONG)tag->ti_Data;
+                BOOL top = tag->ti_Tag == MUIA_Textinput_TopLine;
+
+                Ml_State(obj, data, state);
+                v = MIN(v, top ? state[ML_LINES] - state[ML_VISLINES]
+                    : state[ML_COLUMNS] - state[ML_VISCOLUMNS]);
+                v = MAX(v, 0);
+                tag->ti_Data = v;
+                Ml_Settle(data);
+                if (v != (top ? data->MlTopLine : data->MlLeftCol))
+                {
+                    if (top)
+                        data->MlTopLine = v;
+                    else
+                        data->MlLeftCol = v;
+                    MUI_Redraw(obj, MADF_DRAWUPDATE);
+                }
+                /* the superclass notifies this one */
+                data->MlSeen[top ? ML_TOP : ML_LEFT] = v;
+            }
+            break;
+
         case MUIA_Text_Contents: /* MUI5 */
         case MUIA_String_Contents:
         case MUIA_Textinput_Contents:
@@ -1064,6 +1177,7 @@ IPTR String__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
             {
                 if (!setpos)
                     data->BufferPos = MAX(0, (LONG)data->NumChars - keep);
+                Ml_Settle(data);
                 data->msd_RedrawReason = NEW_CONTENTS;
                 data->msd_Flags &= ~(MSDF_MARKING | MSDF_KEYMARKING |
                     MSDF_TIMARK);
@@ -1285,6 +1399,29 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     case MUIA_Textinput_Multiline:
         STORE = !!(data->msd_Flags & MSDF_MULTILINE);
         return TRUE;
+    case MUIA_Textinput_Lines:
+    case MUIA_Textinput_TopLine:
+    case MUIA_ZuneTextinput_VisLines:
+    case MUIA_ZuneTextinput_Columns:
+    case MUIA_ZuneTextinput_VisColumns:
+    case MUIA_ZuneTextinput_LeftCol:
+    {
+        LONG state[6];
+
+        Ml_State(obj, data, state);
+        switch (msg->opg_AttrID)
+        {
+        case MUIA_Textinput_Lines: STORE = state[ML_LINES]; break;
+        case MUIA_Textinput_TopLine: STORE = state[ML_TOP]; break;
+        case MUIA_ZuneTextinput_VisLines: STORE = state[ML_VISLINES]; break;
+        case MUIA_ZuneTextinput_Columns: STORE = state[ML_COLUMNS]; break;
+        case MUIA_ZuneTextinput_VisColumns:
+            STORE = state[ML_VISCOLUMNS];
+            break;
+        default: STORE = state[ML_LEFT]; break;
+        }
+        return TRUE;
+    }
     case MUIA_Textinput_RemainActive:
         STORE = !!(data->msd_Flags & MSDF_STAYACTIVE);
         return TRUE;
@@ -1385,7 +1522,7 @@ IPTR String__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_String_MaxLen:
     case MUIA_Textinput_MaxLen:
-        STORE = (IPTR) data->BufferSize;
+        STORE = (data->msd_Flags & MSDF_GROW) ? 0 : (IPTR) data->BufferSize;
         return TRUE;
 
     case MUIA_String_AdvanceOnCR:
@@ -1542,6 +1679,34 @@ IPTR String__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUI_StringData *data = INST_DATA(cl, obj);
 
     DoSuperMethodA(cl, obj, (Msg) msg);
+
+    if ((data->msd_Flags & MSDF_TISIZE) && data->Columns < 0)
+    {
+        /* As MUI 3.8 with Textinput 29: 36 wide, a pixel above and below
+         * the text, and a NoInput line as wide as its text and two pixels
+         * at each side (tests/native/tiscroll.c, the Textinput demo) */
+        struct MUI_MinMax *mi = msg->MinMaxInfo;
+        LONG width = 36, height = _font(obj)->tf_YSize + 2;
+
+        if ((data->msd_Flags & (MSDF_TINOINPUT | MSDF_MULTILINE))
+            == MSDF_TINOINPUT && data->NumChars)
+        {
+            struct RastPort rp;
+
+            InitRastPort(&rp);
+            SetFont(&rp, _font(obj));
+            width = MAX(width, TextLength(&rp, data->VisualBuffer,
+                data->NumChars) + 4);
+        }
+        mi->MaxWidth += MUI_MAXMAX;
+        mi->MinWidth += width;
+        mi->DefWidth += width;
+        mi->MinHeight += height;
+        mi->DefHeight += height;
+        mi->MaxHeight += (data->msd_Flags & MSDF_MULTILINE) ?
+            MUI_MAXMAX : height;
+        return TRUE;
+    }
 
     if (data->Columns >= 0)
     {
@@ -1860,16 +2025,19 @@ static VOID TextM(Object *obj, struct MUI_StringData *data,
     //kprintf("\n");
 }
 
-static LONG Ml_Rows(Object *obj)
+/* Textinput's sizes keep a pixel above and below the text */
+#define ML_PAD(data) (((data)->msd_Flags & MSDF_TISIZE) ? 1 : 0)
+
+static LONG Ml_Rows(Object *obj, struct MUI_StringData *data)
 {
-    return MAX(1, _mheight(obj) / _font(obj)->tf_YSize);
+    return MAX(1, (_mheight(obj) - 2 * ML_PAD(data)) / _font(obj)->tf_YSize);
 }
 
 /* Scroll so that the cursor is visible */
 static void Ml_Scroll(Object *obj, struct MUI_StringData *data)
 {
     struct RastPort *rp = _rp(obj);
-    LONG rows = Ml_Rows(obj), line = Ml_LineOf(data, data->BufferPos);
+    LONG rows = Ml_Rows(obj, data), line = Ml_LineOf(data, data->BufferPos);
     LONG start = Ml_LineStart(data, data->BufferPos);
     LONG column = data->BufferPos - start, cell;
     STRPTR text = data->VisualBuffer + start;
@@ -1890,6 +2058,59 @@ static void Ml_Scroll(Object *obj, struct MUI_StringData *data)
         data->MlLeftCol++;
 }
 
+/* Lines, visible lines, top line, longest line, visible columns, left
+ * column. Without a layout one line and column are visible. */
+static void Ml_State(Object *obj, struct MUI_StringData *data, LONG *state)
+{
+    BOOL shown = MULTILINE(data) && (_flags(obj) & MADF_SETUP)
+        && _mwidth(obj) > 0;
+    LONG pos = 0, end, widest = 0;
+
+    state[ML_LINES] = Ml_LineOf(data, data->NumChars) + 1;
+    do
+    {
+        end = Ml_LineEnd(data, pos);
+        widest = MAX(widest, end - pos);
+        pos = end + 1;
+    }
+    while (end < (LONG)data->NumChars);
+    state[ML_COLUMNS] = widest + 1;     /* and the cursor after the end */
+    state[ML_VISLINES] = shown ? Ml_Rows(obj, data) : 1;
+    state[ML_VISCOLUMNS] = shown ?
+        MAX(1, _mwidth(obj) / MAX(1, _font(obj)->tf_XSize)) : 1;
+    state[ML_TOP] = data->MlTopLine;
+    state[ML_LEFT] = data->MlLeftCol;
+}
+
+/* Notify the scroll state that changed since it was last published */
+static void Ml_Publish(struct IClass *cl, Object *obj)
+{
+    static const Tag tags[6] = { MUIA_Textinput_Lines,
+        MUIA_ZuneTextinput_VisLines, MUIA_Textinput_TopLine,
+        MUIA_ZuneTextinput_Columns, MUIA_ZuneTextinput_VisColumns,
+        MUIA_ZuneTextinput_LeftCol };
+    struct MUI_StringData *data = INST_DATA(cl, obj);
+    struct TagItem list[7];
+    LONG state[6];
+    int i, n = 0;
+
+    if (!MULTILINE(data))
+        return;
+    Ml_State(obj, data, state);
+    for (i = 0; i < 6; i++)
+        if (state[i] != data->MlSeen[i])
+        {
+            data->MlSeen[i] = state[i];
+            list[n].ti_Tag = tags[i];
+            list[n++].ti_Data = state[i];
+        }
+    if (!n)
+        return;
+    list[n].ti_Tag = TAG_DONE;
+    /* only Notify's notifications: none of these is set here */
+    DoSuperMethod(cl, obj, OM_SET, (IPTR)list, NULL);
+}
+
 /* Buffer position at a point; outside the rows it is in the line beyond */
 static LONG Ml_PosAt(Object *obj, struct MUI_StringData *data, WORD x,
     WORD y)
@@ -1898,6 +2119,7 @@ static LONG Ml_PosAt(Object *obj, struct MUI_StringData *data, WORD x,
     struct TextExtent te;
     LONG ysize = _font(obj)->tf_YSize, row, start, end, from;
 
+    y -= ML_PAD(data);
     row = y < _mtop(obj) ? -1 : (y - _mtop(obj)) / ysize;
     start = Ml_LinePos(data, MAX(0, data->MlTopLine + row));
     end = Ml_LineEnd(data, start);
@@ -1914,7 +2136,7 @@ static void Ml_Draw(Object *obj, struct MUI_StringData *data,
 {
     struct RastPort *rp = _rp(obj);
     struct TextExtent te;
-    LONG ysize = _font(obj)->tf_YSize, rows = Ml_Rows(obj), row;
+    LONG ysize = _font(obj)->tf_YSize, rows = Ml_Rows(obj, data), row;
     LONG markstart = 0, markstop = 0;
     LONG pos = Ml_LinePos(data, data->MlTopLine);
     BOOL marked = (data->msd_Flags & MSDF_MARKING)
@@ -1925,7 +2147,8 @@ static void Ml_Draw(Object *obj, struct MUI_StringData *data,
     {
         LONG end = Ml_LineEnd(data, pos);
         LONG from = MIN(pos + data->MlLeftCol, end), count;
-        WORD top = _mtop(obj) + row * ysize + rp->Font->tf_Baseline;
+        WORD top = _mtop(obj) + ML_PAD(data) + row * ysize
+            + rp->Font->tf_Baseline;
 
         count = TextFit(rp, text + from, end - from, &te, NULL, 1,
             _mwidth(obj), ysize);
@@ -2019,13 +2242,19 @@ IPTR String__MUIM_Draw(struct IClass *cl, Object *obj,
 
     if (MULTILINE(data))
     {
-        Ml_Scroll(obj, data);
+        if (data->BufferPos != data->MlScrollPos
+            || data->NumChars != data->MlScrollLen)
+        {
+            Ml_Scroll(obj, data);
+            Ml_Settle(data);
+        }
         if (msg->flags & MADF_DRAWUPDATE)
             DoMethod(obj, MUIM_DrawBackground, _mleft(obj), _mtop(obj),
                 _mwidth(obj), _mheight(obj), _mleft(obj), _mtop(obj), 0);
         Ml_Draw(obj, data, textpen);
         data->msd_RedrawReason = NO_REASON;
         CleanVisualBuffer(data);
+        Ml_Publish(cl, obj);
         return TRUE;
     }
 
@@ -2522,6 +2751,11 @@ static STRPTR Ti_ReadFile(CONST_STRPTR name, ULONG max)
 
     if (!file)
         return NULL;
+    if (!max)       /* all of it */
+    {
+        Seek(file, 0, OFFSET_END);
+        max = Seek(file, 0, OFFSET_BEGINNING) + 1;
+    }
     text = AllocVec(max, MEMF_ANY);
     length = text ? Read(file, text, max - 1) : -1;
     Close(file);
@@ -2552,7 +2786,7 @@ static BOOL Ti_AddToNumber(struct MUI_StringData *data, LONG delta)
         start--;
     StrToLong(&buf[start], &value);
     length = snprintf(number, sizeof(number), "%ld", (long)(value + delta));
-    if (data->NumChars - (stop - start) + length >= data->BufferSize)
+    if (!Buffer_Fit(data, data->NumChars - (stop - start) + length))
         return FALSE;
     pos = data->BufferPos;
     Buffer_Delete(data, start, stop);
@@ -2727,7 +2961,7 @@ static IPTR String_Textinput(struct IClass *cl, Object *obj, Msg msg)
             return 0;
         start = msg->MethodID == MUIM_Textinput_DoUp ||
             msg->MethodID == MUIM_Textinput_DoDown ? 1 :
-            MAX(1, Ml_Rows(obj) - 1);
+            MAX(1, Ml_Rows(obj, data) - 1);
         if (msg->MethodID == MUIM_Textinput_DoUp ||
             msg->MethodID == MUIM_Textinput_DoPageUp)
             start = -start;
@@ -2790,7 +3024,8 @@ static IPTR String_Textinput(struct IClass *cl, Object *obj, Msg msg)
     case MUIM_Textinput_InsertFromFile:
         {
             struct MUIP_Textinput_LoadFromFile *m = (APTR)msg;
-            STRPTR text = Ti_ReadFile(m->filename, data->BufferSize);
+            STRPTR text = Ti_ReadFile(m->filename,
+                (data->msd_Flags & MSDF_GROW) ? 0 : data->BufferSize);
 
             if (!text)
                 return FALSE;
@@ -2917,6 +3152,7 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
     LONG muikey = msg->muikey;
     BOOL acknowledge = FALSE;
     STRPTR previous = NULL;
+    ULONG prevsize = 0;
     LONG oldpos = data->BufferPos;
     ULONG oldflags = data->msd_Flags, oldmark = data->MarkPos;
     BOOL hook_key = msg->imsg && msg->imsg->Class == IDCMP_RAWKEY &&
@@ -2926,9 +3162,10 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         _isinobject(obj, msg->imsg->MouseX, msg->imsg->MouseY);
     if (data->msd_EditHook && (hook_key || hook_click))
     {
-        previous = AllocVec(data->BufferSize, MEMF_ANY);
+        prevsize = data->BufferSize;    /* key input may grow the buffer */
+        previous = AllocVec(prevsize, MEMF_ANY);
         if (!previous) return MUI_EventHandlerRC_Eat;
-        memcpy(previous, data->Buffer, data->BufferSize);
+        memcpy(previous, data->Buffer, prevsize);
     }
 
     /* LonelyEditHook still receives the ordinary proposed edit, as with
@@ -3428,7 +3665,7 @@ IPTR String__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         }
         else if (handled)
         {
-            memcpy(data->Buffer, previous, data->BufferSize);
+            memcpy(data->Buffer, previous, prevsize);
             data->NumChars = info.NumChars;
             data->BufferPos = oldpos;
             data->msd_Flags = oldflags;
@@ -3768,6 +4005,14 @@ BOOPSI_DISPATCHER(IPTR, String_Dispatcher, cl, obj, msg)
         return String__MUIM_AskMinMax(cl, obj, (APTR) msg);
     case MUIM_Draw:
         return String__MUIM_Draw(cl, obj, (APTR) msg);
+    case MUIM_Show:
+    {
+        IPTR rc = DoSuperMethodA(cl, obj, msg);
+
+        /* the visible lines and columns of the new layout */
+        Ml_Publish(cl, obj);
+        return rc;
+    }
     case MUIM_Export:
         return String__MUIM_Export(cl, obj, (APTR) msg);
     case MUIM_Import:
