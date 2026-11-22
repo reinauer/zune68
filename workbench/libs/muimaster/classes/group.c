@@ -259,15 +259,16 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *       MUIA_Group_Child
 *
 *   FUNCTION
-*       Append a non-NULL Area-compatible child through OM_ADDMEMBER. The
-*       internal Family owns attached children.
+*       Append a non-NULL Area-compatible child. The internal Family owns
+*       attached children.
 *
 *   INPUTS
 *       Object pointer; initialize only; repeatable.
 *
 *   NOTES
-*       Runtime changes use AddHead/AddTail or OM_ADDMEMBER and Remove or
-*       OM_REMMEMBER. Any explicit NULL Child tag makes construction fail after
+*       As in MUI 3.8, Group adds these children itself: a subclass's
+*       OM_ADDMEMBER is not called. Runtime changes use AddHead/AddTail or
+*       OM_ADDMEMBER and Remove or OM_REMMEMBER. Any explicit NULL Child tag makes construction fail after
 *       tag processing and disposes attached children. Earlier superclass/Family
 *       allocation failure can occur before child adoption. Do not dispose an
 *       attached child separately.
@@ -932,7 +933,13 @@ IPTR Group__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
             D(bug("[group.mui] Adding child 0x%p\n", tag->ti_Data));
             if (tag->ti_Data)
             {
-                DoMethod(obj, OM_ADDMEMBER, tag->ti_Data);
+                /* Group's own add, as MUI 3.8: subclasses are not yet set
+                 * up (TabGroup.mcc forwards OM_ADDMEMBER to a page group
+                 * it creates among these children) */
+                struct MUIP_StructWithObj add = { OM_ADDMEMBER,
+                    (Object *)tag->ti_Data };
+
+                Group__MUIM_AddObject(cl, obj, (Msg)&add);
                 /* Set first child as group title */
                 if ((frame == MUIV_Frame_Register)
                     && (data->titlegroup == NULL))
