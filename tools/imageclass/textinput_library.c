@@ -35,7 +35,7 @@ struct Data
 #define INSTDATA Data
 #define VERSION 29
 #define REVISION 1
-#define USERLIBID CLASS " 29.1 (18.11.2026) Zune68"
+#define USERLIBID CLASS " 29.1 (22.11.2026) Zune68"
 #define MASTERVERSION 19
 #define MIN_STACKSIZE 16384
 #define SetupDebug() ((void)0)
