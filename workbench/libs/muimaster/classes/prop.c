@@ -649,6 +649,9 @@ IPTR Prop__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
     case MUIA_Prop_Visible:
         STORE = data->visible;
         return 1;
+    case MUIA_Prop_Horiz:
+        STORE = data->horiz;
+        return 1;
 
         /* Private notification-discovery getter; no release state stored. */
     case MUIA_Prop_Release:
