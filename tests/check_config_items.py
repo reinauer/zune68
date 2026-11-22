@@ -62,10 +62,9 @@ def check(path):
         for item, expected in frames.items():
             ok, ptr = h.query(item, direct)
             assert ok and bytes(h.mem.r_block(ptr, 7)) == expected.encode() + b'\0'
-        # Presets remain distinct even without saved preferences.
-        for item, expected in ((0x20, b'helvetica/9\0'),
-                               (0x22, b'helvetica/9\0'),
-                               (0x23, b'helvetica/15\0'),
+        # Without saved preferences every font is the screen font, as on
+        # MUI 3.8.
+        for item, expected in ((0x20, b'\0'), (0x22, b'\0'), (0x23, b'\0'),
                                (0x1e, b'\0'), (0x80, b'\0')):
             ok, ptr = h.query(item, direct)
             assert ok and bytes(h.mem.r_block(ptr, len(expected))) == expected

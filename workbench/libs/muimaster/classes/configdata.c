@@ -288,14 +288,15 @@ struct def_strval
     CONST_STRPTR val;
 };
 
-/* NULL values not allowed */
+/* NULL values not allowed. Every font is the screen font unless the
+ * settings name one, as on MUI 3.8 (tests/native/fontfallback.c) */
 const static struct def_strval DefStrValues[] = {
     {MUICFG_Font_Normal, ""},
     {MUICFG_Font_List, ""},
-    {MUICFG_Font_Tiny, "helvetica/9"},
+    {MUICFG_Font_Tiny, ""},
     {MUICFG_Font_Fixed, ""},
-    {MUICFG_Font_Title, "helvetica/9"},
-    {MUICFG_Font_Big, "helvetica/15"},
+    {MUICFG_Font_Title, ""},
+    {MUICFG_Font_Big, ""},
     {MUICFG_Font_Button, ""},
     {MUICFG_Font_Knob, ""},
     {MUICFG_String_Background, "2:m2"},
