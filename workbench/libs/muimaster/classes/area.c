@@ -3125,9 +3125,9 @@ static void set_title_sizes(Object *obj, struct MUI_AreaData *data)
             break;
         }
 
-        /* MUI 3.8/3.9 add any inner spacing beyond the frame's top
-         * border thickness below the title */
-        data->mad_TitleHeightAdd = _font(obj)->tf_YSize
+        /* MUI 3.8 adds a pixel and any inner spacing beyond the frame's
+         * top border thickness below the title (titleframe probe) */
+        data->mad_TitleHeightAdd = _font(obj)->tf_YSize + 1
             + MAX((LONG)data->mad_InnerTop - zframe->itop, 0)
             - data->mad_InnerTop - zframe->itop;
         data->mad_TitleHeightBelow =
