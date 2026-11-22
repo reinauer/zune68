@@ -840,21 +840,14 @@ IPTR Text__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 /*      D(bug("YSize=%ld\n", _font(obj)->tf_YSize)); */
 
 
-    /* Area supplied the frame and inner spacing. MUI 3.8/3.9 pad the
-     * default width with that spacing once more; without a minimum, the
-     * default content width is three 'W' glyphs. */
+    /* Area supplied the frame and inner spacing. On MUI 3.8 the default
+     * width is the minimum: the text, or none without MUIA_Text_SetMin.
+     * (MUI 3.9 adds the spacing once more, and three 'W' glyphs without
+     * a minimum.) */
     if ((data->mtd_Flags & MTDF_SETMIN) && !data->shorten)
     {
         msg->MinMaxInfo->MinWidth += width;
-        msg->MinMaxInfo->DefWidth += width + _subwidth(obj);
-    }
-    else
-    {
-        struct RastPort rp;
-
-        InitRastPort(&rp);
-        SetFont(&rp, _font(obj));
-        msg->MinMaxInfo->DefWidth += TextLength(&rp, "WWW", 3);
+        msg->MinMaxInfo->DefWidth += width;
     }
 
     if (data->mtd_Flags & MTDF_SETMAX)
