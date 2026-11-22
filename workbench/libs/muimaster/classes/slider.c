@@ -56,7 +56,7 @@
 *       with CheckAllSizes a maximum at LONG_MAX can overflow the loop
 *       increment.
 *       Draw maps Value to pixel offset and caches both offset and a copied
-*       Stringify result. Text-copy allocation is unchecked before strlen. Setup
+*       Stringify result; without memory for the copy no text is drawn. Setup
 *       does not turn knob-background preparation failure into FALSE. Mouse
 *       handling requires geometry established by drawing and a nonnegative
 *       travel length.
@@ -208,7 +208,6 @@ struct MUI_SliderData
     UWORD max_text_width;
     CONST_STRPTR text_buffer;
     UWORD text_width;
-    UWORD text_length;
 };
 
 
@@ -543,7 +542,7 @@ IPTR Slider__MUIM_Hide(struct IClass *cl, Object *obj,
 /*
  * Call superclass, return FALSE without full/update flags; otherwise
  * compute travel, cached offset, knob/frame and optional text. Own a StrDup
- * of Stringify output; allocation result is unchecked before strlen. Return
+ * of Stringify output (none without memory). Return
  * TRUE ignoring render statuses. Requires valid images/frame, setup and
  * nonnegative travel length.
  */
@@ -616,21 +615,19 @@ IPTR Slider__MUIM_Draw(struct IClass *cl, Object *obj,
             if (data->text_buffer) FreeVec((APTR)data->text_buffer);
             data->text_buffer = StrDup((CONST_STRPTR) DoMethod(obj,
                 MUIM_Numeric_Stringify, val));
-            /* No memory: no text this time, not a crash */
-            data->text_length = data->text_buffer
-                ? strlen(data->text_buffer) : 0;
-            data->text_width =
-                TextLength(_rp(obj), data->text_buffer, data->text_length);
+            /* No memory: no text this time, not a crash (NULL draws
+             * and measures nothing) */
+            data->text_width = ZuneNumericTextWidth(obj, _rp(obj),
+                data->text_buffer);
             data->flags |= SLIDER_VALIDSTRING;
         }
 
-        Move(_rp(obj),
+        ZuneNumericText(obj, data->text_buffer, data->text_width,
             data->knob_left + knob_frame->ileft +
             muiGlobalInfo(obj)->mgi_Prefs->frames[MUIV_Frame_Knob].innerLeft +
             (data->max_text_width - data->text_width) / 2,
-            data->knob_top + _font(obj)->tf_Baseline + knob_frame->itop +
+            data->knob_top + knob_frame->itop +
             muiGlobalInfo(obj)->mgi_Prefs->frames[MUIV_Frame_Knob].innerTop);
-        Text(_rp(obj), data->text_buffer, data->text_length);
     }
 
     return TRUE;

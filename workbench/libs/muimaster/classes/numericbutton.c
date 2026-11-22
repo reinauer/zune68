@@ -256,7 +256,7 @@ static void DrawKnob(Object *obj, struct Numericbutton_DATA *data,
     BOOL force)
 {
     struct RastPort *rp, *saverp;
-    LONG x, val, pixeloffset, textlen, pixellen;
+    LONG x, val, pixeloffset, pixellen;
     STRPTR text;
 
     pixeloffset =
@@ -333,13 +333,12 @@ static void DrawKnob(Object *obj, struct Numericbutton_DATA *data,
     SetFont(rp, _font(obj));
 
     text = (STRPTR) DoMethod(obj, MUIM_Numeric_Stringify, val);
-    textlen = strlen(text);
-    pixellen = TextLength(_rp(obj), text, textlen);
+    pixellen = ZuneNumericTextWidth(obj, rp, text);
 
     SetAPen(rp, _pens(obj)[MPEN_TEXT]);
-    Move(rp, data->knob_left + 2 + (data->knob_width - 4 - pixellen) / 2,
-        data->knob_top + 1 + rp->TxBaseline);
-    Text(rp, text, textlen);
+    ZuneNumericText(obj, text, pixellen,
+        data->knob_left + 2 + (data->knob_width - 4 - pixellen) / 2,
+        data->knob_top + 1);
 
     SetAPen(rp, _pens(obj)[MPEN_BACKGROUND]);
 
@@ -545,12 +544,9 @@ IPTR Numericbutton__MUIM_Draw(struct IClass *cl, Object *obj,
 
     get(obj, MUIA_Numeric_Value, &val);
     buf = (char *)DoMethod(obj, MUIM_Numeric_Stringify, val);
-    width = TextLength(_rp(obj), buf, strlen(buf));
-
-    Move(_rp(obj), _mleft(obj) + (_mwidth(obj) - width) / 2,
-        _mtop(obj) + _font(obj)->tf_Baseline);
-
-    Text(_rp(obj), buf, strlen(buf));
+    width = ZuneNumericTextWidth(obj, _rp(obj), buf);
+    ZuneNumericText(obj, buf, width, _mleft(obj) + (_mwidth(obj) - width) / 2,
+        _mtop(obj));
 
     return TRUE;
 }

@@ -17,6 +17,7 @@
 #include "mui.h"
 #include "muimaster_intern.h"
 #include "support.h"
+#include "textengine.h"
 
 struct MUI_NumericData
 {
@@ -174,6 +175,9 @@ enum numeric_flags
 *       pointer requests parent relayout and redraw; in-place edits do not.
 *       Getter returns the borrowed pointer. Formatting is bounded, but
 *       incompatible conversions or missing arguments are not validated.
+*       Slider and Numericbutton measure and draw a result holding escape
+*       sequences through the text engine, as MUI 3.8 (YAM 2.9's
+*       "\033cError %ld/13").
 *
 */
 /****** Numeric.mui/MUIA_Numeric_CheckAllSizes ************
@@ -319,11 +323,53 @@ enum numeric_flags
 *       unchanged. Default itself remains unclamped.
 *
 */
+/* S's width in RP, which has OBJ's font. Escape sequences go through the
+ * text engine, as in MUI 3.8 (YAM's "\033cError %ld/13"): "\033c" adds
+ * no width, "\033b" the bold overhang. NULL measures zero. */
+LONG ZuneNumericTextWidth(Object *obj, struct RastPort *rp, CONST_STRPTR s)
+{
+    ZText *text;
+    LONG width;
+
+    if (!s)
+        return 0;
+    if (!strchr(s, '\033'))
+        return TextLength(rp, s, strlen(s));
+    if (!(text = zune_text_new(NULL, s, ZTEXT_ARG_NONE, 0)))
+        return 0;
+    zune_text_get_bounds(text, obj);
+    width = text->width;
+    zune_text_destroy(text);
+    return width;
+}
+
+/* Draw S, WIDTH pixels wide by ZuneNumericTextWidth, with its top left
+ * at LEFT, TOP in _rp(obj), whose font and pens the caller has set */
+void ZuneNumericText(Object *obj, CONST_STRPTR s, LONG width, LONG left,
+    LONG top)
+{
+    ZText *text;
+
+    if (!s)
+        return;
+    if (!strchr(s, '\033'))
+    {
+        Move(_rp(obj), left, top + _font(obj)->tf_Baseline);
+        Text(_rp(obj), s, strlen(s));
+        return;
+    }
+    if ((text = zune_text_new(NULL, s, ZTEXT_ARG_NONE, 0)))
+    {
+        zune_text_get_bounds(text, obj);
+        zune_text_draw(text, obj, left, left + width - 1, top);
+        zune_text_destroy(text);
+    }
+}
+
 static LONG numeric_text_width(Object *obj, struct RastPort *rp, LONG val)
 {
-    char *buf = (char *)DoMethod(obj, MUIM_Numeric_Stringify, val);
-
-    return buf ? TextLength(rp, buf, strlen(buf)) : 0;
+    return ZuneNumericTextWidth(obj, rp,
+        (CONST_STRPTR)DoMethod(obj, MUIM_Numeric_Stringify, val));
 }
 
 /* The widest MUIM_Numeric_Stringify result in OBJ's range, in RP's font,

@@ -83,6 +83,11 @@ struct RastPort;
 /* The widest MUIM_Numeric_Stringify result of a Numeric object, as MUI
  * measures a knob (classes/numeric.c) */
 LONG ZuneNumericWidest(Object *obj, struct RastPort *rp);
+/* Measure and draw a Stringify result: through the text engine when it
+ * holds an escape sequence, as MUI 3.8 does */
+LONG ZuneNumericTextWidth(Object *obj, struct RastPort *rp, CONST_STRPTR s);
+void ZuneNumericText(Object *obj, CONST_STRPTR s, LONG width, LONG left,
+    LONG top);
 IPTR DoLayoutMethod(Object *obj);
 IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
     ULONG flags);
