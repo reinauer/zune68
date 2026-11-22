@@ -209,11 +209,9 @@ IPTR Numericbutton__MUIM_Cleanup(struct IClass *cl, Object *obj,
  MUIM_AskMinMax
 **************************************************************************/
 /*
- * Ask superclass and, when dirty, scan every value Min..Max through
- * Stringify to cache maximum text width/font height. Add cached dimensions
- * to all six fields and return TRUE. Requires valid font/strings and
- * writable message. No scan cap; huge ranges block and LONG_MAX loop
- * increment can overflow.
+ * Ask superclass and, when dirty, cache the widest Stringify result
+ * (ZuneNumericWidest) and the font height. Add cached dimensions to all
+ * six fields and return TRUE. Requires a valid font and writable message.
  */
 IPTR Numericbutton__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUIP_AskMinMax *msg)
@@ -225,30 +223,13 @@ IPTR Numericbutton__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     if (data->needs_to_recalculate_sizes)
     {
         struct RastPort rp;
-        LONG min = 0, max = 0, val, width;
 
         InitRastPort(&rp);
         SetFont(&rp, _font(obj));
 
-        width = 0;
-
-        longget(obj, MUIA_Numeric_Min, &min);
-        longget(obj, MUIA_Numeric_Max, &max);
-
-        /* Determine the width of the knob */
-        for (val = min; val <= max; val++)
-        {
-            LONG nw;
-            char *buf;
-
-            buf = (char *)DoMethod(obj, MUIM_Numeric_Stringify, val);
-            nw = TextLength(&rp, buf, strlen(buf));
-
-            if (nw > width)
-                width = nw;
-        }
-
-        data->max_text_width = width;
+        /* As Slider's knob: not every value of a range in the millions
+         * (DateString's day numbers) */
+        data->max_text_width = ZuneNumericWidest(obj, &rp);
         data->text_height = _font(obj)->tf_YSize;
 
         data->needs_to_recalculate_sizes = FALSE;

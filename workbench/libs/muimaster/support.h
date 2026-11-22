@@ -78,6 +78,11 @@ Object *ZuneWindowActiveObject(Object *window);
 void ZuneUnwatchWindow(Object *window, struct ZuneWindowGuard *guard);
 
 void ZuneResetWindowPointer(Object *window);
+
+struct RastPort;
+/* The widest MUIM_Numeric_Stringify result of a Numeric object, as MUI
+ * measures a knob (classes/numeric.c) */
+LONG ZuneNumericWidest(Object *obj, struct RastPort *rp);
 IPTR DoLayoutMethod(Object *obj);
 IPTR ZuneLayout(Object *obj, LONG left, LONG top, LONG width, LONG height,
     ULONG flags);

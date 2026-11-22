@@ -4,6 +4,7 @@
 
 #include <devices/rawkeycodes.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <clib/alib_protos.h>
 #include <proto/exec.h>
@@ -318,6 +319,75 @@ enum numeric_flags
 *       unchanged. Default itself remains unclamped.
 *
 */
+static LONG numeric_text_width(Object *obj, struct RastPort *rp, LONG val)
+{
+    char *buf = (char *)DoMethod(obj, MUIM_Numeric_Stringify, val);
+
+    return buf ? TextLength(rp, buf, strlen(buf)) : 0;
+}
+
+/* The widest MUIM_Numeric_Stringify result in OBJ's range, in RP's font,
+ * as MUI 3.8/3.9 measure a Slider's or Numericbutton's knob: every value
+ * only with MUIA_Numeric_CheckAllSizes, otherwise a few representative
+ * values: the limits, zero
+ * and, for each digit count in range, the all-eights, all-nines and
+ * lowest values. A span above MUI_MAXMAX measures 0..MUI_MAXMAX. NULL
+ * strings measure zero. */
+LONG ZuneNumericWidest(Object *obj, struct RastPort *rp)
+{
+    LONG min = 0, max = 0, val, width = 0;
+    IPTR v = 0, all = FALSE;
+
+    get(obj, MUIA_Numeric_Min, &v);
+    min = (LONG)v;
+    v = 0;
+    get(obj, MUIA_Numeric_Max, &v);
+    max = (LONG)v;
+    if ((max - min) > MUI_MAXMAX)
+    {
+        min = 0;
+        max = MUI_MAXMAX;
+    }
+    get(obj, MUIA_Numeric_CheckAllSizes, &all);
+    if (all)
+    {
+        for (val = min; val <= max; val++)
+            width = MAX(width, numeric_text_width(obj, rp, val));
+    }
+    else
+    {
+        LONG limit = MAX(max, min == (LONG)0x80000000 ? 0x7fffffff : -min);
+        LONG eights = 0, nines = 0, low = 1;
+
+        width = MAX(numeric_text_width(obj, rp, min),
+            numeric_text_width(obj, rp, max));
+        if (min <= 0 && max >= 0)
+            width = MAX(width, numeric_text_width(obj, rp, 0));
+        while (low <= limit && low > 0)
+        {
+            LONG cand[3], i;
+
+            eights = eights * 10 + 8;
+            nines = nines * 10 + 9;
+            cand[0] = eights;
+            cand[1] = nines;
+            cand[2] = low;
+            for (i = 0; i < 3; i++)
+            {
+                if (cand[i] >= min && cand[i] <= max)
+                    width = MAX(width, numeric_text_width(obj, rp, cand[i]));
+                if (-cand[i] >= min && -cand[i] <= max)
+                    width = MAX(width, numeric_text_width(obj, rp, -cand[i]));
+            }
+            /* Stop before the next digit count overflows a LONG */
+            if (nines > 0x7fffffff / 10 - 9)
+                break;
+            low *= 10;
+        }
+    }
+    return width;
+}
+
 /****** Numeric.mui/MUIM_Numeric_Stringify ************
 *
 *   NAME
