@@ -2639,8 +2639,19 @@ static IPTR Area__MUIM_Draw(struct IClass *cl, Object *obj,
         (data->mad_Flags & MADF_FRAMEPHANTOM) || data->mad_FrameTitle;
 
     /* Background drawing */
-    if (frameonly)
+    if (frameonly) {
+        /* The spacing between the frame and the inner box goes with the
+         * frame, as in MUI 3.8: NList never paints it, and a page switch
+         * otherwise left the previous page's pixels there
+         * (Prefs/Zune's Listtree page) */
+        ULONG fill = data->mad_Flags & MADF_FILLAREA;
+
         drawframe = TRUE;
+        data->mad_Flags &= ~MADF_FILLAREA;
+        corners = Area_Draw_handle_background(obj, data, msg->flags, zframe,
+            drawframe);
+        data->mad_Flags |= fill;
+    }
     else
         corners = Area_Draw_handle_background(obj, data, msg->flags, zframe,
             drawframe);
