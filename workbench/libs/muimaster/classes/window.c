@@ -5644,10 +5644,7 @@ static void SetRootObjInnerSpacing(Object *obj,
 {
     UWORD wd_innerLeft, wd_innerRight, wd_innerTop, wd_innerBottom;
 
-    /* MUI 3.9 drops the window spacing in the last stage of fitting a
-     * window into the screen */
-    if ((data->wd_CrtFlags & WFLG_BORDERLESS)
-        || data->wd_RenderInfo.mri_Fallback >= 4)
+    if (data->wd_CrtFlags & WFLG_BORDERLESS)
     {
         wd_innerLeft = 0;
         wd_innerRight = 0;
@@ -5660,6 +5657,16 @@ static void SetRootObjInnerSpacing(Object *obj,
         wd_innerRight = muiGlobalInfo(obj)->mgi_Prefs->window_inner_right;
         wd_innerTop = muiGlobalInfo(obj)->mgi_Prefs->window_inner_top;
         wd_innerBottom = muiGlobalInfo(obj)->mgi_Prefs->window_inner_bottom;
+        /* MUI 3.8 halves the window spacing from the third stage of
+         * fitting a window into the screen, 4 to 2 and 3 to 1, and keeps
+         * that in the last stage (tests/native/fontfallback.c) */
+        if (data->wd_RenderInfo.mri_Fallback >= 3)
+        {
+            wd_innerLeft /= 2;
+            wd_innerRight /= 2;
+            wd_innerTop /= 2;
+            wd_innerBottom /= 2;
+        }
     }
 
     if (!(muiAreaData(data->wd_RootObject)->mad_Flags & MADF_INNERLEFT))
