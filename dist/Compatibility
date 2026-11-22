@@ -11,8 +11,8 @@ newer MUI features without an identified application need are deferred.
 
 Version policy
 --------------
-The two native library names share library version [VERSION] and the
-release [RELEASE] ([STAGE]). The library and built-in classes report
+muimaster.library has library version [VERSION] and the release
+[RELEASE] ([STAGE]). The library and built-in classes report
 21.227, the version of MUI 5, which enables application version gates; it
 does not claim complete MUI 5 compatibility. External MCCs retain their own
 version reporting. The date identifies the Zune68 release.
@@ -45,7 +45,7 @@ As in MUI 5, String implements the Textinput API: marks, clipboard and
 edit methods, numeric input and the Textinput attributes. Textinput.mcc
 and Textinputscroll.mcc 29 are thin wrappers. A Multiline String edits
 lines: Return inserts a newline and the cursor keys move between lines.
-Textinputscroll does not show scrollbars.
+A multiline Textinputscroll has Textinput 29's scroll bars.
 
 Remaining gaps include Screenmodepanel, Slave, undocumented preferences
 classes, complete theme compatibility and full application workflows.
