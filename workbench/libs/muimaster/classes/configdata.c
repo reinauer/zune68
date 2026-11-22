@@ -259,7 +259,8 @@ const static struct def_ulval DefULValues[] = {
     PREF_DEFAULT(MUICFG_Drag_Autostart_Length, 3, drag_autostart_length),
     PREF_DEFAULT(MUICFG_Drag_LeftButton, TRUE, drag_left_button),
     PREF_DEFAULT(MUICFG_Drag_MiddleButton, FALSE, drag_middle_button),
-    PREF_DEFAULT(MUICFG_Register_TruncateTitles, FALSE, register_truncate_titles),
+    /* MUI 3.8 has no such setting: its titles do not widen a register */
+    PREF_DEFAULT(MUICFG_Register_TruncateTitles, TRUE, register_truncate_titles),
     PREF_DEFAULT(MUICFG_Screen_Mode, 0, screenmode),
     PREF_DEFAULT(MUICFG_Screen_Mode_ID, -1, screenmodeid),
     PREF_DEFAULT(MUICFG_Screen_Width, 0, screen_width),
