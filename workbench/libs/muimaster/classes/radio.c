@@ -325,6 +325,14 @@ IPTR Radio__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
         muiGlobalInfo(obj)->mgi_Prefs->radiobutton_hspacing);
     set(obj, MUIA_Group_VertSpacing,
         muiGlobalInfo(obj)->mgi_Prefs->radiobutton_vspacing);
+    /* and between each button and its label, not the group spacing */
+    {
+        int i;
+
+        for (i = 0; i < data->entries_num; i++)
+            set(data->buttons[i], MUIA_Group_HorizSpacing,
+                muiGlobalInfo(obj)->mgi_Prefs->radiobutton_hspacing);
+    }
 
     /* MUI 3.9 makes every label as wide as the widest, left aligned, and
      * one pixel lower than the button's top (tests/native/compoundwalk.c) */

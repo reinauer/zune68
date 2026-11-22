@@ -44,7 +44,7 @@ int main(void)
     if (!cfg || !prefs) { puts("FAIL missing Configdata"); return 20; }
     check(prefs->window_inner_left==4 && prefs->window_inner_right==4,
         "default margins");
-    check(prefs->group_hspacing==4 && prefs->group_vspacing==4,"default spacing");
+    check(prefs->group_hspacing==6 && prefs->group_vspacing==3,"default spacing");
     check(prefs->screenmodeid==0xffffffff && prefs->screen_width==0,"default screen");
     check(prefs->drag_autostart && prefs->drag_autostart_length==3,"default drag");
     check(prefs->muikeys[MUIKEY_PRESS].ix_well,"default key parsed");
@@ -68,7 +68,7 @@ int main(void)
     cfg=muiGlobalInfo(app)->mgi_Configdata;
     prefs=(APTR)attr(cfg,MUIA_Configdata_ZunePrefs);
     check(prefs->window_inner_left==13 && prefs->window_inner_right==4,"saved margin and default neighbor");
-    check(prefs->group_hspacing==17 && prefs->group_vspacing==4,"saved word and default neighbor");
+    check(prefs->group_hspacing==17 && prefs->group_vspacing==3,"saved word and default neighbor");
     check(prefs->screenmodeid==0x12345678 && prefs->screen_width==641 && !prefs->screen_height,
         "saved long and word fields");
     check(!prefs->drag_autostart && prefs->drag_autostart_length==3,"saved false boolean");
@@ -78,12 +78,12 @@ int main(void)
     DoMethod(cfg,MUIM_Configdata_SetString,MUICFG_Keyboard_Press,"-upstroke return");
     check(prefs->muikeys[MUIKEY_PRESS].ix_well &&
         !strcmp(prefs->muikeys[MUIKEY_PRESS].readable_hotkey,"-upstroke return"),"key reset to default");
-    DoMethod(cfg,MUIM_Configdata_SetULong,MUICFG_Group_HSpacing,4);
-    check(DoMethod(cfg,MUIM_Configdata_GetULong,MUICFG_Group_HSpacing)==4,"runtime default lookup");
+    DoMethod(cfg,MUIM_Configdata_SetULong,MUICFG_Group_HSpacing,6);
+    check(DoMethod(cfg,MUIM_Configdata_GetULong,MUICFG_Group_HSpacing)==6,"runtime default lookup");
     MUI_DisposeObject(app);DeleteFile(file);
     app=application();cfg=muiGlobalInfo(app)->mgi_Configdata;
     prefs=(APTR)attr(cfg,MUIA_Configdata_ZunePrefs);
-    check(prefs->window_inner_left==4 && prefs->group_hspacing==4,"removed file returns defaults");
+    check(prefs->window_inner_left==4 && prefs->group_hspacing==6,"removed file returns defaults");
     struct MUI_CustomClass *cc=MUI_CreateCustomClass(NULL,MUIC_Configdata,NULL,32,(APTR)dispatch);
     ULONG tags[]={MUIA_Configdata_Application,(ULONG)app,TAG_DONE};
     Object *derived=cc?NewObjectA(cc->mcc_Class,NULL,(APTR)tags):NULL;

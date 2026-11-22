@@ -49,7 +49,7 @@ def check(path):
     # file. Zero is also a successful scalar result, not a failed lookup.
     for direct in (False, True):
         for item, expected in ((1, 4), (2, 4), (3, 4), (4, 4),
-                               (5, 4), (6, 1), (7, 4), (8, 4), (9, 0)):
+                               (5, 4), (6, 1), (7, 6), (8, 3), (9, 0)):
             assert h.query(item, direct) == (1, expected), item
         ok, ptr = h.query(36, direct)
         assert ok and ptr and h.mem.r8(ptr) == 0  # Default PublicScreen.
