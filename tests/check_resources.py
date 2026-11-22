@@ -64,6 +64,8 @@ class ResourceHarness(NotifyHarness):
     def alloc_bitmap(self):
         addr = self.alloc(40)
         self.bitmaps[addr] = tuple(self.cpu.r_reg(i) for i in range(3))
+        # struct BitMap.Depth; the plane pointers stay NULL (all zero)
+        self.mem.w8(addr + 5, self.cpu.r_reg(2))
         self.cpu.w_reg(0, addr)
 
     def free_bitmap(self):
@@ -76,7 +78,8 @@ class ResourceHarness(NotifyHarness):
 
     def bitmap_attr(self):
         width, height, depth = self.bitmaps[self.cpu.r_reg(8)]
-        self.cpu.w_reg(0, {0: height, 4: depth, 8: width}[self.cpu.r_reg(1)])
+        # BMA_FLAGS: a standard planar bitmap
+        self.cpu.w_reg(0, {0: height, 4: depth, 8: width, 12: 8}[self.cpu.r_reg(1)])
 
     def alloc_mask(self):
         self.cpu.w_reg(0, 0 if self.fail_mask else self.alloc(4))

@@ -327,3 +327,92 @@ void ZuneDeleteSharedPort(struct MsgPort *port)
     if (port)
         FreeMem(port, sizeof(*port));
 }
+
+/* A standard planar bitmap is converted plane by plane; anything else (an
+ * RTG bitmap) goes through ReadPixel/WritePixel. */
+static BOOL zune_planar(struct BitMap *bm)
+{
+    return (GetBitMapAttr(bm, BMA_FLAGS) & BMF_STANDARD) != 0;
+}
+
+void zune_read_line8(struct BitMap *bm, LONG y, LONG width, UBYTE *line)
+{
+    LONG x;
+
+    if (zune_planar(bm))
+    {
+        WORD plane;
+
+        memset(line, 0, width);
+        for (plane = 0; plane < bm->Depth && plane < 8; plane++)
+        {
+            PLANEPTR p = bm->Planes[plane];
+            const UBYTE *row;
+            UBYTE bit = 1 << plane;
+
+            if (!p)
+                continue;
+            if (p == (PLANEPTR)-1)
+            {
+                for (x = 0; x < width; x++)
+                    line[x] |= bit;
+                continue;
+            }
+            row = p + y * bm->BytesPerRow;
+            for (x = 0; x < width; x++)
+                if (row[x >> 3] & (0x80 >> (x & 7)))
+                    line[x] |= bit;
+        }
+    }
+    else
+    {
+        struct RastPort rp;
+
+        InitRastPort(&rp);
+        rp.BitMap = bm;
+        for (x = 0; x < width; x++)
+            line[x] = ReadPixel(&rp, x, y);
+    }
+}
+
+void zune_write_line8(struct BitMap *bm, LONG y, LONG width, const UBYTE *line)
+{
+    LONG x;
+
+    if (zune_planar(bm))
+    {
+        WORD plane;
+
+        for (plane = 0; plane < bm->Depth && plane < 8; plane++)
+        {
+            PLANEPTR p = bm->Planes[plane];
+            UBYTE *row;
+            UBYTE bit = 1 << plane;
+
+            if (!p || p == (PLANEPTR)-1)
+                continue;
+            row = p + y * bm->BytesPerRow;
+            for (x = 0; x < width; x++)
+            {
+                UBYTE mask = 0x80 >> (x & 7);
+
+                if (line[x] & bit)
+                    row[x >> 3] |= mask;
+                else
+                    row[x >> 3] &= ~mask;
+            }
+        }
+    }
+    else
+    {
+        struct RastPort rp;
+
+        InitRastPort(&rp);
+        rp.BitMap = bm;
+        for (x = 0; x < width; x++)
+        {
+            SetAPen(&rp, line[x]);
+            WritePixel(&rp, x, y);
+        }
+    }
+}

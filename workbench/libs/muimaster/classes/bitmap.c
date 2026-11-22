@@ -313,7 +313,7 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
 {
     struct MUI_BitmapData *data = INST_DATA(cl, obj);
     struct BitMap *friendbm = NULL;
-    struct RastPort temprp, bmrp, *scrrp;
+    struct RastPort bmrp, *scrrp;
     UBYTE *linebuffer;
     ULONG *cgfxcoltab = NULL;
     LONG bmflags = 0;
@@ -398,27 +398,12 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
 
     }
 
-    InitRastPort(&temprp);
-    temprp.BitMap = AllocBitMap(width, 1, 1, 0, NULL);
-
     InitRastPort(&bmrp);
 
     for (y = 0; y < height; y++)
     {
         /* Read a line from source bitmap */
-
-        bmrp.BitMap = data->bm;
-        if (temprp.BitMap)
-        {
-            ReadPixelLine8(&bmrp, 0, y, width, linebuffer, &temprp);
-        }
-        else
-        {
-            for (x = 0; x < width; x++)
-            {
-                linebuffer[x] = ReadPixel(&bmrp, x, y);
-            }
-        }
+        zune_read_line8(data->bm, y, width, linebuffer);
 
         /* Build the mask, totaly slow but works */
         if (data->mask)
@@ -503,29 +488,8 @@ static void remap_bitmap(struct IClass *cl, Object *obj)
         }
         else
         {
-            bmrp.BitMap = data->remapped_bm;
-            if (temprp.BitMap)
-            {
-                WritePixelLine8(&bmrp, 0, y, width, linebuffer,
-                    &temprp);
-            }
-            else
-            {
-                for (x = 0; x < width; x++)
-                {
-                    SetAPen(&bmrp, linebuffer[x]);
-                    WritePixel(&bmrp, x, y);
-                }
-            }
-
+            zune_write_line8(data->remapped_bm, y, width, linebuffer);
         }
-
-    }
-
-    if (temprp.BitMap)
-    {
-        WaitBlit();
-        FreeBitMap(temprp.BitMap);
     }
 
     FreeVec(cgfxcoltab);

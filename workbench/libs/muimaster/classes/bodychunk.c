@@ -257,11 +257,10 @@ static UBYTE *unpack_byterun1(UBYTE *src, UBYTE *dest, LONG unpackedsize)
 static BOOL make_bitmap(struct IClass *cl, Object *obj)
 {
     struct MUI_BodychunkData *data = INST_DATA(cl, obj);
-    struct RastPort bmrp, temprp;
     UBYTE *chunkyline;
     UBYTE *bodyptr, *unpackptr;
     LONG w16, bpr, bpl;
-    WORD x, y, totdepth;
+    WORD y, totdepth;
 
     if (!data->body ||
         (data->width < 1) ||
@@ -271,7 +270,13 @@ static BOOL make_bitmap(struct IClass *cl, Object *obj)
         return FALSE;
     }
 
-    chunkyline = AllocVec(2 * (data->width + 16), MEMF_PUBLIC | MEMF_CLEAR);
+    w16 = (data->width + 15) & ~15;
+    bpr = w16 / 8;
+    totdepth = data->depth + ((data->masking == 1) ? 1 : 0);
+    bpl = bpr * totdepth;
+
+    /* A chunky row, then an unpacked row of every plane and the mask */
+    chunkyline = AllocVec(data->width + 16 + bpl, MEMF_PUBLIC | MEMF_CLEAR);
     if (!chunkyline)
         return FALSE;
 
@@ -286,18 +291,7 @@ static BOOL make_bitmap(struct IClass *cl, Object *obj)
         return FALSE;
     }
 
-    InitRastPort(&temprp);
-    temprp.BitMap = AllocBitMap(data->width, 1, 1, 0, NULL);
-
-    InitRastPort(&bmrp);
-    bmrp.BitMap = data->bm;
-
     bodyptr = data->body;
-    w16 = (data->width + 15) & ~15;
-    bpr = w16 / 8;
-
-    totdepth = data->depth + ((data->masking == 1) ? 1 : 0);
-    bpl = bpr * totdepth;
 
     for (y = 0; y < data->height; y++)
     {
@@ -314,24 +308,7 @@ static BOOL make_bitmap(struct IClass *cl, Object *obj)
             bodyptr += bpl;
         }
 
-        if (temprp.BitMap)
-        {
-            WritePixelLine8(&bmrp, 0, y, data->width, chunkyline, &temprp);
-        }
-        else
-        {
-            for (x = 0; x < data->width; x++)
-            {
-                SetAPen(&bmrp, chunkyline[x]);
-                WritePixel(&bmrp, x, y);
-            }
-        }
-    }
-
-    if (temprp.BitMap)
-    {
-        WaitBlit();
-        FreeBitMap(temprp.BitMap);
+        zune_write_line8(data->bm, y, data->width, chunkyline);
     }
 
     FreeVec(chunkyline);

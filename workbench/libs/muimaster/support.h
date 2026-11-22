@@ -107,6 +107,13 @@ void ZuneDrawDisabled(Object *obj);
 struct MsgPort *ZuneCreateSharedPort(struct MsgPort *owner);
 void ZuneDeleteSharedPort(struct MsgPort *port);
 
+/* One row of a bitmap as one byte per pixel. Read/WritePixelLine8 are not
+ * used: OS 3.1 needs a temporary bitmap as deep as the image and still
+ * trashes memory with them (NList and TheBar avoid them for the same reason). */
+struct BitMap;
+void zune_read_line8(struct BitMap *bm, LONG y, LONG width, UBYTE *line);
+void zune_write_line8(struct BitMap *bm, LONG y, LONG width, const UBYTE *line);
+
 Object *ZuneNextObject(APTR iterator);
 #undef NextObject
 #define NextObject ZuneNextObject
