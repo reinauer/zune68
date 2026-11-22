@@ -382,6 +382,15 @@ static void RenderRegisterTabItem(struct IClass *cl, Object *obj,
  * and drawable setup state. The old-item access is unchecked. No allocation
  * ownership transfer or error result; drawing state is changed.
  */
+/* The frame's sides are 2 wide where pixels are twice as tall as wide */
+static int RegisterSideWidth(Object *obj)
+{
+    struct MUI_RenderInfo *mri = muiRenderInfo(obj);
+
+    return mri && mri->mri_Screen && !(mri->mri_Flags & MUIMRI_THINFRAMES)
+        ? 2 : 1;
+}
+
 static void RenderRegisterTab(struct IClass *cl, Object *obj, ULONG flags)
 {
     struct Register_DATA *data = INST_DATA(cl, obj);
@@ -437,13 +446,17 @@ static void RenderRegisterTab(struct IClass *cl, Object *obj, ULONG flags)
             data->oldactive / data->columns))
     {
         int i, y, tabs_on_bottom = 0;
+        int ftop = data->top + data->tab_height - 1;
+        int fbottom = data->top + data->tab_height + data->frameheight - 1;
+        int bw = RegisterSideWidth(obj);
 
         SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
 
-        RectFill(_rp(obj), data->left,
-            data->top + data->tab_height - 1,
-            data->left,
-            data->top + data->tab_height + data->frameheight - 1);
+        /* MUI 3.8: as wide as other frames' sides, reaching the bottom
+         * corner where they are 2 wide (frames probe) */
+        for (i = 0; i < bw; i++)
+            RectFill(_rp(obj), data->left + i, ftop, data->left + i,
+                fbottom - (bw == 2 ? i : 1));
 
         y = data->top + data->tab_height - 1;
 
@@ -463,10 +476,9 @@ static void RenderRegisterTab(struct IClass *cl, Object *obj, ULONG flags)
 
         SetAPen(_rp(obj), _pens(obj)[MPEN_SHADOW]);
 
-        RectFill(_rp(obj), data->left + data->framewidth - 1,
-            data->top + data->tab_height - 1,
-            data->left + data->framewidth - 1,
-            data->top + data->tab_height + data->frameheight - 1);
+        for (i = 0; i < bw; i++)
+            RectFill(_rp(obj), data->left + data->framewidth - 1 - i,
+                ftop + i, data->left + data->framewidth - 1 - i, fbottom);
 
         RectFill(_rp(obj), data->left + 1,
             data->top + data->tab_height + data->frameheight - 1,
@@ -517,11 +529,11 @@ static void SetHardCoord(Object *obj, struct Register_DATA *data)
     if (muiRenderInfo(obj) && muiRenderInfo(obj)->mri_Fallback >= 4)
         frame = &noinner;
 
-    adata->mad_InnerLeft = frame->innerLeft + 1;
+    adata->mad_InnerLeft = frame->innerLeft + RegisterSideWidth(obj);
     adata->mad_InnerTop =
         data->tab_height * (1 + data->active / data->columns) +
         frame->innerTop;
-    adata->mad_InnerRight = frame->innerRight + 1;
+    adata->mad_InnerRight = frame->innerRight + RegisterSideWidth(obj);
     adata->mad_InnerBottom =
         data->tab_height * (data->rows - 1 - data->active / data->columns)
         + frame->innerBottom + 1;

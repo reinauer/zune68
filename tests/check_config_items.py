@@ -54,11 +54,11 @@ def check(path):
         ok, ptr = h.query(36, direct)
         assert ok and ptr and h.mem.r8(ptr) == 0  # Default PublicScreen.
         # Reference defaults: symmetric padding except the slider knob.
-        frames = {0x18: '300000', 0x2b: '202222', 0x2c: '202222',
-                  0x2d: '212222', 0x2e: '302222', 0x2f: '212222',
-                  0x30: '202222', 0x31: '202222', 0x32: '210000',
-                  0x33: '314444', 0x34: '112222', 0x35: '212222',
-                  0x36: '400000', 0x90: '202211'}
+        frames = {0x18: '400000', 0x2b: '202211', 0x2c: '202211',
+                  0x2d: '212211', 0x2e: '302211', 0x2f: '212211',
+                  0x30: '202211', 0x31: '202211', 0x32: '210000',
+                  0x33: '314444', 0x34: '112211', 0x35: '212211',
+                  0x36: '400000', 0x90: '400000'}
         for item, expected in frames.items():
             ok, ptr = h.query(item, direct)
             assert ok and bytes(h.mem.r_block(ptr, 7)) == expected.encode() + b'\0'

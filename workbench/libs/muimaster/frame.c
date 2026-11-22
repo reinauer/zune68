@@ -641,6 +641,133 @@ static void frame_thick_border_down_draw(struct dt_frame_image *fi,
 }
 
 /**************************************************************************
+ Types 1 to 4 on a screen whose pixels are twice as tall as wide (no
+ MUIMRI_THINFRAMES), as MUI 3.8 draws them (frames probe, 640x256): side
+ lines twice as wide, and the corners of GadTools' bevel boxes, where the
+ left lines reach the bottom and the right lines the top.
+**************************************************************************/
+static void wide_bevel(struct MUI_RenderInfo *mri, int left, int top,
+    int width, int height, int bw, MPen ul, MPen lr)
+{
+    struct RastPort *rp = mri->mri_RastPort;
+    int right = left + width - 1, bottom = top + height - 1, i;
+    /* a one pixel bevel's bottom left corner is the lower right pen's */
+    int bl = bw == 1 ? 1 : 0;
+
+    if (!rp || width < 2 * bw + 1 || height < 3)
+        return;
+    for (i = 0; i < bw; i++)
+        draw_vertical_line(rp, left + i, top, bottom - i - bl,
+            mri->mri_Pens[ul]);
+    draw_horizontal_line(rp, left, right - 1, top, mri->mri_Pens[ul]);
+    for (i = 0; i < bw; i++)
+        draw_vertical_line(rp, right - i, top + i, bottom, mri->mri_Pens[lr]);
+    draw_horizontal_line(rp, left + 1 - bl, right, bottom,
+        mri->mri_Pens[lr]);
+}
+
+/* 1: a rectangle, 2 wide at the sides */
+static void wide_rect(struct MUI_RenderInfo *mri, int left, int top,
+    int width, int height, MPen pen)
+{
+    struct RastPort *rp = mri->mri_RastPort;
+    int right = left + width - 1, bottom = top + height - 1;
+
+    if (!rp || width < 5 || height < 3)
+        return;
+    SetAPen(rp, mri->mri_Pens[pen]);
+    RectFill(rp, left, top, right, top);
+    RectFill(rp, left, bottom, right, bottom);
+    RectFill(rp, left, top + 1, left + 1, bottom - 1);
+    RectFill(rp, right - 1, top + 1, right, bottom - 1);
+}
+
+static void frame_wide_white_rect_draw(struct dt_frame_image *fi,
+    struct MUI_RenderInfo *mri, int gl, int gt, int gw, int gh, int left,
+    int top, int width, int height)
+{
+    wide_rect(mri, left, top, width, height, MPEN_SHINE);
+}
+
+static void frame_wide_black_rect_draw(struct dt_frame_image *fi,
+    struct MUI_RenderInfo *mri, int gl, int gt, int gw, int gh, int left,
+    int top, int width, int height)
+{
+    wide_rect(mri, left, top, width, height, MPEN_SHADOW);
+}
+
+/* 2: a bevel 2 wide at the sides, 1 high */
+static void frame_wide_bevelled_draw(struct dt_frame_image *fi,
+    struct MUI_RenderInfo *mri, int gl, int gt, int gw, int gh, int left,
+    int top, int width, int height)
+{
+    wide_bevel(mri, left, top, width, height, 2, MPEN_SHINE, MPEN_SHADOW);
+}
+
+static void frame_wide_recessed_draw(struct dt_frame_image *fi,
+    struct MUI_RenderInfo *mri, int gl, int gt, int gw, int gh, int left,
+    int top, int width, int height)
+{
+    wide_bevel(mri, left, top, width, height, 2, MPEN_SHADOW, MPEN_SHINE);
+}
+
+/* 3: two such bevels, the inner one reversed (a ridge, or a groove) */
+static void wide_thinborder(struct MUI_RenderInfo *mri, int left, int top,
+    int width, int height, MPen ul, MPen lr)
+{
+    wide_bevel(mri, left, top, width, height, 2, ul, lr);
+    wide_bevel(mri, left + 2, top + 1, width - 4, height - 2, 2, lr, ul);
+}
+
+static void frame_wide_thin_border_up_draw(struct dt_frame_image *fi,
+    struct MUI_RenderInfo *mri, int gl, int gt, int gw, int gh, int left,
+    int top, int width, int height)
+{
+    wide_thinborder(mri, left, top, width, height, MPEN_SHINE, MPEN_SHADOW);
+}
+
+static void frame_wide_thin_border_down_draw(struct dt_frame_image *fi,
+    struct MUI_RenderInfo *mri, int gl, int gt, int gw, int gh, int left,
+    int top, int width, int height)
+{
+    wide_thinborder(mri, left, top, width, height, MPEN_SHADOW, MPEN_SHINE);
+}
+
+/* 4: one pixel at all sides each: a bevel, a rectangle in the bevel's
+ * lower right pen, and the reversed bevel */
+static void wide_thickborder(struct MUI_RenderInfo *mri, int left, int top,
+    int width, int height, MPen ul, MPen lr)
+{
+    struct RastPort *rp = mri->mri_RastPort;
+
+    if (!rp || width < 7 || height < 7)
+        return;
+    wide_bevel(mri, left, top, width, height, 1, ul, lr);
+    SetAPen(rp, mri->mri_Pens[lr]);
+    RectFill(rp, left + 1, top + 1, left + width - 2, top + 1);
+    RectFill(rp, left + 1, top + height - 2, left + width - 2,
+        top + height - 2);
+    RectFill(rp, left + 1, top + 2, left + 1, top + height - 3);
+    RectFill(rp, left + width - 2, top + 2, left + width - 2,
+        top + height - 3);
+    wide_bevel(mri, left + 2, top + 2, width - 4, height - 4, 1, lr, ul);
+}
+
+static void frame_wide_thick_border_up_draw(struct dt_frame_image *fi,
+    struct MUI_RenderInfo *mri, int gl, int gt, int gw, int gh, int left,
+    int top, int width, int height)
+{
+    wide_thickborder(mri, left, top, width, height, MPEN_SHINE, MPEN_SHADOW);
+}
+
+static void frame_wide_thick_border_down_draw(struct dt_frame_image *fi,
+    struct MUI_RenderInfo *mri, int gl, int gt, int gw, int gh, int left,
+    int top, int width, int height)
+{
+    wide_thickborder(mri, left, top, width, height, MPEN_SHADOW, MPEN_SHINE);
+}
+
+/**************************************************************************
  5 : FST_ROUND_BEVEL
 **************************************************************************/
 /**
@@ -1303,6 +1430,29 @@ static const struct ZuneFrameGfx __builtinFrameGfx[] = {
 
 };
 
+/* Types 1 to 4 where pixels are twice as tall as wide */
+static const struct ZuneFrameGfx __wideFrameGfx[] = {
+    {frame_wide_white_rect_draw, 0, 2, 2, 1, 1, NULL, FALSE, 1, 0},
+    {frame_wide_black_rect_draw, 0, 2, 2, 1, 1, NULL, FALSE, 1, 0},
+    {frame_wide_bevelled_draw, 0, 2, 2, 1, 1, NULL, FALSE, 1, 0},
+    {frame_wide_recessed_draw, 0, 2, 2, 1, 1, NULL, FALSE, 1, 0},
+    {frame_wide_thin_border_up_draw, 0, 4, 4, 2, 2, NULL, FALSE, 2, 0},
+    {frame_wide_thin_border_down_draw, 0, 4, 4, 2, 2, NULL, FALSE, 2, 0},
+    {frame_wide_thick_border_up_draw, 0, 3, 3, 3, 3, NULL, FALSE, 3, 0},
+    {frame_wide_thick_border_down_draw, 0, 3, 3, 3, 3, NULL, FALSE, 3, 0},
+};
+
+static const struct ZuneFrameGfx *builtin_frame(Object *obj, UWORD type,
+    UWORD state)
+{
+    struct MUI_RenderInfo *mri = muiRenderInfo(obj);
+
+    if (type >= FST_RECT && type <= FST_THICK_BORDER && mri
+        && mri->mri_Screen && !(mri->mri_Flags & MUIMRI_THINFRAMES))
+        return &__wideFrameGfx[2 * (type - FST_RECT) + state];
+    return &__builtinFrameGfx[2 * type + state];
+}
+
 /**************************************************************************
 
 **************************************************************************/
@@ -1320,7 +1470,7 @@ zune_zframe_get(Object *obj, const struct MUI_FrameSpec_intern *frameSpec)
     if (frameSpec->type >= FST_COUNT)
         return &__builtinFrameGfx[2 * FST_RECT];
 
-    return &__builtinFrameGfx[2 * frameSpec->type + frameSpec->state];
+    return builtin_frame(obj, frameSpec->type, frameSpec->state);
 
 #if 0
     frame->customframe = NULL;
@@ -1353,7 +1503,7 @@ const struct ZuneFrameGfx *zune_zframe_get_with_state(
     if (frameSpec->type >= FST_COUNT)
         return &__builtinFrameGfx[2 * FST_RECT];
 
-    return &__builtinFrameGfx[2 * frameSpec->type + state];
+    return builtin_frame(obj, frameSpec->type, state);
 }
 
 /*------------------------------------------------------------------------*/

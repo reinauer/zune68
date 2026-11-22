@@ -1586,6 +1586,10 @@ static BOOL SetupRenderInfo(Object *obj, struct MUI_WindowData *data,
     mri->mri_Colormap = scr->ViewPort.ColorMap;
     mri->mri_Fallback = 0;
 
+    /* Frames double their side lines where pixels are twice as tall as
+     * wide (a 640x256 screen), as MUI 3.8's do; a window may open on
+     * another screen than last time */
+    mri->mri_Flags &= ~(MUIMRI_THINFRAMES | MUIMRI_TRUECOLOR);
     if (scr->Width / scr->Height < 2)
     {
         mri->mri_Flags |= MUIMRI_THINFRAMES;
