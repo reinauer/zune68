@@ -76,6 +76,7 @@ class Harness:
         # filesystem-based MCC discovery. External releases still run real code.
         self.trap(self.symbols['_L_ExpungeLib'], self.cleanup)
         self.trap(self.symbols['_ZUNE_GetExternalClass'], self.external_class)
+        self.trap_math()
         if '_ZuneTraceOutput' in self.symbols:
             self.trap(self.symbols['_ZuneTraceOutput'], lambda: None)
         # The MUI version a program sees reads ENV: through dos.library;
@@ -86,6 +87,32 @@ class Harness:
             self.trap(self.symbols['_zune_identity_exit'], lambda: None)
             self.trap(self.symbols['_zune_identity_open'], lambda: self.cpu.w_reg(
                 0, self.mem.r32(self.cpu.r_reg(15) + 4)))
+
+    def trap_math(self):
+        # libnix20's 32-bit multiply and divide helpers call utility.library,
+        # which these harnesses do not provide; some compilers call them for
+        # plain index arithmetic. Compute them here from their stack arguments.
+        def signed(value):
+            return value - (1 << 32) if value & 0x80000000 else value
+
+        def args():
+            sp = self.cpu.r_reg(15)
+            return self.mem.r32(sp + 4), self.mem.r32(sp + 8)
+
+        def sdiv(a, b):
+            a, b = signed(a), signed(b)
+            quotient = abs(a) // abs(b) * (1 if (a < 0) == (b < 0) else -1)
+            return quotient, a - quotient * b
+
+        ops = {'___mulsi3': lambda a, b: a * b,
+               '___divsi3': lambda a, b: sdiv(a, b)[0],
+               '___modsi3': lambda a, b: sdiv(a, b)[1],
+               '___udivsi3': lambda a, b: a // b,
+               '___umodsi3': lambda a, b: a % b}
+        for name, op in ops.items():
+            if name in self.symbols:
+                self.trap(self.symbols[name], lambda op=op:
+                          self.cpu.w_reg(0, op(*args()) & 0xffffffff))
 
     def trap(self, address, fn):
         def callback(opcode, pc):
