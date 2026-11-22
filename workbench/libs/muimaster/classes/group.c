@@ -304,11 +304,13 @@ static inline struct MinList *group_children(struct MUI_GroupData *data)
 *       selects vertical.
 *
 *   INPUTS
-*       BOOL; initialize; getter also implemented.
+*       BOOL; initialize, set and get.
 *
 *   NOTES
 *       This orientation is used when rows and columns both equal one and
-*       neither PageMode nor LayoutHook takes precedence. There is no setter.
+*       neither PageMode nor LayoutHook takes precedence. MUI 3.8 also takes
+*       it after creation, so set changes the orientation and relayouts an
+*       open window.
 *       The getter returns the GROUP_HORIZ bit value (2 when set), not
 *       normalized TRUE (1). Test it as nonzero.
 *
@@ -1168,6 +1170,12 @@ IPTR Group__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         case MUIA_Group_Rows:
             data->rows = MAX((ULONG) tag->ti_Data, 1);
             data->columns = 0;
+            need_recalc = TRUE;
+            break;
+        case MUIA_Group_Horiz:
+            /* MUI 3.8 takes it after creation too (TheBar's demo2 and
+             * demo3 make their radio buttons horizontal this way) */
+            _handle_bool_tag(data->flags, tag->ti_Data, GROUP_HORIZ);
             need_recalc = TRUE;
             break;
         case MUIA_Group_Spacing:
