@@ -14,6 +14,7 @@ struct Scrollgroup_DATA
     struct Hook *layout_hook;
     BOOL usewinborder;
     BOOL autobars;              /* MUIA_Scrollgroup_AutoBars */
+    BOOL freehoriz, freevert;   /* MUIA_Scrollgroup_FreeHoriz/FreeVert */
 };
 
 #endif /* _SCROLLGROUP_PRIVATE_H_ */

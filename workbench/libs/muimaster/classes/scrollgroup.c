@@ -72,10 +72,10 @@
 *       arrows. Those gadgets must be supplied by the enclosing window; this
 *       class does not request window border scrollers itself. An arrow
 *       step is 8 pixels (the bars' MUIA_Prop_DeltaFactor), as in MUI 3.8.
-*       FreeHoriz, FreeVert, NoHorizBar and NoVertBar are declared but not
-*       implemented. Adding unrelated children or replacing the internal
-*       layout hook does not extend the fixed-child layout algorithm. Retain the
-*       constructed tree and internal callback targets throughout its lifetime.
+*       NoHorizBar and NoVertBar are declared but not implemented. Adding
+*       unrelated children or replacing the internal layout hook does not
+*       extend the fixed-child layout algorithm. Retain the constructed tree
+*       and internal callback targets throughout its lifetime.
 *
 *   BUGS
 *       Arithmetic includes unchecked WORD intermediates. The layout hook
@@ -194,17 +194,15 @@
 *       MUIA_Scrollgroup_FreeHoriz
 *
 *   FUNCTION
-*       Declared attribute without a local implementation in Scrollgroup.
+*       Whether the contents scroll horizontally; default TRUE.
 *
 *   INPUTS
-*       BOOL; header declares initialize only.
+*       BOOL; initialize only.
 *
 *   NOTES
-*       No constructor, setter, getter or layout branch consumes this attribute.
-*       This value does not constrain the content axis; layout uses actual
-*       content min/max information. Group fallback to child getters does not
-*       establish local support. No working default or state should be inferred
-*       from the declaration.
+*       With FALSE the contents always get the viewport's size on that axis:
+*       there is no horizontal scroller, and the group's minimum there is the
+*       contents' virtual minimum (MUI 3.8, TheBar's demo2 and demo3).
 *
 */
 /****** Scrollgroup.mui/MUIA_Scrollgroup_FreeVert ************
@@ -213,17 +211,15 @@
 *       MUIA_Scrollgroup_FreeVert
 *
 *   FUNCTION
-*       Declared attribute without a local implementation in Scrollgroup.
+*       Whether the contents scroll vertically; default TRUE.
 *
 *   INPUTS
-*       BOOL; header declares initialize only.
+*       BOOL; initialize only.
 *
 *   NOTES
-*       No constructor, setter, getter or layout branch consumes this attribute.
-*       This value does not constrain the content axis; layout uses actual
-*       content min/max information. Group fallback to child getters does not
-*       establish local support. No working default or state should be inferred
-*       from the declaration.
+*       With FALSE the contents always get the viewport's size on that axis:
+*       there is no vertical scroller, and the group's minimum there is the
+*       contents' virtual minimum (MUI 3.8, TheBar's demo2 and demo3).
 *
 */
 /****** Scrollgroup.mui/MUIA_Scrollgroup_NoHorizBar ************
@@ -341,31 +337,48 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
                 WORD maxxxxwidth = 0;
                 WORD maxxxxheight = 0;
 
+                LONG hbar_height = data->freehoriz ? _minheight(data->horiz) : 0;
+                LONG vbar_width = data->freevert ? _minwidth(data->vert) : 0;
+
+                /* Contents that do not scroll on an axis need their whole
+                 * virtual size there */
                 maxxxxwidth = _minwidth(data->contents);
-                if (_minwidth(data->horiz) > maxxxxwidth)
+                if (!data->freehoriz)
+                {
+                    IPTR vmin = 0;
+
+                    get(data->contents, MUIA_Virtgroup_MinWidth, &vmin);
+                    maxxxxwidth = MAX(maxxxxwidth, (LONG)vmin);
+                }
+                else if (_minwidth(data->horiz) > maxxxxwidth)
                     maxxxxwidth = _minwidth(data->horiz);
-                maxxxxwidth += _minwidth(data->vert);
+                maxxxxwidth += vbar_width;
                 lm->lm_MinMax.MinWidth = maxxxxwidth;
 
                 maxxxxheight = _minheight(data->contents);
-                if (_minheight(data->vert) > maxxxxheight)
+                if (!data->freevert)
+                {
+                    IPTR vmin = 0;
+
+                    get(data->contents, MUIA_Virtgroup_MinHeight, &vmin);
+                    maxxxxheight = MAX(maxxxxheight, (LONG)vmin);
+                }
+                else if (_minheight(data->vert) > maxxxxheight)
                     maxxxxheight = _minheight(data->vert);
-                maxxxxheight += _minheight(data->horiz);
+                maxxxxheight += hbar_height;
                 lm->lm_MinMax.MinHeight = maxxxxheight;
 
                 /* MUI 3.8/3.9: default and maximum are the contents'
                  * sizes plus the scrollers */
                 lm->lm_MinMax.DefWidth = MAX(lm->lm_MinMax.MinWidth,
-                    _defwidth(data->contents) + _minwidth(data->vert));
+                    _defwidth(data->contents) + vbar_width);
                 lm->lm_MinMax.DefHeight = MAX(lm->lm_MinMax.MinHeight,
-                    _defheight(data->contents) + _minheight(data->horiz));
+                    _defheight(data->contents) + hbar_height);
                 lm->lm_MinMax.MaxWidth = CLAMP((LONG)_maxwidth(data->contents)
-                    + _minwidth(data->vert), lm->lm_MinMax.DefWidth,
-                    MUI_MAXMAX);
+                    + vbar_width, lm->lm_MinMax.DefWidth, MUI_MAXMAX);
                 lm->lm_MinMax.MaxHeight = CLAMP(
                     (LONG)_maxheight(data->contents)
-                    + _minheight(data->horiz), lm->lm_MinMax.DefHeight,
-                    MUI_MAXMAX);
+                    + hbar_height, lm->lm_MinMax.DefHeight, MUI_MAXMAX);
             }
 
             //kprintf("scrollgroup minmax: min %d x %d  def %d x %d\n",
@@ -427,7 +440,7 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
                 virt_height =
                     CLAMP(cont_height, virt_minheight, virt_maxheight);
 
-                if (virt_width > cont_width)
+                if (data->freehoriz && virt_width > cont_width)
                 {
                     cont_height -= horiz_height;
                     virt_height =
@@ -437,7 +450,7 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
                 //kprintf("      1: %d x %d   hbar %d  vbar %d\n",
                 //    cont_width, cont_height, hbar, vbar);
 
-                if (virt_height > cont_height)
+                if (data->freevert && virt_height > cont_height)
                 {
                     cont_width -= vert_width;
                     virt_width =
@@ -448,7 +461,7 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
                 //    cont_width, cont_height, hbar, vbar);
 
                 /* We need to check this a 2nd time!! */
-                if (!hbar && (virt_width > cont_width))
+                if (data->freehoriz && !hbar && (virt_width > cont_width))
                 {
                     cont_height -= horiz_height;
                     virt_height =
@@ -464,11 +477,12 @@ AROS_UFH3(ULONG, Scrollgroup_Layout_Function,
              * unless MUIA_Scrollgroup_AutoBars asks to hide unneeded ones */
             if (!data->usewinborder && !data->autobars)
             {
-                if (!hbar)
+                if (!hbar && data->freehoriz)
                     cont_height -= horiz_height;
-                if (!vbar)
+                if (!vbar && data->freevert)
                     cont_width -= vert_width;
-                hbar = vbar = TRUE;
+                hbar = data->freehoriz;
+                vbar = data->freevert;
             }
 
             cont_width += _subwidth(data->contents);
@@ -722,6 +736,10 @@ IPTR Scrollgroup__OM_NEW(struct IClass *cl, Object *obj,
     data->usewinborder = usewinborder;
     data->autobars =
         GetTagData(MUIA_Scrollgroup_AutoBars, FALSE, msg->ops_AttrList);
+    data->freehoriz =
+        GetTagData(MUIA_Scrollgroup_FreeHoriz, TRUE, msg->ops_AttrList) != 0;
+    data->freevert =
+        GetTagData(MUIA_Scrollgroup_FreeVert, TRUE, msg->ops_AttrList) != 0;
 
     data->hook.h_Entry = (HOOKFUNC) Scrollgroup_Function;
     data->hook.h_Data = data;
