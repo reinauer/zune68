@@ -2467,7 +2467,10 @@ static void Area_Draw_handle_frame(Object *obj, struct MUI_AreaData *data,
         addtw = 0;
     }
 
-    maxtxtwidth = _width(obj) - zframe->ileft - zframe->iright - 2 * 5 - addtw;
+    /* TextFit takes the width unsigned: a frame narrower than the
+     * margins must show no title, as MUI 3.8, not all of it */
+    maxtxtwidth = MAX(_width(obj) - zframe->ileft - zframe->iright
+        - 2 * 5 - addtw, 0);
 
     nchars = TextFit(_rp(obj), data->mad_FrameTitle, strlen(data->mad_FrameTitle),
                      &te, NULL, 1, maxtxtwidth, _font(obj)->tf_YSize);
