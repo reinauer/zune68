@@ -2684,12 +2684,11 @@ IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     }
     else
     {
-        /* MUI 3.8/3.9: the framed entry area is at least 40 pixels wide
-         * and defaults to 80 pixels of content. The frame belongs to
+        /* MUI 3.8: the entry area holds at least 40 pixels of content
+         * and 100 by default, whatever the font. The frame belongs to
          * the entry area, whose MinMax the group already included. */
-        msg->MinMaxInfo->MinWidth +=
-            MAX(40 - _subwidth(obj) - _subwidth(data->area), 0);
-        msg->MinMaxInfo->DefWidth += 80;
+        msg->MinMaxInfo->MinWidth += 40;
+        msg->MinMaxInfo->DefWidth += 100;
         msg->MinMaxInfo->MaxWidth = MUI_MAXMAX;
     }
 
