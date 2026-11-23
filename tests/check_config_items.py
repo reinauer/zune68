@@ -58,7 +58,7 @@ def check(path):
                   0x2d: '212211', 0x2e: '302211', 0x2f: '212211',
                   0x30: '202211', 0x31: '202211', 0x32: '210000',
                   0x33: '314444', 0x34: '112211', 0x35: '212211',
-                  0x36: '400000', 0x90: '400000'}
+                  0x36: '400000', 0x90: '202200'}
         for item, expected in frames.items():
             ok, ptr = h.query(item, direct)
             assert ok and bytes(h.mem.r_block(ptr, 7)) == expected.encode() + b'\0'

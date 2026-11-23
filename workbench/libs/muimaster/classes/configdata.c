@@ -181,7 +181,7 @@ const static struct spec_cfg DefFramespecValues[] =
     { MUIV_Frame_PopUp,       MUICFG_Frame_PopUp,       "112211" }, /* cycle menu, popup window */
     { MUIV_Frame_Virtual,     MUICFG_Frame_Virtual,     "212211" }, /* virt group               */
     { MUIV_Frame_Slider,      MUICFG_Frame_Slider,      "400000" }, /* slider container         */
-    { MUIV_Frame_Knob,        MUICFG_Frame_Knob,        "400000" }, /* slider knob              */
+    { MUIV_Frame_Knob,        MUICFG_Frame_Knob,        "202200" }, /* slider knob              */
     { MUIV_Frame_Drag,        MUICFG_Frame_Drag,        "400000" }, /* dnd frame                */
     { -1,                     -1,                       NULL     },
 };

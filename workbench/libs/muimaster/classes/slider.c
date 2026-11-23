@@ -51,7 +51,8 @@
 *       CheckAllSizes is set. Otherwise it formats Min, Max, zero when in
 *       range and, for each digit count, the all-eights, all-nines and lowest
 *       values of either sign that lie in range; so does CheckAllSizes once
-*       the span exceeds MUI_MAXMAX.
+*       the span exceeds MUI_MAXMAX. A Quiet knob is as wide as the font
+*       is tall.
 *       Draw maps Value to pixel offset and caches both offset and a copied
 *       Stringify result; without memory for the copy no text is drawn. Setup
 *       does not turn knob-background preparation failure into FALSE. Mouse
@@ -246,7 +247,11 @@ static void CalcKnobDimensions(struct IClass *cl, Object *obj)
     InitRastPort(&rp);
     SetFont(&rp, _font(obj));
 
-    width = ZuneNumericWidest(obj, &rp);
+    /* A quiet knob is as wide as the font is tall (MUI 3.8 and 5) */
+    if (data->flags & SLIDER_QUIET)
+        width = _font(obj)->tf_YSize;
+    else
+        width = ZuneNumericWidest(obj, &rp);
     data->max_text_width = width;
     data->knob_width = width +
         knob_frame->ileft +
