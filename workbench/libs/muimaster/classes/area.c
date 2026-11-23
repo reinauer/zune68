@@ -118,7 +118,9 @@ extern struct Library *MUIMasterBase;
 *       setup/show, replacement cleans up and recreates the display
 *       specification and requests redraw. The getter returns the private
 *       prepared image-spec pointer, not the original identifier or string; do
-*       not free it or pass it as an input specification.
+*       not free it or pass it as an input specification. A picture ("5:")
+*       shows the default background on a screen of up to 8 planes, as on
+*       MUI 3.8 and 5.
 *
 *   BUGS
 *       Prepared-image allocation is not reported by the setter. Constructor

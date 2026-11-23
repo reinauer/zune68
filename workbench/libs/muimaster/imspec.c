@@ -609,7 +609,11 @@ struct MUI_ImageSpec_intern *zune_imspec_setup(IPTR s,
         break;
 
     case IST_BITMAP:
-        if (spec->u.bitmap.filename)
+        /* MUI 3.8 and 5 draw the default background for a picture on a
+         * planar screen, with picture.datatype 40 or 45 and at 3, 5 or 8
+         * planes (AmiModRadio's Controls page) */
+        if (spec->u.bitmap.filename && GetBitMapAttr(
+                mri->mri_Screen->RastPort.BitMap, BMA_DEPTH) > 8)
         {
             spec->u.bitmap.dt = dt_load_picture
                 (spec->u.bitmap.filename, mri->mri_Screen);
