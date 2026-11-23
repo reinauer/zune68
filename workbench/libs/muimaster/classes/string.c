@@ -1891,6 +1891,17 @@ static void UpdateDisp(struct IClass *cl, Object *obj)
 }
 
 
+/* As MUI 3.8: a cursor at the end of the text takes a space's width of
+ * an aligned line, in Textinput only while active, and Textinput keeps
+ * right aligned text two pixels off the edge */
+static BOOL CursorCell(struct MUI_StringData *data)
+{
+    return data->BufferPos == data->NumChars
+        && (!(data->msd_Flags & MSDF_TISIZE) || data->is_active);
+}
+
+#define RIGHT_GAP(data) (((data)->msd_Flags & MSDF_TISIZE) ? 2 : 0)
+
 /* Gets left position of text in the string gadget */
 static UWORD GetTextLeft(struct IClass *cl, Object *obj)
 {
@@ -1898,9 +1909,7 @@ static UWORD GetTextLeft(struct IClass *cl, Object *obj)
     UWORD text_left = 0;
     STRPTR dispstr = &(data->VisualBuffer[data->DispPos]);
     UWORD dispstrlen;
-    BOOL cursor_at_end;
-
-    cursor_at_end = (data->BufferPos == data->NumChars);
+    BOOL cursor_at_end = CursorCell(data);
     dispstrlen = MIN(data->DispCount, data->NumChars - data->DispPos);
 
     switch (data->msd_Align)
@@ -1927,7 +1936,7 @@ static UWORD GetTextLeft(struct IClass *cl, Object *obj)
 
             if (cursor_at_end)
                 textwidth += TextLength(_rp(obj), " ", 1);
-            text_left = _mleft(obj) + (_mwidth(obj) - 1 - textwidth);
+            text_left = _mleft(obj) + _mwidth(obj) - RIGHT_GAP(data) - textwidth;
         }
         break;
     }
@@ -1941,9 +1950,7 @@ static UWORD GetTextRight(struct IClass *cl, Object *obj)
     UWORD text_right = 0;
     STRPTR dispstr = &(data->VisualBuffer[data->DispPos]);
     UWORD dispstrlen;
-    BOOL cursor_at_end;
-
-    cursor_at_end = (data->BufferPos == data->NumChars);
+    BOOL cursor_at_end = CursorCell(data);
     dispstrlen = MIN(data->DispCount, data->NumChars - data->DispPos);
 
     switch (data->msd_Align)
@@ -1964,7 +1971,7 @@ static UWORD GetTextRight(struct IClass *cl, Object *obj)
         break;
 
     case MUIV_String_Format_Right:
-        text_right = _mright(obj);
+        text_right = _mright(obj) - RIGHT_GAP(data);
         break;
     }
     return (text_right);
