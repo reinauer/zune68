@@ -2466,17 +2466,12 @@ static BOOL DisplayWindow(Object *obj, struct MUI_WindowData *data)
 static void UndisplayWindow(Object *obj, struct MUI_WindowData *data)
 {
     struct Window *win = data->wd_RenderInfo.mri_Window;
-    BOOL prefssnap =
-        data->wd_ID != 0 &&
-        ((muiGlobalInfo(obj)->mgi_Prefs->window_position ==
-            WINDOW_POSITION_REMEMBER_ON_EXIT)
-        || (muiGlobalInfo(obj)->mgi_Prefs->window_position ==
-            WINDOW_POSITION_SAVE_ON_EXIT));
 
-    if (prefssnap)
-    {
+    /* As MUI 3.8, a window with an ID comes back where it was for the
+     * rest of the session whatever the position mode, which only decides
+     * what is kept after the application ends */
+    if (data->wd_ID != 0)
         ZuneRememberWindowPosition(obj);
-    }
 
 
     data->wd_RenderInfo.mri_Window = NULL;
@@ -6011,6 +6006,12 @@ static ULONG WindowClose(struct IClass *cl, Object *obj)
 
     /* close here ... */
     UndisplayWindow(obj, data);
+
+    /* As MUI 3.8, the next open works the size out again from the
+     * request and the contents (an ID window gets its remembered one);
+     * iconifying keeps it */
+    if (!(data->wd_Flags & MUIWF_OPENONUNHIDE))
+        data->wd_Width = data->wd_Height = 0;
 
     data->wd_Flags &= ~MUIWF_OPENED;
     data->wd_Menustrip = NULL;
