@@ -9,7 +9,9 @@ The programs come from programs.tsv, unpacked by fetch.py into the cache
 Work:real/p/<id>, the classes and libraries of support.tsv to
 Work:real/libs (last on LIBS:, so classes the system or Zune68 brings
 are used first). On the zune target Zune68's build (--lib) is staged as
-in tests/native/run_probes.py; on mui38 the fixture's MUI 3.8 is used.
+in tests/native/run_probes.py, without the bundled classes that only
+share their name with a support class (NAMESAKES); on mui38 the
+fixture's MUI 3.8 is used.
 
 The guest helper wintool (wintool.c) runs a batch of programs in one
 boot: per program the free memory, the time until its first window, the
@@ -31,6 +33,11 @@ import subprocess
 import sys
 import time
 import zlib
+
+# Bundled AROS classes named like an unrelated third-party class. The
+# installer keeps the third-party one (its version is higher), so the
+# programs that need it get it here too.
+NAMESAKES = ('Calendar.mcc',)  # AROS 1.0, Alfonso Ranieri's 18.x
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -239,6 +246,9 @@ def main():
     if absent:
         print('support files not in the cache: %s' % ' '.join(absent))
     assigns = stage_zune(fix, a.lib) if a.target == 'zune' else []
+    for name in NAMESAKES if a.target == 'zune' else ():
+        if os.path.isfile(os.path.join(real, 'libs', 'MUI', name)):
+            os.remove(os.path.join(fix.work, 'mui', 'Libs', 'MUI', name))
 
     results, todo = {}, []
     for r in rows:
