@@ -1,7 +1,7 @@
 /* MUIA_List_Visible and the first text row of lists 40..58 pixels high,
  * with their boxes; the
  * window stays open 25 seconds for reading back the rows. Writes
- * listvisible.txt. Compare native and MUI 3.9.
+ * listvisible.txt. Compare native and MUI 3.8.
  * Build: m68k-amigaos-gcc -m68000 -noixemul -Os \
  *        -Wl,-u,___stkinit listvisible.c -o listvisible -lamiga
  */

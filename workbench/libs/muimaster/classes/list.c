@@ -1290,17 +1290,15 @@ static int CalcVertVisible(struct IClass *cl, Object *obj)
     int old_entries_visible = data->entries_visible;
     int old_entries_top_pixel = data->entries_top_pixel;
 
-    /* Like MUI 3.9, count, draw and scroll by the rows that are at least
-     * partly visible: the last one may be cut off at the bottom
-     * (tests/native/listvisible.c) */
+    LONG rows = _mheight(data->area) - data->title_height;
+
+    /* Like MUI 3.8, show whole rows only, with the spare pixels split
+     * above and below them (tests/native/listvisible.c) */
     data->vertprop_visible = data->entries_visible =
-        (_mheight(data->area) - data->title_height
-        + data->entry_maxheight - 1) / data->entry_maxheight;
+        rows > 0 ? MAX(rows / data->entry_maxheight, 1) : 0;
 
-    /* Like MUI 3.9, entries start at the top; spare space stays below
-     * them (tests/native/listvisible.c) */
-
-    data->entries_top_pixel = _mtop(data->area) + data->title_height;
+    data->entries_top_pixel = _mtop(data->area) + data->title_height
+        + MAX(rows - data->entries_visible * data->entry_maxheight, 0) / 2;
 
     if (data->entries_visible != old_entries_visible)
     {
@@ -5317,7 +5315,7 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
             if (msg->imsg->Code == SELECTDOWN)
             {
                 if (data->title && msg->imsg->MouseY >= _mtop(obj) &&
-                    msg->imsg->MouseY < data->entries_top_pixel &&
+                    msg->imsg->MouseY < _mtop(data->area) + data->title_height &&
                     msg->imsg->MouseX >= _mleft(data->area) &&
                     msg->imsg->MouseX <= _mright(data->area))
                 {
