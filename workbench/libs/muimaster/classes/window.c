@@ -1143,7 +1143,6 @@ struct MUI_WindowData
     LONG wd_ReqY;
     APTR wd_RootObject;         /* unique child */
     ULONG wd_Flags;             /* various status flags */
-    BOOL wd_FixedSize;          /* root min = max before the screen limit */
     struct MUI_ImageSpec_intern *wd_Background;
     ULONG wd_DisabledKeys;
     BOOL wd_NoMenus;            /* MUIA_Window_NoMenus */
@@ -1205,6 +1204,7 @@ struct MUI_WindowData
     ULONG wd_ArrowSeconds;      /* the time of its last message */
     ULONG wd_ArrowMicros;
     UWORD wd_ArrowTicks;        /* its timer ticks since the press */
+    BOOL wd_FixedSize;          /* root min = max before the screen limit */
 };
 
 #ifndef WFLG_SIZEGADGET
