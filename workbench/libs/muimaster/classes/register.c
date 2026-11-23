@@ -54,8 +54,9 @@
 *       Cleanup destroys parsed texts, removes the handler, then cleans Group.
 *       Dispose frees the item array then disposes Group; it does not replace
 *       Cleanup.
-*       AskMinMax takes Group constraints, raises width requirements for tabs
-*       and sets MaxHeight to MUI_MAXMAX; it returns TRUE. Layout reads
+*       AskMinMax takes Group constraints, raises the default width for the
+*       tabs only without title truncation, and lets the pages grow without
+*       limit; it returns TRUE. Layout reads
 *       Group_ActivePage, adjusts inner margins and tab hit boxes, invokes Group
 *       layout and returns TRUE regardless of its result. Show similarly returns
 *       TRUE without propagating superclass failure. Draw invokes Group then
@@ -786,16 +787,14 @@ IPTR Register__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 /*          msg->MinMaxInfo->DefWidth, */
 /*          data->min_width, data->def_width)); */
 
-    msg->MinMaxInfo->MinWidth =
-        MAX(msg->MinMaxInfo->MinWidth, data->min_width);
-    msg->MinMaxInfo->MaxWidth =
-        MAX(msg->MinMaxInfo->MaxWidth, data->def_width);
-    msg->MinMaxInfo->DefWidth =
-        MAX(msg->MinMaxInfo->DefWidth, data->def_width);
-
-/*      msg->MinMaxInfo->MinHeight += data->tab_height; */
-/*      msg->MinMaxInfo->DefHeight += data->tab_height; */
-    msg->MinMaxInfo->MaxHeight = MUI_MAXMAX;
+    /* Like MUI 3.8, the tabs do not widen the minimum, nor, with
+     * truncated titles, the default, and the pages may grow without
+     * limit, centred */
+    if (!muiGlobalInfo(obj)->mgi_Prefs->register_truncate_titles)
+        msg->MinMaxInfo->DefWidth =
+            MAX(msg->MinMaxInfo->DefWidth, data->def_width);
+    msg->MinMaxInfo->MaxWidth = MUI_MAXMAX + _subwidth(obj);
+    msg->MinMaxInfo->MaxHeight = MUI_MAXMAX + _subheight(obj);
 
 /*      D(bug("Register_AskMinMax %p : tabheight=%d, minh=%d\n", obj, */
 /*          data->tab_height, */
