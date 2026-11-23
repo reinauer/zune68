@@ -100,6 +100,13 @@ static CONST_STRPTR parse_escape_code(ZTextLine * ztl,
 static ZTextLine *zune_text_parse_line(CONST_STRPTR * s,
     struct zune_context *zc, int *argtype, int arg);
 void zune_text_get_bounds(ZText * text, Object * obj);
+
+/* An image given as a MUI built-in image, "6:<n>" */
+static BOOL is_builtin_image(const ZTextChunk *chunk)
+{
+    return chunk->spec && chunk->spec[0] == '6' && chunk->spec[1] == ':';
+}
+
 /* RGB, alpha and soft effects are uncommon on classic screens. Keep
  * their scratch state out of the ordinary text drawing stack frame. */
 static void draw_effect_chunk(ZText *text, ZTextChunk *chunk_node,
@@ -981,6 +988,10 @@ void zune_text_get_bounds(ZText * text, Object * obj)
                 zune_imspec_askminmax(chunk_node->image, &minmax);
                 chunk_node->cwidth = minmax.DefWidth;
                 chunk_node->cheight = minmax.DefHeight;
+                /* MUI 3.8 fits a built-in image into the font's height */
+                if (is_builtin_image(chunk_node))
+                    chunk_node->cheight =
+                        MIN(chunk_node->cheight, font->tf_YSize);
                 line_node->lheight =
                     MAX(line_node->lheight, chunk_node->cheight);
             }
@@ -1146,7 +1157,9 @@ void zune_text_draw(ZText * text, Object * obj, WORD left, WORD right,
             if (chunk_node->image)
             {
                 WORD top_im = top;
-                top_im += (line_node->lheight - chunk_node->cheight) / 2;
+                /* MUI 3.8 puts a built-in image's odd pixel above it */
+                top_im += (line_node->lheight - chunk_node->cheight
+                    + is_builtin_image(chunk_node)) / 2;
                 zune_imspec_show(chunk_node->image, obj);
                 pensave = GetAPen(rp);
                 zune_imspec_draw(chunk_node->image, muiRenderInfo(obj), x,
