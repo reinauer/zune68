@@ -2493,17 +2493,6 @@ IPTR List__MUIM_Cleanup(struct IClass *cl, Object *obj,
 /**************************************************************************
  MUIM_AskMinMax
 **************************************************************************/
-/* MUI 3.9 (20.x) shows a list title as a row of title buttons above the
- * framed entry area, one per column, with the scroller beside both
- * (tests/native/barfmt.c). The strip is the font height plus a 1 pixel
- * bevel and 2 pixels of spacing above and below. */
-static WORD List_TitleStrip(Object *obj, struct MUI_ListData *data)
-{
-    if (!data->title || data->area_replaced || !_font(obj))
-        return 0;
-    return _font(obj)->tf_YSize + 6;
-}
-
 /* The columns' total width, which the entries need: the last column
  * ends with its text, so its spacing does not count (the scroller's knob
  * matches MUI 3.9 on xSysInfo's register pages) */
@@ -2608,8 +2597,8 @@ static void List_CheckHoriz(struct IClass *cl, Object *obj)
         List_SetHorizRange(data);
 }
 
-/* The list group's layout: the entry area, beside the vertical scroller
- * and below the title buttons, with the horizontal scroller inside it */
+/* The list group's layout: the entry area beside the vertical scroller,
+ * with the horizontal scroller inside it */
 static ULONG List_LayoutFunction(struct Hook *hook, Object *obj,
     struct MUI_LayoutMsg *lm)
 {
@@ -2645,7 +2634,6 @@ static ULONG List_LayoutFunction(struct Hook *hook, Object *obj,
         {
             LONG width = lm->lm_Layout.Width, height = lm->lm_Layout.Height;
             LONG vw = vert ? _minwidth(vert) : 0, left = 0;
-            WORD strip = List_TitleStrip(obj, data);
 
             if (vert)
             {
@@ -2653,13 +2641,8 @@ static ULONG List_LayoutFunction(struct Hook *hook, Object *obj,
                     left = vw;
                 MUI_Layout(vert, left ? 0 : width - vw, 0, vw, height, 0);
             }
-            /* the title buttons take the top of the entry area's place */
-            if (strip >= height)
-                strip = 0;
-            MUI_Layout(data->area, left, strip, width - vw, height - strip,
-                0);
-            List_LayoutHoriz(obj, data, left, strip, width - vw,
-                height - strip);
+            MUI_Layout(data->area, left, 0, width - vw, height, 0);
+            List_LayoutHoriz(obj, data, left, 0, width - vw, height);
             return TRUE;
         }
     }
@@ -2670,7 +2653,6 @@ IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
     struct MUIP_AskMinMax *msg)
 {
     struct MUI_ListData *data = INST_DATA(cl, obj);
-    WORD strip = List_TitleStrip(obj, data);
 
     DoSuperMethodA(cl, obj, (Msg) msg);
 
@@ -2694,19 +2676,18 @@ IPTR List__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 
     if ((data->flags & LIST_ADJUSTHEIGHT) && (data->entries_num > 0))
     {
-        msg->MinMaxInfo->MinHeight += data->entries_totalheight + strip;
+        msg->MinMaxInfo->MinHeight += data->entries_totalheight;
         msg->MinMaxInfo->DefHeight = msg->MinMaxInfo->MinHeight;
         msg->MinMaxInfo->MaxHeight = msg->MinMaxInfo->MinHeight;
     }
     else
     {
         /* Three rows minimum and eight by default, from the font rather
-         * than the entries. The group result already holds the scroller,
-         * so the rows must not be stacked on top of it. */
+         * than the entries; MUI 3.8 counts a title among them. The group
+         * result already holds the scroller, so the rows must not be
+         * stacked on top of it. */
         LONG row = _font(obj)->tf_YSize + data->prefs_linespacing;
-
-        /* the scroller beside the title strip counts against both */
-        LONG frame = _subheight(obj) + _subheight(data->area) + strip;
+        LONG frame = _subheight(obj) + _subheight(data->area);
 
         msg->MinMaxInfo->MinHeight = MAX(msg->MinMaxInfo->MinHeight,
             frame + 3 * row);
@@ -2890,65 +2871,6 @@ static VOID List_DrawEntry(struct IClass *cl, Object *obj, int entry_pos,
     }
 }
 
-/* The title buttons: each column, with its share of the spacing and its
- * bar, gets a bevel of shine above and left, shadow below and right,
- * with background corners where shine and shadow meet, as in MUI 3.9. */
-static void List_DrawTitleStrip(struct IClass *cl, Object *obj)
-{
-    struct MUI_ListData *data = INST_DATA(cl, obj);
-    struct RastPort *rp = _rp(obj);
-    WORD strip = List_TitleStrip(obj, data);
-    LONG top = _top(data->area) - strip, bottom = _top(data->area) - 1;
-    LONG left = _left(data->area), right = _right(data->area);
-    LONG x0 = left - data->horiz_first;
-    LONG x1 = _mleft(data->area) - data->horiz_first;
-    ULONG col;
-    APTR clip;
-
-    SetAPen(rp, _pens(obj)[MPEN_BACKGROUND]);
-    RectFill(rp, left, top, right, bottom);
-    /* scrolled buttons start left of the strip */
-    clip = MUI_AddClipping(muiRenderInfo(obj), left, top, right - left + 1,
-        strip);
-    for (col = 0; col < data->columns && x0 <= right; col++)
-    {
-        ULONG halfdelta = data->ci[col].delta / 2;
-        if (ColumnHidden(data, col)) continue;
-        LONG end;
-
-        x1 += ColumnWidth(data, col) + halfdelta;
-        /* a column ends where its bar is or would be; an empty button
-         * fills the row after the last column */
-        end = x1;
-        if (end > right || (col + 1 == data->columns && end + 2 > right))
-            end = right;
-        SetAPen(rp, _pens(obj)[MPEN_SHINE]);
-        Move(rp, x0, bottom - 1);
-        Draw(rp, x0, top);
-        Draw(rp, end - 1, top);
-        SetAPen(rp, _pens(obj)[MPEN_SHADOW]);
-        Move(rp, x0 + 1, bottom);
-        Draw(rp, end, bottom);
-        Draw(rp, end, top + 1);
-        x0 = end + 1;
-        x1 += (data->ci[col].bar ? BAR_WIDTH : 0)
-            + data->ci[col].delta - halfdelta;
-    }
-    if (x0 + 1 < right)
-    {
-        SetAPen(rp, _pens(obj)[MPEN_SHINE]);
-        Move(rp, x0, bottom - 1);
-        Draw(rp, x0, top);
-        Draw(rp, right - 1, top);
-        SetAPen(rp, _pens(obj)[MPEN_SHADOW]);
-        Move(rp, x0 + 1, bottom);
-        Draw(rp, right, bottom);
-        Draw(rp, right, top + 1);
-    }
-    List_DrawEntry(cl, obj, ENTRY_TITLE, top + 2);
-    MUI_RemoveClipping(muiRenderInfo(obj), clip);
-}
-
 /**************************************************************************
  MUIM_Draw
 **************************************************************************/
@@ -2981,22 +2903,9 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
 
     LayoutColumns(data);
 
-    /* Calculate the title height */
-    if (List_TitleStrip(obj, data))
-    {
-        data->title_height = 0;
-        if ((msg->flags & MADF_DRAWUPDATE) == 0
-            || data->update == UPDATEMODE_ALL)
-            List_DrawTitleStrip(cl, obj);
-    }
-    else if (data->title)
-    {
-        data->title_height = data->entries[ENTRY_TITLE]->height + 2;
-    }
-    else
-    {
-        data->title_height = 0;
-    }
+    /* MUI 3.8: the title is the first row inside the frame, as high as
+     * the others and without a line below it */
+    data->title_height = data->title ? data->entries[ENTRY_TITLE]->height : 0;
 
     LayoutColumns(data);
     /* Calc the numbers of entries visible */
@@ -3028,14 +2937,6 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
         if (data->title_height && data->title)
         {
             List_DrawEntry(cl, obj, ENTRY_TITLE, y);
-            y += data->entries[ENTRY_TITLE]->height;
-            SetAPen(_rp(obj), _pens(obj)[MPEN_SHADOW]);
-            Move(_rp(obj), _mleft(data->area), y);
-            Draw(_rp(obj), _mright(data->area), y);
-            SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
-            y++;
-            Move(_rp(obj), _mleft(data->area), y);
-            Draw(_rp(obj), _mright(data->area), y);
         }
     }
 
@@ -3184,38 +3085,6 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
     ULONG col;
     y = _mtop(data->area);
 
-    if (data->title_height && data->title)
-    {
-        for (col = 0; col < data->columns; col++)
-        {
-            ULONG halfdelta = data->ci[col].delta / 2;
-            if (ColumnHidden(data, col)) continue;
-            x1 += ColumnWidth(data, col) + halfdelta;
-
-            if (x1 + (data->ci[col].bar ? BAR_WIDTH : 0) > _mright(data->area))
-                break;
-
-            if (data->ci[col].bar)
-            {
-                /* MUI 3.9: shadow, then shine (tests/native/barfmt.c) */
-                SetAPen(_rp(obj), _pens(obj)[MPEN_SHADOW]);
-                Move(_rp(obj), x1, y);
-                Draw(_rp(obj), x1,
-                    y + data->entries[ENTRY_TITLE]->height - 1);
-                SetAPen(_rp(obj), _pens(obj)[MPEN_SHINE]);
-                Move(_rp(obj), x1 + 1, y);
-                Draw(_rp(obj), x1 + 1,
-                    y + data->entries[ENTRY_TITLE]->height - 1);
-
-                x1 += BAR_WIDTH;
-            }
-            x1 += data->ci[col].delta - halfdelta;
-        }
-        y += data->entries[ENTRY_TITLE]->height + 1;
-    }
-
-    x1 = _mleft(data->area) - data->horiz_first;
-
     for (col = 0; col < data->columns; col++)
     {
         ULONG halfdelta = data->ci[col].delta / 2;
@@ -3225,6 +3094,7 @@ IPTR List__MUIM_Draw(struct IClass *cl, Object *obj, struct MUIP_Draw *msg)
         if (x1 + (data->ci[col].bar ? BAR_WIDTH : 0) > _mright(data->area))
             break;
 
+        /* Through the title too; shadow, then shine (barfmt.c) */
         if (data->ci[col].bar)
         {
             SetAPen(_rp(obj), _pens(obj)[MPEN_SHADOW]);

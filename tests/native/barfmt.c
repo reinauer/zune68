@@ -1,6 +1,6 @@
 /* A titled four-column list with MUIA_List_Format "BAR,BAR,BAR," like
  * xSysInfo's: sizes and the pixels of the title and the first rows.
- * Writes barfmt.txt. Compare native and MUI 3.9.
+ * Writes barfmt.txt. Compare native and MUI 3.8.
  * Build: m68k-amigaos-gcc -m68000 -noixemul -Os \
  *        -Wl,-u,___stkinit barfmt.c -o barfmt -lamiga
  */
