@@ -1614,6 +1614,23 @@ IPTR String__MUIM_Setup(struct IClass *cl, Object *obj,
     data->pens = pens;
     prefs = muiGlobalInfo(obj)->mgi_Prefs;
 
+    if (data->msd_Flags & MSDF_TISIZE)
+    {
+        /* Textinput 29 on MUI 3.8 keeps two pixels less of the frame's
+         * inner spacing at the sides and one less above and below */
+        struct MUI_AreaData *ad = muiAreaData(obj);
+
+        if (!(ad->mad_Flags & MADF_INNERLEFT))
+            ad->mad_InnerLeft = MAX(ad->mad_InnerLeft - 2, 0);
+        if (!(ad->mad_Flags & MADF_INNERRIGHT))
+            ad->mad_InnerRight = MAX(ad->mad_InnerRight - 2, 0);
+        if (!(ad->mad_Flags & MADF_INNERTOP))
+            ad->mad_InnerTop = MAX(ad->mad_InnerTop - 1, 0);
+        if (!(ad->mad_Flags & MADF_INNERBOTTOM))
+            ad->mad_InnerBottom = MAX(ad->mad_InnerBottom - 1, 0);
+        DoMethod(obj, MUIM_UpdateInnerSizes);
+    }
+
     data->is_active = FALSE;
     set(obj, MUIA_Background, (IPTR) prefs->string_bg_inactive);
 
