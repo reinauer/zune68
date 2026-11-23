@@ -1424,6 +1424,9 @@ static void InitRenderInfoPens(struct MUI_RenderInfo *mri,
         SHADOWPEN, TEXTPEN, FILLPEN, HIGHLIGHTTEXTPEN
     };
     ULONG rgbtable[3 * 3];
+    /* MUI 3.8 allocates no colours on a screen of four colours or fewer:
+     * the half pens are the background there and the mark pen is shine */
+    BOOL few = GetBitMapAttr(mri->mri_Screen->RastPort.BitMap, BMA_DEPTH) <= 2;
     int i;
 
     /* Also supply valid borrowed pens if a requested allocation fails. */
@@ -1432,6 +1435,8 @@ static void InitRenderInfoPens(struct MUI_RenderInfo *mri,
         data->wd_PenHandles[i] = -1;
         mri->mri_PensStorage[i] = mri->mri_DrawInfo->dri_Pens[fallback[i]];
     }
+    if (few)
+        mri->mri_PensStorage[MPEN_MARK] = mri->mri_DrawInfo->dri_Pens[SHINEPEN];
     mri->mri_Pens = mri->mri_PensStorage;
     GetRGB32(mri->mri_Colormap, mri->mri_DrawInfo->dri_Pens[SHINEPEN], 1,
         rgbtable);
@@ -1446,6 +1451,9 @@ static void InitRenderInfoPens(struct MUI_RenderInfo *mri,
         struct MUI_PenSpec *spec = &MUIMB(MUIMasterBase)->defaultPens[i];
         LONG pen;
 
+        if (few && (i == MPEN_HALFSHINE || i == MPEN_HALFSHADOW
+            || i == MPEN_MARK))
+            continue;
         if (!spec->buf[0] &&
             (i == MPEN_HALFSHINE || i == MPEN_HALFSHADOW))
         {
