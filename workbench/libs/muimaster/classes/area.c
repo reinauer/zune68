@@ -3129,7 +3129,7 @@ static void set_inner_sizes(Object *obj, struct MUI_AreaData *data)
     const struct MUI_FrameSpec_intern *frame;
     struct MUI_FrameSpec_intern tempframe;
     struct MUI_RenderInfo *mri = muiRenderInfo(obj);
-    /* MUI 3.8 drops the frames' inner spacing in the last stage of
+    /* MUI 3.8 drops the frames' inner spacing from the fourth stage of
      * fitting a window into the screen (tests/native/fitframes.c) */
     BOOL noinner = mri && mri->mri_Fallback >= 4;
 

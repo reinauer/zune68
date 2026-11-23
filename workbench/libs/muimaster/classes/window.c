@@ -5659,7 +5659,7 @@ static void SetRootObjInnerSpacing(Object *obj,
         wd_innerBottom = muiGlobalInfo(obj)->mgi_Prefs->window_inner_bottom;
         /* MUI 3.8 halves the window spacing from the third stage of
          * fitting a window into the screen, 4 to 2 and 3 to 1, and keeps
-         * that in the last stage (tests/native/fontfallback.c) */
+         * that in the later ones (tests/native/fontfallback.c) */
         if (data->wd_RenderInfo.mri_Fallback >= 3)
         {
             wd_innerLeft /= 2;
@@ -5897,9 +5897,9 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
 
         DoMethod(data->wd_RootObject, MUIM_Cleanup);
         CloseRenderInfoFonts(mri);
-        if (mri->mri_Fallback < 4)
+        if (mri->mri_Fallback < 5)
             muiGlobalInfo(obj)->mgi_Prefs->fallback = mri->mri_Fallback + 1;
-        if (mri->mri_Fallback >= 4
+        if (mri->mri_Fallback >= 5
             || (++mri->mri_Fallback,
                 !DoSetupMethod(data->wd_RootObject, mri)))
         {
