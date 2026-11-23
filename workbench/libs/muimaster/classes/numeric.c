@@ -375,10 +375,11 @@ static LONG numeric_text_width(Object *obj, struct RastPort *rp, LONG val)
 /* The widest MUIM_Numeric_Stringify result in OBJ's range, in RP's font,
  * as MUI 3.8/3.9 measure a Slider's or Numericbutton's knob: every value
  * only with MUIA_Numeric_CheckAllSizes, otherwise a few representative
- * values: the limits, zero
- * and, for each digit count in range, the all-eights, all-nines and
- * lowest values. A span above MUI_MAXMAX measures 0..MUI_MAXMAX. NULL
- * strings measure zero. */
+ * values: the limits, zero and, for each digit count in range, the
+ * all-eights, all-nines and lowest values. Like MUI 3.8, a range in the
+ * millions measures its own limits (DateString's day numbers); only
+ * CheckAllSizes falls back to the representative values once the span
+ * exceeds MUI_MAXMAX. NULL strings measure zero. */
 LONG ZuneNumericWidest(Object *obj, struct RastPort *rp)
 {
     LONG min = 0, max = 0, val, width = 0;
@@ -389,16 +390,15 @@ LONG ZuneNumericWidest(Object *obj, struct RastPort *rp)
     v = 0;
     get(obj, MUIA_Numeric_Max, &v);
     max = (LONG)v;
-    if ((max - min) > MUI_MAXMAX)
-    {
-        min = 0;
-        max = MUI_MAXMAX;
-    }
     get(obj, MUIA_Numeric_CheckAllSizes, &all);
-    if (all)
+    if (all && min <= max && (ULONG)max - (ULONG)min <= MUI_MAXMAX)
     {
-        for (val = min; val <= max; val++)
+        for (val = min; ; val++)
+        {
             width = MAX(width, numeric_text_width(obj, rp, val));
+            if (val == max)
+                break;
+        }
     }
     else
     {

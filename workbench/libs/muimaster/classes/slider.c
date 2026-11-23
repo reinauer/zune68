@@ -50,11 +50,8 @@
 *       Knob sizing calls Stringify for every value from Min to Max when
 *       CheckAllSizes is set. Otherwise it formats Min, Max, zero when in
 *       range and, for each digit count, the all-eights, all-nines and lowest
-*       values of either sign that lie in range. If the computed span exceeds
-*       MUI_MAXMAX either scan uses zero through MUI_MAXMAX, which can miss
-*       wide strings for the real range. Signed span arithmetic is unchecked;
-*       with CheckAllSizes a maximum at LONG_MAX can overflow the loop
-*       increment.
+*       values of either sign that lie in range; so does CheckAllSizes once
+*       the span exceeds MUI_MAXMAX.
 *       Draw maps Value to pixel offset and caches both offset and a copied
 *       Stringify result; without memory for the copy no text is drawn. Setup
 *       does not turn knob-background preparation failure into FALSE. Mouse
@@ -231,10 +228,9 @@ enum slider_flags
 /*
  * Measure Stringify results for every value with CheckAllSizes, otherwise
  * for representative values, and derive knob size from font/frame
- * preferences. Requires setup resources; NULL strings measure zero. Span
- * above MUI_MAXMAX substitutes 0..MUI_MAXMAX. Mutates geometry, no return
- * status. Span subtraction and the CheckAllSizes loop increment at
- * LONG_MAX can overflow; UWORD text width can truncate.
+ * preferences (ZuneNumericWidest). Requires setup resources; NULL strings
+ * measure zero. Mutates geometry, no return status. UWORD text width can
+ * truncate.
  */
 static void CalcKnobDimensions(struct IClass *cl, Object *obj)
 {

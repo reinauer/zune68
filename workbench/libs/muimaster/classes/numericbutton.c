@@ -53,10 +53,9 @@
 *       superclass result without reporting image/handler failure. Show shows
 *       the prepared image and returns the superclass result. Cleanup removes
 *       the mouse handler and cleans the image before Numeric Cleanup.
-*       AskMinMax formats every integer from Min through Max when dirty and uses
-*       the widest text and font height. There is no range-size cap and
-*       CheckAllSizes does not control the loop. A large range can block the
-*       application; LONG_MAX can overflow the loop increment. Changes to Min,
+*       AskMinMax measures the widest value of the range as Slider's knob does
+*       (representative values, every value only with CheckAllSizes and a
+*       span up to MUI_MAXMAX) and uses it with the font height. Changes to Min,
 *       Max or Format pointer mark measurement dirty before Numeric's
 *       parent-relayout request. In-place string edits are not detected.
 *       SELECTDOWN inside a drawable button opens the popup if screen geometry
