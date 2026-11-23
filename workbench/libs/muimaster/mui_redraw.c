@@ -368,6 +368,9 @@ void ZuneDrawDisabled(Object *obj)
 
 #if defined(__AROS__) || defined(__amigaos4__) || defined(__MAXON__)
     ZuneDrawDisabled(obj);
+#else
+    if (((struct __dummyAreaData__ *)(obj))->mad.mad_DisableCount)
+        ZuneDrawCentralDisabled(obj);
 #endif
 
     /* copy buffer to window */

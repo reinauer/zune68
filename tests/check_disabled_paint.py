@@ -8,7 +8,7 @@ The companion native/disablepaint.c checks pixels against original MUI.
 import struct
 import sys
 from pathlib import Path
-from check_class_lifetime import Harness, INTUITION
+from check_class_lifetime import Harness, INTUITION, MASTER
 
 OBJECT, MRI, RP = 0x71000, 0x72000, 0x73000
 DRAW = 0x80426f3f
@@ -84,11 +84,23 @@ def check(path):
     assert h.pixel == 3, 'library painted over custom content'
     h.redraw(h.custom, False)
     assert h.events == ['area', 'text', 'custom'], h.events
-    # MUI 3.8/3.9 Area draws no ghost pattern (ghostclasses.c), so direct
-    # Area subclasses keep their own disabled appearance.
+    # A program that sees MUI 5 gets MUI 4's ghost pattern on a direct
+    # Area subclass once it has drawn completely (BetterString.mcc leaves
+    # it to MUI 4 and later; ghostclasses.c on MUI 5)...
     h.mem.w32(h.custom + 24, h.area)
     h.redraw(h.custom, True)
+    assert h.events == ['area', 'custom', 'ghost'], h.events
+    # ...unless the class set MUIA_KnowsDisabled (mad_Flags2 bit 6)
+    h.mem.w32(OBJECT + 104, 1 << 6)  # mad_Flags2
+    h.redraw(h.custom, True)
     assert h.events == ['area', 'custom'], h.events
+    h.mem.w32(OBJECT + 104, 0)
+    # MUI 3.8/3.9 draw no ghost pattern on Area subclasses, which keep
+    # their own disabled appearance (IdDefault = ZUNE_ID_MUI38)
+    h.mem.w8(MASTER + 168, 1)
+    h.redraw(h.custom, True)
+    assert h.events == ['area', 'custom'], h.events
+    h.mem.w8(MASTER + 168, 0)
     h.machine.cleanup()
     print(f'{path}: disabled paint stays at the built-in Draw boundary')
 

@@ -343,6 +343,27 @@ extern struct Library *MUIMasterBase;
 *       propagate this state to children.
 *
 */
+/****** Area.mui/MUIA_KnowsDisabled ************
+*
+*   NAME
+*       MUIA_KnowsDisabled
+*
+*   FUNCTION
+*       The class draws its own disabled appearance; default FALSE.
+*
+*   INPUTS
+*       BOOL; initialize, set, get.
+*
+*   NOTES
+*       As in MUI 4 and later, for a program that sees MUI 5 Zune ghosts a
+*       disabled object after it has drawn itself completely, unless its
+*       class sets this (TheBar's buttons do). Classes that ghost
+*       themselves only below MUI 4, such as BetterString.mcc, rely on
+*       that. Newstring.mcc, which ghosts itself at every version, is
+*       left alone as on MUI 5. A program that sees MUI 3.8 gets MUI 3.8's
+*       ghosting, which leaves Area and Rectangle objects alone.
+*
+*/
 /****** Area.mui/MUIA_NestedDisabled ************
 *
 *   NAME
@@ -1306,6 +1327,11 @@ static IPTR Area__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
                 data->mad_DisableCount |= (1 << 31);
             break;
 
+        case MUIA_KnowsDisabled:
+            _handle_bool_tag(data->mad_Flags2, tag->ti_Data,
+                MADF2_KNOWSDISABLED);
+            break;
+
         case MUIA_CustomBackfill:
             _handle_bool_tag(data->mad_Flags2, tag->ti_Data,
                 MADF2_CUSTOMBACKFILL);
@@ -1561,6 +1587,11 @@ static IPTR Area__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                 setup_control_char(data, obj, cl);
             break;
 
+        case MUIA_KnowsDisabled:
+            _handle_bool_tag(data->mad_Flags2, tag->ti_Data,
+                MADF2_KNOWSDISABLED);
+            break;
+
         case MUIA_CycleChain:
             //          if (data->mad_InputMode == MUIV_InputMode_None)
             //              break;
@@ -1802,6 +1833,10 @@ static IPTR Area__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_Disabled:
         STORE = !!data->mad_DisableCount; /* BOOLEAN */
+        return TRUE;
+
+    case MUIA_KnowsDisabled:
+        STORE = (data->mad_Flags2 & MADF2_KNOWSDISABLED) != 0;
         return TRUE;
 
     case MUIA_NestedDisabled:

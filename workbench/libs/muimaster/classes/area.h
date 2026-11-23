@@ -500,6 +500,8 @@ struct MUIP_CreateFrameClippingRegion
     (MUIB_MUI | 0x004297ff)   /* MUI: V4  i.g LONG              */
 #define MUIA_InnerTop \
     (MUIB_MUI | 0x00421eb6)   /* MUI: V4  i.g LONG              */
+#define MUIA_KnowsDisabled \
+    (MUIB_MUI | 0x0042deef)   /* MUI: V20 isg BOOL              */
 #define MUIA_InputMode \
     (MUIB_MUI | 0x0042fb04)   /* MUI: V4  i.. LONG              */
 #define MUIA_LeftEdge \
@@ -638,6 +640,7 @@ struct MUI_AreaData
 #define MADF2_ISTITLE          (1UL << 3)
 #define MADF2_BGCHECKED        (1UL << 4) /* PRIV: MADF2_BUILTINBG is valid */
 #define MADF2_BUILTINBG        (1UL << 5) /* PRIV: all classes down to Area built-in */
+#define MADF2_KNOWSDISABLED    (1UL << 6) /* MUIA_KnowsDisabled */
 
 #define MADF_DRAWOBJECT        (1<< 0)  /* draw object completely */
 #define MADF_DRAWUPDATE        (1<< 1)  /* update object */

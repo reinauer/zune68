@@ -109,6 +109,9 @@ APTR ZuneAddClipRegion(struct MUI_RenderInfo *, struct Region *);
 void ZuneRemoveClipRegion(struct MUI_RenderInfo *, APTR);
 
 void ZuneDrawDisabled(Object *obj);
+/* MUI 5's ghost pattern on a disabled Area or Rectangle object, after
+ * its whole Draw (support_classes.c) */
+void ZuneDrawCentralDisabled(Object *obj);
 struct MsgPort *ZuneCreateSharedPort(struct MsgPort *owner);
 void ZuneDeleteSharedPort(struct MsgPort *port);
 

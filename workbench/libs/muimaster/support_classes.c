@@ -46,13 +46,47 @@ builtinDraw(Class *cl __asm("a0"), Object *obj __asm("a2"),
                 (HOOKFUNC)builtinDispatcher)
             derived = derived->cl_Super;
         /* MUI 3.8/3.9 Area and Rectangle draw no ghost pattern; custom
-         * subclasses of them paint their own disabled appearance */
+         * subclasses of them paint their own disabled appearance. For
+         * programs that see MUI 5, MUI_Redraw ghosts those after their
+         * whole Draw (ZuneDrawCentralDisabled). */
         if (derived == cl && !(cl->cl_ID &&
                 (!strcmp((const char *)cl->cl_ID, MUIC_Area) ||
-                !strcmp((const char *)cl->cl_ID, MUIC_Rectangle))))
+                !strcmp((const char *)cl->cl_ID, MUIC_Rectangle)))
+            && !((muiAreaData(obj)->mad_Flags2 & MADF2_KNOWSDISABLED)
+                && zune_identity_of(MUIMB(MUIMasterBase), FindTask(NULL))
+                    == ZUNE_ID_MUI5))
             ZuneDrawDisabled(obj);
     }
     return result;
+}
+
+/* MUI 4 and later ghost a disabled object once it has drawn itself
+ * completely, unless its class set MUIA_KnowsDisabled; MUI 3.8 leaves
+ * Area and Rectangle objects alone. builtinDraw ghosts the other built-in
+ * classes; this does Area and Rectangle and their custom subclasses, for
+ * a program that sees MUI 5. BetterString.mcc draws its own pattern only
+ * below MUI 4 and relies on it. */
+void ZuneDrawCentralDisabled(Object *obj)
+{
+    Class *cl;
+
+    if (!muiAreaData(obj)->mad_DisableCount
+        || (muiAreaData(obj)->mad_Flags2 & MADF2_KNOWSDISABLED))
+        return;
+    /* Newstring.mcc draws its pattern at every version (MUI 5 exempts it
+     * too); its phase need not match ours */
+    for (cl = OCLASS(obj); cl && cl->cl_Dispatcher.h_Entry !=
+            (HOOKFUNC)builtinDispatcher; cl = cl->cl_Super)
+        if (cl->cl_ID && !strcmp((const char *)cl->cl_ID, "Newstring.mcc"))
+            return;
+    if (!cl || !cl->cl_ID
+        || (strcmp((const char *)cl->cl_ID, MUIC_Area)
+            && strcmp((const char *)cl->cl_ID, MUIC_Rectangle)))
+        return;
+    if (zune_identity_of(MUIMB(MUIMasterBase), FindTask(NULL))
+        != ZUNE_ID_MUI5)
+        return;
+    ZuneDrawDisabled(obj);
 }
 
 /* Every method of a built-in class enters here. Only MUIM_Draw needs the
