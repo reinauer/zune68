@@ -1260,6 +1260,10 @@ static void CalcWidths(struct IClass *cl, Object *obj)
 
     for (i = (data->title ? ENTRY_TITLE : 0); i < data->entries_num; i++)
     {
+        /* Measure afresh: a window set up again with a smaller font
+         * (a fallback stage) must not keep the taller rows */
+        if (data->entries[i])
+            data->entries[i]->height = 0;
         CalcDimsOfEntry(cl, obj, i);
         data->entries_totalheight += data->entries[i]->height;
     }
