@@ -209,7 +209,9 @@ struct ZunePrefsNew
     CONST_STRPTR customframe_config_15;
     CONST_STRPTR customframe_config_16;
 
-
+    /* The stage of smaller fonts and spacing an application's window last
+     * needed to fit its screen; its later windows start there (MUI 3.8) */
+    UWORD fallback;
 };
 
 #endif

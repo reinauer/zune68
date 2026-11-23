@@ -1584,7 +1584,7 @@ static BOOL SetupRenderInfo(Object *obj, struct MUI_WindowData *data,
     }
 
     mri->mri_Colormap = scr->ViewPort.ColorMap;
-    mri->mri_Fallback = 0;
+    mri->mri_Fallback = muiGlobalInfo(obj)->mgi_Prefs->fallback;
 
     /* Frames double their side lines where pixels are twice as tall as
      * wide (a 640x256 screen), as MUI 3.8's do; a window may open on
@@ -5888,13 +5888,17 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
 
     /* Like MUI 3.9, set a window larger than the screen up again with
      * smaller fonts and spacing, stage by stage, and do not open it if it
-     * still does not fit (tests/native/fontfallback.c) */
+     * still does not fit (tests/native/fontfallback.c). As on MUI 3.8, the
+     * application's later windows start at the stage reached, even when
+     * this one does not open (Archiver's requester) */
     while (!WindowFits(data))
     {
         struct MUI_RenderInfo *mri = &data->wd_RenderInfo;
 
         DoMethod(data->wd_RootObject, MUIM_Cleanup);
         CloseRenderInfoFonts(mri);
+        if (mri->mri_Fallback < 4)
+            muiGlobalInfo(obj)->mgi_Prefs->fallback = mri->mri_Fallback + 1;
         if (mri->mri_Fallback >= 4
             || (++mri->mri_Fallback,
                 !DoSetupMethod(data->wd_RootObject, mri)))
