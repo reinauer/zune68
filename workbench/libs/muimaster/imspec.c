@@ -924,8 +924,11 @@ static void imspec_draw(struct MUI_ImageSpec_intern *spec,
         || (spec->type == IST_BRUSH && !spec->u.brush.dt[0])
         || (spec->type == IST_BOOPSI && !spec->u.boopsi.obj))
     {
+        /* The background pen; IST_COLOR draws with p_pen, which only
+         * setup fills in */
         def.type = IST_COLOR;
         zune_penspec_fill_muipen(&def.u.penspec, MPEN_BACKGROUND);
+        def.u.penspec.p_pen = mri->mri_Pens[MPEN_BACKGROUND];
         spec = &def;
     }
 
