@@ -5454,6 +5454,11 @@ BOOPSI_DISPATCHER(IPTR, Group_Dispatcher, cl, obj, msg)
     case MUIM_MultiSet:
     case MUIM_CallHook:
     case MUIM_DrawParentBackground:
+    /* A background fill paints this group's box. Forwarded, a child
+     * that passes its fill to its parent (TheButton on MUI 3.8) would
+     * get it back without end. */
+    case MUIM_CustomBackfill:
+    case MUIM_DrawBackgroundBuffered:
     case MUIM_DragBegin:
     case MUIM_DragDrop:
     case MUIM_DragQuery:
