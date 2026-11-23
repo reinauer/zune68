@@ -2800,13 +2800,9 @@ static void group_minmax_horiz(struct IClass *cl, Object *obj,
 
         if (IS_HIDDEN(child))
             continue;
-        if (data->flags & GROUP_SAME_WIDTH)
-        {
-            minwidth = MAX(maxminwidth, _minwidth(child));
-            minwidth = MIN(minwidth, _maxwidth(child));
-        }
-        else
-            minwidth = _minwidth(child);
+        /* a cell as wide as the widest minimum, whatever the child's
+         * maximum (MUI 3.8) */
+        minwidth = MAX(maxminwidth, _minwidth(child));
         /* MUI 3.9 leaves children that may disappear, and their spacing,
          * out of the minimum and default (tests/native/disappear.c) */
         if (muiAreaData(child)->mad_HorizDisappear > 0)
@@ -2819,11 +2815,11 @@ static void group_minmax_horiz(struct IClass *cl, Object *obj,
             /* a child whose own children may all disappear has a
              * negative minimum; MUI 3.9 counts it as 0 here */
             tmp.MinWidth += MAX(minwidth, 0);
-            tmp.DefWidth += MAX(w0_defwidth(child), 0);
+            tmp.DefWidth += MAX(MAX(w0_defwidth(child), maxminwidth), 0);
         }
         if (tmp.MaxWidth < MUI_MAXMAX)
             tmp.MaxWidth += data->horiz_spacing
-                + MIN(w0_maxwidth(child), MUI_MAXMAX);
+                + MIN(MAX(w0_maxwidth(child), maxminwidth), MUI_MAXMAX);
         tmp.MinHeight = MAX(tmp.MinHeight, _minheight(child));
         tmp.DefHeight = MAX(tmp.DefHeight, _defheight(child));
         /*
@@ -2909,8 +2905,6 @@ static void group_minmax_vert(struct IClass *cl, Object *obj,
         if (IS_HIDDEN(child))
             continue;
 
-        if (data->flags & GROUP_SAME_HEIGHT)
-            _minheight(child) = MIN(maxminheight, w0_maxheight(child));
         if (muiAreaData(child)->mad_VertDisappear > 0)
         {
             tmp.MinHeight -= data->vert_spacing;
@@ -2918,12 +2912,13 @@ static void group_minmax_vert(struct IClass *cl, Object *obj,
         }
         else
         {
-            tmp.MinHeight += MAX(_minheight(child), 0);
-            tmp.DefHeight += MAX(w0_defheight(child), 0);
+            /* see group_minmax_horiz */
+            tmp.MinHeight += MAX(MAX(_minheight(child), maxminheight), 0);
+            tmp.DefHeight += MAX(MAX(w0_defheight(child), maxminheight), 0);
         }
         if (tmp.MaxHeight < MUI_MAXMAX)
             tmp.MaxHeight += data->vert_spacing
-                + MIN(w0_maxheight(child), MUI_MAXMAX);
+                + MIN(MAX(w0_maxheight(child), maxminheight), MUI_MAXMAX);
         tmp.MinWidth = MAX(tmp.MinWidth, _minwidth(child));
         tmp.DefWidth = MAX(tmp.DefWidth, _defwidth(child));
         tmp.MaxWidth = MIN(tmp.MaxWidth, _maxwidth(child));
@@ -2975,10 +2970,12 @@ minmax_2d_rows_pass(struct MUI_GroupData *data, struct MinList *children,
         {
             if (IS_HIDDEN(child))
                 continue;
+            /* SameHeight rows are as high as the highest minimum, even
+             * beyond the children's maxima (MUI 3.8) */
             if (data->flags & GROUP_SAME_HEIGHT)
             {
-                _minheight(child) = MIN(maxmin_height, w0_maxheight(child));
-                _defheight(child) = MIN(maxdef_height, w0_maxheight(child));
+                min_h = MAX(min_h, maxmin_height);
+                def_h = MAX(def_h, maxdef_height);
             }
             min_h = MAX(min_h, _minheight(child));
             def_h = MAX(def_h, w0_defheight(child));
@@ -3046,10 +3043,11 @@ minmax_2d_columns_pass(struct MUI_GroupData *data, struct MinList *children,
             ++j;
             if (((j - 1) % data->columns) != i)
                 continue;
+            /* see minmax_2d_rows_pass */
             if (data->flags & GROUP_SAME_WIDTH)
             {
-                _minwidth(child) = MIN(maxmin_width, w0_maxwidth(child));
-                _defwidth(child) = MIN(maxdef_width, w0_maxwidth(child));
+                min_w = MAX(min_w, maxmin_width);
+                def_w = MAX(def_w, maxdef_width);
             }
             min_w = MAX(min_w, _minwidth(child));
             def_w = MAX(def_w, w0_defwidth(child));
@@ -3415,6 +3413,21 @@ IPTR Group__MUIM_AskMinMax(struct IClass *cl, Object *obj,
 
 // enforce minmax constraint, but also update total growable/shrinkable weights
 // while we're at it
+/* With SameWidth/SameHeight every child gets a cell at least as large as
+ * the largest minimum, even beyond its own maximum, and sits centred in
+ * it, as on MUI 3.8. These are the cell's limits. */
+static WORD cell_min(Object *child, BOOL horiz, WORD samesize)
+{
+    WORD min = horiz ? _minwidth(child) : _minheight(child);
+    return MAX(min, samesize);
+}
+
+static WORD cell_max(Object *child, BOOL horiz, WORD samesize)
+{
+    WORD max = horiz ? _maxwidth(child) : _maxheight(child);
+    return MAX(max, samesize);
+}
+
 /*
  * Clamp one writable size to supplied bounds while adjusting remainder,
  * grow/shrink sizes and weight totals through required pointers. Same-size
@@ -3561,7 +3574,7 @@ static void Layout1D_redistribution(WORD *sizep, WORD minsize,
  * Clamp every child, then share any remainder by weight among children
  * that can still move, until no space is left or nothing can move. */
 static void Layout1D_settle(struct MinList *children, WORD remainder,
-    BOOL group_horiz)
+    BOOL group_horiz, WORD samesize)
 {
     APTR cstate;
     Object *child;
@@ -3580,8 +3593,8 @@ static void Layout1D_settle(struct MinList *children, WORD remainder,
             if (IS_HIDDEN(child))
                 continue;
             size = group_horiz ? &_width(child) : &_height(child);
-            min = group_horiz ? _minwidth(child) : _minheight(child);
-            max = group_horiz ? _maxwidth(child) : _maxheight(child);
+            min = cell_min(child, group_horiz, samesize);
+            max = cell_max(child, group_horiz, samesize);
             if (*size < min)
             {
                 remainder -= min - *size;
@@ -3604,8 +3617,8 @@ static void Layout1D_settle(struct MinList *children, WORD remainder,
             if (IS_HIDDEN(child))
                 continue;
             size = group_horiz ? _width(child) : _height(child);
-            min = group_horiz ? _minwidth(child) : _minheight(child);
-            max = group_horiz ? _maxwidth(child) : _maxheight(child);
+            min = cell_min(child, group_horiz, samesize);
+            max = cell_max(child, group_horiz, samesize);
             if ((remainder > 0 && size < max) || (remainder < 0 && size > min))
             {
                 movable++;
@@ -3625,8 +3638,8 @@ static void Layout1D_settle(struct MinList *children, WORD remainder,
             if (IS_HIDDEN(child))
                 continue;
             size = group_horiz ? &_width(child) : &_height(child);
-            min = group_horiz ? _minwidth(child) : _minheight(child);
-            max = group_horiz ? _maxwidth(child) : _maxheight(child);
+            min = cell_min(child, group_horiz, samesize);
+            max = cell_max(child, group_horiz, samesize);
             if (!((remainder > 0 && *size < max)
                     || (remainder < 0 && *size > min)))
                 continue;
@@ -3688,8 +3701,9 @@ static void Layout1D_minmax_constraints_and_redistrib(struct MinList
             {
                 /* old_size = _width(child); */
 
-                Layout1D_minmax_constraint(&_width(child), _minwidth(child),
-                    _maxwidth(child), &remainder, &size_growables,
+                Layout1D_minmax_constraint(&_width(child),
+                    cell_min(child, TRUE, samesize),
+                    cell_max(child, TRUE, samesize), &remainder, &size_growables,
                     &size_shrinkables, &weight_growables,
                     &weight_shrinkables, _hweight(child), samesize);
 
@@ -3704,7 +3718,8 @@ static void Layout1D_minmax_constraints_and_redistrib(struct MinList
 /*                old_size = _height(child); */
 
                 Layout1D_minmax_constraint(&_height(child),
-                    _minheight(child), _maxheight(child), &remainder,
+                    cell_min(child, FALSE, samesize),
+                    cell_max(child, FALSE, samesize), &remainder,
                     &size_growables, &size_shrinkables, &weight_growables,
                     &weight_shrinkables, _vweight(child), samesize);
 
@@ -3737,8 +3752,9 @@ static void Layout1D_minmax_constraints_and_redistrib(struct MinList
             {
 /*                old_size = _width(child); */
 
-                Layout1D_redistribution(&_width(child), _minwidth(child),
-                    _maxwidth(child), &remainder, &size_growables,
+                Layout1D_redistribution(&_width(child),
+                    cell_min(child, TRUE, samesize),
+                    cell_max(child, TRUE, samesize), &remainder, &size_growables,
                     &size_shrinkables, &weight_growables,
                     &weight_shrinkables, _hweight(child));
 
@@ -3751,8 +3767,9 @@ static void Layout1D_minmax_constraints_and_redistrib(struct MinList
             {
 /*                old_size = _height(child); */
 
-                Layout1D_redistribution(&_height(child), _minheight(child),
-                    _maxheight(child), &remainder, &size_growables,
+                Layout1D_redistribution(&_height(child),
+                    cell_min(child, FALSE, samesize),
+                    cell_max(child, FALSE, samesize), &remainder, &size_growables,
                     &size_shrinkables, &weight_growables,
                     &weight_shrinkables, _vweight(child));
 
@@ -3773,7 +3790,7 @@ static void Layout1D_minmax_constraints_and_redistrib(struct MinList
         // may not be respected
     }                           // end for
 
-    Layout1D_settle(children, remainder, group_horiz);
+    Layout1D_settle(children, remainder, group_horiz, samesize);
 
     // to easily spot layout bugs, nothing like a (division by zero) exception
 /*      if (remainder != 0) */
@@ -4035,7 +4052,7 @@ static void group_layout_vert(struct IClass *cl, Object *obj,
     WORD total_size;
     WORD total_size_backup;
     WORD total_init_size;       /* total size of the ideally sized children */
-    WORD width;
+    WORD width, height, cell;
     WORD left = 0;
     WORD top = 0;
     WORD layout_width;
@@ -4122,12 +4139,15 @@ static void group_layout_vert(struct IClass *cl, Object *obj,
          * (tests/native/defclamp.c) */
         width = MIN(MAX(layout_width, _minwidth(child)), _maxwidth(child));
         left = (layout_width - width) / 2;
+        cell = _height(child);
+        height = MIN(cell, _maxheight(child));
 
 /*          D(bug("child %p -> layout %d x %d\n", */
 /*              child, width, _height(child))); */
-        if (!MUI_Layout(child, left, top, width, _height(child), 0))
+        if (!MUI_Layout(child, left, top + (cell - height) / 2, width,
+                height, 0))
             return;
-        top += data->vert_spacing + _height(child);
+        top += data->vert_spacing + cell;
     }
 
     if (!(data->flags & GROUP_VIRTUAL))
@@ -4153,7 +4173,7 @@ static void group_layout_horiz(struct IClass *cl, Object *obj,
     WORD total_size;
     WORD total_size_backup;
     WORD total_init_size;       /* total size of the ideally sized children */
-    WORD height;
+    WORD width, height, cell;
     WORD top = 0;
     WORD left = 0;
     WORD layout_width;
@@ -4249,12 +4269,15 @@ static void group_layout_horiz(struct IClass *cl, Object *obj,
         height = MIN(MAX(layout_height, _minheight(child)),
             _maxheight(child));
         top = (layout_height - height) / 2;
+        cell = _width(child);
+        width = MIN(cell, _maxwidth(child));
 
 /*          D(bug("child %p -> layout %d x %d\n", */
 /*              child, _width(child), height)); */
-        if (!MUI_Layout(child, left, top, _width(child), height, 0))
+        if (!MUI_Layout(child, left + (cell - width) / 2, top, width,
+                height, 0))
             return;
-        left += data->horiz_spacing + _width(child);
+        left += data->horiz_spacing + cell;
     }
 
     if (!(data->flags & GROUP_VIRTUAL))
