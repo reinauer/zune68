@@ -1143,6 +1143,7 @@ struct MUI_WindowData
     LONG wd_ReqY;
     APTR wd_RootObject;         /* unique child */
     ULONG wd_Flags;             /* various status flags */
+    BOOL wd_FixedSize;          /* root min = max before the screen limit */
     struct MUI_ImageSpec_intern *wd_Background;
     ULONG wd_DisabledKeys;
     BOOL wd_NoMenus;            /* MUIA_Window_NoMenus */
@@ -5720,6 +5721,9 @@ static void WindowMinMax(Object *obj, struct MUI_WindowData *data)
 /*            data->wd_MinMax.MinWidth, */
 /*            data->wd_MinMax.MinHeight, */
 /*            data->wd_MinMax.MaxWidth, data->wd_MinMax.MaxHeight)); */
+    data->wd_FixedSize =
+        data->wd_MinMax.MinWidth == data->wd_MinMax.MaxWidth
+        && data->wd_MinMax.MinHeight == data->wd_MinMax.MaxHeight;
 
     /* The inner maximum leaves room for the window borders on screen */
     {
@@ -5838,6 +5842,17 @@ static BOOL WindowFits(struct MUI_WindowData *data)
     if (!scr || scr->Width <= 0 || scr->Height <= 0)
         return TRUE;
     WindowRealBorders(data, &right, &bottom);
+    /* Like MUI 3.8, count the size gadget of a window that is resizable
+     * until the screen limits its maximum: it must not fit only because
+     * the limit makes it fixed and takes the gadget away (Archiver) */
+    if (!data->wd_FixedSize && (data->wd_CrtFlags & WFLG_SIZEGADGET)
+        && !(data->wd_CrtFlags & WFLG_BORDERLESS))
+    {
+        if (!(data->wd_CrtFlags & WFLG_SIZEBRIGHT))
+            bottom = MAX(bottom, mri->mri_BorderBottom);
+        else if (mri->mri_SizeImage)
+            right = MAX(right, IM(mri->mri_SizeImage)->Width);
+    }
     return data->wd_MinMax.MinWidth + mri->mri_BorderLeft + right
         <= scr->Width
         && data->wd_MinMax.MinHeight + mri->mri_BorderTop + bottom
