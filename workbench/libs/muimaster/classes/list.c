@@ -360,6 +360,9 @@ static BOOL IncreaseColumns(struct MUI_ListData *data, int new_columns);
 *       The concept of an active entry must not be confused with that of a
 *       selected entry.
 *
+*       As in MUI 3.8, setting the value the list already has, including one
+*       that clamps to the current entry, does not notify.
+*
 *   SEE ALSO
 *       MUIM_List_Jump, MUIM_List_Select, MUIA_Listview_Input
 *
@@ -1941,6 +1944,8 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
     struct MUI_ListData *data = INST_DATA(cl, obj);
     struct TagItem *tag;
     struct TagItem *tags;
+    struct TagItem *same_active = NULL;
+    IPTR result;
 
     /* parse taglist */
     for (tags = msg->ops_AttrList; (tag = NextTagItem(&tags));)
@@ -2161,6 +2166,18 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
                             MUIV_List_Jump_Active);
                     }
                 }
+                else
+                {
+                    /* MUI 3.8 does not notify an unchanged Active, even
+                     * after clamping (amiatari2600 cleared its info text
+                     * on such a notification). The tag is restored after
+                     * the superclass has seen the list. */
+                    if (!same_active)
+                    {
+                        same_active = tag;
+                        tag->ti_Tag = TAG_IGNORE;
+                    }
+                }
             }
             break;
 
@@ -2293,7 +2310,10 @@ IPTR List__OM_SET(struct IClass *cl, Object *obj, struct opSet *msg)
         }
     }
 
-    return List_SuperSet(cl, obj, msg);
+    result = List_SuperSet(cl, obj, msg);
+    if (same_active)
+        same_active->ti_Tag = MUIA_List_Active;
+    return result;
 }
 
 /**************************************************************************
