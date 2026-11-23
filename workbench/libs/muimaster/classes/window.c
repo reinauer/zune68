@@ -722,8 +722,8 @@ extern struct Library *MUIMasterBase;
 *       Screen(p), Visible(p) for p from 0 through 100, and Scaled are declared
 *       encodings. Pixel, Screen and Visible values give the outer width
 *       including borders; the others give the inner width. Results are clamped
-*       to the root's computed minimum and maximum. The getter returns native
-*       GZZWidth while open, otherwise zero.
+*       to the root's computed minimum and maximum. The getter returns the
+*       outer width while open, as MUI 3.8, otherwise zero.
 *
 *   INPUTS
 *       LONG; initialize and get; setter also implemented.
@@ -754,7 +754,7 @@ extern struct Library *MUIMasterBase;
 *       are declared encodings. Pixel, Screen and Visible values give the outer
 *       height including borders; the others give the inner height. Results
 *       are clamped to the root's computed minimum and maximum. The getter
-*       returns native GZZHeight while open, otherwise zero.
+*       returns the outer height while open, as MUI 3.8, otherwise zero.
 *
 *   INPUTS
 *       LONG; initialize and get; setter also implemented.
@@ -5396,7 +5396,7 @@ IPTR Window__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_Window_Height:
         if (data->wd_RenderInfo.mri_Window != NULL)
-            STORE = (IPTR) data->wd_RenderInfo.mri_Window->GZZHeight;
+            STORE = (IPTR) data->wd_RenderInfo.mri_Window->Height;
         else
             STORE = 0;
         return TRUE;
@@ -5441,7 +5441,7 @@ IPTR Window__OM_GET(struct IClass *cl, Object *obj, struct opGet *msg)
 
     case MUIA_Window_Width:
         if (data->wd_RenderInfo.mri_Window != NULL)
-            STORE = (IPTR) data->wd_RenderInfo.mri_Window->GZZWidth;
+            STORE = (IPTR) data->wd_RenderInfo.mri_Window->Width;
         else
             STORE = 0;
         return TRUE;
