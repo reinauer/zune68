@@ -96,6 +96,7 @@
 *       invalidates caches and requests a full redraw. Perform it with valid
 *       setup/connection state; it does not itself request parent relayout.
 *       Construction stores the flag without that runtime calculation.
+*       At creation MUIA_Group_Horiz does the same, as on MUI 3.8.
 *
 */
 /****** Slider.mui/MUIA_Slider_Quiet ************
@@ -290,6 +291,9 @@ IPTR Slider__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
         switch (tag->ti_Tag)
         {
         case MUIA_Slider_Horiz:
+        /* MUI 2's Slider was a Group; MUI 3.8 still makes a slider created
+         * with MUIA_Group_Horiz FALSE vertical (Archiver's level sliders) */
+        case MUIA_Group_Horiz:
             _handle_bool_tag(flags, tag->ti_Data, SLIDER_HORIZ);
             break;
         case MUIA_Slider_Quiet:
