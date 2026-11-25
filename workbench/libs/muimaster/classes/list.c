@@ -5255,12 +5255,23 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                    registered and the drag-selection is turned off */
                 if (msg->imsg->Code == SELECTUP && data->mouse_click)
                 {
+                    Object *target = obj, *parent = _parent(obj), *list = NULL;
+
                     /* cache click position ... */
                     data->mouse_x = msg->imsg->MouseX;
                     data->mouse_y = msg->imsg->MouseY;
 
-                    /* ... and activate the object */
-                    set(_win(obj), MUIA_Window_ActiveObject, (IPTR)obj);
+                    /* ... and activate the object, or its Listview when
+                     * that is the one in the cycle chain: the window
+                     * drops an active object outside the chain at the
+                     * next relayout, so a click that switched a page
+                     * (Prefs/Zune) left the keys one move */
+                    if (!(_flags(obj) & MADF_CYCLECHAIN) && parent
+                        && (_flags(parent) & MADF_CYCLECHAIN)
+                        && GetAttr(MUIA_Listview_List, parent, (IPTR *) &list)
+                        && list == obj)
+                        target = parent;
+                    set(_win(obj), MUIA_Window_ActiveObject, (IPTR)target);
                     data->mouse_click = 0;
                 }
 
