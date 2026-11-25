@@ -8,10 +8,11 @@ The programs come from programs.tsv, unpacked by fetch.py into the cache
 (~/.cache/zune68-real). Each program's directory is copied to
 Work:real/p/<id>, the classes and libraries of support.tsv to
 Work:real/libs (last on LIBS:, so classes the system or Zune68 brings
-are used first). On the zune target Zune68's build (--lib) is staged as
-in tests/native/run_probes.py, without the bundled classes that only
-share their name with a support class (NAMESAKES); on mui38 the
-fixture's MUI 3.8 is used.
+are used first), its devices to Work:real/devs and fonts to
+Work:real/fonts (last on DEVS: and FONTS:). On the zune target Zune68's
+build (--lib) is staged as in tests/native/run_probes.py, without the
+bundled classes that only share their name with a support class
+(NAMESAKES); on mui38 the fixture's MUI 3.8 is used.
 
 The guest helper wintool (wintool.c) runs a batch of programs in one
 boot: per program the free memory, the time until its first window, the
@@ -51,6 +52,12 @@ from fetch import CACHE, programs, support  # noqa: E402
 
 CC = 'm68k-amigaos-gcc'
 
+# Over the fixture's run.uae: an A1200's 2 MB chip memory (in 512 KB units),
+# 8 MB fast memory, a 68882 FPU, and UAE's bsdsocket.library on the host's
+# network, for the programs that need a TCP/IP stack to start.
+EMULATOR_OPTIONS = ('chipmem_size=4', 'fastmem_size=8', 'fpu_model=68882',
+                    'bsdsocket_emu=true')
+
 
 def build_wintool(out):
     src = os.path.join(HERE, 'wintool.c')
@@ -59,18 +66,26 @@ def build_wintool(out):
         subprocess.run([CC, '-noixemul', '-Os', '-s', src, '-o', out, '-lamiga'], check=True)
 
 
-def copy_support(cache, dest):
-    """Copy the support classes to dest/MUI and libraries to dest."""
-    shutil.rmtree(dest, ignore_errors=True)
-    os.makedirs(os.path.join(dest, 'MUI'))
+# where each kind of support.tsv goes below Work:real
+SUPPORT_DIRS = {'class': 'libs/MUI', 'library': 'libs', 'device': 'devs', 'font': 'fonts'}
+
+
+def copy_support(cache, real):
+    """Copy support.tsv's files to real/libs/MUI (classes), real/libs,
+    real/devs and real/fonts; names may have a directory part."""
+    for d in set(p.split('/')[0] for p in SUPPORT_DIRS.values()):
+        shutil.rmtree(os.path.join(real, d), ignore_errors=True)
     absent = []
     for r in support():
         src = os.path.join(cache, r['key'], 'x', r['path'])
         if not os.path.isfile(src):
             absent.append(r['name'])
             continue
-        to = os.path.join(dest, 'MUI') if r['kind'] == 'class' else dest
-        shutil.copy(src, os.path.join(to, r['name']))
+        to = os.path.join(real, SUPPORT_DIRS[r['kind']], r['name'])
+        os.makedirs(os.path.dirname(to), exist_ok=True)
+        shutil.copy(src, to)
+    for d in SUPPORT_DIRS.values():
+        os.makedirs(os.path.join(real, d), exist_ok=True)
     return absent
 
 
@@ -164,7 +179,11 @@ def run_batch(fix, rows, assigns, outdir, stall_extra):
              'If EXISTS Work:real/booted',
              '  Echo reset >>Work:real/out/progress.txt', '  Quit', 'EndIf',
              'Echo >Work:real/booted'] + assigns + [
+             # as OS 3.1's Startup-Sequence: datatypes, gadgets, images
+             'Assign LIBS: SYS:Classes ADD',
              'Assign LIBS: Work:real/libs ADD',
+             'Assign DEVS: Work:real/devs ADD',
+             'Assign FONTS: Work:real/fonts ADD',
              'Work:real/wintool batch Work:real/batch.txt Work:real/out',
              'Echo batchend >>Work:real/out/progress.txt']
     booted = os.path.join(real, 'booted')
@@ -172,7 +191,7 @@ def run_batch(fix, rows, assigns, outdir, stall_extra):
         os.remove(booted)
     waits = {r['id']: int(r['wait']) for r in rows}
     print('booting %s for %d programs' % (os.path.basename(fix.dir), len(rows)), flush=True)
-    fix.boot(stage)
+    fix.boot(stage, EMULATOR_OPTIONS)
     text, since, current, why = '', time.time(), None, None
     boot_limit = 240
     while True:
@@ -262,7 +281,7 @@ def main():
     shutil.rmtree(os.path.join(real, 'p'), ignore_errors=True)
     os.makedirs(os.path.join(real, 'p'))
     build_wintool(os.path.join(real, 'wintool'))
-    absent = copy_support(a.cache, os.path.join(real, 'libs'))
+    absent = copy_support(a.cache, real)
     if absent:
         print('support files not in the cache: %s' % ' '.join(absent))
     assigns = stage_zune(fix, a.lib) if a.target == 'zune' else []

@@ -49,14 +49,17 @@ class Fixture:
             time.sleep(0.5)
         raise RuntimeError('emulator of %s does not stop' % self.dir)
 
-    def boot(self, stage):
-        """Write Work:stage (a list of AmigaDOS lines) and start the emulator."""
+    def boot(self, stage, options=()):
+        """Write Work:stage (a list of AmigaDOS lines) and start the emulator,
+        with options ("key=value") overriding run.uae."""
         self.stop()
         with open(os.path.join(self.work, 'stage'), 'w', encoding='latin-1') as f:
             f.write('\n'.join(stage) + '\n')
         log = open(os.path.join(self.dir, 'emu.log'), 'w')
-        self.proc = subprocess.Popen([self.emulator, '-f', self.uae],
-                                     stdout=log, stderr=subprocess.STDOUT)
+        cmd = [self.emulator, '-f', self.uae]
+        for o in options:
+            cmd += ['-s', o]
+        self.proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
         log.close()
 
     def read(self, rel):

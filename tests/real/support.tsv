@@ -130,3 +130,10 @@ library	reqtools.library	mcp	util/cdity/MCP130.lha	MCP/Libs/reqtools.library
 library	date.library	monthnavi	dev/mui/MCC_MonthNavi.lha	MCC_MonthNavigator/Libs/date.library
 library	imagepool.library	transferanim	dev/mui/MCC_TransferAn.lha	mcc_transferanim/libs/imagepool.library
 library	mysticview.library	mysticview	dev/mui/MCC_MysticView.lha	mcc_mysticview/mysticviewlibrary/libs/mysticview.library
+device	ahi.device	ahiusr	driver/audio/ahiusr_4.18.lha	AHI/User/Devs/ahi.device
+device	AHI/paula.audio	ahiusr	driver/audio/ahiusr_4.18.lha	AHI/User/Devs/AHI/paula.audio
+device	AudioModes/PAULA	ahiusr	driver/audio/ahiusr_4.18.lha	AHI/User/Devs/AudioModes/PAULA
+font	XEN.font	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN.font
+font	XEN/8	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/8
+font	XEN/9	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/9
+font	XEN/11	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/11

@@ -9,8 +9,9 @@ path, or a URL for the few that are elsewhere), dir (the program's
 directory inside the unpacked archive), exe (relative to dir, with
 arguments), wait (seconds to wait for its first window), title (pattern of
 its window title, where the window belongs to another process than the
-command) and notes. support.tsv lists the third-party classes and
-libraries the programs use, with the archive and path each comes from.
+command) and notes. support.tsv lists the third-party classes, libraries,
+devices and fonts the programs use, with the archive and path each comes
+from (MagicWB 2.1p, a shareware evaluation version, for the XEN font).
 
 Fetching
 --------
@@ -35,14 +36,19 @@ Running
 FIX is a WinUAE fixture directory: run.uae mounts FIX/work as Work: and
 boots an OS 3.1 system whose Startup-Sequence ends with "Execute
 Work:stage"; for mui38 that system has MUI 3.8 installed and on LIBS:.
+Over run.uae, run.py gives the guest 2 MB chip and 8 MB fast memory, a
+68882 FPU and UAE's bsdsocket.library (the host's network) as its TCP/IP
+stack.
 The emulator is /Applications/WinUAE.app/Contents/MacOS/WinUAE, or
 --emulator / $WINUAE. Only the emulator started with FIX/run.uae is ever
 stopped, and a running one is stopped before booting it again.
 
 On the zune target Zune68's build (muimaster.library and Libs/MUI, from
 --lib, default build/muimaster) comes first on LIBS: and MUI:. On both
-targets the classes and libraries of support.tsv come last on LIBS:, so
-a class that MUI 3.8 or Zune68 brings is used in place of the archive's.
+targets SYS:Classes is on LIBS:, as OS 3.1's Startup-Sequence has it, and
+the classes and libraries of support.tsv come last on LIBS:, so a class
+that MUI 3.8 or Zune68 brings is used in place of the archive's; its
+devices and fonts come last on DEVS: and FONTS:.
 
 Each boot runs up to --batch programs (default 15) with the guest helper
 wintool (wintool.c). For each program it records the free memory, starts
