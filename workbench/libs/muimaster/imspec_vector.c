@@ -86,25 +86,15 @@ static void template_blit_clipped(struct RastPort *rp, const ULONG *data,
 
     if (l > r || t > b)
         return;
+    /* BltTemplate takes a bit offset below 16 in the first source word */
+    sx = l - x;
+    src = (const UWORD *) (data + (t - y)) + sx / 16;
     if (rp->FgPen != (BYTE) pen)
         SetAPen(rp, pen);
     if (mode != JAM1)
         SetDrMd(rp, JAM1);
-    /* One call per source word: an RTG card's driver drew a 17 pixel wide
-     * radio image as broken brackets (a tester's 800x600x16 screen) while
-     * the arrows, 10 pixels wide, were right. BltTemplate takes a bit
-     * offset below 16 in the first source word. */
-    while (l <= r)
-    {
-        LONG e;
-
-        sx = l - x;
-        e = MIN(r, x + (sx | 15));
-        src = (const UWORD *) (data + (t - y)) + sx / 16;
-        BltTemplate((CONST PLANEPTR) src, sx & 15, sizeof(ULONG), rp, l, t,
-            e - l + 1, b - t + 1);
-        l = e + 1;
-    }
+    BltTemplate((CONST PLANEPTR) src, sx & 15, sizeof(ULONG), rp, l, t,
+        r - l + 1, b - t + 1);
     if (mode != JAM1)
         SetDrMd(rp, mode);
 }
