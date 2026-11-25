@@ -30,7 +30,7 @@ Running
 
   make -j8 core plugins prefs                  (for the zune target)
   tests/real/run.py --fixture FIX --target zune  [--group mui3] [--first N]
-  tests/real/run.py --fixture FIX --target mui38 [--ids ID,...]
+  tests/real/run.py --fixture FIX --target mui38 [--ids ID,...] [--repeat N]
 
 FIX is a WinUAE fixture directory: run.uae mounts FIX/work as Work: and
 boots an OS 3.1 system whose Startup-Sequence ends with "Execute
@@ -48,10 +48,14 @@ Each boot runs up to --batch programs (default 15) with the guest helper
 wintool (wintool.c). For each program it records the free memory, starts
 the program in its directory, waits for a window that was not there
 before, lets the windows settle, saves the screen, asks the program to
-quit (Ctrl-C to its processes, then IDCMP_CLOSEWINDOW to each of its
-windows) and records the free memory again, with the libraries and
-classes that failed to open meanwhile. Start-up requesters are not
-answered: such a requester counts as the first window. A program that
+quit and records the free memory again, with the libraries and classes
+that failed to open meanwhile. Quitting goes step by step: Ctrl-C to its
+processes, IDCMP_CLOSEWINDOW to each of its windows, then answering
+requesters (Amiga-V on a system requester, Return on a window that
+opened since), the pick of a menu item named Quit, Exit or Beenden,
+closing again, and at last answering every window of it (Amiga-B on a
+system requester). A start-up requester counts as the first window, and
+is answered only in that last step. A program that
 does not quit ends the boot, and the rest go on in a new one; so do the
 remaining programs after a guest stops making progress (a crash or a
 hang, --stall seconds beyond the program's wait) or resets. A boot that
@@ -62,13 +66,18 @@ Results go to build/real/<target>/ (or --out):
 
   results.tsv   id, started, seconds to the first window, free memory
                 before, with the windows open and after, delta (after
-                minus before), quit (ctrlc, close), status (ok,
-                nowindow, exited: ended without a window, stuck: did not
-                quit, hang, reset, not fetched), the windows (x,y wxh
-                title) and the libraries/classes that failed to open
+                minus before), quit (ctrlc, close, answer, menu), status
+                (ok, nowindow, exited: ended without a window, stuck: did
+                not quit, hang, reset, not fetched), the windows (x,y wxh
+                title), the libraries/classes that failed to open, and
+                free chip memory, largest free block and largest free
+                chip block before and after
   <id>.png      the screen of its first window, with its windows open
   <id>.con      what it printed
   <id>.log      wintool's lines for it
 
 The first program of a boot also pays for loading muimaster.library and
 its classes, so its delta is large; memory is never flushed in between.
+--repeat N runs each program N times in a row in one boot (ids <id>,
+<id>.2, ...): from the second run on everything it loads is there
+already, so what its delta still shows is a leak.

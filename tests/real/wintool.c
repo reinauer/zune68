@@ -7,8 +7,12 @@
  * notes the free memory, starts the command asynchronously in the
  * directory (output to OUTDIR/<id>.con), waits for a window that was not
  * there before, writes the window's screen to OUTDIR/<id>.snap, asks the
- * program to quit (Ctrl-C, then IDCMP_CLOSEWINDOW to each of its windows)
- * and notes the free memory again. Failed OpenLibrary calls of other tasks
+ * program to quit and notes the free memory again. Quitting goes from
+ * Ctrl-C to IDCMP_CLOSEWINDOW for each of its windows, then to answering
+ * requesters (Amiga-V, at last Amiga-B, on a system requester, Return on
+ * any other window that opened meanwhile) and picking a menu item named
+ * Quit, Exit or Beenden. Free memory is noted as total, chip, largest
+ * block and largest chip block. Failed OpenLibrary calls of other tasks
  * meanwhile are listed as "missing". Every step is appended as a line to
  * OUTDIR/progress.txt at once, so the host can follow and see where a
  * guest stopped. A program that does not quit ends the batch ("stuck"):
@@ -24,6 +28,8 @@
 #include <dos/dos.h>
 #include <dos/dosextens.h>
 #include <dos/dostags.h>
+#include <devices/input.h>
+#include <devices/inputevent.h>
 #include <intuition/intuitionbase.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
@@ -44,6 +50,8 @@ struct Win {
 };
 
 static char progress[256];
+static struct MsgPort *inport;
+static struct IOStdReq *inreq;
 
 static void say(const char *fmt, ...)
 {
@@ -317,6 +325,142 @@ static void collect_replies(void)
     }
 }
 
+/* Is w still open? Call with IBase locked. */
+static int open_window(struct Window *w)
+{
+    struct Screen *s;
+    struct Window *x;
+    for (s = IntuitionBase->FirstScreen; s; s = s->NextScreen)
+        for (x = s->FirstWindow; x; x = x->NextWindow)
+            if (x == w)
+                return 1;
+    return 0;
+}
+
+/* A system requester (EasyRequest, AutoRequest): buttons with text, boolean
+ * gadgets or (on OS 3) BOOPSI ones. */
+static int sysreq(struct Window *w)
+{
+    struct Gadget *g;
+    ULONG lock = LockIBase(0);
+    int found = 0;
+    if (open_window(w))
+        for (g = w->FirstGadget; g && !found; g = g->NextGadget)
+            found = !(g->GadgetType & GTYP_SYSGADGET) && g->GadgetText
+                && ((g->GadgetType & GTYP_GTYPEMASK) == GTYP_BOOLGADGET
+                    || (g->GadgetType & GTYP_GTYPEMASK) == GTYP_CUSTOMGADGET);
+    UnlockIBase(lock);
+    return found;
+}
+
+static void key(UWORD code, UWORD qual)
+{
+    struct InputEvent ie;
+    int up;
+    if (!inreq)
+        return;
+    for (up = 0; up < 2; up++)
+    {
+        memset(&ie, 0, sizeof(ie));
+        ie.ie_Class = IECLASS_RAWKEY;
+        ie.ie_Code = code | (up ? IECODE_UP_PREFIX : 0);
+        ie.ie_Qualifier = qual;
+        inreq->io_Command = IND_WRITEEVENT;
+        inreq->io_Data = &ie;
+        inreq->io_Length = sizeof(ie);
+        DoIO((struct IORequest *)inreq);
+        Delay(2);
+    }
+}
+
+/* Answer a requester: Amiga-V picks a system requester's first (positive)
+ * button, Amiga-B its last (negative) one, Return the active (default)
+ * button of a MUI requester. */
+static void answer(struct Win *w, int negative)
+{
+    int sys = sysreq(w->w);
+    ULONG lock = LockIBase(0);
+    int ok = open_window(w->w);
+    UnlockIBase(lock);
+    if (!ok)
+        return;
+    say("answer %s", w->title);
+    ActivateWindow(w->w);
+    Delay(15);
+    if (sys)
+        key(negative ? 0x35 : 0x34, IEQUALIFIER_LCOMMAND);  /* B, V */
+    else
+        key(0x44, 0);                       /* Return */
+}
+
+static int quitword(const char *t)
+{
+    static const char *words[] = { "quit", "exit", "beenden", NULL };
+    int i, n;
+    while (*t == ' ')
+        t++;
+    for (i = 0; words[i]; i++)
+    {
+        n = strlen(words[i]);
+        if (!strnicmp(t, words[i], n) && !((t[n] | 0x20) >= 'a' && (t[n] | 0x20) <= 'z'))
+            return 1;
+    }
+    return 0;
+}
+
+static int quititem(struct MenuItem *it)
+{
+    return (it->Flags & ITEMTEXT) && (it->Flags & ITEMENABLED) && it->ItemFill
+        && ((struct IntuiText *)it->ItemFill)->IText
+        && quitword((char *)((struct IntuiText *)it->ItemFill)->IText);
+}
+
+/* Send w the pick of its menu item named Quit (or Exit, Beenden). */
+static int menu_quit(struct Window *w)
+{
+    struct IntuiMessage *m;
+    struct Menu *mn;
+    struct MenuItem *it, *sub, *hit = NULL;
+    ULONG lock;
+    UWORD code = MENUNULL;
+    int i, j, k;
+
+    if (!(m = AllocVec(sizeof(struct ExtIntuiMessage), MEMF_PUBLIC | MEMF_CLEAR)))
+        return 0;
+    lock = LockIBase(0);
+    if (open_window(w) && w->UserPort && (w->IDCMPFlags & IDCMP_MENUPICK))
+        for (mn = w->MenuStrip, i = 0; mn && !hit; mn = mn->NextMenu, i++)
+            if (mn->Flags & MENUENABLED)
+                for (it = mn->FirstItem, j = 0; it && !hit; it = it->NextItem, j++)
+                {
+                    if (!it->SubItem && quititem(it))
+                        hit = it, code = FULLMENUNUM(i, j, NOSUB);
+                    for (sub = it->SubItem, k = 0; sub && !hit; sub = sub->NextItem, k++)
+                        if (quititem(sub))
+                            hit = sub, code = FULLMENUNUM(i, j, k);
+                }
+    if (hit)
+    {
+        hit->NextSelect = MENUNULL;
+        m->ExecMessage.mn_ReplyPort = replies;
+        m->ExecMessage.mn_Length = sizeof(struct ExtIntuiMessage);
+        m->Class = IDCMP_MENUPICK;
+        m->Code = code;
+        m->IDCMPWindow = w;
+        CurrentTime(&m->Seconds, &m->Micros);
+        PutMsg(w->UserPort, (struct Message *)m);
+        outstanding++;
+    }
+    UnlockIBase(lock);
+    if (!hit)
+    {
+        FreeVec(m);
+        return 0;
+    }
+    say("menu %s", (char *)((struct IntuiText *)hit->ItemFill)->IText);
+    return 1;
+}
+
 /* Wait up to ticks for the program's windows and its CLI process to go. */
 static int gone(struct Win *before, int nb, int cli, int ticks)
 {
@@ -331,14 +475,56 @@ static int gone(struct Win *before, int nb, int cli, int ticks)
     return 0;
 }
 
+static void saymem(const char *tag)
+{
+    say("%s %lu %lu %lu %lu", tag, AvailMem(MEMF_ANY), AvailMem(MEMF_CHIP),
+        AvailMem(MEMF_ANY | MEMF_LARGEST), AvailMem(MEMF_CHIP | MEMF_LARGEST));
+}
+
+/* After Ctrl-C and close-window messages failed: answer requesters, pick
+ * the Quit menu item, close what is left, at last answer every window (a
+ * start-up error window counts as a main window), system requesters with
+ * their negative button ("Please insert volume": Cancel, not Retry).
+ * Returns the step that ended the program, or NULL. */
+static const char *escalate(struct Win *before, int nb, struct Win *main, int nmain, int cli)
+{
+    static const char order[] = "amacA";
+    struct Win now[MAXWIN];
+    const char *s;
+    int i, nf, did;
+
+    for (s = order; *s; s++)
+    {
+        nf = fresh(before, nb, now, scan(now));
+        for (i = did = 0; i < nf; i++)
+            if (*s == 'A' || (*s == 'a' && (sysreq(now[i].w) || !known(main, nmain, now[i].w))))
+            {
+                answer(&now[i], *s == 'A');
+                did = 1;
+            }
+            else if (*s == 'm' && !did)
+                did = menu_quit(now[i].w);
+            else if (*s == 'c')
+            {
+                say("close %s", now[i].title);
+                closewindow(now[i].w);
+                did = 1;
+            }
+        if (did && gone(before, nb, cli, 300))
+            return *s == 'm' ? "menu" : *s == 'c' ? "close" : "answer";
+    }
+    return NULL;
+}
+
 /* ---- one program ---- */
 
 static int run(char *id, int wait, char *dir, char *cmd, char *outdir)
 {
-    struct Win before[MAXWIN], now[MAXWIN];
+    struct Win before[MAXWIN], now[MAXWIN], main[MAXWIN];
+    const char *how;
     UBYTE used[128], used2[128];
     struct Task *tasks[MAXWIN];
-    int nb, nn, nf, i, k, cli = 0, ntasks = 0, ncli;
+    int nb, nn, nf, nmain, i, k, cli = 0, ntasks = 0, ncli;
     LONG t, first = -1;
     char path[256];
     BPTR lock, old, in, out;
@@ -348,7 +534,7 @@ static int run(char *id, int wait, char *dir, char *cmd, char *outdir)
     nb = scan(before);
     ncli = clis(used, 128);
     nopen = 0;
-    say("mem %lu", AvailMem(MEMF_ANY));
+    saymem("mem");
     if (!(lock = Lock(dir, ACCESS_READ)))
     {
         say("nodir %s", dir);
@@ -407,7 +593,7 @@ static int run(char *id, int wait, char *dir, char *cmd, char *outdir)
         logging = 0;
         say(k >= 0 ? "exited %ld" : "nowindow %ld", (long)t * 20);
         missing();
-        say("memafter %lu", AvailMem(MEMF_ANY));
+        saymem("memafter");
         if (cli > 0 && alive(cli))
         {
             Signal((struct Task *)FindCliProc(cli), SIGBREAKF_CTRL_C);
@@ -441,7 +627,9 @@ static int run(char *id, int wait, char *dir, char *cmd, char *outdir)
     }
     if (!nf)
         say("closed");      /* its windows went again while settling */
-    say("memopen %lu", AvailMem(MEMF_ANY));
+    memcpy(main, now, sizeof(main[0]) * nf);
+    nmain = nf;
+    saymem("memopen");
     if (nf)
     {
         sprintf(path, "%s/%s.snap", outdir, id);
@@ -477,6 +665,8 @@ static int run(char *id, int wait, char *dir, char *cmd, char *outdir)
         }
         if (k < 3)
             say("quit close");
+        else if ((how = escalate(before, nb, main, nmain, cli)))
+            say("quit %s", how);
         else
         {
             nn = scan(now);
@@ -492,7 +682,7 @@ static int run(char *id, int wait, char *dir, char *cmd, char *outdir)
     logging = 0;
     Delay(100);
     missing();
-    say("memafter %lu", AvailMem(MEMF_ANY));
+    saymem("memafter");
     say("end %s", id);
     return 0;
 }
@@ -511,6 +701,13 @@ static void batch(char *listfile, char *outdir)
         return;
     }
     self = FindTask(NULL);
+    if ((inport = CreateMsgPort())
+        && (inreq = (struct IOStdReq *)CreateIORequest(inport, sizeof(*inreq)))
+        && OpenDevice("input.device", 0, (struct IORequest *)inreq, 0))
+    {
+        DeleteIORequest((struct IORequest *)inreq);
+        inreq = NULL;
+    }
     Forbid();
     wt_origOL = SetFunction((struct Library *)SysBase, -552, (APTR)wt_patchOL);
     Permit();

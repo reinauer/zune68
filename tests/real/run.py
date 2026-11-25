@@ -2,7 +2,7 @@
 """Start real MUI programs on a WinUAE fixture and record how they fare.
 
   run.py --fixture FIX --target zune|mui38 [--group mui3] [--first N]
-         [--ids ID,...] [--batch 15] [--out DIR]
+         [--ids ID,...] [--repeat N] [--batch 15] [--out DIR]
 
 The programs come from programs.tsv, unpacked by fetch.py into the cache
 (~/.cache/zune68-real). Each program's directory is copied to
@@ -15,9 +15,12 @@ fixture's MUI 3.8 is used.
 
 The guest helper wintool (wintool.c) runs a batch of programs in one
 boot: per program the free memory, the time until its first window, the
-windows, a snapshot of the screen (<id>.png), the quit (Ctrl-C, then
-close-window messages) and the free memory afterwards, plus libraries
-and classes that failed to open ("missing"). A guest that stops making
+windows, a snapshot of the screen (<id>.png), the quit (Ctrl-C,
+close-window messages, answered requesters, the Quit menu item) and the
+free memory afterwards, plus libraries and classes that failed to open
+("missing"). --repeat N runs each program N times in a row in one boot
+(ids <id>, <id>.2, ...): from the second run on its classes are loaded
+already, so what it leaves behind is a leak. A guest that stops making
 progress (crash, hang) or resets is stopped, the program is recorded as
 such, and the rest go on in a fresh boot; so does a batch after a program
 that does not quit.
@@ -105,18 +108,26 @@ def snap_png(snap, png):
 def command(r):
     """AmigaDOS command line for a program row: quoted path, then arguments."""
     exe, _, args = r['exe'].partition(' ')
-    return ('"Work:real/p/%s/%s" %s' % (r['id'], exe, args)).rstrip()
+    return ('"Work:real/p/%s/%s" %s' % (r['pid'], exe, args)).rstrip()
 
 
 def parse(lines):
     """Turn wintool's lines for one program into a result dict."""
     res = {'started': 'no', 'time': '', 'mem': '', 'memopen': '', 'memafter': '',
            'windows': [], 'quit': '', 'missing': [], 'status': ''}
+    for k in ('mem', 'memafter'):
+        for part in ('chip', 'largest', 'largestchip'):
+            res[k + part] = ''
     for line in lines:
         w = line.split(' ', 1)
         k, v = w[0], (w[1] if len(w) > 1 else '')
         if k in ('mem', 'memopen', 'memafter'):
-            res[k] = int(v)
+            # total, chip, largest block, largest chip block
+            nums = [int(x) for x in v.split()]
+            res[k] = nums[0]
+            if k != 'memopen':
+                for part, n in zip(('chip', 'largest', 'largestchip'), nums[1:]):
+                    res[k + part] = n
         elif k == 'window':
             res['started'], res['time'] = 'yes', '%.1f' % (int(v) / 1000)
         elif k == 'win':
@@ -148,7 +159,7 @@ def run_batch(fix, rows, assigns, outdir, stall_extra):
     os.makedirs(out)
     with open(os.path.join(real, 'batch.txt'), 'w', encoding='latin-1') as f:
         for r in rows:
-            f.write('%s\t%s\tWork:real/p/%s\t%s\n' % (r['id'], r['wait'], r['id'], command(r)))
+            f.write('%s\t%s\tWork:real/p/%s\t%s\n' % (r['id'], r['wait'], r['pid'], command(r)))
     stage = ['FailAt 21',
              'If EXISTS Work:real/booted',
              '  Echo reset >>Work:real/out/progress.txt', '  Quit', 'EndIf',
@@ -220,6 +231,8 @@ def main():
     p.add_argument('--ids', help='comma-separated program ids')
     p.add_argument('--group', default='mui3', help='programs of this group (default mui3)')
     p.add_argument('--first', type=int, help='only the first N programs of the selection')
+    p.add_argument('--repeat', type=int, default=1,
+                   help='run each program N times in a row in one boot')
     p.add_argument('--batch', type=int, default=15, help='programs per boot')
     p.add_argument('--stall', type=int, default=90,
                    help='seconds beyond a program\'s wait without progress: a hang')
@@ -235,6 +248,13 @@ def main():
         rows = [r for r in rows if r['group'] == a.group]
     if a.first:
         rows = rows[:a.first]
+    for r in rows:
+        r['pid'] = r['id']
+    if a.repeat > 1:
+        rows = [dict(r, id=r['id'] + ('.%d' % n if n > 1 else ''))
+                for r in rows for n in range(1, a.repeat + 1)]
+        # a program's runs stay in one boot
+        a.batch = max(a.batch // a.repeat, 1) * a.repeat
     outdir = a.out or os.path.join(ROOT, 'build', 'real', a.target)
     os.makedirs(outdir, exist_ok=True)
     fix = Fixture(a.fixture, a.emulator)
@@ -256,7 +276,9 @@ def main():
         if not os.path.isdir(src):
             results[r['id']] = ([], 'not fetched')
             continue
-        shutil.copytree(src, os.path.join(real, 'p', r['id']), symlinks=True)
+        dest = os.path.join(real, 'p', r['pid'])
+        if not os.path.isdir(dest):
+            shutil.copytree(src, dest, symlinks=True)
         todo.append(r)
     fails = 0
     while todo:
@@ -277,7 +299,8 @@ def main():
 
     with open(os.path.join(outdir, 'results.tsv'), 'w', encoding='utf-8') as f:
         f.write('# id\tstarted\tseconds\tfree before\tfree with windows\tfree after\t'
-                'delta\tquit\tstatus\twindows\tmissing\n')
+                'delta\tquit\tstatus\twindows\tmissing\tchip before\tchip after\t'
+                'largest before\tlargest after\tlargest chip before\tlargest chip after\n')
         print('%-16s %-7s %6s %9s %-6s %-11s %s' % ('id', 'started', 'secs', 'delta', 'quit',
                                                   'status', 'windows / missing'))
         for r in rows:
@@ -295,7 +318,10 @@ def main():
             f.write('\t'.join(str(x) for x in (
                 r['id'], res['started'], res['time'], res['mem'], res['memopen'],
                 res['memafter'], delta, res['quit'], res['status'],
-                ' | '.join(res['windows']), ' '.join(res['missing']))) + '\n')
+                ' | '.join(res['windows']), ' '.join(res['missing']),
+                res['memchip'], res['memafterchip'], res['memlargest'],
+                res['memafterlargest'], res['memlargestchip'],
+                res['memafterlargestchip'])) + '\n')
             print('%-16s %-7s %6s %9s %-6s %-11s %s' % (
                 r['id'], res['started'], res['time'], delta, res['quit'], res['status'],
                 ' | '.join(res['windows'][:2]) +
