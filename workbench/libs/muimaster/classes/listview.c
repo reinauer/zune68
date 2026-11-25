@@ -16,6 +16,7 @@ extern struct Library *MUIMasterBase;
 struct MUI_ListviewData
 {
     Object *list;
+    struct MUI_EventHandlerNode ehn;
 };
 
 /****** Listview.mui/MUIA_Listview_DefClickColumn ****************************
@@ -229,6 +230,50 @@ IPTR Listview__MUIM_KillNotifyObj(struct IClass *cl, Object *obj,
     return RedirectNotify(cl, obj, (Msg) msg, msg->TrigAttr);
 }
 
+/**************************************************************************
+ MUIM_Setup, MUIM_Cleanup, MUIM_HandleEvent
+
+ The window gives the keys of its active and default object to that
+ object's own handlers. A Listview is the one in the cycle chain, so the
+ keys it gets that way go on to its list, which moves its cursor.
+**************************************************************************/
+IPTR Listview__MUIM_Setup(struct IClass *cl, Object *obj, Msg msg)
+{
+    struct MUI_ListviewData *data = INST_DATA(cl, obj);
+
+    if (!DoSuperMethodA(cl, obj, msg))
+        return FALSE;
+
+    data->ehn.ehn_Events = IDCMP_RAWKEY;
+    data->ehn.ehn_Priority = 0;
+    data->ehn.ehn_Flags = 0;
+    data->ehn.ehn_Object = obj;
+    data->ehn.ehn_Class = cl;
+    DoMethod(_win(obj), MUIM_Window_AddEventHandler, (IPTR) &data->ehn);
+    return TRUE;
+}
+
+IPTR Listview__MUIM_Cleanup(struct IClass *cl, Object *obj, Msg msg)
+{
+    struct MUI_ListviewData *data = INST_DATA(cl, obj);
+
+    DoMethod(_win(obj), MUIM_Window_RemEventHandler, (IPTR) &data->ehn);
+    return DoSuperMethodA(cl, obj, msg);
+}
+
+IPTR Listview__MUIM_HandleEvent(struct IClass *cl, Object *obj,
+    struct MUIP_HandleEvent *msg)
+{
+    struct MUI_ListviewData *data = INST_DATA(cl, obj);
+
+    /* Other objects' keys come without a MUI key; the list has its own
+     * handler for those */
+    if (msg->muikey == MUIKEY_NONE)
+        return 0;
+    return DoMethod(data->list, MUIM_HandleEvent, (IPTR) msg->imsg,
+        msg->muikey);
+}
+
 /* Note that there is no OM_SET method here because this method will be
    propagated to the list by the Group class (superclass of both List and
    Listview) */
@@ -242,6 +287,13 @@ BOOPSI_DISPATCHER(IPTR, Listview_Dispatcher, cl, obj, msg)
         return Listview__OM_NEW(cl, obj, (struct opSet *)msg);
     case MUIM_Notify:
         return Listview__MUIM_Notify(cl, obj, (struct MUIP_Notify *)msg);
+    case MUIM_Setup:
+        return Listview__MUIM_Setup(cl, obj, msg);
+    case MUIM_Cleanup:
+        return Listview__MUIM_Cleanup(cl, obj, msg);
+    case MUIM_HandleEvent:
+        return Listview__MUIM_HandleEvent(cl, obj,
+            (struct MUIP_HandleEvent *)msg);
     case MUIM_KillNotify:
         return Listview__MUIM_KillNotify(cl, obj,
             (struct MUIP_KillNotify *)msg);
