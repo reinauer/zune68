@@ -701,11 +701,13 @@ IPTR Image__MUIM_AskMinMax(struct IClass *cl, Object *obj, struct MUIP_AskMinMax
 
         /* MUI 3.9: a font-matched image is fixed at its size scaled by
          * the font's size over 8 (tests/native/imgdef.c: a 7-pixel check
-         * mark is 13 pixels high under a 15-pixel font) */
+         * mark is 13 pixels high under a 15-pixel font). MUI 3.8 never
+         * narrows it below its own width under a font less than 8 wide:
+         * a radio image stays 17 wide under helvetica/9 (tf_XSize 5) */
         if (data->flags & MIF_FONTMATCHWIDTH)
         {
-            msg->MinMaxInfo->MinWidth = base_w
-                + minmax.DefWidth * _font(obj)->tf_XSize / 8;
+            msg->MinMaxInfo->MinWidth = base_w + MAX(minmax.DefWidth,
+                minmax.DefWidth * _font(obj)->tf_XSize / 8);
             msg->MinMaxInfo->DefWidth = msg->MinMaxInfo->MinWidth;
             msg->MinMaxInfo->MaxWidth = msg->MinMaxInfo->MinWidth;
         }

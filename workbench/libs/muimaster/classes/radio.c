@@ -184,7 +184,9 @@ IPTR Radio__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
 
         buttons[i] = HGroup,
             Child, (IPTR)(imgobjs[i] = ImageObject,
-                MUIA_Image_FontMatch, TRUE,
+                /* MUI 3.8 scales only the height: the image stays 17
+                 * wide under helvetica/24 */
+                MUIA_Image_FontMatchHeight, TRUE,
                 MUIA_InputMode, MUIV_InputMode_Immediate,
                 MUIA_Selected, state,
                 MUIA_ShowSelState, FALSE,
