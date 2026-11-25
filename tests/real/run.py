@@ -9,10 +9,11 @@ The programs come from programs.tsv, unpacked by fetch.py into the cache
 Work:real/p/<id>, the classes and libraries of support.tsv to
 Work:real/libs (last on LIBS:, so classes the system or Zune68 brings
 are used first), its devices to Work:real/devs and fonts to
-Work:real/fonts (last on DEVS: and FONTS:). On the zune target Zune68's
-build (--lib) is staged as in tests/native/run_probes.py, without the
-bundled classes that only share their name with a support class
-(NAMESAKES); on mui38 the fixture's MUI 3.8 is used.
+Work:real/fonts (last on DEVS: and FONTS:). Work:real/picture.iff is a
+small picture for programs that want one as argument. On the zune
+target Zune68's build (--lib) is staged as in tests/native/run_probes.py,
+without the bundled classes that only share their name with a support
+class (NAMESAKES); on mui38 the fixture's MUI 3.8 is used.
 
 The guest helper wintool (wintool.c) runs a batch of programs in one
 boot: per program the free memory, the time until its first window, the
@@ -120,10 +121,41 @@ def snap_png(snap, png):
         f.write(chunk(b'IEND', b''))
 
 
+def write_picture(path, w=64, h=32):
+    """A small 4-colour IFF ILBM (diagonal stripes), for programs that want
+    a picture to show."""
+    rb = (w + 15) // 16 * 2
+    body = bytearray()
+    for y in range(h):
+        for plane in range(2):
+            row = bytearray(rb)
+            for x in range(w):
+                if ((x + y) // 8 % 4) >> plane & 1:
+                    row[x >> 3] |= 0x80 >> (x & 7)
+            body += row
+
+    def chunk(kind, data):
+        return kind + struct.pack('>I', len(data)) + data + (b'\0' if len(data) & 1 else b'')
+    bmhd = struct.pack('>HHhhBBBBHBBhh', w, h, 0, 0, 2, 0, 0, 0, 0, 10, 11, w, h)
+    cmap = bytes([170, 170, 170, 0, 0, 0, 255, 255, 255, 100, 136, 187])
+    form = b'ILBM' + chunk(b'BMHD', bmhd) + chunk(b'CMAP', cmap) + chunk(b'BODY', bytes(body))
+    with open(path, 'wb') as f:
+        f.write(b'FORM' + struct.pack('>I', len(form)) + form)
+
+
 def command(r):
     """AmigaDOS command line for a program row: quoted path, then arguments."""
     exe, _, args = r['exe'].partition(' ')
     return ('"Work:real/p/%s/%s" %s' % (r['pid'], exe, args)).rstrip()
+
+
+def assigns_of(r):
+    """(name, path below the program's directory) of a row's assigns column."""
+    out = []
+    for a in filter(None, r.get('assigns', '').split(',')):
+        name, _, path = a.partition('=')
+        out.append((name, '' if path in ('', '.') else path))
+    return out
 
 
 def parse(lines):
@@ -183,7 +215,9 @@ def run_batch(fix, rows, assigns, outdir, stall_extra):
              'Assign LIBS: SYS:Classes ADD',
              'Assign LIBS: Work:real/libs ADD',
              'Assign DEVS: Work:real/devs ADD',
-             'Assign FONTS: Work:real/fonts ADD',
+             'Assign FONTS: Work:real/fonts ADD'] + [
+             'Assign %s: "Work:real/p/%s%s"' % (name, r['pid'], '/' + path if path else '')
+             for r in rows for name, path in assigns_of(r)] + [
              'Work:real/wintool batch Work:real/batch.txt Work:real/out',
              'Echo batchend >>Work:real/out/progress.txt']
     booted = os.path.join(real, 'booted')
@@ -282,6 +316,7 @@ def main():
     os.makedirs(os.path.join(real, 'p'))
     build_wintool(os.path.join(real, 'wintool'))
     absent = copy_support(a.cache, real)
+    write_picture(os.path.join(real, 'picture.iff'))
     if absent:
         print('support files not in the cache: %s' % ' '.join(absent))
     assigns = stage_zune(fix, a.lib) if a.target == 'zune' else []
@@ -298,6 +333,8 @@ def main():
         dest = os.path.join(real, 'p', r['pid'])
         if not os.path.isdir(dest):
             shutil.copytree(src, dest, symlinks=True)
+            for _, path in assigns_of(r):
+                os.makedirs(os.path.join(dest, path), exist_ok=True)
         todo.append(r)
     fails = 0
     while todo:

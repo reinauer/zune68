@@ -9,7 +9,9 @@ path, or a URL for the few that are elsewhere), dir (the program's
 directory inside the unpacked archive), exe (relative to dir, with
 arguments), wait (seconds to wait for its first window), title (pattern of
 its window title, where the window belongs to another process than the
-command) and notes. support.tsv lists the third-party classes, libraries,
+command), notes and assigns (NAME=path below dir, comma-separated: the
+assigns its installer would make, so it finds its files and does not ask
+for a volume). support.tsv lists the third-party classes, libraries,
 devices and fonts the programs use, with the archive and path each comes
 from (MagicWB 2.1p, a shareware evaluation version, for the XEN font).
 
@@ -48,7 +50,8 @@ On the zune target Zune68's build (muimaster.library and Libs/MUI, from
 targets SYS:Classes is on LIBS:, as OS 3.1's Startup-Sequence has it, and
 the classes and libraries of support.tsv come last on LIBS:, so a class
 that MUI 3.8 or Zune68 brings is used in place of the archive's; its
-devices and fonts come last on DEVS: and FONTS:.
+devices and fonts come last on DEVS: and FONTS:. Work:real/picture.iff is
+a small picture for programs that want one as argument.
 
 Each boot runs up to --batch programs (default 15) with the guest helper
 wintool (wintool.c). For each program it records the free memory, starts
