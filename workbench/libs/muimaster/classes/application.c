@@ -1744,8 +1744,9 @@ fail:
 /**************************************************************************
  OM_DISPOSE
 **************************************************************************/
-/* After callbacks and external users have stopped, snapshot and optionally
- * save positions, remove and dispose child windows, and release owned
+/* After callbacks and external users have stopped, create a missing
+ * ENV:MUI, snapshot and optionally save positions, remove and dispose
+ * child windows, and release owned
  * application resources before calling Notify disposal. Return the
  * superclass result. Saving positions can block on I/O; queued methods
  * are discarded.
@@ -1761,6 +1762,24 @@ static IPTR Application__OM_DISPOSE(struct IClass *cl, Object *obj,
     if (data->app_Base)
     {
         char filename[255];
+        struct Process *pr = (struct Process *)FindTask(NULL);
+
+        /* MUI 3.8 saves ENV:MUI/<base>.prefs when an application ends,
+         * creating ENV:MUI; programs keep their own files there (AmFTP:
+         * its prefs program cannot save until that drawer exists) */
+        if (pr->pr_Task.tc_Node.ln_Type == NT_PROCESS)
+        {
+            APTR win = pr->pr_WindowPtr;
+            BPTR lock;
+
+            pr->pr_WindowPtr = (APTR)-1;
+            if (!(lock = Lock("ENV:MUI", ACCESS_READ)))
+                lock = CreateDir("ENV:MUI");
+            if (lock)
+                UnLock(lock);
+            pr->pr_WindowPtr = win;
+        }
+
         positionmode = data->app_GlobalInfo.mgi_Prefs->window_position;
         if (positionmode >= 1)
         {
