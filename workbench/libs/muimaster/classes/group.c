@@ -1027,6 +1027,10 @@ IPTR Group__OM_NEW(struct IClass *cl, Object *obj, struct opSet *msg)
          * It then installs a clip region.
          * Also MUI_Layout() uses this. Probably for speed up reason  */
         _flags(obj) |= MADF_ISVIRTUALGROUP;
+        /* MUI 3.8's Virtgroup sets MUIA_CustomBackfill: its background
+         * comes from MUIM_Backfill, which a subclass may override to
+         * paint its contents there (HTMLview draws its page so) */
+        muiAreaData(obj)->mad_Flags2 |= MADF2_CUSTOMBACKFILL;
     }
 
 #if (0)
