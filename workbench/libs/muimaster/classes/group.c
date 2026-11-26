@@ -2460,12 +2460,18 @@ IPTR Group__MUIM_Virtgroup_EndPaint(struct IClass *cl, Object *obj)
 /**************************************************************************
  MUIM_Draw - draw the group
 **************************************************************************/
-/* Paint the background of an object's box outside its inner box */
+/* Paint the background between an object's frame and its inner box. The
+ * frame itself is left alone: a plain MUI_Redraw does not redraw it, and a
+ * custom backfill (HTMLview's page) would cover it */
 static void group_clear_ring(Object *obj)
 {
-    LONG l = _left(obj), t = _top(obj), r = _right(obj), b = _bottom(obj);
+    struct MUI_AreaData *ad = muiAreaData(obj);
     LONG ml = _mleft(obj), mt = _mtop(obj), mr = _mright(obj),
         mb = _mbottom(obj);
+    LONG l = MAX(ml - ad->mad_InnerLeft, _left(obj));
+    LONG t = MAX(mt - ad->mad_InnerTop, _top(obj));
+    LONG r = MIN(mr + ad->mad_InnerRight, _right(obj));
+    LONG b = MIN(mb + ad->mad_InnerBottom, _bottom(obj));
 
     if (mt > t)
         zune_draw_background(obj, l, t, r - l + 1, mt - t, l, t, 0);
