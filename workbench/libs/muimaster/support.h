@@ -61,6 +61,7 @@ IPTR XGET(Object * obj, Tag attr);
 #endif
 
 IPTR DoSetupMethod(Object * obj, struct MUI_RenderInfo *info);
+IPTR DoCleanupMethod(Object * obj);
 IPTR DoShowMethod(Object * obj);
 IPTR DoHideMethod(Object * obj);
 /* Stack-owned modal input guard, cancelled before a window is closed. */

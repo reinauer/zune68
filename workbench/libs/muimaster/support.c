@@ -70,10 +70,26 @@ IPTR XGET(Object * obj, Tag attr)
 **************************************************************************/
 IPTR DoSetupMethod(Object * obj, struct MUI_RenderInfo * info)
 {
+    IPTR ret;
+
     /* MUI set the correct render info *before* it calls MUIM_Setup so please
      * only use this function instead of DoMethodA() */
     muiRenderInfo(obj) = info;
-    return DoMethod(obj, MUIM_Setup, (IPTR) info);
+    ret = DoMethod(obj, MUIM_Setup, (IPTR) info);
+    if (!ret)
+        muiRenderInfo(obj) = NULL;
+    return ret;
+}
+
+/* As in MUI 3.8, the render info stays valid until MUIM_Cleanup returns:
+ * a subclass may use it after its DoSuperMethod (HTMLview releases its
+ * pens so, tests/native/cleanupri.c). The sender clears it afterwards. */
+IPTR DoCleanupMethod(Object * obj)
+{
+    IPTR ret = DoMethod(obj, MUIM_Cleanup);
+
+    muiRenderInfo(obj) = NULL;
+    return ret;
 }
 
 IPTR DoShowMethod(Object * obj)

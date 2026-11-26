@@ -1134,7 +1134,7 @@ static ULONG BeginCellObject(Object *list, Object *cell, struct MUI_MinMax *mm)
 }
 static void EndCellObject(Object *cell, ULONG state)
 {
-    if (state & 2) DoMethod(cell, MUIM_Cleanup);
+    if (state & 2) DoCleanupMethod(cell);
     if (state & 1) DoMethod(cell, MUIM_DisconnectParent);
 }
 static void DrawCellObject(Object *list, Object *cell, LONG left, LONG top,
@@ -2458,7 +2458,7 @@ IPTR List__MUIM_Setup(struct IClass *cl, Object *obj,
 static void ListImageCleanup(Object *img)
 {
     if (_flags(img) & MADF_SETUP)
-        DoMethod(img, MUIM_Cleanup);
+        DoCleanupMethod(img);
     if (muiNotifyData(img)->mnd_GlobalInfo)
         DoMethod(img, MUIM_DisconnectParent);
 }
@@ -5498,7 +5498,7 @@ static IPTR ListEndEdit(struct IClass *cl, Object *obj, ULONG mode, BOOL force)
     if (!accepted && !force) { data->ending_edit = FALSE; return FALSE; }
     set(_win(obj), MUIA_Window_ActiveObject, data->edit_focus);
     data->edit_object = NULL;
-    DoHideMethod(editor); DoMethod(editor, MUIM_Cleanup);
+    DoHideMethod(editor); DoCleanupMethod(editor);
     DoMethod(editor, MUIM_DisconnectParent); MUI_DisposeObject(editor);
     data->ending_edit = FALSE;
     DoMethod(obj, MUIM_List_Redraw, MUIV_List_Redraw_All);

@@ -1,0 +1,19 @@
+cleanupri=1
+opening
+rectangle setup-after ri=same screen=set
+virtgroup setup-after ri=same screen=set
+group setup-after ri=same screen=set
+opened=1
+closing
+rectangle hide-after ri=same screen=set
+virtgroup hide-after ri=same screen=set
+group hide-after ri=same screen=set
+group cleanup-before ri=same screen=set
+rectangle cleanup-before ri=same screen=set
+rectangle cleanup-after ri=same screen=set
+virtgroup cleanup-before ri=same screen=set
+virtgroup cleanup-after ri=same screen=set
+group cleanup-after ri=same screen=set
+disposing
+result=0
+[rc 0]

@@ -35,7 +35,7 @@ from uaefixture import Fixture, WINUAE, stage_zune  # noqa: E402
 # addresses, timing or MUI 4/5 features.
 PROBES = [
     'appbase', 'appsignals', 'backfillrect', 'balancebounds', 'baldraw', 'balweight',
-    'barfmt', 'centrestyle', 'colgroup', 'compoundwalk', 'cornerbg', 'defclamp',
+    'barfmt', 'centrestyle', 'cleanupri', 'colgroup', 'compoundwalk', 'cornerbg', 'defclamp',
     'demolayout', 'disappear', 'emptyfixprobe', 'gaugetext', 'getunknown',
     'ghostclasses', 'ghostdump', 'hdist', 'imgdef', 'imgsizes', 'imgspec', 'layoutmsg',
     'listbounds', 'listempty', 'listfmt', 'listjump', 'listkey', 'listpartial',

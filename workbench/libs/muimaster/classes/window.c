@@ -5066,7 +5066,7 @@ IPTR Window__OM_DISPOSE(struct IClass *cl, Object *obj, Msg msg)
         WindowClose(cl, obj);
     if (root) {
         if (_flags(root) & MADF_CANDRAW) DoHideMethod(root);
-        if (_flags(root) & MADF_SETUP) DoMethod(root, MUIM_Cleanup);
+        if (_flags(root) & MADF_SETUP) DoCleanupMethod(root);
         MUI_DisposeObject(root);
         data->wd_RootObject = NULL;
     }
@@ -5913,7 +5913,7 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
     {
         struct MUI_RenderInfo *mri = &data->wd_RenderInfo;
 
-        DoMethod(data->wd_RootObject, MUIM_Cleanup);
+        DoCleanupMethod(data->wd_RootObject);
         CloseRenderInfoFonts(mri);
         if (mri->mri_Fallback < 5)
             muiGlobalInfo(obj)->mgi_Prefs->fallback = mri->mri_Fallback + 1;
@@ -5941,7 +5941,7 @@ static ULONG WindowOpen(struct IClass *cl, Object *obj)
     {
         /* free display dependant data */
         data->wd_Menustrip = NULL;
-        DoMethod(data->wd_RootObject, MUIM_Cleanup);
+        DoCleanupMethod(data->wd_RootObject);
         DoMethod(obj, MUIM_Window_Cleanup);
         CleanupWindowSetup(data);
         CleanupRenderInfo(obj, data, &data->wd_RenderInfo);
@@ -6040,7 +6040,7 @@ static ULONG WindowClose(struct IClass *cl, Object *obj)
     data->wd_Menustrip = NULL;
 
     /* free display dependant data */
-    if (data->wd_RootObject) DoMethod(data->wd_RootObject, MUIM_Cleanup);
+    if (data->wd_RootObject) DoCleanupMethod(data->wd_RootObject);
     DoMethod(obj, MUIM_Window_Cleanup);
     CleanupWindowSetup(data);
     CleanupRenderInfo(obj, data, &data->wd_RenderInfo);

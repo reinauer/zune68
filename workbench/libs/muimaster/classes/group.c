@@ -1573,7 +1573,7 @@ IPTR Group__MUIM_Remove(struct IClass *cl, Object *obj,
     if (_flags(obj) & MADF_CANDRAW)
         DoHideMethod(msg->obj);
     if (_flags(obj) & MADF_SETUP)
-        DoMethod(msg->obj, MUIM_Cleanup);
+        DoCleanupMethod(msg->obj);
     if (muiNotifyData(obj)->mnd_GlobalInfo)
     {
         DoMethod(msg->obj, MUIM_DisconnectParent);
@@ -2105,7 +2105,7 @@ IPTR Group__MUIM_Setup(struct IClass *cl, Object *obj,
                 if (!(_flags(child) & MADF_SHOWME))
                     continue;
 #endif
-                DoMethod(child, MUIM_Cleanup);
+                DoCleanupMethod(child);
             }
             /* and undo Area's Setup: a group left marked as set up gets
              * MUIM_Cleanup later (Window's OM_DISPOSE), which would reach

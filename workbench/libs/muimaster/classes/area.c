@@ -3339,7 +3339,9 @@ static IPTR Area__MUIM_Setup(struct IClass *cl, Object *obj,
 *
 *   FUNCTION
 *       Unregister shortcuts, timer and event handlers, clear window focus if
-*       this is active, clean prepared backgrounds and clear RenderInfo.
+*       this is active and clean prepared backgrounds. RenderInfo stays
+*       set until the sender (DoCleanupMethod) clears it after the
+*       subclasses have returned, as in MUI 3.8.
 *
 *   INPUTS
 *       No arguments beyond MethodID. Match successful Setup after Hide and
@@ -3409,7 +3411,8 @@ static IPTR Area__MUIM_Cleanup(struct IClass *cl, Object *obj,
         data->mad_Background = NULL;
     }
 
-    muiRenderInfo(obj) = NULL;
+    /* The render info stays: DoCleanupMethod() clears it once the
+     * subclasses have returned */
     if (data->mad_Live)
         FreeMem(data->mad_Live, sizeof(struct MUI_AreaLive));
     data->mad_Live = NULL;
