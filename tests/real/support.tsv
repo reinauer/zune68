@@ -137,3 +137,4 @@ font	XEN.font	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN.font
 font	XEN/8	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/8
 font	XEN/9	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/9
 font	XEN/11	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/11
+library	xadmaster.library	xadmaster	util/arc/xadmaster000.lha	xad/Libs/xadmaster.library
