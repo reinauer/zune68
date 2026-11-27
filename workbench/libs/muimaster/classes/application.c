@@ -377,7 +377,8 @@ struct timerequest_ext
 *   FUNCTION
 *       Use a shared unsuffixed base when true; default FALSE. If a tracked
 *       application already has the base, queue MUIM_Set of DoubleStart=TRUE on
-*       that application and fail this construction.
+*       that application and fail this construction; MUI_Error() then returns
+*       MUIE_SingleTask.
 *
 *   INPUTS
 *       BOOL; initialize only.
@@ -1327,12 +1328,14 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
     data->app_WindowFamily = MUI_NewObjectA(MUIC_Family, NULL);
     if (!data->app_WindowFamily)
     {
+        zune_set_error(MUIE_OutOfMemory);
         goto fail;
     }
 
     data->app_GlobalInfo.mgi_ApplicationObject = obj;
     if (!(data->app_GlobalInfo.mgi_WindowsPort = CreateMsgPort()))
     {
+        zune_set_error(MUIE_OutOfMemory);
         goto fail;
     }
 
@@ -1393,9 +1396,12 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
                 TRUE);
             FreeVec(data->app_Base);
             data->app_Base = NULL;
+            zune_set_error(MUIE_SingleTask);
         }
         ReleaseSemaphore(&MUIMB(MUIMasterBase)->ZuneSemaphore);
     }
+    else if (!data->app_Base)
+        zune_set_error(MUIE_OutOfMemory);
 
     if (!data->app_Base)
     {
@@ -1408,6 +1414,7 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
         TAG_DONE);
     if (!data->app_GlobalInfo.mgi_Configdata)
     {
+        zune_set_error(MUIE_OutOfMemory);
         goto fail;
     }
     get(data->app_GlobalInfo.mgi_Configdata, MUIA_Configdata_ZunePrefs,
@@ -1424,6 +1431,7 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
     if (!(data->app_TimerPort =
             ZuneCreateSharedPort(data->app_GlobalInfo.mgi_WindowsPort)))
     {
+        zune_set_error(MUIE_OutOfMemory);
         goto fail;
     }
 
@@ -1431,6 +1439,7 @@ static IPTR Application__OM_NEW(struct IClass *cl, Object *obj,
             (struct timerequest *)CreateIORequest(data->app_TimerPort,
                 sizeof(struct timerequest))))
     {
+        zune_set_error(MUIE_OutOfMemory);
         goto fail;
     }
 

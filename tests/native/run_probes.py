@@ -5,6 +5,8 @@ Each probe is built from tests/native/<name>.c and run in one boot of a
 WinUAE fixture (see uaefixture.py), in a directory of its own on Work:,
 so probes that write <name>.txt and probes that print work alike. The
 MUI 3.8 output is the reference, kept in tests/native/ref/<name>.txt.
+Where Zune68 differs on purpose, ref/zune68/<name>.txt holds its expected
+output and is compared instead.
 
   run_probes.py --zune FIX                    compare Zune68 with ref/
   run_probes.py --mui38 FIX --update-ref      write ref/ from MUI 3.8
@@ -39,7 +41,7 @@ PROBES = [
     'demolayout', 'disappear', 'emptyfixprobe', 'gaugetext', 'getunknown',
     'ghostclasses', 'ghostdump', 'hdist', 'imgdef', 'imgsizes', 'imgspec', 'layoutmsg',
     'listbounds', 'listempty', 'listfmt', 'listjump', 'listkey', 'listpartial',
-    'listprop', 'lvfix', 'newset', 'patternphase', 'radiopix', 'regpix', 'regrows',
+    'listprop', 'lvfix', 'muierror', 'newset', 'patternphase', 'radiopix', 'regpix', 'regrows',
     'rootframe', 'stringscroll', 'textstyles', 'titleframe', 'ulprobe', 'undermin',
     'virtbounds', 'virtualnotify', 'weightset', 'widgetsizes', 'winarea', 'winclamp',
     'windowpercent', 'winsize',
@@ -185,6 +187,9 @@ def main():
                 with open(os.path.join(a.out, n + '.txt'), 'w', encoding='latin-1') as f:
                     f.write(out[n])
             ref = os.path.join(a.refdir, n + '.txt')
+            own = os.path.join(a.refdir, 'zune68', n + '.txt')
+            if os.path.exists(own):
+                ref = own
             if not os.path.exists(ref):
                 print('%-16s no reference' % n)
                 continue
@@ -196,7 +201,8 @@ def main():
             differ += 1
             print('%-16s differs' % n)
             diff = list(difflib.unified_diff(want.splitlines(), out[n].splitlines(),
-                                             'mui38/' + n, 'zune68/' + n, n=0, lineterm=''))
+                                             os.path.relpath(ref, a.refdir), 'zune68/' + n,
+                                             n=0, lineterm=''))
             for line in diff[:a.max_diff]:
                 print('    ' + line)
             if len(diff) > a.max_diff:

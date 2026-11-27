@@ -64,6 +64,7 @@ BPTR LibClose(struct MUIMasterBase_intern *base __asm("a6"))
 {
     if (MUIMasterBase && &base->library != MUIMasterBase)
         base = MUIMB(MUIMasterBase);
+    zune_clear_error();
     if (!--base->library.lib_OpenCnt &&
         (base->library.lib_Flags & LIBF_DELEXP))
         return LibExpunge(base);

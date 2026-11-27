@@ -1,0 +1,12 @@
+muierror=2
+rectangle obj=set MUI_Error=0
+missing-class obj=null MUI_Error=0
+rectangle-after-failure obj=set MUI_Error=0
+other-task MUI_Error=0
+first-app obj=set MUI_Error=0
+second-singletask-app obj=null MUI_Error=0
+window-missing-root obj=null MUI_Error=0
+set-error-5 obj=set MUI_Error=0
+set-error-0 obj=set MUI_Error=0
+result=0
+[rc 0]

@@ -99,12 +99,20 @@ struct MUIMasterBase_intern
     /* What MUI's private LVO -264 returns (classes/application.c) */
     Object                      *Applist;
     struct MUI_CustomClass      *ApplistClass;
-    /* Borrowed built-in classes, cleared before any expunge attempt. */
+    /* The MUIE_* code MUI_Error() returns, per task (mui_error.c) */
+    struct { struct Task *task; LONG error; } TaskErrors[16];
+    UBYTE                       TaskErrorNext;
+    /* Borrowed built-in classes, cleared before any expunge attempt.
+     * BuiltinClasses, Applications and defaultPens end the base: the
+     * tests/check_*.py harnesses find them from its end. */
     Class                       *BuiltinClassCache[32];
     struct MinList              BuiltinClasses;
     struct MinList              Applications;
     struct MUI_PenSpec          *defaultPens;
 };
+
+void zune_set_error(LONG error); /* mui_error.c */
+void zune_clear_error(void);
 
 
 #undef MUIMB

@@ -14,7 +14,7 @@ from amitools.vamos.machine.machine import Machine
 # Keep linked code above the mocked OS, objects, heap and stack.
 BASE, STACK, RAM_KIB = 0x100000, 0xf0000, 2048
 EXEC, INTUITION, MASTER, EXTERNAL = 0x68000, 0x69000, 0x6a000, 0x6b000
-ROOTCLASS, EXTCLASS, TEXT = 0x6c000, 0x6c100, 0x6d000
+ROOTCLASS, EXTCLASS, TEXT, TASK = 0x6c000, 0x6c100, 0x6d000, 0x6e000
 # Classic m68k IClass and Library ABI offsets.
 SUPER, ID, REFS, SUBS, OBJECTS, FLAGS = 24, 28, 36, 40, 44, 48
 OPEN_COUNT, LIB_FLAGS = 32, 14
@@ -44,6 +44,7 @@ class Harness:
         self.library_freed = False
         self.lock_depth = 0
         self.busy = False
+        self.task = TASK  # what FindTask() returns: a zeroed, unnamed task
         self.mem.w32(self.symbols['_SysBase'], EXEC)
         self.mem.w32(self.symbols['_IntuitionBase'], INTUITION)
         self.mem.w32(self.symbols['_MUIMasterBase'], MASTER)
@@ -67,6 +68,7 @@ class Harness:
                            (570, self.release), (576, self.attempt),
                            (684, self.alloc_vec),
                            (690, self.free_vec), (210, self.free_mem),
+                           (294, lambda: self.cpu.w_reg(0, self.task)),  # FindTask
                            (132, lambda: None), (138, lambda: None)]:  # Forbid, Permit
             self.trap(EXEC - offset, fn)
         for offset, fn in [(678, self.make_class), (714, self.free_class),
@@ -427,6 +429,28 @@ def lookup_cache(h):
     h.assert_expunged()
 
 
+def errors(h):
+    """MUI_Error() returns the calling task's last known cause."""
+    h.call('LibOpen')
+    assert h.call('MUI_Error') == 0
+    h.trap(h.symbols['_ZUNE_GetExternalClass'], lambda: h.cpu.w_reg(0, 0))
+    assert not h.call('MUI_NewObjectA', h.string('Missing.mcc'), 0)
+    assert h.call('MUI_Error') == 4, 'missing class: MUIE_MissingLibrary'
+    obj = h.call('MUI_NewObjectA', h.string('Area.mui'), 0)
+    assert obj and h.call('MUI_Error') == 4, 'a success keeps the code'
+    h.call('MUI_DisposeObject', obj)
+    h.call('MUI_SetError', 6)
+    assert h.call('MUI_Error') == 6
+    h.task = TASK + 0x200
+    assert h.call('MUI_Error') == 0, 'another task has its own code'
+    h.task = TASK
+    h.call('LibClose')
+    h.call('LibOpen')
+    assert h.call('MUI_Error') == 0, 'closing the library clears the code'
+    h.call('LibClose')
+    h.assert_expunged()
+
+
 def check(path, cases):
     for name in cases:
         h = Harness(path)
@@ -441,9 +465,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('libraries', type=Path, nargs='+')
     parser.add_argument('--case', choices=['cycles', 'custom', 'builtin', 'expunge',
-                                                'hierarchy', 'empty', 'lookup_cache'])
+                                                'hierarchy', 'empty', 'lookup_cache',
+                                                'errors'])
     args = parser.parse_args()
     for path in args.libraries:
         check(path, [args.case] if args.case else
               ['cycles', 'custom', 'builtin', 'expunge', 'hierarchy', 'empty',
-               'lookup_cache'])
+               'lookup_cache', 'errors'])

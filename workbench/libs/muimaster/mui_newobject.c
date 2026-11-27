@@ -142,13 +142,20 @@ void zune_dispose_children_but(struct TagItem *tags, Tag owned)
             MUI_FreeClass(cl);
         if (obj) return obj;
 
+        /* the cause is the class's or a child's: keep the child's code */
         bug("*** Could not create object of %s\n", classid);
         MUI_FreeClass(cl);
     }
     else if (ZUNE_IsBuiltinClass(classid))
+    {
         zune_dispose_children(tags);
+        zune_set_error(MUIE_OutOfMemory);
+    }
     else
+    {
         bug("*** Couldn't find %s\n", classid);
+        zune_set_error(MUIE_MissingLibrary);
+    }
 
     return NULL;
 
