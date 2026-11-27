@@ -9,7 +9,10 @@ The programs come from programs.tsv, unpacked by fetch.py into the cache
 Work:real/p/<id>, the classes and libraries of support.tsv to
 Work:real/libs (last on LIBS:, so classes the system or Zune68 brings
 are used first), its devices to Work:real/devs and fonts to
-Work:real/fonts (last on DEVS: and FONTS:). Work:real/picture.iff is a
+Work:real/fonts (last on DEVS: and FONTS:). An assign row's files go to
+Work:real/assign, and the first part of its name is assigned there
+(AmiSSL/Certs: AmiSSL: is Work:real/assign/AmiSSL, as AmiSSL's installer
+assigns its drawer). Work:real/picture.iff is a
 small picture for programs that want one as argument. On the zune
 target Zune68's build (--lib) is staged as in tests/native/run_probes.py,
 without the bundled classes that only share their name with a support
@@ -68,26 +71,38 @@ def build_wintool(out):
 
 
 # where each kind of support.tsv goes below Work:real
-SUPPORT_DIRS = {'class': 'libs/MUI', 'library': 'libs', 'device': 'devs', 'font': 'fonts'}
+SUPPORT_DIRS = {'class': 'libs/MUI', 'library': 'libs', 'device': 'devs', 'font': 'fonts',
+                'assign': 'assign'}
 
 
 def copy_support(cache, real):
     """Copy support.tsv's files to real/libs/MUI (classes), real/libs,
-    real/devs and real/fonts; names may have a directory part."""
+    real/devs, real/fonts and real/assign; names may have a directory
+    part, and an assign row may name a directory."""
     for d in set(p.split('/')[0] for p in SUPPORT_DIRS.values()):
         shutil.rmtree(os.path.join(real, d), ignore_errors=True)
     absent = []
     for r in support():
         src = os.path.join(cache, r['key'], 'x', r['path'])
+        to = os.path.join(real, SUPPORT_DIRS[r['kind']], r['name'])
+        if r['kind'] == 'assign' and os.path.isdir(src):
+            shutil.copytree(src, to)
+            continue
         if not os.path.isfile(src):
             absent.append(r['name'])
             continue
-        to = os.path.join(real, SUPPORT_DIRS[r['kind']], r['name'])
         os.makedirs(os.path.dirname(to), exist_ok=True)
         shutil.copy(src, to)
     for d in SUPPORT_DIRS.values():
         os.makedirs(os.path.join(real, d), exist_ok=True)
     return absent
+
+
+def support_assigns(real):
+    """Stage lines for the assigns of the assign rows that were copied."""
+    names = sorted(set(r['name'].split('/')[0] for r in support() if r['kind'] == 'assign'))
+    return ['Assign %s: Work:real/assign/%s' % (n, n) for n in names
+            if os.path.isdir(os.path.join(real, 'assign', n))]
 
 
 def snap_png(snap, png):
@@ -319,7 +334,7 @@ def main():
     write_picture(os.path.join(real, 'picture.iff'))
     if absent:
         print('support files not in the cache: %s' % ' '.join(absent))
-    assigns = stage_zune(fix, a.lib) if a.target == 'zune' else []
+    assigns = (stage_zune(fix, a.lib) if a.target == 'zune' else []) + support_assigns(real)
     for name in NAMESAKES if a.target == 'zune' else ():
         if os.path.isfile(os.path.join(real, 'libs', 'MUI', name)):
             os.remove(os.path.join(fix.work, 'mui', 'Libs', 'MUI', name))

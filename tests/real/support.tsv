@@ -138,3 +138,6 @@ font	XEN/8	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/8
 font	XEN/9	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/9
 font	XEN/11	magicwb	util/wb/MagicWB21p.lha	MagicWB2.1p/Fonts/XEN/11
 library	xadmaster.library	xadmaster	util/arc/xadmaster000.lha	xad/Libs/xadmaster.library
+library	amisslmaster.library	amissl	util/libs/AmiSSL-v5-OS3.lha	AmiSSL/Libs/AmigaOS3/amisslmaster.library
+library	AmiSSL/amissl_v362.library	amissl	util/libs/AmiSSL-v5-OS3.lha	AmiSSL/Libs/AmigaOS3/AmiSSL/68020-40/amissl_v362.library
+assign	AmiSSL/Certs	amissl	util/libs/AmiSSL-v5-OS3.lha	AmiSSL/Certs
