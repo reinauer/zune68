@@ -211,6 +211,10 @@ struct MUI_ListData
     LONG mouse_x;
     LONG mouse_y;
 
+    /* a press on an entry of a draggable list, until a drag starts */
+    BOOL drag_pending;
+    WORD drag_x, drag_y;
+
     /* double click */
     ULONG last_secs;
     ULONG last_mics;
@@ -5007,14 +5011,35 @@ static IPTR List__MUIM_CreateDragImage(struct IClass *cl, Object *obj,
             muiRenderInfo(obj)->mri_RastPort = rp_save;
         }
 
-        /* Ensure drag point matches where user clicked */
-        img->touchx = msg->touchx - zframe->ileft + _addleft(obj);
-        img->touchy = -(pos.yoffset + data->entry_maxheight / 2)
-            - zframe->itop;
+        /* The image is drawn at the pointer less these: the click's place
+         * in the image, so the entry stays where it was grabbed */
+        img->touchx = msg->touchx - _addleft(data->area) + zframe->ileft;
+        img->touchy = pos.yoffset + data->entry_maxheight / 2
+            + zframe->itop;
         img->flags = 0;
     }
 
     return (IPTR) img;
+}
+
+/* Whether the pointer, moved with the button held since a press on an
+ * entry, starts dragging it. As measured on MUI 3.8: a single-select list
+ * starts after the drag start distance in any direction; a multi-select
+ * list only when the pointer leaves the entries at the side, since moving
+ * up and down selects (and scrolls beyond the ends). */
+static BOOL list_drag_starts(Object *obj, struct MUI_ListData *data,
+    struct IntuiMessage *imsg)
+{
+    LONG len;
+
+    if (!(imsg->Qualifier & IEQUALIFIER_LEFTBUTTON))
+        return FALSE;
+    if (data->multiselect != MUIV_Listview_MultiSelect_None)
+        return imsg->MouseX < _left(data->area)
+            || imsg->MouseX > _right(data->area);
+    len = muiGlobalInfo(obj)->mgi_Prefs->drag_autostart_length;
+    return abs(imsg->MouseX - data->drag_x) >= len
+        || abs(imsg->MouseY - data->drag_y) >= len;
 }
 
 static void DoWheelMove(struct IClass *cl, Object *obj, LONG wheely)
@@ -5206,6 +5231,11 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                         msg->imsg->MouseX, msg->imsg->MouseY)))
                 {
                     data->mouse_click = MOUSE_CLICK_ENTRY;
+                    data->drag_pending =
+                        data->drag_type != MUIV_Listview_DragType_None
+                        && pos.entry != -1;
+                    data->drag_x = msg->imsg->MouseX;
+                    data->drag_y = msg->imsg->MouseY;
 
                     if (!data->read_only && pos.entry != -1)
                     {
@@ -5274,6 +5304,7 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
                     set(_win(obj), MUIA_Window_ActiveObject, (IPTR)target);
                     data->mouse_click = 0;
                 }
+                data->drag_pending = FALSE;
 
                 /* Restore normal event mask */
                 DoMethod(_win(obj), MUIM_Window_RemEventHandler,
@@ -5287,6 +5318,21 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
 
         case IDCMP_MOUSEMOVE:
         case IDCMP_INTUITICKS:
+            if (msg->imsg->Class == IDCMP_MOUSEMOVE && data->drag_pending
+                && list_drag_starts(obj, data, msg->imsg))
+            {
+                data->drag_pending = FALSE;
+                data->mouse_click = 0;
+                DoMethod(_win(obj), MUIM_Window_RemEventHandler,
+                    (IPTR) &data->ehn);
+                data->ehn.ehn_Events &= ~(IDCMP_MOUSEMOVE | IDCMP_INTUITICKS
+                    | IDCMP_INACTIVEWINDOW);
+                DoMethod(_win(obj), MUIM_Window_AddEventHandler,
+                    (IPTR) &data->ehn);
+                DoMethod(obj, MUIM_DoDrag, data->drag_x - _left(data->area),
+                    data->drag_y - _top(data->area), 0);
+                return MUI_EventHandlerRC_Eat;
+            }
             if (pos.flags & MUI_LPR_ABOVE)
                 new_active = MUIV_List_Active_Up;
             else if (pos.flags & MUI_LPR_BELOW)
@@ -5307,6 +5353,7 @@ IPTR List__MUIM_HandleEvent(struct IClass *cl, Object *obj,
         case IDCMP_INACTIVEWINDOW:
             /* Stop listening for events we only listen to when mouse button is
                down: we will not be informed of the button being released */
+            data->drag_pending = FALSE;
             DoMethod(_win(obj), MUIM_Window_RemEventHandler,
                 (IPTR) &data->ehn);
             data->ehn.ehn_Events &=
