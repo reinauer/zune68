@@ -42,6 +42,15 @@
 #define MUIMASTER_VLATEST 19
 #endif
 
+/* Return values of MUI_Error() */
+#define MUIE_OK                  0
+#define MUIE_OutOfMemory         1
+#define MUIE_OutOfGfxMemory      2
+#define MUIE_InvalidWindowObject 3
+#define MUIE_MissingLibrary      4
+#define MUIE_NoARexx             5
+#define MUIE_SingleTask          6
+
 /* START PRIV */
 
 /* This structure is used for the internal classes */

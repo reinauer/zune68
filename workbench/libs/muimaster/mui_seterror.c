@@ -17,18 +17,17 @@
         struct Library *, MUIMasterBase, 12, MUIMaster)
 
 /*  FUNCTION
-        Return zero without storing an error value. This obsolete
-        compatibility entrypoint does not call dos.library/SetIoErr().
+        Set the calling task's MUI_Error() value. The process's DOS error
+        value is not changed.
 
     INPUTS
-        num - Ignored.
+        num - A MUIE_* code; MUIE_OK clears it.
 
     RESULT
         Always zero. This is not the previous error value.
 
     NOTES
-        Calling this function does not change the result of MUI_Error()
-        or the process's DOS error value.
+        MUI 3.8 declares the function VOID and ignores num.
 
     SEE ALSO
         MUI_Error(), dos.library/SetIoErr()
@@ -37,6 +36,7 @@
 {
     AROS_LIBFUNC_INIT
 
+    zune_set_error(num);
     return 0;
 
     AROS_LIBFUNC_EXIT
